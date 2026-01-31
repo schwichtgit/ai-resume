@@ -34,3 +34,4 @@ sbom.json
 # Rust build artifacts
 memvid-service/target/
 *.tar
+CLAUDE.md

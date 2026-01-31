@@ -17,15 +17,23 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilte
 
 mod config;
 mod error;
-mod generated;
 mod grpc;
 mod memvid;
 mod metrics;
 
+// Include generated proto code from build script
+mod generated {
+    pub mod memvid {
+        pub mod v1 {
+            include!(concat!(env!("OUT_DIR"), "/memvid.v1.rs"));
+        }
+    }
+}
+
 use config::Config;
 use generated::memvid::v1::{health_server::HealthServer, memvid_service_server::MemvidServiceServer};
 use grpc::{HealthService, MemvidGrpcService};
-use memvid::{MockSearcher, RealSearcher};
+use memvid::{MockSearcher, RealSearcher, Searcher};
 
 /// Run healthcheck mode: connect to gRPC service and check health
 /// Tries both IPv4 and IPv6 addresses for dual-stack support

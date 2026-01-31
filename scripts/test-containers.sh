@@ -36,7 +36,7 @@ echo "Starting Rust memvid service..."
 podman run -d --name test-memvid \
     --network test-net \
     -p 9091:9090 \
-    -e MOCK_MODE=true \
+    -e MOCK_MEMVID=true \
     -e RUST_LOG=info \
     "${REGISTRY}/ai-resume-memvid:${VERSION}"
 
@@ -47,8 +47,10 @@ echo "Starting Python API service..."
 podman run -d --name test-api \
     --network test-net \
     -p 3001:3000 \
-    -e MEMVID_GRPC_URL=test-memvid:50051 \
-    -e OPENROUTER_API_KEY="" \
+    -e MEMVID_GRPC_HOST=test-memvid \
+    -e MEMVID_GRPC_PORT=50051 \
+    -e MOCK_MEMVID_CLIENT=true \
+    -e MOCK_OPENROUTER=true \
     "${REGISTRY}/ai-resume-api:${VERSION}"
 
 sleep 4
