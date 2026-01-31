@@ -1,0 +1,84 @@
+syntax = "proto3";
+package memvid.v1;
+
+// MemvidService provides semantic search over resume content stored in .mv2 files.
+service MemvidService {
+  // Search performs semantic search over the loaded memvid index.
+  rpc Search(SearchRequest) returns (SearchResponse);
+
+  // GetState retrieves a memory card entity by name (O(1) lookup).
+  // Used for profile metadata retrieval without search truncation.
+  rpc GetState(GetStateRequest) returns (GetStateResponse);
+}
+
+// Health provides service health checking following gRPC health checking protocol.
+service Health {
+  // Check returns the current health status of the service.
+  rpc Check(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message SearchRequest {
+  // The natural language query to search for.
+  string query = 1;
+  // Maximum number of results to return. Default: 5, Max: 20.
+  int32 top_k = 2;
+  // Maximum characters per snippet. Default: 200, Max: 1000.
+  int32 snippet_chars = 3;
+}
+
+message SearchResponse {
+  // The search results ordered by relevance score (descending).
+  repeated SearchHit hits = 1;
+  // Total number of hits found (may be more than returned).
+  int32 total_hits = 2;
+  // Time taken for the search in milliseconds.
+  int32 took_ms = 3;
+}
+
+message SearchHit {
+  // The title or heading of the matched section.
+  string title = 1;
+  // Relevance score (0.0 to 1.0, higher is better).
+  float score = 2;
+  // Text snippet from the matched content.
+  string snippet = 3;
+  // Tags/metadata associated with this content (e.g., "skills", "experience").
+  repeated string tags = 4;
+}
+
+message GetStateRequest {
+  // The entity name to look up (e.g., "__profile__").
+  string entity = 1;
+  // Optional: specific slot to retrieve. If empty, returns all slots.
+  string slot = 2;
+}
+
+message GetStateResponse {
+  // Whether the entity was found.
+  bool found = 1;
+  // The entity name.
+  string entity = 2;
+  // Map of slot name to slot value.
+  // For profile, typically has "data" slot with full JSON.
+  map<string, string> slots = 3;
+}
+
+message HealthCheckRequest {
+  // Optional service name to check. Empty checks the overall service.
+  string service = 1;
+}
+
+message HealthCheckResponse {
+  // The health status of the service.
+  Status status = 1;
+  // Number of frames/chunks loaded in the memvid index.
+  int32 frame_count = 2;
+  // Path to the loaded .mv2 file.
+  string memvid_file = 3;
+
+  enum Status {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+  }
+}

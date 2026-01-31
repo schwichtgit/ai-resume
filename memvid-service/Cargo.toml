@@ -1,0 +1,66 @@
+[package]
+name = "ai-resume-memvid"
+version = "1.0.0"
+edition = "2021"
+authors = []
+description = "Rust-based memvid retrieval service for AI Resume"
+
+[dependencies]
+# Web framework (for metrics HTTP endpoint)
+axum = { version = "0.7", features = ["macros"] }
+tokio = { version = "1", features = ["full"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["trace", "cors"] }
+
+# Memvid SDK
+memvid-core = { version = "2.0.134", features = ["lex"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Observability
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+metrics = "0.24"
+metrics-exporter-prometheus = "0.16"
+
+# gRPC (for communication with Python service)
+tonic = "0.12"
+tonic-health = "0.12"
+prost = "0.13"
+
+# Async utilities
+async-trait = "0.1"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "2.0"
+
+# Time utilities
+chrono = "0.4"
+
+[build-dependencies]
+# For gRPC code generation
+tonic-build = "0.12"
+
+[dev-dependencies]
+# HTTP client for integration tests
+hyper = "1.0"
+hyper-util = { version = "0.1", features = ["client-legacy", "http1", "tokio"] }
+http-body-util = "0.1"
+
+[features]
+default = []
+# Enable real memvid-core integration (disabled by default for mock testing)
+# real-memvid = ["memvid-core"]
+
+[[bin]]
+name = "memvid-service"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = true

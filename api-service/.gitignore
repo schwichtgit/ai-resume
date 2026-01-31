@@ -1,0 +1,50 @@
+# Proto files (synced from project root at build time)
+# Authoritative source: proto/memvid/v1/memvid.proto
+proto/
+
+# Generated proto stubs
+ai_resume_api/proto/
+
+# UV virtual environment
+.venv/
+uv.lock
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+*.cover
+.hypothesis/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Security scanning artifacts
+sbom.json
+*.sbom.json

@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+"""Health check for AI Resume API.
+
+This script is used by container orchestration systems (Docker Compose, Kubernetes)
+to determine if the API service is healthy and ready to handle requests.
+
+It performs a simple HTTP GET request to the /health endpoint and exits with:
+- 0 if the service is healthy
+- 1 if the service is unhealthy or unreachable
+
+Supports both IPv4 and IPv6 via the HEALTH_CHECK_URL environment variable.
+"""
+
+import os
+import sys
+import httpx
+
+
+def check_health() -> bool:
+    """Check if the API service is healthy.
+
+    Tries HEALTH_CHECK_URL env var first, then falls back to trying both
+    IPv6 and IPv4 localhost for dual-stack support.
+
+    Returns:
+        True if the service is healthy, False otherwise.
+    """
+    # Check if explicit URL is provided
+    if health_url := os.getenv("HEALTH_CHECK_URL"):
+        try:
+            response = httpx.get(health_url, timeout=5)
+            return response.status_code == 200
+        except Exception as e:
+            print(f"Health check failed: {e}", file=sys.stderr)
+            return False
+
+    # Try both IPv6 and IPv4 for dual-stack support
+    urls = [
+        "http://[::1]:3000/health",      # IPv6 localhost
+        "http://127.0.0.1:3000/health",  # IPv4 localhost
+    ]
+
+    for url in urls:
+        try:
+            response = httpx.get(url, timeout=2)
+            if response.status_code == 200:
+                print(f"Health check passed via {url}", file=sys.stderr)
+                return True
+        except Exception:
+            # Try next URL
+            continue
+
+    print("Health check failed: could not connect via IPv4 or IPv6", file=sys.stderr)
+    return False
+
+
+if __name__ == "__main__":
+    sys.exit(0 if check_health() else 1)

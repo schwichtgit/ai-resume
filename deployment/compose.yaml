@@ -1,0 +1,118 @@
+# AI Resume - Hybrid Rust + Python Architecture
+#
+# Pattern B: Frontend as Internal Router
+# - Host nginx (LB) → frontend container (URL routing) → ai-resume-api → ai-resume-memvid
+# - No ports exposed; host nginx connects directly to yellow-net
+#
+# Prerequisites:
+#   podman network create yellow-net --subnet 192.168.100.0/24 --gateway 192.168.100.1
+#
+# Configuration:
+#   Copy .env.example to .env and set your values
+
+networks:
+  yellow-net:
+    external: true  # podman network create yellow-net ...
+  podman:          # default bridge; created automatically if omitted, but declared for clarity
+    external: true # or remove this section and just use 'podman' by name below
+
+services:
+  # Rust memvid service (internal gRPC)
+  ai-resume-memvid:
+    image: ${REGISTRY:-localhost}/ai-resume-memvid:${VERSION:-latest}
+    container_name: ai-resume-memvid
+    networks:
+      yellow-net:
+        ipv4_address: 192.168.100.12
+    environment:
+      - MEMVID_FILE_PATH=/data/.memvid/${MEMVID_FILENAME:-resume.mv2}
+      - GRPC_PORT=50051
+      - GRPC_URL=http://${GRPC_HOST:-127.0.0.1}:${GRPC_PORT:-50051}
+      - METRICS_PORT=9090
+      - BIND_ADDRESS=${BIND_ADDRESS:-auto}
+      - RUST_LOG=${LOG_LEVEL:-info}
+    volumes:
+      - ${PROJECT_BASE_DIR:-/opt/ai-resume}/data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=128M,mode=1777
+      - /run:size=64M,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/healthcheck"]
+      interval: 45s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Python FastAPI service (internal HTTP API)
+  ai-resume-api:
+    image: ${REGISTRY:-localhost}/ai-resume-api:${VERSION:-latest}
+    container_name: ai-resume-api
+    networks:
+      yellow-net:
+        ipv4_address: 192.168.100.11
+    depends_on:
+      ai-resume-memvid:
+        condition: service_healthy
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:?OPENROUTER_API_KEY is required}
+      - MEMVID_GRPC_HOST=${MEMVID_GRPC_HOST:-ai-resume-memvid}
+      - MEMVID_GRPC_PORT=${MEMVID_GRPC_PORT:-50051}
+      - LLM_MODEL=${LLM_MODEL:-nvidia/nemotron-nano-9b-v2:free}
+      - SESSION_TTL=${SESSION_TTL:-1800}
+      - RATE_LIMIT_PER_MINUTE=${RATE_LIMIT:-10}
+      - PORT=3000
+      - BIND_ADDRESS=${BIND_ADDRESS:-auto}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - ${PROJECT_BASE_DIR:-/opt/ai-resume}/data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=256M,mode=1777
+      - /var/tmp:size=128M,mode=1777
+      - /run:size=64M,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # Frontend: OpenResty (Alpine) serving React SPA + Lua-based SEO endpoint for bots
+  ai-resume-frontend:
+    image: ${REGISTRY:-localhost}/ai-resume-frontend:${VERSION:-latest}
+    container_name: ai-resume-frontend
+    networks:
+      yellow-net:
+        ipv4_address: 192.168.100.10
+      podman: {}
+    ports:
+      - "8080:8080"
+    depends_on:
+      ai-resume-api:
+        condition: service_healthy
+    environment:
+      - API_BACKEND_HOST=${API_BACKEND_HOST:-ai-resume-api}
+      - API_BACKEND_PORT=${API_BACKEND_PORT:-3000}
+    volumes:
+      - ${PROJECT_BASE_DIR:-/opt/ai-resume}/data:/data:ro
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:size=128M,mode=0777
+      - /var/run/nginx:size=64M,mode=0777
+      - /tmp:size=64M,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s

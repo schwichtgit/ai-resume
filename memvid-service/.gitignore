@@ -1,0 +1,23 @@
+# Rust build artifacts
+target/
+Cargo.lock
+
+# Proto files (synced from project root at build time)
+# Authoritative source: proto/memvid/v1/memvid.proto
+proto/
+
+# Generated proto stubs
+src/generated/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+
+# Environment
+.env
+.env.local

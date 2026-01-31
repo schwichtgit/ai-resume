@@ -1,0 +1,164 @@
+/* Typography - premium feel with serif headings */
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here.
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Deep, sophisticated dark palette inspired by lucis.life */
+    --background: 240 10% 4%;
+    --foreground: 60 9% 98%;
+
+    --card: 240 8% 8%;
+    --card-foreground: 60 9% 98%;
+
+    --popover: 240 8% 8%;
+    --popover-foreground: 60 9% 98%;
+
+    /* Warm cream accent - premium feel */
+    --primary: 45 30% 70%;
+    --primary-foreground: 240 10% 4%;
+
+    --secondary: 240 6% 12%;
+    --secondary-foreground: 60 9% 90%;
+
+    --muted: 240 6% 15%;
+    --muted-foreground: 240 5% 55%;
+
+    /* Teal accent for interactive elements */
+    --accent: 173 58% 39%;
+    --accent-foreground: 60 9% 98%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 60 9% 98%;
+
+    --border: 240 6% 18%;
+    --input: 240 6% 15%;
+    --ring: 173 58% 39%;
+
+    --radius: 0.75rem;
+
+    /* Custom tokens for this design */
+    --surface-elevated: 240 8% 10%;
+    --text-subtle: 240 5% 45%;
+    --text-highlight: 45 80% 80%;
+    --success: 158 64% 52%;
+    --success-muted: 158 40% 20%;
+    --warning: 38 92% 50%;
+    --warning-muted: 38 50% 20%;
+
+    --sidebar-background: 240 10% 4%;
+    --sidebar-foreground: 60 9% 90%;
+    --sidebar-primary: 173 58% 39%;
+    --sidebar-primary-foreground: 60 9% 98%;
+    --sidebar-accent: 240 6% 12%;
+    --sidebar-accent-foreground: 60 9% 90%;
+    --sidebar-border: 240 6% 18%;
+    --sidebar-ring: 173 58% 39%;
+  }
+}
+
+:root {
+  --font-serif: 'Instrument Serif', Georgia, serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-serif);
+  }
+
+  code, pre {
+    font-family: var(--font-mono);
+  }
+}
+
+/* Custom animations */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { 
+    opacity: 0; 
+    transform: translateY(20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes slide-down {
+  from { 
+    opacity: 0; 
+    transform: translateY(-10px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes typing-cursor {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.5s ease-out forwards;
+}
+
+.animate-slide-down {
+  animation: slide-down 0.3s ease-out forwards;
+}
+
+.animate-typing-cursor {
+  animation: typing-cursor 1s step-end infinite;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* Staggered animations */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+
+/* Gradient text utility */
+.text-gradient {
+  @apply bg-clip-text text-transparent;
+  background-image: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+}

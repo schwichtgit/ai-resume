@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Primary Meta Tags -->
+    <title>{{NAME}} - {{TITLE}}</title>
+    <meta name="title" content="{{NAME}} - {{TITLE}}">
+    <meta name="description" content="AI-powered resume for {{NAME}}. {{STATUS}} Location: {{LOCATION}}">
+    <meta name="author" content="{{NAME}}">
+    <meta name="keywords" content="{{TAGS}}">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="profile">
+    <meta property="og:url" content="{{DOMAIN}}/">
+    <meta property="og:title" content="{{NAME}} - {{TITLE}}">
+    <meta property="og:description" content="AI-powered resume for {{NAME}}">
+    <meta property="og:image" content="{{DOMAIN}}/ai-resume.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="{{DOMAIN}}/">
+    <meta property="twitter:title" content="{{NAME}} - {{TITLE}}">
+    <meta property="twitter:description" content="AI-powered resume for {{NAME}}">
+    <meta property="twitter:image" content="{{DOMAIN}}/ai-resume.png">
+
+    <!-- LinkedIn -->
+    <meta property="profile:first_name" content="{{FIRST_NAME}}">
+    <meta property="profile:last_name" content="{{LAST_NAME}}">
+
+    <!-- Schema.org for Google -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Person",
+      "name": "{{NAME}}",
+      "jobTitle": "{{TITLE}}",
+      "email": "{{EMAIL}}",
+      "url": "{{LINKEDIN}}",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "{{LOCATION}}"
+      }
+    }
+    </script>
+
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        h2 {
+            font-size: 1.25rem;
+            font-weight: 400;
+            color: #666;
+            margin-top: 0;
+        }
+        .status {
+            background: #f0f0f0;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+        .tag {
+            background: #e0e0e0;
+            padding: 0.25rem 0.75rem;
+            border-radius: 16px;
+            font-size: 0.875rem;
+        }
+        .contact {
+            margin: 2rem 0;
+        }
+        .contact a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .contact a:hover {
+            text-decoration: underline;
+        }
+        .note {
+            margin-top: 3rem;
+            padding: 1rem;
+            background: #fffbea;
+            border-left: 4px solid #f59e0b;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>{{NAME}}</h1>
+    <h2>{{TITLE}}</h2>
+
+    <div class="status">
+        <strong>Status:</strong> {{STATUS}}
+    </div>
+
+    <p><strong>Location:</strong> {{LOCATION}}</p>
+
+    <div class="tags">
+        {{TAG_BADGES}}
+    </div>
+
+    <div class="contact">
+        <p><strong>Contact:</strong></p>
+        <ul>
+            <li>Email: <a href="mailto:{{EMAIL}}">{{EMAIL}}</a></li>
+            <li>LinkedIn: <a href="{{LINKEDIN}}">View Profile</a></li>
+        </ul>
+    </div>
+
+    <div class="note">
+        <p><strong>Note:</strong> This is a simplified view optimized for search engines and social media sharing.
+        <a href="/">Visit the interactive site</a> to chat with an AI assistant that can answer questions about {{FIRST_NAME}}'s experience, skills, and qualifications.</p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,23 @@
+# UV virtual environment
+.venv/
+uv.lock
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Testing
+.pytest_cache/
+.coverage
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Temporary training outputs (final .mv2 files go to data/.memvid/)
+*.mv2
