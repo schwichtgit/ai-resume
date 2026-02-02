@@ -6,7 +6,6 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
-
 # =============================================================================
 # Chat API Models
 # =============================================================================
@@ -134,7 +133,9 @@ class FitAssessmentExample(BaseModel):
 class AssessFitRequest(BaseModel):
     """Request for real-time fit assessment."""
 
-    job_description: str = Field(..., description="Job description to assess fit against", min_length=50)
+    job_description: str = Field(
+        ..., description="Job description to assess fit against", min_length=50
+    )
 
 
 class AssessFitResponse(BaseModel):

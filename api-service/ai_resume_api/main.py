@@ -276,9 +276,7 @@ async def chat(request: Request, chat_request: ChatRequest):
             top_k=5,
             snippet_chars=300,
         )
-        context = "\n\n".join(
-            f"**{hit.title}**\n{hit.snippet}" for hit in search_response.hits
-        )
+        context = "\n\n".join(f"**{hit.title}**\n{hit.snippet}" for hit in search_response.hits)
         chunks_retrieved = len(search_response.hits)
     except Exception as e:
         logger.error("Memvid search failed", error=str(e))
@@ -584,8 +582,7 @@ async def get_suggested_questions() -> SuggestedQuestionsResponse:
         )
 
     questions = [
-        SuggestedQuestion(question=q, category="general")
-        for q in profile["suggested_questions"]
+        SuggestedQuestion(question=q, category="general") for q in profile["suggested_questions"]
     ]
     return SuggestedQuestionsResponse(questions=questions)
 
@@ -629,9 +626,7 @@ async def assess_fit(request: Request, assess_request: AssessFitRequest) -> Asse
             top_k=10,
             snippet_chars=500,
         )
-        context = "\n\n".join(
-            f"**{hit.title}**\n{hit.snippet}" for hit in search_response.hits
-        )
+        context = "\n\n".join(f"**{hit.title}**\n{hit.snippet}" for hit in search_response.hits)
         chunks_retrieved = len(search_response.hits)
     except Exception as e:
         logger.error("Memvid search failed for fit assessment", error=str(e))

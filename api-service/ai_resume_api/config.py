@@ -22,7 +22,7 @@ class Settings(BaseSettings):
 
     # Mock control (opt-in feature gates for testing)
     mock_memvid_client: bool = False  # Use mock gRPC client (don't connect to memvid service)
-    mock_openrouter: bool = False     # Use mock LLM responses (don't call OpenRouter API)
+    mock_openrouter: bool = False  # Use mock LLM responses (don't call OpenRouter API)
 
     # OpenRouter configuration
     openrouter_api_key: str = ""

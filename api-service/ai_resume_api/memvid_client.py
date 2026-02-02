@@ -24,7 +24,7 @@ memvid_search_latency = Histogram(
 # Try to import generated protobuf code
 # If not available, we'll use a mock client
 try:
-    from ai_resume_api.proto import memvid_pb2, memvid_pb2_grpc
+    from ai_resume_api.memvid.v1 import memvid_pb2, memvid_pb2_grpc
 
     GRPC_AVAILABLE = True
 except ImportError:
@@ -127,7 +127,11 @@ class MemvidClient:
                     "FATAL: gRPC connection unavailable with MOCK_MEMVID_CLIENT=false. "
                     "Either start the memvid service or set MOCK_MEMVID_CLIENT=true for testing."
                 )
-                logger.error(error_msg, grpc_available=GRPC_AVAILABLE, stub_connected=self._memvid_stub is not None)
+                logger.error(
+                    error_msg,
+                    grpc_available=GRPC_AVAILABLE,
+                    stub_connected=self._memvid_stub is not None,
+                )
                 raise MemvidConnectionError(error_msg)
 
         try:
@@ -300,6 +304,7 @@ class MemvidClient:
 
         # Return mock profile data
         import json
+
         mock_profile = {
             "name": "Frank Schwichtenberg",
             "title": "Senior Engineering Manager",

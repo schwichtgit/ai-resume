@@ -90,6 +90,7 @@ llm_active_requests = Gauge(
 # LLM Payload Logging
 # =============================================================================
 
+
 @dataclass
 class LLMRequestLog:
     """Structured log data for LLM requests."""
