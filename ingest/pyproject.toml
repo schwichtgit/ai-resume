@@ -9,6 +9,7 @@ dependencies = [
     "memvid-sdk==2.0.153",
     "sentence-transformers>=3.0.0",
     "setuptools>=80.10.2",
+    "click!=8.3.1",
 ]
 
 [project.optional-dependencies]
