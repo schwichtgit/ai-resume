@@ -35,3 +35,6 @@ sbom.json
 memvid-service/target/
 *.tar
 CLAUDE.md
+
+.claude/*
+.claude/
