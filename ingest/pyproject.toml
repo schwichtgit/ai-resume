@@ -1,6 +1,6 @@
 [project]
 name = "ingest"
-version = "0.1.0"
+version = "0.1.1"
 description = "Memvid ingestion pipeline for AI Resume - runs natively on MacOS for NPU acceleration"
 readme = "README.md"
 requires-python = ">=3.12"
