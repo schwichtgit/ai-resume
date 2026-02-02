@@ -17,6 +17,21 @@ dist-ssr
 .claude/*
 .claude/
 
+# Local working directories (for development, testing, temporary files)
+/local/
+/work/
+/tmp/
+/*.mv2
+test_resume.mv2
+*-test.mv2
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.egg-info/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -37,3 +52,6 @@ sbom.json
 memvid-service/target/
 *.tar
 CLAUDE.md
+
+.claude/*
+.claude/
