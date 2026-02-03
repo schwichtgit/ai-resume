@@ -17,6 +17,8 @@ logger = structlog.get_logger()
 # Prompt template for keyword extraction
 KEYWORD_EXTRACTION_PROMPT = """Extract 5-10 search keywords from this question.
 Include the original key terms plus synonyms and related terms that would help find relevant resume content.
+IMPORTANT: For acronyms like AI, ML, DevOps, CI/CD - include BOTH the acronym AND the expanded form.
+Examples: "AI" → "AI artificial intelligence" | "ML" → "ML machine learning"
 Output only keywords, space-separated, no punctuation.
 
 Question: {question}
@@ -64,17 +66,30 @@ async def transform_query_keywords(
 
         keywords = response.content.strip()
 
-        # Validate output - should be space-separated words
-        if keywords and len(keywords) < 500:  # Sanity check
+        # Defensive post-processing: deduplicate and limit
+        words = keywords.split()
+        unique_words = []
+        seen = set()
+        for word in words:
+            word_clean = word.lower().strip('.,!?;:"\'')
+            if word_clean and word_clean not in seen and len(word_clean) > 2:
+                unique_words.append(word_clean)
+                seen.add(word_clean)
+                if len(unique_words) >= 7:  # Hard limit
+                    break
+
+        if unique_words:
+            keywords_clean = " ".join(unique_words)
             logger.info(
                 "Query transformed",
                 original=question[:50],
-                keywords=keywords[:100],
+                keywords_before=keywords[:100],
+                keywords_after=keywords_clean,
                 tokens_used=response.tokens_used,
             )
-            return keywords
+            return keywords_clean
         else:
-            logger.warning("Invalid keyword extraction output", output=keywords[:100])
+            logger.warning("No valid keywords extracted", output=keywords[:100])
             return question
 
     except Exception as e:

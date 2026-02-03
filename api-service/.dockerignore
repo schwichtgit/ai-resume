@@ -9,6 +9,7 @@ env/
 *.egg-info/
 dist/
 build/
+.ruff_cache/
 
 # Testing
 .pytest_cache/
@@ -19,6 +20,7 @@ htmlcov/
 # IDE
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 

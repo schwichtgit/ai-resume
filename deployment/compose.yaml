@@ -24,6 +24,8 @@ services:
     networks:
       yellow-net:
         ipv4_address: 192.168.100.12
+    ports:
+      - "50051:50051"
     environment:
       - MEMVID_FILE_PATH=/data/.memvid/${MEMVID_FILENAME:-resume.mv2}
       - GRPC_PORT=50051
@@ -54,6 +56,8 @@ services:
     networks:
       yellow-net:
         ipv4_address: 192.168.100.11
+    ports:
+      - "3000:3000"
     depends_on:
       ai-resume-memvid:
         condition: service_healthy

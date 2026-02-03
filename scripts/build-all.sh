@@ -71,10 +71,11 @@ log_info "Platforms: linux/amd64, linux/arm64"
 echo ""
 
 # Sync proto files from authoritative source before building
+# Uses hard links to keep proto files synchronized across build contexts
 log_info "Syncing proto files from authoritative source..."
 mkdir -p api-service/proto memvid-service/proto/memvid/v1
-cp proto/memvid/v1/memvid.proto api-service/proto/memvid.proto 2>/dev/null || log_warn "Failed to sync to api-service"
-cp proto/memvid/v1/memvid.proto memvid-service/proto/memvid/v1/memvid.proto 2>/dev/null || log_warn "Failed to sync to memvid-service"
+ln -f proto/memvid/v1/memvid.proto api-service/proto/memvid.proto 2>/dev/null || log_warn "Failed to link to api-service"
+ln -f proto/memvid/v1/memvid.proto memvid-service/proto/memvid/v1/memvid.proto 2>/dev/null || log_warn "Failed to link to memvid-service"
 log_info "✓ Proto files synced"
 echo ""
 

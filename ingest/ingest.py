@@ -25,9 +25,12 @@ from memvid_sdk.embeddings import HuggingFaceEmbeddings
 
 
 # Embedding model configuration
-# all-mpnet-base-v2 is recommended for resume/job-focused semantic search (768 dimensions)
-# See: https://www.sbert.net/docs/pretrained_models.html
-EMBEDDING_MODEL = "all-mpnet-base-v2"
+# BAAI/bge-small-en-v1.5 is optimized for asymmetric retrieval (short query → long document)
+# - Trained with hard negative mining (distinguishes "AI" from "Adobe Illustrator")
+# - 3x smaller (130MB vs 420MB), 2x faster (384 dims vs 768 dims)
+# - Higher MTEB scores than all-mpnet-base-v2 for retrieval tasks
+# See: https://huggingface.co/BAAI/bge-small-en-v1.5
+EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
 
 # Project paths
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -520,6 +523,7 @@ def ingest_memory(
     input_path: Path = RESUME_PATH,
     output_path: Path = DEFAULT_OUTPUT,
     verbose: bool = True,
+    debug: bool = False,
     embedding_model: str = EMBEDDING_MODEL,
 ) -> dict:
     """
@@ -628,6 +632,9 @@ def ingest_memory(
                 })
                 if verbose:
                     print(f"  Prepared: Experience: {chunk['title']}")
+                    if debug:
+                        print(f"    Tags: {tags}")
+                        print(f"    Text: {chunk['content'][:200]}..." if len(chunk['content']) > 200 else f"    Text: {chunk['content']}")
 
         elif title == "Frequently Asked Questions":
             # Chunk by individual FAQ entry for optimal retrieval
@@ -646,6 +653,10 @@ def ingest_memory(
                 })
                 if verbose:
                     print(f"  Prepared: FAQ: {chunk['title']}")
+                    if debug:
+                        print(f"    Tags: {tags}")
+                        print(f"    Keywords: {keywords}")
+                        print(f"    Text: {chunk['content'][:200]}..." if len(chunk['content']) > 200 else f"    Text: {chunk['content']}")
 
         elif title == "Documented Failures & Lessons Learned":
             # Chunk by individual failure
@@ -673,6 +684,9 @@ def ingest_memory(
             })
             if verbose:
                 print(f"  Prepared: Skills Assessment")
+                if debug:
+                    print(f"    Tags: {tags}")
+                    print(f"    Text: {content[:200]}..." if len(content) > 200 else f"    Text: {content}")
 
         elif title == "Fit Assessment Guidance":
             # Add as single chunk for fit matching
@@ -685,6 +699,9 @@ def ingest_memory(
             })
             if verbose:
                 print(f"  Prepared: Fit Assessment Guidance")
+                if debug:
+                    print(f"    Tags: {tags}")
+                    print(f"    Text: {content[:200]}..." if len(content) > 200 else f"    Text: {content}")
 
         elif title == "Leadership & Management":
             tags = list(set(global_tags + ["leadership", "management", "soft-skills"]))
@@ -696,6 +713,9 @@ def ingest_memory(
             })
             if verbose:
                 print(f"  Prepared: Leadership & Management")
+                if debug:
+                    print(f"    Tags: {tags}")
+                    print(f"    Text: {content[:200]}..." if len(content) > 200 else f"    Text: {content}")
 
         elif title == "Summary":
             tags = list(set(global_tags + ["summary", "overview"]))
@@ -707,6 +727,9 @@ def ingest_memory(
             })
             if verbose:
                 print(f"  Prepared: Professional Summary")
+                if debug:
+                    print(f"    Tags: {tags}")
+                    print(f"    Text: {content[:200]}..." if len(content) > 200 else f"    Text: {content}")
 
         elif title not in ["Contact & Links", "Metadata for Memvid Chunking"]:
             # Add other sections as-is
@@ -719,6 +742,9 @@ def ingest_memory(
             })
             if verbose:
                 print(f"  Prepared: {title}")
+                if debug:
+                    print(f"    Tags: {tags}")
+                    print(f"    Text: {content[:200]}..." if len(content) > 200 else f"    Text: {content}")
 
     # Store profile as a memory card using add_memory_cards() for O(1) retrieval
     # This avoids text truncation issues in search results
@@ -928,8 +954,17 @@ def main():
         action="store_true",
         help="Suppress verbose output",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Show detailed content being indexed (implies verbose)",
+    )
 
     args = parser.parse_args()
+
+    # Debug mode implies verbose
+    if args.debug:
+        args.quiet = False
 
     # Check input file exists
     if not check_input_file(args.input, verbose=not args.quiet):
@@ -940,6 +975,7 @@ def main():
         input_path=args.input,
         output_path=args.output,
         verbose=not args.quiet,
+        debug=args.debug,
     )
 
     # Verify if requested

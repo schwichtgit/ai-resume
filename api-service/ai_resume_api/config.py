@@ -154,11 +154,46 @@ Guidelines:
             return None
 
     def get_system_prompt_from_profile(self) -> str:
-        """Get system prompt from profile, fallback to default."""
+        """Get system prompt from profile with ground facts injection."""
         profile = self.load_profile()
-        if profile and profile.get("system_prompt"):
-            return profile["system_prompt"]
-        return self.system_prompt
+        system_prompt = profile.get("system_prompt") if profile else self.system_prompt
+
+        # Inject ground facts to prevent hallucination
+        if profile:
+            # Add ground facts preamble if not already present
+            if "GROUND FACTS" not in system_prompt:
+                candidate_name = profile.get("name", "this candidate")
+                title = profile.get("title", "")
+
+                # Build ground facts list
+                facts = [f"This resume is about: {candidate_name}"]
+                if title:
+                    facts.append(f"Current/Target Role: {title}")
+
+                # Add company names from experience
+                experiences = profile.get("experience", [])
+                if experiences and len(experiences) > 0:
+                    companies = [exp.get("company") for exp in experiences[:3] if exp.get("company")]
+                    if companies:
+                        facts.append(f"Key Companies: {', '.join(companies)}")
+
+                facts_text = "\n  ".join(f"- {fact}" for fact in facts)
+                ground_facts = f"""
+GROUND FACTS (NEVER VIOLATE THESE):
+  {facts_text}
+  - If a question asks about a different person, respond:
+    "This resume is for {candidate_name}, not [other name]. Please ask about {candidate_name}'s qualifications."
+  - NEVER answer questions about people, companies, or experiences not mentioned in the context
+
+"""
+                # Insert ground facts after the first line
+                lines = system_prompt.split('\n', 1)
+                if len(lines) == 2:
+                    system_prompt = lines[0] + '\n' + ground_facts + lines[1]
+                else:
+                    system_prompt = ground_facts + system_prompt
+
+        return system_prompt
 
 
 @lru_cache
