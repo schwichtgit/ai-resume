@@ -16,6 +16,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from ai_resume_api import __version__
+from ai_resume_api.role_classifier import classify_job_description
 from ai_resume_api.config import get_settings
 from ai_resume_api.memvid_client import (
     MemvidConnectionError,
@@ -201,7 +202,6 @@ async def chat(request: Request, chat_request: ChatRequest):
     - **session_id**: Optional session ID for conversation history
     - **stream**: Whether to stream the response (default: true)
     """
-    print("🚨 CHAT ENDPOINT CALLED - START OF FUNCTION", flush=True)
     session_store = get_session_store()
     session = session_store.get_or_create(chat_request.session_id)
 
@@ -705,47 +705,71 @@ async def assess_fit(request: Request, assess_request: AssessFitRequest) -> Asse
             detail="Search service error. Please try again later.",
         )
 
+    # Classify the job description to select appropriate assessor persona
+    role_info = classify_job_description(assess_request.job_description)
+    eval_criteria_text = "\n".join(f"- {c}" for c in role_info["eval_criteria"])
+
+    logger.info(
+        "Fit assessment role classification",
+        domain=role_info["domain"],
+        level=role_info["level"],
+        jd_title=role_info["jd_title"],
+    )
+
     # Build fit assessment prompt
-    fit_assessment_prompt = f"""Analyze the candidate's fit for this job description and provide an honest, structured assessment.
+    fit_assessment_prompt = f"""Analyze the candidate's fit for this job description. Be brutally honest.
 
 JOB DESCRIPTION:
 {assess_request.job_description}
 
-CANDIDATE CONTEXT:
+CANDIDATE CONTEXT (from resume):
 {context}
 
-Provide a structured assessment with:
+INSTRUCTIONS:
 
-1. **VERDICT**: Rate the fit with stars (⭐ to ⭐⭐⭐⭐⭐) and brief summary (e.g., "⭐⭐⭐⭐ Strong fit - Excellent match for AI infrastructure role")
+Step 1: Identify the JD's role title and seniority level.
+Step 2: Identify the candidate's highest role title from the resume context.
+Step 3: Assess whether there is a seniority or scope gap.
+Step 4: Evaluate the candidate against these criteria specific to this role level:
+{eval_criteria_text}
+Step 5: Count how many of the JD's hard requirements the candidate clearly meets with evidence.
+Step 6: Rate using this rubric:
 
-2. **KEY MATCHES**: List 3-5 specific qualifications from the candidate's background that match the role requirements. Be specific with examples and metrics.
+RATING RUBRIC (follow strictly):
+⭐ = Fundamentally mismatched (different discipline or career stage)
+⭐⭐ = Weak fit (<40% of requirements met, or significant seniority/scope gap)
+⭐⭐⭐ = Partial fit (40-60% met, some gaps addressable with growth)
+⭐⭐⭐⭐ = Strong fit (60-80% met, minor gaps only)
+⭐⭐⭐⭐⭐ = Exceptional fit (>80% met, exceeds in key areas)
 
-3. **GAPS**: List 2-4 honest gaps or limitations where the candidate may not be a perfect match. Be direct and factual.
+A seniority gap (e.g., Director→VP, VP→CTO) should reduce the rating by at least one star unless the candidate demonstrates equivalent scope.
+If the JD requires domain experience the candidate lacks entirely (e.g., defense/government), that is a significant gap.
 
-4. **RECOMMENDATION**: Provide a balanced final recommendation (2-3 sentences) addressing whether the candidate should be considered and any important caveats.
+Format your response EXACTLY as shown below. Do NOT repeat sections. Do NOT add any text after RECOMMENDATION.
 
-Be honest and direct. Do not oversell. Hiring managers value credibility over enthusiasm.
+VERDICT: [stars] [label] - [one-sentence summary mentioning role title comparison]
 
-Format your response exactly as:
-
-VERDICT: [stars and summary]
+ROLE LEVEL:
+- JD Title: [title from job description]
+- Candidate Title: [highest title from resume]
+- Gap: [describe seniority/scope gap or state "None"]
 
 KEY MATCHES:
-- [match 1]
+- [match 1 with specific evidence from resume]
 - [match 2]
 - [match 3]
 
 GAPS:
-- [gap 1]
+- [gap 1 - be specific about what's missing]
 - [gap 2]
 
-RECOMMENDATION: [recommendation text]
+RECOMMENDATION: [2-3 sentences. Address whether the candidate should be considered, the seniority gap if any, and what would need to be true for this to work. Stop after this section.]
 """
 
     # Call OpenRouter LLM
     try:
         response = await openrouter_client.chat(
-            system_prompt="You are an expert technical recruiter providing honest, data-driven fit assessments for engineering leadership roles.",
+            system_prompt=role_info["persona"],
             context="",  # Context already in user message
             user_message=fit_assessment_prompt,
             history=[],
@@ -755,8 +779,13 @@ RECOMMENDATION: [recommendation text]
         content = response.content
         tokens_used = response.tokens_used
 
-        # Extract sections using simple parsing
+        # Extract sections using state-machine parser
+        # Sections: VERDICT, ROLE LEVEL, KEY MATCHES, GAPS, RECOMMENDATION
+        # Known section headers used to detect boundaries
+        section_headers = {"VERDICT:", "ROLE LEVEL:", "KEY MATCHES:", "GAPS:", "RECOMMENDATION:"}
+
         verdict = ""
+        role_level_lines = []
         key_matches = []
         gaps = []
         recommendation = ""
@@ -765,9 +794,12 @@ RECOMMENDATION: [recommendation text]
         for line in content.split("\n"):
             line = line.strip()
 
+            # Detect section boundaries
             if line.startswith("VERDICT:"):
                 verdict = line.replace("VERDICT:", "").strip()
                 current_section = "verdict"
+            elif line.startswith("ROLE LEVEL:"):
+                current_section = "role_level"
             elif line.startswith("KEY MATCHES:"):
                 current_section = "matches"
             elif line.startswith("GAPS:"):
@@ -777,15 +809,25 @@ RECOMMENDATION: [recommendation text]
                 if recommendation_text:
                     recommendation = recommendation_text
                 current_section = "recommendation"
+            elif line.startswith("- ") and current_section == "role_level":
+                role_level_lines.append(line[2:].strip())
             elif line.startswith("- ") and current_section == "matches":
                 key_matches.append(line[2:].strip())
             elif line.startswith("- ") and current_section == "gaps":
                 gaps.append(line[2:].strip())
             elif current_section == "recommendation" and line:
+                # Stop accumulating if we see anything that looks like a repeated section
+                if any(line.startswith(h) for h in section_headers):
+                    break
                 if recommendation:
                     recommendation += " " + line
                 else:
                     recommendation = line
+
+        # Append role level context to verdict if available
+        if role_level_lines:
+            role_summary = "; ".join(role_level_lines)
+            verdict = f"{verdict} [{role_summary}]"
 
         # Fallback if parsing fails
         if not verdict:
