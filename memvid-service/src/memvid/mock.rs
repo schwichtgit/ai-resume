@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use std::time::Instant;
 use tracing::info;
 
-use super::searcher::{SearchResponse, SearchResult, Searcher, StateResponse};
+use super::searcher::{AskRequest, AskResponse, AskStats, SearchResponse, SearchResult, Searcher, StateResponse};
 use crate::error::ServiceError;
 
 /// Mock searcher that returns hardcoded results for testing.
@@ -170,6 +170,61 @@ impl Searcher for MockSearcher {
             hits,
             total_hits,
             took_ms,
+        })
+    }
+
+    async fn ask(&self, request: AskRequest) -> Result<AskResponse, ServiceError> {
+        let start = Instant::now();
+
+        info!(
+            question = %request.question,
+            mode = ?request.mode,
+            "Mock ask called"
+        );
+
+        // Validate inputs
+        if request.question.trim().is_empty() {
+            return Err(ServiceError::InvalidRequest("Question cannot be empty".into()));
+        }
+
+        let top_k = request.top_k.clamp(1, 20);
+        let snippet_chars = request.snippet_chars.clamp(50, 1000);
+
+        // Simulate processing time
+        tokio::time::sleep(tokio::time::Duration::from_millis(5)).await;
+
+        // Reuse search logic to get evidence
+        let evidence = self.generate_results(&request.question, top_k, snippet_chars);
+        let candidates_retrieved = evidence.len() as i32;
+
+        // Generate mock answer (concatenate snippets in real Ask mode without LLM)
+        let answer = if request.use_llm {
+            format!(
+                "Based on the resume, here's what I found about '{}': {}",
+                request.question,
+                evidence.first().map(|e| e.snippet.clone()).unwrap_or_default()
+            )
+        } else {
+            // Context-only mode: concatenate evidence
+            evidence
+                .iter()
+                .map(|e| format!("**{}**\n{}", e.title, e.snippet))
+                .collect::<Vec<_>>()
+                .join("\n\n")
+        };
+
+        let took_ms = start.elapsed().as_millis() as i32;
+
+        Ok(AskResponse {
+            answer,
+            evidence,
+            stats: AskStats {
+                candidates_retrieved,
+                results_returned: candidates_retrieved,
+                retrieval_ms: took_ms,
+                reranking_ms: 0, // Mock doesn't do real re-ranking
+                used_fallback: false,
+            },
         })
     }
 

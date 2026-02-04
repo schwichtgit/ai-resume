@@ -3,14 +3,16 @@
 //! Loads .mv2 files and performs semantic search on resume data.
 
 use async_trait::async_trait;
-use memvid_core::{Memvid, SearchRequest};
+use memvid_core::{
+    AdaptiveConfig, AskMode as MemvidAskMode, AskRequest as MemvidAskRequest, Memvid, SearchRequest,
+};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{error, info};
 
 use crate::error::ServiceError;
-use crate::memvid::searcher::{SearchResponse, SearchResult, Searcher, StateResponse};
+use crate::memvid::searcher::{AskMode, AskRequest, AskResponse, AskStats, SearchResponse, SearchResult, Searcher, StateResponse};
 
 /// Real searcher that uses memvid-core to load and search .mv2 files.
 pub struct RealSearcher {
@@ -195,6 +197,141 @@ impl Searcher for RealSearcher {
             hits,
             total_hits,
             took_ms,
+        })
+    }
+
+    async fn ask(&self, request: AskRequest) -> Result<AskResponse, ServiceError> {
+        let start = std::time::Instant::now();
+
+        info!(
+            question = request.question,
+            mode = ?request.mode,
+            top_k = request.top_k,
+            "Performing real memvid ask"
+        );
+
+        // Map our AskMode to memvid-core AskMode
+        let mode = match request.mode {
+            AskMode::Hybrid => MemvidAskMode::Hybrid,
+            AskMode::Sem => MemvidAskMode::Sem,
+            AskMode::Lex => MemvidAskMode::Lex,
+        };
+
+        // Convert filters to scope query if provided
+        // Scope format: "key1:value1 key2:value2" for metadata filtering
+        let scope = if !request.filters.is_empty() {
+            let scope_query = request
+                .filters
+                .iter()
+                .map(|(k, v)| format!("{}:{}", k, v))
+                .collect::<Vec<_>>()
+                .join(" ");
+            Some(scope_query)
+        } else {
+            None
+        };
+
+        // Build memvid-core AskRequest
+        let memvid_request = MemvidAskRequest {
+            question: request.question.clone(),
+            top_k: request.top_k as usize,
+            snippet_chars: request.snippet_chars as usize,
+            mode,
+            start: if request.start > 0 { Some(request.start) } else { None },
+            end: if request.end > 0 { Some(request.end) } else { None },
+            context_only: !request.use_llm, // context_only = true means no LLM synthesis
+            uri: request.uri.clone(),
+            scope,
+            cursor: request.cursor.clone(),
+            as_of_frame: request.as_of_frame.map(|f| f as u64),
+            as_of_ts: request.as_of_ts,
+            adaptive: request.adaptive.and_then(|enabled| {
+                if enabled {
+                    Some(AdaptiveConfig::default())
+                } else {
+                    None
+                }
+            }),
+        };
+
+        // Perform the ask operation (blocking)
+        let ask_response = tokio::task::spawn_blocking({
+            let memvid = Arc::clone(&self.memvid);
+            move || {
+                let mut memvid = tokio::runtime::Handle::current()
+                    .block_on(memvid.write());
+
+                // Pass None for embedder - memvid will use built-in embeddings
+                memvid.ask(memvid_request, None::<&dyn memvid_core::VecEmbedder>)
+            }
+        })
+        .await
+        .map_err(|e| {
+            error!(error = %e, "Ask task failed");
+            ServiceError::Internal(format!("Ask task error: {}", e))
+        })?
+        .map_err(|e| {
+            error!(error = %e, "Memvid ask failed");
+            ServiceError::Internal(format!("Ask error: {}", e))
+        })?;
+
+        // Convert memvid results to our format
+        let evidence: Vec<SearchResult> = ask_response
+            .context_fragments
+            .into_iter()
+            .map(|fragment| {
+                // Extract title from URI or use frame_id as fallback
+                let title = if fragment.uri.is_empty() {
+                    format!("Frame {:?}", fragment.frame_id)
+                } else {
+                    fragment
+                        .uri
+                        .split('/')
+                        .last()
+                        .unwrap_or(&fragment.uri)
+                        .to_string()
+                };
+
+                // Get tags from metadata if available
+                let tags = vec![]; // memvid AskContextFragment doesn't expose tags directly
+
+                SearchResult {
+                    title,
+                    score: fragment.score.unwrap_or(0.0),
+                    snippet: fragment.text,
+                    tags,
+                }
+            })
+            .collect();
+
+        let answer = ask_response.answer.unwrap_or_else(|| {
+            // If no answer provided, concatenate evidence
+            evidence
+                .iter()
+                .map(|e| format!("**{}**\n{}", e.title, e.snippet))
+                .collect::<Vec<_>>()
+                .join("\n\n")
+        });
+
+        let took_ms = start.elapsed().as_millis() as i32;
+        let evidence_count = evidence.len() as i32;
+
+        info!(
+            evidence_count = evidence_count,
+            took_ms = took_ms,
+            "Real memvid ask completed"
+        );
+
+        Ok(AskResponse {
+            answer,
+            evidence,
+            stats: AskStats {
+                candidates_retrieved: evidence_count,
+                results_returned: evidence_count,
+                retrieval_ms: took_ms,
+                reranking_ms: 0, // memvid-core doesn't expose this separately
+                used_fallback: false, // memvid-core doesn't expose this
+            },
         })
     }
 

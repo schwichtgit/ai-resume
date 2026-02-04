@@ -4,7 +4,12 @@ package memvid.v1;
 // MemvidService provides semantic search over resume content stored in .mv2 files.
 service MemvidService {
   // Search performs semantic search over the loaded memvid index.
+  // Now supports engine mode selection (Hybrid/Sem/Lex).
   rpc Search(SearchRequest) returns (SearchResponse);
+
+  // Ask performs question-answering with intelligent retrieval and optional LLM synthesis.
+  // Uses hybrid search, temporal filtering, and Reciprocal Rank Fusion.
+  rpc Ask(AskRequest) returns (AskResponse);
 
   // GetState retrieves a memory card entity by name (O(1) lookup).
   // Used for profile metadata retrieval without search truncation.
@@ -17,13 +22,28 @@ service Health {
   rpc Check(HealthCheckRequest) returns (HealthCheckResponse);
 }
 
+// AskMode specifies which search algorithm to use (mirrors memvid_core::AskMode).
+enum AskMode {
+  // Hybrid search combining BM25 (lexical) and vector (semantic) search.
+  // Best for most queries. Default.
+  ASK_MODE_HYBRID = 0;
+  // Semantic-only search using embeddings. Best for conceptual queries.
+  ASK_MODE_SEM = 1;
+  // Lexical-only search using BM25. Best for exact keywords, acronyms, proper nouns.
+  ASK_MODE_LEX = 2;
+}
+
 message SearchRequest {
   // The natural language query to search for.
   string query = 1;
-  // Maximum number of results to return. Default: 5, Max: 20.
+  // Maximum number of results to return (mirrors memvid_core top_k).
   int32 top_k = 2;
-  // Maximum characters per snippet. Default: 200, Max: 1000.
+  // Maximum characters per snippet.
   int32 snippet_chars = 3;
+  // Minimum relevance score threshold (0.0 to 1.0).
+  float min_relevance = 4;
+  // Search engine/algorithm to use. Default: ASK_MODE_HYBRID.
+  AskMode mode = 5;
 }
 
 message SearchResponse {
@@ -44,6 +64,59 @@ message SearchHit {
   string snippet = 3;
   // Tags/metadata associated with this content (e.g., "skills", "experience").
   repeated string tags = 4;
+}
+
+message AskRequest {
+  // The question to ask (mirrors memvid_core::AskRequest.question).
+  string question = 1;
+  // Whether to use LLM for answer synthesis (if false, returns context_only).
+  bool use_llm = 2;
+  // Maximum number of results to return (mirrors memvid_core top_k).
+  int32 top_k = 3;
+  // Metadata filters to apply (e.g., {"section": "experience", "company": "Acme"}).
+  map<string, string> filters = 4;
+  // Temporal filter: only return frames with timestamp >= start (Unix timestamp).
+  // Mirrors memvid_core::AskRequest.start.
+  int64 start = 5;
+  // Temporal filter: only return frames with timestamp <= end (Unix timestamp).
+  // Mirrors memvid_core::AskRequest.end.
+  int64 end = 6;
+  // Maximum characters per snippet (mirrors memvid_core snippet_chars).
+  int32 snippet_chars = 7;
+  // Search mode. Default: ASK_MODE_HYBRID.
+  AskMode mode = 8;
+  // Optional URI to scope search to specific document (mirrors memvid_core::AskRequest.uri).
+  string uri = 9;
+  // Pagination cursor for retrieving next page (mirrors memvid_core::AskRequest.cursor).
+  string cursor = 10;
+  // View data as of specific frame ID - time-travel query (mirrors memvid_core::AskRequest.as_of_frame).
+  optional int64 as_of_frame = 11;
+  // View data as of specific timestamp - time-travel query (mirrors memvid_core::AskRequest.as_of_ts).
+  optional int64 as_of_ts = 12;
+  // Enable adaptive retrieval for better results (mirrors memvid_core::AskRequest.adaptive).
+  optional bool adaptive = 13;
+}
+
+message AskResponse {
+  // Synthesized answer (if use_llm=true) or concatenated context (if use_llm=false).
+  string answer = 1;
+  // Evidence chunks used to generate the answer.
+  repeated SearchHit evidence = 2;
+  // Statistics about the retrieval process.
+  AskStats stats = 3;
+}
+
+message AskStats {
+  // Number of candidates retrieved before ranking.
+  int32 candidates_retrieved = 1;
+  // Number of results after re-ranking.
+  int32 results_returned = 2;
+  // Time taken for retrieval in milliseconds.
+  int32 retrieval_ms = 3;
+  // Time taken for re-ranking in milliseconds (if applicable).
+  int32 reranking_ms = 4;
+  // Whether fallback strategies were used.
+  bool used_fallback = 5;
 }
 
 message GetStateRequest {

@@ -48,3 +48,6 @@ Thumbs.db
 # Security scanning artifacts
 sbom.json
 *.sbom.json
+
+.claude
+.fastembed_cache

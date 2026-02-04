@@ -278,21 +278,33 @@ async def chat(request: Request, chat_request: ChatRequest):
     #     logger.warning("Query transformation failed", error=str(e))
     #     transformed_query = chat_request.message
 
-    # Get context from memvid using transformed query
+    # Get context from memvid using Ask mode (with re-ranking)
     try:
         memvid_client = await get_memvid_client()
-        search_response = await memvid_client.search(
-            query=transformed_query,  # Use transformed query for search
+        ask_response = await memvid_client.ask(
+            question=chat_request.message,  # Pass full question (not transformed)
+            use_llm=False,  # Get context only, we'll use OpenRouter for generation
             top_k=5,
             snippet_chars=300,
+            mode="hybrid",  # Use hybrid search (BM25 + vector)
         )
-        context = "\n\n".join(f"**{hit.title}**\n{hit.snippet}" for hit in search_response.hits)
-        chunks_retrieved = len(search_response.hits)
+
+        # Extract context from Ask response
+        context = ask_response["answer"]  # Pre-formatted context from Ask mode
+        chunks_retrieved = ask_response["stats"]["results_returned"]
+
+        logger.info(
+            "Memvid ask completed",
+            question_preview=chat_request.message[:50],
+            chunks_retrieved=chunks_retrieved,
+            retrieval_ms=ask_response["stats"]["retrieval_ms"],
+            reranking_ms=ask_response["stats"]["reranking_ms"],
+        )
 
         if chunks_retrieved == 0:
             logger.info(
-                "Memvid search returned no results",
-                query_preview=transformed_query[:50],
+                "Memvid ask returned no results",
+                question_preview=chat_request.message[:50],
             )
             # Return early - don't let LLM hallucinate without context
             no_results_msg = (
@@ -653,21 +665,29 @@ async def assess_fit(request: Request, assess_request: AssessFitRequest) -> Asse
     # Get OpenRouter client
     openrouter_client = await get_openrouter_client()
 
-    # Query memvid for relevant context about candidate
+    # Query memvid for relevant context about candidate using Ask mode (with re-ranking)
     # Search for: experience, skills, failures, fit assessment guidance
     try:
         memvid_client = await get_memvid_client()
-        search_response = await memvid_client.search(
-            query=f"relevant experience and skills for role fit assessment: {assess_request.job_description[:200]}",
+        ask_response = await memvid_client.ask(
+            question=f"What relevant experience, skills, and qualifications does the candidate have for this role: {assess_request.job_description[:300]}",
+            use_llm=False,  # Get context only, we'll use OpenRouter for generation
             top_k=10,
             snippet_chars=500,
+            mode="hybrid",  # Use hybrid search (BM25 + vector) with re-ranking
         )
-        context = "\n\n".join(f"**{hit.title}**\n{hit.snippet}" for hit in search_response.hits)
-        chunks_retrieved = len(search_response.hits)
+        context = ask_response["answer"]  # Pre-formatted context from Ask mode
+        chunks_retrieved = ask_response["stats"]["results_returned"]
+
+        logger.info(
+            "Memvid ask completed for fit assessment",
+            chunks_retrieved=chunks_retrieved,
+            total_candidates=ask_response["stats"]["total_candidates"],
+        )
 
         if chunks_retrieved == 0:
             logger.warning(
-                "Memvid search returned no results for fit assessment",
+                "Memvid ask returned no results for fit assessment",
                 job_description_preview=assess_request.job_description[:100],
             )
             # Continue with empty context - assessment will be limited
@@ -679,7 +699,7 @@ async def assess_fit(request: Request, assess_request: AssessFitRequest) -> Asse
             detail="Search service unavailable. Please try again later.",
         )
     except MemvidSearchError as e:
-        logger.error("Memvid search failed for fit assessment", error=str(e))
+        logger.error("Memvid ask failed for fit assessment", error=str(e))
         raise HTTPException(
             status_code=502,
             detail="Search service error. Please try again later.",

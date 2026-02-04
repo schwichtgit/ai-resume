@@ -10,4 +10,4 @@ mod searcher;
 
 pub use mock::MockSearcher;
 pub use real::RealSearcher;
-pub use searcher::Searcher;
+pub use searcher::{AskMode, AskRequest, Searcher};

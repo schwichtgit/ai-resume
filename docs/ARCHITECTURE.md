@@ -124,6 +124,119 @@ The system uses a **three-container architecture**:
 - OpenRouter LLM (network + inference): 500-2000ms (dominates)
 - **Total: ~500-2010ms** (LLM-bound, not code-bound)
 
+## Memvid Query Modes: Find vs Ask
+
+**Current Implementation:** Find mode (basic vector similarity)
+**Planned Enhancement:** Ask mode (retrieval + re-ranking)
+
+### Find Mode (Current)
+
+The current implementation uses memvid's `find` operation which performs basic vector similarity search:
+
+```text
+Query → Embedding → Vector Search → Top-K by Distance → Return
+```
+
+**Limitations:**
+- Cannot distinguish context (e.g., "AI" = artificial intelligence vs Adobe Illustrator)
+- Distance-only ranking (no semantic relevance scoring)
+- Acronym expansion hurts search ("AI" → "artificial intelligence" doesn't match "AI/ML")
+- No metadata filtering (cannot filter by section, company, date)
+- No temporal queries (cannot filter by time ranges)
+
+### Ask Mode (Planned)
+
+Ask mode adds a **cross-encoder re-ranking layer** after initial retrieval for precision:
+
+```text
+Query → Initial Retrieval (50 candidates) → Cross-Encoder Re-Ranking → Top-5 → Return
+     ↓                                      ↓
+  Hybrid Search                    Evidence-Based Scoring
+  (BM25 + Vector)                  (Query-Document Interaction)
+  + Metadata Filters
+  + Temporal Filters
+```
+
+**Architecture Components:**
+
+1. **Stage 1: Initial Retrieval (Hybrid Search)**
+   - Vector search (BGE embeddings) for semantic matching
+   - BM25 lexical search for exact keywords
+   - Metadata filtering: `{"section": "experience", "role": "leadership"}`
+   - Temporal filtering: `since=<timestamp>`, `until=<timestamp>`
+   - Returns top 50 candidates
+
+2. **Stage 2: Re-Ranking**
+   - Memvid's built-in re-ranking layer scores each (query, document) pair
+   - Understands query-document interaction (not just embedding distance)
+   - Returns top 5 with confidence scores (0.0-1.0)
+   - **Note:** Using memvid SDK's native Ask capabilities; custom cross-encoder model selection is future research
+
+**gRPC Protocol Extension:**
+
+```protobuf
+service MemvidService {
+  rpc Search(SearchRequest) returns (SearchResponse);  // Existing (Find mode)
+  rpc Ask(AskRequest) returns (AskResponse);           // NEW (Ask mode)
+}
+
+message AskRequest {
+  string query = 1;
+  int32 top_k = 2;                   // Final result count (default: 5)
+  int32 retrieval_k = 3;              // Initial candidates (default: 50)
+  map<string, string> filters = 4;   // Metadata filtering
+  int64 since = 5;                   // Temporal filter (Unix timestamp)
+  int64 until = 6;                   // Temporal filter (Unix timestamp)
+  SearchEngine engine = 7;            // HYBRID (default), VECTOR, LEXICAL
+}
+
+enum SearchEngine {
+  HYBRID = 0;   // BM25 + vector (best for most queries)
+  VECTOR = 1;   // Semantic only (conceptual queries)
+  LEXICAL = 2;  // BM25 only (exact keywords, acronyms)
+}
+
+message AskResponse {
+  repeated RerankedHit hits = 1;
+  int32 total_candidates = 2;        // Before re-ranking
+  int32 reranked_count = 3;          // After re-ranking
+  float reranking_latency_ms = 4;
+}
+
+message RerankedHit {
+  string title = 1;
+  string snippet = 2;
+  repeated string tags = 3;
+  float similarity_score = 4;        // Original vector/BM25 score
+  float rerank_score = 5;            // Cross-encoder score (0.0-1.0)
+  map<string, string> metadata = 6;
+  int64 timestamp = 7;
+}
+```
+
+**Performance Impact:**
+
+| Component | Find Mode | Ask Mode (estimated) | Delta |
+|-----------|-----------|----------|-------|
+| Initial retrieval | <5ms | ~10ms | +5ms (filtering) |
+| Re-ranking | N/A | TBD | TBD (measure after implementation) |
+| **Total retrieval** | **<5ms** | **TBD** | **TBD** |
+| LLM generation | 500-2000ms | 500-2000ms | 0ms |
+| **End-to-end** | **~500-2010ms** | **TBD** | **TBD** |
+
+**Trade-off:** Test memvid's built-in Ask performance first, then optimize if needed.
+
+**Benefits:**
+
+- ✅ **Context awareness:** Distinguishes "AI" (artificial intelligence) from "AI" (Adobe)
+- ✅ **Evidence-based ranking:** Scores query-document interaction, not just distance
+- ✅ **Metadata filtering:** Filter by section, company, role, keywords
+- ✅ **Temporal filtering:** Query by date ranges (e.g., "projects since 2023")
+- ✅ **Engine selection:** Choose HYBRID/VECTOR/LEXICAL based on query type
+- ✅ **Better precision:** Cross-encoder achieves up to 100% relevance for exact matches
+
+**Implementation Status:** 🚧 Planned (Phase 11 - see TODO.md)
+
 ## Benefits of Hybrid Approach
 
 ### Compared to Python-Only

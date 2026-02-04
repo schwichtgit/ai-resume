@@ -24,7 +24,7 @@ memvid_search_latency = Histogram(
 # Try to import generated protobuf code
 # If not available, we'll use a mock client
 try:
-    from ai_resume_api.memvid.v1 import memvid_pb2, memvid_pb2_grpc
+    from ai_resume_api.proto.memvid.v1 import memvid_pb2, memvid_pb2_grpc
 
     GRPC_AVAILABLE = True
 except ImportError:
@@ -193,6 +193,158 @@ class MemvidClient:
                 latency_ms=int(latency * 1000),
             )
             raise MemvidSearchError(f"Search failed: {e}") from e
+
+    async def ask(
+        self,
+        question: str,
+        use_llm: bool = False,
+        top_k: int = 5,
+        filters: dict[str, str] | None = None,
+        start: int = 0,
+        end: int = 0,
+        snippet_chars: int = 200,
+        mode: str = "hybrid",
+        uri: str | None = None,
+        cursor: str | None = None,
+        as_of_frame: int | None = None,
+        as_of_ts: int | None = None,
+        adaptive: bool | None = None,
+    ) -> dict[str, Any]:
+        """Ask a question using memvid's Ask mode with re-ranking.
+
+        Args:
+            question: The question to ask.
+            use_llm: Whether to use LLM for answer synthesis (not implemented yet).
+            top_k: Maximum number of results to return.
+            filters: Metadata filters (e.g., {"section": "experience"}).
+            start: Temporal filter start (Unix timestamp).
+            end: Temporal filter end (Unix timestamp).
+            snippet_chars: Maximum characters per snippet.
+            mode: Search mode - "hybrid" (default), "sem" (semantic), or "lex" (lexical).
+            uri: Optional URI to scope search to specific document.
+            cursor: Pagination cursor for retrieving next page.
+            as_of_frame: View data as of specific frame ID (time-travel query).
+            as_of_ts: View data as of specific timestamp (time-travel query).
+            adaptive: Enable adaptive retrieval for better results.
+
+        Returns:
+            Dict with answer, evidence, and stats.
+            Structure: {
+                "answer": "...",
+                "evidence": [{"title": "...", "score": 0.9, "snippet": "...", "tags": []}],
+                "stats": {"candidates_retrieved": 10, "results_returned": 5, ...}
+            }
+
+        Raises:
+            MemvidSearchError: If ask operation fails.
+            MemvidConnectionError: If MOCK_MEMVID_CLIENT=false but gRPC unavailable.
+        """
+        start_time = time.time()
+        trace_id = get_trace_id()
+        settings = get_settings()
+
+        # Check mock policy
+        if not GRPC_AVAILABLE or self._memvid_stub is None:
+            if settings.mock_memvid_client:
+                logger.info("MOCK_MEMVID_CLIENT=true: Using mock Ask")
+                return await self._mock_ask(question, top_k, snippet_chars, mode)
+            else:
+                error_msg = (
+                    "FATAL: gRPC connection unavailable with MOCK_MEMVID_CLIENT=false. "
+                    "Either start the memvid service or set MOCK_MEMVID_CLIENT=true for testing."
+                )
+                logger.error(
+                    error_msg,
+                    grpc_available=GRPC_AVAILABLE,
+                    stub_connected=self._memvid_stub is not None,
+                )
+                raise MemvidConnectionError(error_msg)
+
+        try:
+            # Map mode string to proto enum
+            mode_map = {
+                "hybrid": memvid_pb2.ASK_MODE_HYBRID,
+                "sem": memvid_pb2.ASK_MODE_SEM,
+                "lex": memvid_pb2.ASK_MODE_LEX,
+            }
+            proto_mode = mode_map.get(mode.lower(), memvid_pb2.ASK_MODE_HYBRID)
+
+            # Build base request
+            request_args = {
+                "question": question,
+                "use_llm": use_llm,
+                "top_k": top_k,
+                "filters": filters or {},
+                "start": start,
+                "end": end,
+                "snippet_chars": snippet_chars,
+                "mode": proto_mode,
+            }
+
+            # Add optional fields if provided
+            if uri is not None:
+                request_args["uri"] = uri
+            if cursor is not None:
+                request_args["cursor"] = cursor
+            if as_of_frame is not None:
+                request_args["as_of_frame"] = as_of_frame
+            if as_of_ts is not None:
+                request_args["as_of_ts"] = as_of_ts
+            if adaptive is not None:
+                request_args["adaptive"] = adaptive
+
+            request = memvid_pb2.AskRequest(**request_args)
+            response = await self._memvid_stub.Ask(
+                request,
+                timeout=self._timeout,
+            )
+
+            # Convert proto response to dict
+            evidence = [
+                {
+                    "title": hit.title,
+                    "score": hit.score,
+                    "snippet": hit.snippet,
+                    "tags": list(hit.tags),
+                }
+                for hit in response.evidence
+            ]
+
+            stats = {
+                "candidates_retrieved": response.stats.candidates_retrieved if response.stats else 0,
+                "results_returned": response.stats.results_returned if response.stats else len(evidence),
+                "retrieval_ms": response.stats.retrieval_ms if response.stats else 0,
+                "reranking_ms": response.stats.reranking_ms if response.stats else 0,
+                "used_fallback": response.stats.used_fallback if response.stats else False,
+            }
+
+            # Record metrics and log
+            latency = time.time() - start_time
+            logger.info(
+                "memvid_ask",
+                trace_id=trace_id,
+                question_preview=question[:50],
+                mode=mode,
+                top_k=top_k,
+                evidence_count=len(evidence),
+                latency_ms=int(latency * 1000),
+            )
+
+            return {
+                "answer": response.answer,
+                "evidence": evidence,
+                "stats": stats,
+            }
+        except grpc.RpcError as e:
+            latency = time.time() - start_time
+            logger.error(
+                "memvid_ask_error",
+                trace_id=trace_id,
+                question_preview=question[:50],
+                error=str(e),
+                latency_ms=int(latency * 1000),
+            )
+            raise MemvidSearchError(f"Ask failed: {e}") from e
 
     async def health_check(self) -> MemvidHealthResponse:
         """Check health of the memvid service.
@@ -419,6 +571,48 @@ class MemvidClient:
             total_hits=len(hits),
             took_ms=2,
         )
+
+    async def _mock_ask(
+        self,
+        question: str,
+        top_k: int,
+        snippet_chars: int,
+        mode: str,
+    ) -> dict[str, Any]:
+        """Return mock ask results for testing without gRPC connection."""
+        # Simulate network latency
+        await asyncio.sleep(0.005)
+
+        # Reuse mock search to get evidence
+        search_response = await self._mock_search(question, top_k, snippet_chars, None)
+
+        # Convert hits to evidence format
+        evidence = [
+            {
+                "title": hit.title,
+                "score": hit.score,
+                "snippet": hit.snippet,
+                "tags": hit.tags,
+            }
+            for hit in search_response.hits
+        ]
+
+        # Generate mock answer (concatenate snippets)
+        answer = "\n\n".join(
+            [f"**{e['title']}**\n{e['snippet']}" for e in evidence]
+        )
+
+        return {
+            "answer": answer,
+            "evidence": evidence,
+            "stats": {
+                "candidates_retrieved": len(evidence),
+                "results_returned": len(evidence),
+                "retrieval_ms": 5,
+                "reranking_ms": 0,
+                "used_fallback": False,
+            },
+        }
 
 
 # Global client instance

@@ -292,3 +292,63 @@ python scripts/test_portability.py
 7. ⏳ Document gaps and target next round of tests
 
 **Estimated Effort:** 3-4 hours for Priority 1 tests
+
+---
+
+## End-to-End Quality Testing Results
+
+### Test Execution History
+
+**Baseline Test Run:**
+- **Date**: January 29, 2026, 15:27 UTC-5
+- **Commit**: `bd886e3` - Add E2E quality acceptance criteria to PRD
+- **Branch**: `feature/ai-agent-v2-hybrid`
+- **Live Site**: https://jane-doe-ai-resume.schwichtenberg.us/
+- **Test Data**: `data/example_resume.md`
+- **Profile**: Jane Chen, VP of Platform Engineering
+
+**Ask Mode Upgrade Test Run:**
+- **Date**: February 4, 2026
+- **Branch**: `investigate/memvid-lex-index-disabled`
+- **Changes**: Implemented Ask mode with cross-encoder re-ranking
+- **Results**: Significant improvement in search precision and relevance
+  - Suggested questions: All passing with relevant responses
+  - Kurt vs Jane detection: Working correctly (AI identifies wrong candidate)
+  - Fit assessment: Improved from 0 context chunks to proper retrieval
+  - Key metrics: Better KEY MATCHES and GAPS identification
+
+### Test Methodology
+
+**Approach:**
+1. Navigate to live deployment
+2. Execute validation queries from PRD acceptance criteria
+3. Capture LLM streaming responses
+4. Parse responses for factual accuracy
+5. Score against ground truth (source resume markdown)
+
+**Test Categories:**
+- Profile Information (name, title, contact)
+- Experience Timeline (companies, dates, roles)
+- Technical Skills (languages, frameworks, systems)
+- Accomplishments (metrics, impact)
+- Fit Assessment (job description analysis)
+
+### Known Issues
+
+**Integration Testing Gap:**
+- Unit tests with mocks don't catch real-world issues
+- Example: Search query mismatches with actual .mv2 files
+- **Mitigation**: Regular E2E testing against production .mv2 files
+
+---
+
+## Test Coverage Roadmap
+
+**Next Steps:**
+1. ✅ Complete Priority 1 tests (Phase 6.2-6.4) - DONE
+2. ✅ Implement Ask mode integration (Phase 11) - DONE
+3. ⏳ Add integration tests for Ask mode
+4. ⏳ Add metadata filtering tests
+5. ⏳ Add temporal filtering tests
+6. ⏳ Monitor production metrics for Ask mode performance
+

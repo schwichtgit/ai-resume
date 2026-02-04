@@ -39,6 +39,74 @@ pub struct StateResponse {
     pub slots: std::collections::HashMap<String, String>,
 }
 
+/// Ask mode specifying which search algorithm to use (mirrors memvid_core::AskMode).
+#[derive(Debug, Clone, Copy)]
+pub enum AskMode {
+    /// Hybrid search (BM25 + vector)
+    Hybrid,
+    /// Semantic-only search
+    Sem,
+    /// Lexical-only search
+    Lex,
+}
+
+/// Request for ask operation with question-answering.
+#[derive(Debug, Clone)]
+pub struct AskRequest {
+    /// The question to ask
+    pub question: String,
+    /// Whether to use LLM for synthesis
+    pub use_llm: bool,
+    /// Maximum number of results
+    pub top_k: i32,
+    /// Metadata filters
+    pub filters: std::collections::HashMap<String, String>,
+    /// Temporal filter start (Unix timestamp)
+    pub start: i64,
+    /// Temporal filter end (Unix timestamp)
+    pub end: i64,
+    /// Maximum characters per snippet
+    pub snippet_chars: i32,
+    /// Search mode
+    pub mode: AskMode,
+    /// Optional URI to scope search to specific document
+    pub uri: Option<String>,
+    /// Pagination cursor for retrieving next page
+    pub cursor: Option<String>,
+    /// View data as of specific frame ID (time-travel query)
+    pub as_of_frame: Option<i64>,
+    /// View data as of specific timestamp (time-travel query)
+    pub as_of_ts: Option<i64>,
+    /// Enable adaptive retrieval for better results
+    pub adaptive: Option<bool>,
+}
+
+/// Statistics about the ask operation.
+#[derive(Debug, Clone)]
+pub struct AskStats {
+    /// Number of candidates retrieved
+    pub candidates_retrieved: i32,
+    /// Number of results returned
+    pub results_returned: i32,
+    /// Retrieval time in milliseconds
+    pub retrieval_ms: i32,
+    /// Re-ranking time in milliseconds
+    pub reranking_ms: i32,
+    /// Whether fallback was used
+    pub used_fallback: bool,
+}
+
+/// Response from ask operation.
+#[derive(Debug, Clone)]
+pub struct AskResponse {
+    /// Synthesized answer or concatenated context
+    pub answer: String,
+    /// Evidence chunks
+    pub evidence: Vec<SearchResult>,
+    /// Statistics
+    pub stats: AskStats,
+}
+
 /// Trait defining the interface for memvid search operations.
 ///
 /// Implementations include:
@@ -78,6 +146,18 @@ pub trait Searcher: Send + Sync {
         entity: &str,
         slot: Option<&str>,
     ) -> Result<StateResponse, ServiceError>;
+
+    /// Perform question-answering with intelligent retrieval.
+    ///
+    /// Uses memvid's Ask mode with hybrid search, temporal filtering,
+    /// and Reciprocal Rank Fusion for better precision.
+    ///
+    /// # Arguments
+    /// * `request` - Ask request with question, filters, temporal bounds, and mode
+    ///
+    /// # Returns
+    /// Ask response with answer, evidence chunks, and statistics
+    async fn ask(&self, request: AskRequest) -> Result<AskResponse, ServiceError>;
 
     /// Get the number of frames/chunks in the loaded index.
     fn frame_count(&self) -> i32;

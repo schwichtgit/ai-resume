@@ -216,33 +216,52 @@ Future iterations can add HyDE or Multi-Query for complex questions.
 
 ### Retrieval Flow
 
-```python
-async def retrieve_context(query: str, top_k: int = 5) -> list[Chunk]:
-    """Retrieve relevant chunks from memvid via gRPC."""
+**Current Implementation**: As of February 2026, the system uses **Ask Mode** with cross-encoder re-ranking for improved retrieval precision.
 
-    # 1. Call Rust memvid service
-    request = SearchRequest(
-        query=query,
+```python
+async def retrieve_context(question: str, top_k: int = 5) -> list[Chunk]:
+    """Retrieve relevant chunks from memvid via gRPC using Ask mode with re-ranking."""
+
+    # 1. Call Rust memvid service with Ask mode (hybrid search + re-ranking)
+    ask_response = await memvid_client.ask(
+        question=question,  # Pass full question (not transformed keywords)
+        use_llm=False,      # Get context only, we'll use OpenRouter for generation
         top_k=top_k,
-        snippet_chars=300
+        snippet_chars=300,
+        mode="hybrid",      # BM25 lexical + vector semantic + cross-encoder re-ranking
     )
 
-    response = await memvid_client.search(request)
+    # 2. Extract pre-formatted context and evidence
+    context = ask_response["answer"]  # Pre-formatted context from Ask mode
+    chunks_retrieved = ask_response["stats"]["results_returned"]
 
-    # 2. Filter by relevance threshold
-    relevant = [hit for hit in response.hits if hit.score >= 0.5]
-
-    # 3. Return structured chunks
+    # 3. Convert evidence to structured chunks
     return [
         Chunk(
-            title=hit.title,
-            content=hit.snippet,
-            score=hit.score,
-            tags=hit.tags
+            title=hit["title"],
+            content=hit["snippet"],
+            score=hit["score"],
+            tags=hit["tags"]
         )
-        for hit in relevant
+        for hit in ask_response["evidence"]
     ]
 ```
+
+**Ask Mode vs Find Mode:**
+
+| Feature | Find Mode (Legacy) | Ask Mode (Current) |
+|---------|-------------------|-------------------|
+| Search Algorithm | BM25 or Vector only | Hybrid (BM25 + Vector) |
+| Re-ranking | None | Cross-encoder (Reciprocal Rank Fusion) |
+| Precision | Lower (single-pass) | Higher (two-pass retrieval + re-rank) |
+| Latency | <5ms | <10ms |
+| Metadata Filtering | Limited | Full support (filters, temporal, URI scoping) |
+
+**Benefits of Ask Mode:**
+- **Better relevance**: Cross-encoder re-ranks initial candidates for higher precision
+- **Hybrid search**: Combines lexical (BM25) and semantic (vector) signals
+- **Metadata support**: Filter by section, company, skills, time ranges
+- **Future-ready**: Supports advanced features (pagination, time-travel queries, adaptive retrieval)
 
 ### Context Assembly
 
@@ -268,12 +287,13 @@ Relevance: {chunk.score:.0%}
 
 ### Retrieval Optimization
 
-| Technique       | Description                 | When to Use                            |
+| Technique       | Description                 | Status                                 |
 | --------------- | --------------------------- | -------------------------------------- |
-| Re-ranking      | Use LLM to re-score results | When initial retrieval quality is poor |
-| Chunk expansion | Fetch surrounding chunks    | For context-dependent content          |
-| Tag filtering   | Filter by chunk metadata    | When question specifies topic          |
-| Score threshold | Drop low-relevance chunks   | Always (prevents noise)                |
+| Re-ranking      | Cross-encoder re-scores results | ✅ Built-in to Ask mode (Reciprocal Rank Fusion) |
+| Metadata filtering | Filter by section, company, keywords | ✅ Supported via `filters` parameter |
+| Temporal filtering | Filter by time ranges | ✅ Supported via `start`/`end` timestamps |
+| Chunk expansion | Fetch surrounding chunks    | 🔮 Future enhancement                  |
+| Score threshold | Drop low-relevance chunks   | ✅ Automatic in Ask mode               |
 
 ## <div class="page"/>
 
