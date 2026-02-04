@@ -1,9 +1,11 @@
 # Agentic Flow Reference
 
-**Version:** 1.0 (January 2026)
+**Version:** 1.1 (February 2026)
 **Status:** Plan of Record (POR)
 
-This document describes the end-to-end flow from user question to AI response, including query transformation, RAG retrieval, and LLM generation.
+This document describes the end-to-end flow from user question to AI response, including RAG retrieval with Ask mode, LLM generation, and dynamic fit assessment.
+
+**Note on Code Examples:** Code examples in this document are simplified for clarity and may not match the actual implementation exactly. They illustrate concepts and flow rather than production code. For exact implementation details, refer to the source files in `api-service/ai_resume_api/`.
 
 ## <div class="page"/>
 
@@ -11,12 +13,13 @@ This document describes the end-to-end flow from user question to AI response, i
 
 1. [Overview](#overview)
 2. [Architecture Diagram](#architecture-diagram)
-3. [Query Transformation](#query-transformation)
-4. [RAG Pipeline](#rag-pipeline)
+3. [Chat Flow](#chat-flow)
+4. [RAG Pipeline (Ask Mode)](#rag-pipeline-ask-mode)
 5. [LLM Generation](#llm-generation)
-6. [Session Management](#session-management)
-7. [Error Handling](#error-handling)
-8. [Observability](#observability)
+6. [Fit Assessment with Dynamic Role Classification](#fit-assessment-with-dynamic-role-classification)
+7. [Session Management](#session-management)
+8. [Error Handling](#error-handling)
+9. [Observability](#observability)
 
 ## <div class="page"/>
 
@@ -24,68 +27,77 @@ This document describes the end-to-end flow from user question to AI response, i
 
 The AI Resume Agent uses a three-stage pipeline:
 
-1. **Query Transformation** - Rewrite natural language questions into retrieval-optimized queries
-2. **RAG Retrieval** - Fetch relevant context chunks from memvid
-3. **LLM Generation** - Generate response using retrieved context + conversation history
+1. **RAG Retrieval** - Fetch relevant context chunks from memvid using Ask mode (hybrid search + cross-encoder re-ranking)
+2. **Context Injection** - Inject retrieved context into system prompt as ground truth
+3. **LLM Generation** - Generate response using system prompt + context + conversation history
 
 ```text
-┌──────────────────────────────────────────────────────────────────────-─┐
-│                           USER QUESTION                                │
-│                 "What programming languages does Frank know?"          │
-└────────────────────────────────────────────────────────-───────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────-──────────┐
-│                     STAGE 1: QUERY TRANSFORMATION                      │
-│  ┌───────────────────────────────────────────────────────────-──────┐  │
-│  │ LLM rewrites question for retrieval optimization:                │  │
-│  │ - "programming languages Frank coding skills Python Go Rust"     │  │
-│  │ - May generate multiple query variants                           │  │
-│  └────────────────────────────────────────────────────────────────-─┘  │
-└───────────────────────────────────────────────────────────────-────────┘
-                                    │
-                                    ▼
-┌────────────────────────────────────────────────────────────────────-───┐
-│                        STAGE 2: RAG RETRIEVAL                          │
-│  ┌───────────────────────────────────────────────────────────────-──┐  │
-│  │ Memvid semantic search (via gRPC to Rust service):               │  │
-│  │ - Query: transformed search terms                                │  │
-│  │ - Returns: Top-K chunks with scores and metadata                 │  │
-│  │ - Latency target: <5ms                                           │  │
-│  └────────────────────────────────────────────────────────────────-─┘  │
-│                                                                        │
-│  Retrieved chunks:                                                     │
-│  ┌───────────────────────────────────────────────────────────-─--──┐   │
-│  │ [0.92] FAQ: What programming languages does she know?           │   │
-│  │ [0.85] Skills: Programming Languages & Development              │   │
-│  │ [0.72] Experience: Acme Corp - Technical Highlights             │   │
-│  └──────────────────────────────────────────────────────────────--─┘   │
-└───────────────────────────────────────────────────────────────────-────┘
-                                    │
-                                    ▼
-┌────────────────────────────────────────────────────────────────────-───┐
-│                       STAGE 3: LLM GENERATION                          │
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │ Prompt assembly:                                                 │  │
-│  │ 1. System prompt (from master document)                          │  │
-│  │ 2. Retrieved context (formatted chunks)                          │  │
-│  │ 3. Conversation history (last N turns)                           │  │
-│  │ 4. User question                                                 │  │
-│  └───────────────────────────────────────────────────────────────-──┘  │
-│                                                                        │
-│  ┌───────────────────────────────────────────────────────────────-──┐  │
-│  │ OpenRouter API call (streaming):                                 │  │
-│  │ - Model: nvidia/nemotron-nano-9b-v2:free (or similar)            │  │
-│  │ - Stream: SSE tokens back to frontend                            │  │
-│  └───────────────────────────────────────────────────────────────-──┘  │
-└───────────────────────────────────────────────────────────────────-────┘
-                                    │
-                                    ▼
-┌────────────────────────────────────────────────────────────────────-───┐
-│                           AI RESPONSE                                  │
-│  "Frank is proficient in Python (10+ years), Go (5+ years),            │
-│  and Bash..."                                                          │
-└────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                           USER QUESTION                              │
+│                 "What programming languages does she know?"          │
+└────────────────────────────────────┬─────────────────────────────────┘
+                                     │
+                                     ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                      STAGE 1: RAG RETRIEVAL (Ask Mode)               │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │ Memvid semantic search via gRPC (Rust service):                │  │
+│  │ - Query: original user question (no transformation)            │  │
+│  │ - Mode: hybrid (BM25 lexical + vector semantic)                │  │
+│  │ - Re-ranking: cross-encoder (Reciprocal Rank Fusion)           │  │
+│  │ - Returns: Top-K chunks with scores and metadata               │  │
+│  │ - Latency: <10ms typical                                       │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+│  Retrieved chunks with pre-formatted context:                        │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │ [0.92] Skills: Programming Languages & Development             │  │
+│  │ [0.85] FAQ: What programming languages does she know?          │  │
+│  │ [0.72] Experience: Acme Corp - Technical Highlights            │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────┘
+                                     │
+                                     ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                  STAGE 2: CONTEXT INJECTION                          │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │ Inject retrieved context into system prompt as ground truth:   │  │
+│  │                                                                │  │
+│  │ SYSTEM PROMPT:                                                 │  │
+│  │   {original_system_prompt}                                     │  │
+│  │                                                                │  │
+│  │   ---                                                          │  │
+│  │   CONTEXT FROM RESUME:                                         │  │
+│  │   {retrieved_context}                                          │  │
+│  │   ---                                                          │  │
+│  │                                                                │  │
+│  │   Use the context above to answer the user's question...       │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────┘
+                                     │
+                                     ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                       STAGE 3: LLM GENERATION                        │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │ Prompt assembly:                                               │  │
+│  │ 1. System prompt (with injected context)                       │  │
+│  │ 2. Conversation history (last N turns)                         │  │
+│  │ 3. User question                                               │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │ OpenRouter API call (streaming):                               │  │
+│  │ - Model: configurable via settings                             │  │
+│  │ - Stream: SSE tokens back to frontend                          │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────┘
+                                     │
+                                     ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                           AI RESPONSE                                │
+│  "She is proficient in Python (10+ years), Go (5+ years),            │
+│  and Bash..."                                                        │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ## <div class="page"/>
@@ -101,16 +113,26 @@ The AI Resume Agent uses a three-stage pipeline:
          │ POST /api/v1/chat     │                       │
          │ ───────────────────►  │                       │
          │                       │                       │
-         │                       │ 1. Query Transform    │
-         │                       │    (local LLM call)   │
-         │                       │                       │
-         │                       │ 2. gRPC Search()      │
+         │                       │ 1. Load Profile       │
+         │                       │    (system prompt +   │
+         │                       │     metadata)         │
+         │                       │        │              │
+         │                       │        ▼              │
+         │                       │ gRPC GetState()       │
          │                       │ ──────────────────►   │
          │                       │                       │
          │                       │ ◄──────────────────── │
-         │                       │    SearchResponse     │
+         │                       │  Profile metadata     │
          │                       │                       │
-         │                       │ 3. Assemble Prompt    │
+         │                       │ 2. Retrieve Context   │
+         │                       │ gRPC Ask()            │
+         │                       │ ──────────────────►   │
+         │                       │                       │
+         │                       │ ◄──────────────────── │
+         │                       │    AskResponse        │
+         │                       │                       │
+         │                       │ 3. Inject Context     │
+         │                       │    into System Prompt │
          │                       │                       │
          │                       │ 4. OpenRouter Call    │
          │                       │    (streaming)        │
@@ -122,178 +144,128 @@ The AI Resume Agent uses a three-stage pipeline:
 
 ## <div class="page"/>
 
-## Query Transformation
+## Chat Flow
 
-### Why Transform Queries?
+### Endpoint: POST /api/v1/chat
 
-Raw user questions often don't match how information is indexed. Query transformation bridges this gap.
-
-| User Question                   | Problem                 | Transformed Query                                           |
-| ------------------------------- | ----------------------- | ----------------------------------------------------------- |
-| "What does Frank know?"         | Too vague               | "Frank skills experience expertise capabilities"            |
-| "Tell me about his Python work" | Missing context         | "Python programming development projects experience Frank"  |
-| "Is he good at security?"       | Evaluative, not factual | "security experience certifications FedRAMP SOC compliance" |
-
-### Transformation Strategies
-
-#### Strategy 1: Keyword Expansion (Recommended for V1)
-
-Fast, simple, deterministic. Use a small LLM to extract keywords.
+**Current Implementation** (as of February 2026)
 
 ```python
-async def transform_query(question: str) -> str:
-    """Transform user question into retrieval-optimized query."""
+async def chat(request: Request, chat_request: ChatRequest):
+    """Chat endpoint with streaming SSE response."""
 
-    prompt = f"""Extract 5-10 search keywords from this question.
-Include synonyms and related terms. Output only keywords, space-separated.
+    # 1. Get or create session
+    session = session_store.get_or_create(chat_request.session_id)
 
-Question: {question}
-Keywords:"""
+    # 2. Input guardrail check
+    is_safe, blocked_response = check_input(chat_request.message)
+    if not is_safe:
+        return blocked_response
 
-    response = await llm.generate(prompt, max_tokens=50)
-    return response.strip()
+    # 3. Retrieve context from memvid (Ask mode with re-ranking)
+    ask_response = await memvid_client.ask(
+        question=chat_request.message,  # Original question, no transformation
+        use_llm=False,  # Get context only
+        top_k=5,
+        snippet_chars=300,
+        mode="hybrid",  # BM25 + vector + cross-encoder re-ranking
+    )
 
-# Example:
-# Input:  "What programming languages does Frank know?"
-# Output: "programming languages coding Python Go Rust skills development"
+    context = ask_response["answer"]  # Pre-formatted context string
+    chunks_retrieved = ask_response["stats"]["results_returned"]
+
+    # 4. Early return if no context found
+    if chunks_retrieved == 0:
+        return "I couldn't find relevant information to answer that question..."
+
+    # 5. Get conversation history
+    history = session.get_history_for_llm(settings.max_history_messages)
+
+    # 6. Add user message to session
+    session.add_message("user", chat_request.message)
+
+    # 7. Stream response from OpenRouter
+    return StreamingResponse(
+        _stream_chat_response(
+            openrouter_client,
+            context,
+            chat_request.message,
+            history,
+            session,
+            session_store,
+            chunks_retrieved,
+        ),
+        media_type="text/event-stream",
+    )
 ```
 
-#### Strategy 2: HyDE (Hypothetical Document Embedding)
-
-Generate a hypothetical answer, then search for similar real content.
-
-```python
-async def hyde_transform(question: str) -> str:
-    """Generate hypothetical answer for embedding-based search."""
-
-    prompt = f"""Write a brief answer to this question as if you were
-a resume document. Include specific details that would appear in a resume.
-
-Question: {question}
-Answer:"""
-
-    hypothetical = await llm.generate(prompt, max_tokens=150)
-    return hypothetical
-
-# The hypothetical answer is then embedded and used for similarity search.
-# This often retrieves better matches than the original question.
-```
-
-#### Strategy 3: Multi-Query Expansion
-
-Generate multiple query variants and merge results.
-
-```python
-async def multi_query_transform(question: str) -> list[str]:
-    """Generate multiple query variants for broader retrieval."""
-
-    prompt = f"""Generate 3 different ways to search for information
-that would answer this question. Output one query per line.
-
-Question: {question}
-Queries:"""
-
-    response = await llm.generate(prompt, max_tokens=100)
-    return [q.strip() for q in response.strip().split('\n') if q.strip()]
-
-# Results from all queries are merged and de-duplicated.
-```
-
-### Recommended Approach for V1
-
-Use **Keyword Expansion** for simplicity and speed:
-
-1. Fast (single LLM call with small output)
-2. Deterministic (same question → same keywords)
-3. Debuggable (easy to inspect transformed queries)
-4. Works well with memvid's semantic search
-
-Future iterations can add HyDE or Multi-Query for complex questions.
+**Note:** Query transformation is currently disabled due to acronym expansion issues. The original user question is passed directly to Ask mode.
 
 ## <div class="page"/>
 
-## RAG Pipeline
+## RAG Pipeline (Ask Mode)
 
 ### Retrieval Flow
 
-**Current Implementation**: As of February 2026, the system uses **Ask Mode** with cross-encoder re-ranking for improved retrieval precision.
+**Current Implementation:** Uses **Ask Mode** with cross-encoder re-ranking for improved precision.
 
 ```python
-async def retrieve_context(question: str, top_k: int = 5) -> list[Chunk]:
-    """Retrieve relevant chunks from memvid via gRPC using Ask mode with re-ranking."""
+async def retrieve_context(question: str, top_k: int = 5) -> dict:
+    """Retrieve relevant chunks from memvid via gRPC using Ask mode."""
 
-    # 1. Call Rust memvid service with Ask mode (hybrid search + re-ranking)
+    # Call Rust memvid service with Ask mode (hybrid search + re-ranking)
     ask_response = await memvid_client.ask(
-        question=question,  # Pass full question (not transformed keywords)
+        question=question,  # Pass full question
         use_llm=False,      # Get context only, we'll use OpenRouter for generation
         top_k=top_k,
         snippet_chars=300,
-        mode="hybrid",      # BM25 lexical + vector semantic + cross-encoder re-ranking
+        mode="hybrid",      # BM25 lexical + vector semantic + cross-encoder
     )
 
-    # 2. Extract pre-formatted context and evidence
-    context = ask_response["answer"]  # Pre-formatted context from Ask mode
-    chunks_retrieved = ask_response["stats"]["results_returned"]
+    # Returns dict with:
+    # {
+    #     "answer": "pre-formatted context string",
+    #     "evidence": [{"title": "...", "snippet": "...", "score": 0.92}, ...],
+    #     "stats": {
+    #         "results_returned": 3,
+    #         "candidates_retrieved": 50,
+    #         "retrieval_ms": 4.2,
+    #         "reranking_ms": 8.7
+    #     }
+    # }
 
-    # 3. Convert evidence to structured chunks
-    return [
-        Chunk(
-            title=hit["title"],
-            content=hit["snippet"],
-            score=hit["score"],
-            tags=hit["tags"]
-        )
-        for hit in ask_response["evidence"]
-    ]
+    return ask_response
 ```
 
-**Ask Mode vs Find Mode:**
+**Ask Mode Benefits:**
 
-| Feature | Find Mode (Legacy) | Ask Mode (Current) |
-|---------|-------------------|-------------------|
-| Search Algorithm | BM25 or Vector only | Hybrid (BM25 + Vector) |
-| Re-ranking | None | Cross-encoder (Reciprocal Rank Fusion) |
-| Precision | Lower (single-pass) | Higher (two-pass retrieval + re-rank) |
-| Latency | <5ms | <10ms |
-| Metadata Filtering | Limited | Full support (filters, temporal, URI scoping) |
-
-**Benefits of Ask Mode:**
-- **Better relevance**: Cross-encoder re-ranks initial candidates for higher precision
-- **Hybrid search**: Combines lexical (BM25) and semantic (vector) signals
-- **Metadata support**: Filter by section, company, skills, time ranges
-- **Future-ready**: Supports advanced features (pagination, time-travel queries, adaptive retrieval)
+| Feature               | Description                                                    |
+| --------------------- | -------------------------------------------------------------- |
+| Hybrid Search         | Combines BM25 (lexical) and vector (semantic) signals          |
+| Re-ranking            | Cross-encoder scores query-document pairs for better precision |
+| Pre-formatted Context | Returns ready-to-use context string for LLM prompts            |
+| Metadata Support      | Filter by section, company, skills, time ranges                |
+| Low Latency           | <10ms typical (retrieval + re-ranking)                         |
 
 ### Context Assembly
 
-Format retrieved chunks for LLM consumption:
+The Ask mode returns `ask_response["answer"]` as a pre-formatted context string ready for LLM consumption:
 
-```python
-def format_context(chunks: list[Chunk]) -> str:
-    """Format chunks as context for LLM prompt."""
+```text
+### Source 1: Skills Assessment
+Relevance: 92%
 
-    if not chunks:
-        return "No relevant information found in the knowledge base."
+Primary Languages: Python (10+ years), Go (5+ years), Bash/Shell...
 
-    sections = []
-    for i, chunk in enumerate(chunks, 1):
-        sections.append(f"""### Source {i}: {chunk.title}
-Relevance: {chunk.score:.0%}
+---
 
-{chunk.content}
-""")
+### Source 2: FAQ - What programming languages does she know?
+Relevance: 85%
 
-    return "\n---\n".join(sections)
+Jane's programming skills include Python, Go, Rust...
 ```
 
-### Retrieval Optimization
-
-| Technique       | Description                 | Status                                 |
-| --------------- | --------------------------- | -------------------------------------- |
-| Re-ranking      | Cross-encoder re-scores results | ✅ Built-in to Ask mode (Reciprocal Rank Fusion) |
-| Metadata filtering | Filter by section, company, keywords | ✅ Supported via `filters` parameter |
-| Temporal filtering | Filter by time ranges | ✅ Supported via `start`/`end` timestamps |
-| Chunk expansion | Fetch surrounding chunks    | 🔮 Future enhancement                  |
-| Score threshold | Drop low-relevance chunks   | ✅ Automatic in Ask mode               |
+This pre-formatted context is passed directly to the LLM prompt.
 
 ## <div class="page"/>
 
@@ -314,7 +286,7 @@ The final prompt has four components assembled in order:
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ 2. RETRIEVED CONTEXT (from RAG pipeline)                    │
+│ 2. RETRIEVED CONTEXT (pre-formatted from Ask mode)          │
 │                                                             │
 │    ### Source 1: Programming Languages & Development        │
 │    Relevance: 92%                                           │
@@ -344,7 +316,7 @@ The final prompt has four components assembled in order:
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Prompt Template
+### Prompt Assembly Code
 
 ```python
 def build_prompt(
@@ -365,8 +337,8 @@ Use this context to answer the user's question. If the context doesn't contain
 relevant information, say so honestly. Don't make up information."""}
     ]
 
-    # Add conversation history
-    for msg in history[-6:]:  # Last 3 turns (6 messages)
+    # Add conversation history (trimmed to last N turns)
+    for msg in history:
         messages.append({
             "role": msg.role,
             "content": msg.content
@@ -384,93 +356,327 @@ relevant information, say so honestly. Don't make up information."""}
 ### Streaming Response
 
 ```python
-async def generate_response(
-    messages: list[dict],
-    model: str = "nvidia/nemotron-nano-9b-v2:free"
+async def _stream_chat_response(
+    openrouter_client,
+    context: str,
+    user_message: str,
+    history: list,
+    session,
+    session_store,
+    chunks_retrieved: int,
 ) -> AsyncIterator[str]:
-    """Stream response tokens from OpenRouter."""
+    """Generate streaming SSE response."""
 
-    async with httpx.AsyncClient() as client:
-        async with client.stream(
-            "POST",
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {settings.openrouter_api_key}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": model,
-                "messages": messages,
-                "stream": True,
-                "max_tokens": 1000,
-                "temperature": 0.7
-            },
-            timeout=60.0
-        ) as response:
-            async for line in response.aiter_lines():
-                if line.startswith("data: "):
-                    data = line[6:]
-                    if data == "[DONE]":
-                        break
-                    chunk = json.loads(data)
-                    if content := chunk["choices"][0]["delta"].get("content"):
-                        yield content
+    # Send retrieval info
+    event = ChatStreamEvent(type="retrieval", chunks=chunks_retrieved)
+    yield f"data: {event.model_dump_json()}\n\n"
+
+    # Stream tokens from OpenRouter
+    full_response = ""
+    async for chunk in openrouter_client.chat_stream(
+        system_prompt=settings.get_system_prompt_from_profile(),
+        context=context,
+        user_message=user_message,
+        history=history,
+    ):
+        if chunk.content:
+            full_response += chunk.content
+            event = ChatStreamEvent(type="token", content=chunk.content)
+            yield f"data: {event.model_dump_json()}\n\n"
+
+    # Save response to session
+    session.add_message("assistant", full_response)
+    session_store.set(session.id, session)
+
+    # Send stats event
+    stats_data = {
+        "chunks_retrieved": chunks_retrieved,
+        "tokens_used": tokens_used,
+        "elapsed_seconds": elapsed,
+        "trace_id": get_trace_id(),
+    }
+    yield f"event: stats\ndata: {json.dumps(stats_data)}\n\n"
+
+    # Send completion event
+    yield "event: end\ndata: [DONE]\n\n"
 ```
+
+## <div class="page"/>
+
+## Fit Assessment with Dynamic Role Classification
+
+### Overview
+
+The `/api/v1/assess-fit` endpoint evaluates candidate fit against job descriptions using a **dynamic role classification system** that selects appropriate assessor personas based on career domain and seniority level.
+
+```text
+┌────────────────────────────────────────────────────────────────┐
+│                    JOB DESCRIPTION INPUT                       │
+│   "Chief Technology Officer - Lead 100+ engineers..."          │
+└─────────────────────────┬──────────────────────────────────────┘
+                          │
+                          ▼
+┌────────────────────────────────────────────────────────────────┐
+│              STAGE 1: ROLE CLASSIFICATION                      │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ 1. Domain Detection (word-boundary keyword matching):    │  │
+│  │    - Technology: software, cloud, API, distributed...    │  │
+│  │    - Culinary: chef, kitchen, menu, gastronomy...        │  │
+│  │    - Finance: trader, quant, portfolio, derivatives...   │  │
+│  │    - Life Sciences: biotech, clinical, R&D, FDA...       │  │
+│  │    - Healthcare: patient care, nursing, clinical ops...  │  │
+│  │    - Sales: revenue, quota, SaaS, pipeline, CRM...       │  │
+│  │                                                          │  │
+│  │ 2. Primary/Secondary Domain with Confidence:             │  │
+│  │    - Primary: technology (score: 12)                     │  │
+│  │    - Secondary: None (no other domain >= 3 keywords)     │  │
+│  │    - Confident: True (gap >= 2)                          │  │
+│  │                                                          │  │
+│  │ 3. Role Level Detection (title pattern matching):        │  │
+│  │    - C-Suite: CTO, CIO, Chief X Officer                  │  │
+│  │    - VP: Vice President, SVP                             │  │
+│  │    - Director: Director, Head of X                       │  │
+│  │    - Manager: Engineering Manager, Team Lead             │  │
+│  │    - IC-Senior: Staff/Principal Engineer, Architect      │  │
+│  │    - IC: Engineer, Developer, SRE                        │  │
+│  │                                                          │  │
+│  │ Result: domain="technology", level="c-suite"             │  │
+│  └──────────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌────────────────────────────────────────────────────────────────┐
+│            STAGE 2: PERSONA & CRITERIA SELECTION               │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ Selected Assessor Persona (technology + c-suite):        │  │
+│  │   "You are a board-level executive recruiter who has     │  │
+│  │    placed hundreds of C-suite technology leaders..."     │  │
+│  │                                                          │  │
+│  │ Evaluation Criteria:                                     │  │
+│  │   - Org-wide technical strategy ownership                │  │
+│  │   - Board/investor communication                         │  │
+│  │   - P&L authority at company scale                       │  │
+│  │   - Team scale (100+ engineers)                          │  │
+│  │   - Industry thought leadership                          │  │
+│  └──────────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌────────────────────────────────────────────────────────────────┐
+│              STAGE 3: CONTEXT RETRIEVAL (ASK MODE)             │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ Query memvid with Ask mode (hybrid + re-ranking):        │  │
+│  │   "What relevant experience, skills, and qualifications  │  │
+│  │    does the candidate have for this role: [JD]..."       │  │
+│  │                                                          │  │
+│  │ Retrieved context (top_k=10, snippet_chars=500):         │  │
+│  │   - [0.94] Experience: CTO at Acme Corp (2018-2023)      │  │
+│  │   - [0.88] Leadership: Built 120-person eng org          │  │
+│  │   - [0.82] Strategy: Cloud migration $50M project        │  │
+│  └──────────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌────────────────────────────────────────────────────────────────┐
+│                STAGE 4: LLM ASSESSMENT GENERATION              │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ Prompt Structure:                                        │  │
+│  │   1. System Prompt: Selected assessor persona            │  │
+│  │   2. Job Description                                     │  │
+│  │   3. Candidate Context (retrieved from memvid)           │  │
+│  │   4. Domain Classification Note (if cross-domain)        │  │
+│  │   5. Evaluation Instructions:                            │  │
+│  │      - Step 1: Domain Check (tech vs culinary?)          │  │
+│  │      - Step 2: Role Title Identification                 │  │
+│  │      - Step 3: Seniority Gap Assessment                  │  │
+│  │      - Step 4: Criteria Evaluation                       │  │
+│  │      - Step 5: Star Rating with Rubric                   │  │
+│  │                                                          │  │
+│  │ Star Rating Rubric:                                      │  │
+│  │   ⭐      = Different domain (tech vs culinary)          │  │
+│  │   ⭐⭐    = Weak fit (<40% requirements met)             │  │
+│  │   ⭐⭐⭐  = Partial fit (40-60% met)                     │  │
+│  │   ⭐⭐⭐⭐ = Strong fit (60-80% met)                     │  │
+│  │   ⭐⭐⭐⭐⭐ = Exceptional fit (>80% met)                │  │
+│  └─────────────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌────────────────────────────────────────────────────────────────┐
+│                      STRUCTURED OUTPUT                         │
+│  VERDICT: ⭐⭐⭐⭐ Strong fit - Senior Director → CTO           │
+│                                                                │
+│  ROLE LEVEL:                                                   │
+│  - JD Title: Chief Technology Officer                          │
+│  - Candidate Title: Senior Director of Engineering             │
+│  - Gap: One level jump (Director → CTO) requires scope proof   │
+│                                                                │
+│  KEY MATCHES:                                                  │
+│  - Led 120-person engineering organization at Acme             │
+│  - $50M cloud migration demonstrates company-scale execution   │
+│  - Board presentation experience (quarterly eng updates)       │
+│                                                                │
+│  GAPS:                                                         │
+│  - No prior C-level title (currently Director-level)           │
+│  - Limited external thought leadership (2 conference talks)    │
+│                                                                │
+│  RECOMMENDATION: Strong candidate with scope gap. Led org at   │
+│  CTO scale (120 engineers) despite Director title. Recommend   │
+│  for interview to assess exec communication and strategy.      │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### Role Classification Algorithm
+
+**Domain Detection (Word-Boundary Matching):**
+
+```python
+def classify_domain(job_description: str) -> dict:
+    """Score each domain by keyword frequency using word-boundary regex."""
+
+    scores = {}
+    for domain, config in CAREER_DOMAINS.items():
+        score = 0
+        for keyword in config["keywords"]:
+            # Use \b word boundaries to prevent false positives
+            pattern = re.compile(rf"\b{re.escape(keyword)}\b", re.IGNORECASE)
+            if pattern.search(job_description):
+                score += 1
+        scores[domain] = score
+
+    # Require minimum 3 keyword matches
+    # Report primary + secondary if secondary >= 3 and gap < 2
+    ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+    primary, primary_score = ranked[0]
+    secondary, secondary_score = ranked[1] if len(ranked) > 1 else (None, 0)
+
+    confident = (primary_score - secondary_score) >= 2
+
+    return {
+        "primary": primary if primary_score >= 3 else None,
+        "secondary": secondary if secondary_score >= 3 else None,
+        "confident": confident
+    }
+```
+
+**Cross-Domain Handling:**
+
+When a JD triggers multiple domains (e.g., "VP of Engineering at a healthcare company"), the system:
+
+1. Reports both primary and secondary domain
+2. Flags the classification as ambiguous if keyword gap < 2
+3. Injects context into the LLM prompt:
+
+```text
+DOMAIN CLASSIFICATION NOTE: This JD was classified as primarily 'technology'
+with secondary signals from 'healthcare'. The classification is ambiguous —
+consider whether the role is genuinely cross-domain (e.g., a tech role at a
+healthcare company).
+```
+
+**Benefits:**
+
+- **Domain-specific evaluation**: Culinary candidates assessed by hospitality recruiters, tech candidates by engineering recruiters
+- **Cross-domain awareness**: VP Eng at health tech gets both tech and healthcare context
+- **Prevents false positives**: Word boundaries stop "AI" from matching "catering", "SRE" from matching "desire"
+- **Prevents domain mismatch**: Culinary JD vs tech resume correctly rates ⭐ (different profession)
+- **Seniority calibration**: Director→VP jump is acknowledged and assessed for scope equivalence
+
+### Supported Domains
+
+| Domain              | Keywords (Sample)                                 | Role Levels                                   | Use Case                                      |
+| ------------------- | ------------------------------------------------- | --------------------------------------------- | --------------------------------------------- |
+| **Technology**      | software, cloud, API, distributed, ML             | c-suite, vp, director, manager, ic-senior, ic | Software engineers, CTOs, SREs                |
+| **Culinary**        | chef, culinary, menu, michelin, gastronomy        | c-suite, director                             | Executive chefs, culinary directors           |
+| **Finance/Trading** | trader, quant, portfolio, derivatives, hedge fund | c-suite, ic-senior                            | Quant traders, portfolio managers             |
+| **Life Sciences**   | biotech, clinical, R&D, FDA, pharmacology         | director, ic                                  | Drug discovery scientists, clinical directors |
+| **Healthcare**      | patient care, nursing, clinical ops, HIPAA        | c-suite, manager                              | CMOs, nurse managers, clinic directors        |
+| **Sales/Growth**    | revenue, quota, SaaS, pipeline, ARR               | vp, ic                                        | VPs of Sales, account executives              |
+
+### Testing
+
+The role classifier has comprehensive E2E test coverage (35 tests, 96% code coverage):
+
+```bash
+cd api-service
+pytest tests/test_role_classifier_e2e.py -v
+```
+
+Tests validate:
+
+- Domain classification accuracy across all 6 domains
+- Role level detection (c-suite through ic)
+- Word-boundary matching (prevents false positives)
+- Cross-domain scenarios (VP Eng at healthcare company)
+- Ambiguous classifications (RevOps spanning sales + tech)
+- Confidence scoring and thresholds
 
 ## <div class="page"/>
 
 ## Session Management
 
-### Session State
+### Implementation
 
-Each chat session maintains:
+Sessions use `cachetools.TTLCache` for automatic expiration with thread-safe access:
+
+```python
+from cachetools import TTLCache
+import threading
+
+class SessionStore:
+    def __init__(self, ttl_seconds: int = 1800, maxsize: int = 10000):
+        self._cache = TTLCache(maxsize=maxsize, ttl=ttl_seconds)
+        self._lock = threading.Lock()
+
+    def get_or_create(self, session_id: UUID | None = None) -> Session:
+        """Get existing session or create new one."""
+        with self._lock:
+            if session_id:
+                session = self._cache.get(session_id)
+                if session:
+                    return session
+
+            # Create new session
+            session = Session()
+            self._cache[session.id] = session
+            return session
+```
+
+### Session Structure
 
 ```python
 @dataclass
 class Session:
-    id: str                    # UUID
-    created_at: datetime       # Session start
-    last_activity: datetime    # Last interaction
-    history: list[Message]     # Conversation turns
-    metadata: dict             # Optional tracking data
-```
+    id: UUID
+    created_at: datetime
+    last_activity: datetime
+    messages: list[Message]  # Conversation history
 
-### TTL and Cleanup
+    def add_message(self, role: str, content: str):
+        """Add message to conversation history."""
+        self.messages.append(Message(role=role, content=content))
 
-```python
-SESSION_TTL = 1800  # 30 minutes
-
-async def get_or_create_session(session_id: str | None) -> Session:
-    """Get existing session or create new one."""
-
-    if session_id and session_id in sessions:
-        session = sessions[session_id]
-        if (datetime.utcnow() - session.last_activity).seconds < SESSION_TTL:
-            session.last_activity = datetime.utcnow()
-            return session
-
-    # Create new session
-    return Session(
-        id=str(uuid4()),
-        created_at=datetime.utcnow(),
-        last_activity=datetime.utcnow(),
-        history=[],
-        metadata={}
-    )
+    def get_history_for_llm(self, max_messages: int) -> list[Message]:
+        """Get last N messages for LLM context."""
+        return self.messages[-max_messages:] if max_messages else self.messages
 ```
 
 ### History Trimming
 
-Keep conversation context manageable:
+History is trimmed **at prompt assembly time** (not at storage time):
 
 ```python
-MAX_HISTORY_TURNS = 10  # Keep last 10 exchanges
-
-def trim_history(session: Session) -> None:
-    """Trim history to prevent context overflow."""
-    if len(session.history) > MAX_HISTORY_TURNS * 2:
-        session.history = session.history[-(MAX_HISTORY_TURNS * 2):]
+# In chat endpoint (main.py)
+history = session.get_history_for_llm(settings.max_history_messages)
 ```
+
+This allows flexible history windows per request while preserving full history in the session.
+
+### TTL Behavior
+
+- Sessions automatically expire after 1800 seconds (30 minutes) of inactivity
+- `TTLCache` handles expiration automatically (no manual cleanup needed)
+- Thread-safe with `threading.Lock` for concurrent access
 
 ## <div class="page"/>
 
@@ -484,32 +690,32 @@ def trim_history(session: Session) -> None:
 | Memvid unavailable | 503       | "Search temporarily unavailable"     | Retry with backoff     |
 | OpenRouter error   | 502       | "AI service temporarily unavailable" | Log, return gracefully |
 | Invalid session    | 400       | "Session expired, starting new chat" | Create new session     |
-| Context too long   | 400       | (internal handling)                  | Trim context, retry    |
 
 ### Graceful Degradation
 
 ```python
-async def chat_with_fallback(question: str, session: Session) -> AsyncIterator[str]:
+async def chat_with_fallback(question: str, session: Session):
     """Chat with graceful fallback on errors."""
 
     try:
-        # Try full pipeline
-        transformed = await transform_query(question)
-        chunks = await retrieve_context(transformed)
-        context = format_context(chunks)
+        # Try Ask mode retrieval
+        ask_response = await memvid_client.ask(question=question, ...)
+        context = ask_response["answer"]
 
-    except MemvidUnavailableError:
-        # Fall back to no-context mode
-        context = "Knowledge base temporarily unavailable. Responding with general information only."
-        logger.warning("Memvid unavailable, using no-context fallback")
+    except MemvidConnectionError:
+        # Return early with error message
+        raise HTTPException(
+            status_code=503,
+            detail="Search service unavailable. Please try again later.",
+        )
 
     try:
-        messages = build_prompt(system_prompt, context, session.history, question)
-        async for token in generate_response(messages):
+        # Stream response from OpenRouter
+        async for token in openrouter_client.chat_stream(...):
             yield token
 
     except OpenRouterError as e:
-        yield f"I apologize, but I'm having trouble generating a response. Please try again. (Error: {e.code})"
+        yield f"I apologize, but I'm having trouble generating a response..."
         logger.error(f"OpenRouter error: {e}")
 ```
 
@@ -517,69 +723,77 @@ async def chat_with_fallback(question: str, session: Session) -> AsyncIterator[s
 
 ## Observability
 
-### Metrics to Track
+### Current Implementation
 
-| Metric                        | Type      | Description                |
-| ----------------------------- | --------- | -------------------------- |
-| `chat_requests_total`         | Counter   | Total chat requests        |
-| `query_transform_latency_ms`  | Histogram | Query transformation time  |
-| `memvid_retrieval_latency_ms` | Histogram | Memvid search time         |
-| `llm_generation_latency_ms`   | Histogram | OpenRouter response time   |
-| `llm_tokens_used`             | Counter   | Tokens consumed (by model) |
-| `retrieval_chunks_returned`   | Histogram | Chunks per query           |
-| `retrieval_empty_results`     | Counter   | Queries with no results    |
-| `session_active_count`        | Gauge     | Active sessions            |
+**Prometheus Metrics (via Instrumentator):**
 
-### Structured Logging
+The API service exposes Prometheus metrics at `/metrics`:
+
+```python
+# main.py
+from prometheus_fastapi_instrumentator import Instrumentator
+Instrumentator().instrument(app).expose(app)
+```
+
+**Structured Logging (via structlog):**
 
 ```python
 import structlog
 
 logger = structlog.get_logger()
 
-async def handle_chat(request: ChatRequest) -> StreamingResponse:
-    request_id = str(uuid4())
-
-    logger.info(
-        "chat_request_received",
-        request_id=request_id,
-        session_id=request.session_id,
-        question_length=len(request.message)
-    )
-
-    # ... processing ...
-
-    logger.info(
-        "chat_request_completed",
-        request_id=request_id,
-        chunks_retrieved=len(chunks),
-        transform_ms=transform_time,
-        retrieval_ms=retrieval_time,
-        total_ms=total_time
-    )
+logger.info(
+    "chat_request_received",
+    session_id=session.id,
+    message_length=len(chat_request.message)
+)
 ```
 
-### Trace Context
+**Trace Context Propagation:**
 
-Propagate trace IDs through the pipeline:
+```python
+# Middleware adds X-Trace-ID to every request
+@app.middleware("http")
+async def trace_id_middleware(request: Request, call_next):
+    trace_id = request.headers.get("X-Trace-ID", generate_trace_id())
+    set_trace_id(trace_id)
 
-```text
-Request → Transform → Retrieve → Generate
-   │          │          │          │
-   └──────────┴──────────┴──────────┴──► Same trace_id
+    # Bind to structlog context
+    structlog.contextvars.bind_contextvars(trace_id=trace_id)
+
+    response = await call_next(request)
+    response.headers["X-Trace-ID"] = trace_id
+    return response
 ```
+
+### Custom Metrics (Implemented)
+
+Currently implemented custom metrics:
+
+- `memvid_search_latency_seconds` - Histogram of memvid search times (memvid_client.py)
+
+### Planned Metrics
+
+Future metrics to add:
+
+- `chat_requests_total` - Counter of chat requests
+- `llm_tokens_used` - Counter of tokens consumed by model
+- `retrieval_chunks_returned` - Histogram of chunks per query
+- `retrieval_empty_results` - Counter of queries with no results
 
 ## <div class="page"/>
 
 ## Version History
 
-| Version | Date     | Changes                            |
-| ------- | -------- | ---------------------------------- |
-| 1.0     | Jan 2026 | Initial POR based on design review |
+| Version | Date     | Changes                                                                                                           |
+| ------- | -------- | ----------------------------------------------------------------------------------------------------------------- |
+| 1.0     | Jan 2026 | Initial POR based on design review                                                                                |
+| 1.1     | Feb 2026 | Updated to reflect current implementation (Ask mode, disabled query transform, TTLCache sessions, fit assessment) |
 
 ## <div class="page"/>
 
 ## Related Documents
 
 - [MASTER_DOCUMENT_SCHEMA.md](./MASTER_DOCUMENT_SCHEMA.md) - Resume data format for ingestion
-- [DESIGN.md](./DESIGN.md) - Overall system architecture
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - Overall system architecture
+- [TODO.md](./TODO.md) - Development roadmap and phase tracking
