@@ -4,7 +4,7 @@
 # =============================================================================
 # Stage 1: Build React application
 # =============================================================================
-FROM node:24.13.0-trixie-slim AS builder
+FROM node:24.13.0-bookworm-slim AS builder
 
 WORKDIR /app
 

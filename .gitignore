@@ -14,7 +14,7 @@ dist-ssr
 
 # AI related
 .roo
-.claude/*
+**/.claude/
 .claude/
 
 # Local working directories (for development, testing, temporary files)
@@ -31,6 +31,7 @@ __pycache__/
 *$py.class
 .pytest_cache/
 *.egg-info/
+**/.ruff_cache/
 
 # Editor directories and files
 .vscode/*
@@ -53,5 +54,5 @@ memvid-service/target/
 *.tar
 CLAUDE.md
 
-.claude/*
-.claude/
+# Fastembed model cache (large binary files)
+.fastembed_cache/

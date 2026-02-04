@@ -397,9 +397,20 @@ Use the context above to answer the user's question. If the context doesn't cont
         import asyncio
 
         mock_words = [
-            "This", "is", "a", "mock", "streaming", "response",
-            "(MOCK_OPENROUTER=true).", "Set", "OPENROUTER_API_KEY",
-            "to", "enable", "real", "LLM", "responses.",
+            "This",
+            "is",
+            "a",
+            "mock",
+            "streaming",
+            "response",
+            "(MOCK_OPENROUTER=true).",
+            "Set",
+            "OPENROUTER_API_KEY",
+            "to",
+            "enable",
+            "real",
+            "LLM",
+            "responses.",
         ]
 
         for word in mock_words:

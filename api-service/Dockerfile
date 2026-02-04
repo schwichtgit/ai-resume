@@ -1,82 +1,74 @@
-# Multi-stage Dockerfile for Python FastAPI service
-# Supports amd64 and arm64 architectures
+# --- Stage 1: Dependency Builder ---
+# Uses the official uv image to create the production virtual environment
+FROM ghcr.io/astral-sh/uv:0.9.26-python3.12-bookworm-slim AS builder
 
-# Stage 1: Build dependencies with UV
-FROM python:3.12-slim AS builder
-
-WORKDIR /app
-
-# Install UV
-COPY --from=ghcr.io/astral-sh/uv:0.9.26-python3.12-trixie-slim /usr/local/bin/uv /usr/local/bin/uv
-
-# Install build dependencies
-RUN apt-get update \
-    && apt-get upgrade -y \
-    && apt-get install -y --no-install-recommends \
-       gcc \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy project files
-COPY pyproject.toml uv.lock* README.md ./
-
-# Install dependencies with UV (not in editable mode for production)
-RUN uv sync --no-dev --frozen --no-editable
-
-# Stage 2: Generate protobuf stubs
-FROM python:3.12-slim AS proto-builder
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
 
 WORKDIR /app
 
-# Copy virtual environment from builder (has grpcio-tools)
-COPY --from=builder /app/.venv /app/.venv
-ENV PATH=/app/.venv/bin:$PATH
+# Install ONLY production dependencies (no dev-dependencies)
+# Using cache mounts for lightning-fast subsequent builds
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --frozen --no-install-project --no-dev
 
-# Copy proto files
+# --- Stage 2: Proto Generation (Ephemeral) ---
+# We use a separate stage to keep the heavy grpcio-tools out of our final image
+FROM ghcr.io/astral-sh/uv:0.9.26-python3.12-bookworm-slim AS proto-builder
+
+WORKDIR /app
 COPY proto/ ./proto/
 
-# Create output directory and generate Python gRPC stubs
-# Use sed to fix the import path in generated grpc file
-RUN mkdir -p ai_resume_api/proto && \
-    python -m grpc_tools.protoc \
+# uvx runs the compiler as a standalone tool without polluting the project venv
+# Proto file lives at proto/memvid/v1/memvid.proto, stubs go to ai_resume_api/proto/memvid/v1/
+RUN --mount=type=cache,target=/root/.cache/uv \
+    mkdir -p ai_resume_api/proto/memvid/v1 && \
+    uvx --with grpcio-tools python -m grpc_tools.protoc \
         -I./proto \
         --python_out=./ai_resume_api/proto \
         --grpc_python_out=./ai_resume_api/proto \
-        ./proto/memvid.proto && \
-    touch ai_resume_api/proto/__init__.py && \
-    sed -i 's/import memvid_pb2/from ai_resume_api.proto import memvid_pb2/' ai_resume_api/proto/memvid_pb2_grpc.py
+        ./proto/memvid/v1/memvid.proto && \
+    touch ai_resume_api/proto/__init__.py \
+          ai_resume_api/proto/memvid/__init__.py \
+          ai_resume_api/proto/memvid/v1/__init__.py && \
+    # Fix the relative import in the generated gRPC code to use fully-qualified path
+    sed -i 's/from memvid.v1 import memvid_pb2/from ai_resume_api.proto.memvid.v1 import memvid_pb2/' \
+        ai_resume_api/proto/memvid/v1/memvid_pb2_grpc.py
 
-# Stage 3: Runtime image
-FROM python:3.12-slim
+# --- Stage 3: Runtime ---
+# The lean final image based on the stable Bookworm release
+FROM python:3.12-slim-bookworm
 
-RUN apt-get update \
-    && apt-get upgrade -y \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+# Production hardening: no .pyc creation at runtime, unbuffered logs
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/app/.venv/bin:$PATH" \
+    VIRTUAL_ENV=/app/.venv
 
 WORKDIR /app
 
-# Copy virtual environment from builder
+# Copy the lean production venv from Stage 1
 COPY --from=builder /app/.venv /app/.venv
 
-# Copy application code
+# Copy application source first
 COPY ai_resume_api/ ./ai_resume_api/
-
-# Copy generated proto stubs
-COPY --from=proto-builder /app/ai_resume_api/proto/ ./ai_resume_api/proto/
-
-# Copy healthcheck and startup scripts to root for container orchestration
 COPY healthcheck /healthcheck
 COPY start.py /start.py
-RUN chmod +x /healthcheck /start.py
 
-# Ensure venv is in PATH
-ENV PATH=/app/.venv/bin:$PATH
-ENV VIRTUAL_ENV=/app/.venv
+# Copy generated proto stubs AFTER app source (authoritative, overwrites any local stubs)
+COPY --from=proto-builder /app/ai_resume_api/proto/ ./ai_resume_api/proto/
 
-# Expose HTTP port
+# Ensure scripts are executable and system is patched
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    chmod +x /healthcheck /start.py
+
+# Expose the API port
 EXPOSE 3000
 
-# Run startup wrapper that auto-detects IPv4/IPv6 support
-# Supports BIND_ADDRESS env var: "auto" (default), "::", or "0.0.0.0"
-CMD ["python3", "/start.py"]
+# Launch the service using the venv python
+CMD ["python", "/start.py"]

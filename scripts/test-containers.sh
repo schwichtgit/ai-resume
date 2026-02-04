@@ -99,7 +99,7 @@ else
     log_fail "gRPC connection failed"
     FAILED=1
 fi
-
+```
 # Test 5: Chat endpoint
 CHAT=$(curl -s -X POST http://localhost:3001/api/v1/chat \
     -H "Content-Type: application/json" \

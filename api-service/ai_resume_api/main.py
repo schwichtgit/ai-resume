@@ -17,7 +17,12 @@ from slowapi.util import get_remote_address
 
 from ai_resume_api import __version__
 from ai_resume_api.config import get_settings
-from ai_resume_api.memvid_client import close_memvid_client, get_memvid_client
+from ai_resume_api.memvid_client import (
+    MemvidConnectionError,
+    MemvidSearchError,
+    close_memvid_client,
+    get_memvid_client,
+)
 from ai_resume_api.observability import (
     generate_trace_id,
     get_trace_id,
@@ -41,6 +46,7 @@ from ai_resume_api.models import (
     SuggestedQuestionsResponse,
 )
 from ai_resume_api.openrouter_client import (
+    OpenRouterAuthError,
     OpenRouterError,
     close_openrouter_client,
     get_openrouter_client,
@@ -195,6 +201,7 @@ async def chat(request: Request, chat_request: ChatRequest):
     - **session_id**: Optional session ID for conversation history
     - **stream**: Whether to stream the response (default: true)
     """
+    print("🚨 CHAT ENDPOINT CALLED - START OF FUNCTION", flush=True)
     session_store = get_session_store()
     session = session_store.get_or_create(chat_request.session_id)
 
@@ -252,65 +259,89 @@ async def chat(request: Request, chat_request: ChatRequest):
     openrouter_client = await get_openrouter_client()
 
     # Transform query for better retrieval
-    # Uses LLM to extract keywords from natural language question
-    try:
-        transformed_query = await transform_query(
-            question=chat_request.message,
-            openrouter_client=openrouter_client,
-            strategy="keywords",
-        )
-        logger.info(
-            "Query transformed",
-            original=chat_request.message[:50],
-            transformed=transformed_query[:100],
-        )
-    except Exception as e:
-        logger.warning("Query transformation failed", error=str(e))
-        transformed_query = chat_request.message
+    # TEMPORARILY DISABLED: Query transformation was expanding "AI" to "artificial intelligence"
+    # which doesn't match "AI/ML" content. Need to improve transformation logic.
+    # TODO: Re-enable with better keyword extraction that preserves acronyms
+    transformed_query = chat_request.message
+    # try:
+    #     transformed_query = await transform_query(
+    #         question=chat_request.message,
+    #         openrouter_client=openrouter_client,
+    #         strategy="keywords",
+    #     )
+    #     logger.info(
+    #         "Query transformed",
+    #         original=chat_request.message[:50],
+    #         transformed=transformed_query[:100],
+    #     )
+    # except Exception as e:
+    #     logger.warning("Query transformation failed", error=str(e))
+    #     transformed_query = chat_request.message
 
-    # Get context from memvid using transformed query
+    # Get context from memvid using Ask mode (with re-ranking)
     try:
         memvid_client = await get_memvid_client()
-        search_response = await memvid_client.search(
-            query=transformed_query,  # Use transformed query for search
+        ask_response = await memvid_client.ask(
+            question=chat_request.message,  # Pass full question (not transformed)
+            use_llm=False,  # Get context only, we'll use OpenRouter for generation
             top_k=5,
             snippet_chars=300,
+            mode="hybrid",  # Use hybrid search (BM25 + vector)
         )
-        context = "\n\n".join(
-            f"**{hit.title}**\n{hit.snippet}" for hit in search_response.hits
+
+        # Extract context from Ask response
+        context = ask_response["answer"]  # Pre-formatted context from Ask mode
+        chunks_retrieved = ask_response["stats"]["results_returned"]
+
+        logger.info(
+            "Memvid ask completed",
+            question_preview=chat_request.message[:50],
+            chunks_retrieved=chunks_retrieved,
+            retrieval_ms=ask_response["stats"]["retrieval_ms"],
+            reranking_ms=ask_response["stats"]["reranking_ms"],
         )
-        chunks_retrieved = len(search_response.hits)
-    except Exception as e:
+
+        if chunks_retrieved == 0:
+            logger.info(
+                "Memvid ask returned no results",
+                question_preview=chat_request.message[:50],
+            )
+            # Return early - don't let LLM hallucinate without context
+            no_results_msg = (
+                "I couldn't find relevant information to answer that question. "
+                "This could mean:\n"
+                "- The information isn't in the resume\n"
+                "- The question uses different terminology than the resume\n"
+                "- Try rephrasing with more specific terms or asking about a different topic"
+            )
+            session.add_message("assistant", no_results_msg)
+            session_store.set(session.id, session)
+
+            return ChatResponse(
+                session_id=session.id,
+                message=no_results_msg,
+                chunks_retrieved=0,
+                tokens_used=0,
+            )
+
+    except MemvidConnectionError as e:
+        logger.error("Memvid service unavailable", error=str(e))
+        raise HTTPException(
+            status_code=503,
+            detail="Search service unavailable. Please try again later.",
+        )
+    except MemvidSearchError as e:
         logger.error("Memvid search failed", error=str(e))
-        context = ""
-        chunks_retrieved = 0
+        raise HTTPException(
+            status_code=502,
+            detail="Search service error. Please try again later.",
+        )
 
     # Get conversation history
     history = session.get_history_for_llm(settings.max_history_messages)
 
     # Add user message to session
     session.add_message("user", chat_request.message)
-
-    # Check if OpenRouter is configured (client already obtained for query transform)
-    if not openrouter_client.is_configured:
-        # Return mock response if OpenRouter not configured
-        logger.warning("OpenRouter not configured, returning mock response")
-        mock_response = _generate_mock_response(chat_request.message, context)
-        session.add_message("assistant", mock_response)
-        session_store.set(session.id, session)
-
-        if chat_request.stream:
-            return StreamingResponse(
-                _mock_stream_response(mock_response, chunks_retrieved),
-                media_type="text/event-stream",
-            )
-        else:
-            return ChatResponse(
-                session_id=session.id,
-                message=mock_response,
-                chunks_retrieved=chunks_retrieved,
-                tokens_used=0,
-            )
 
     # Stream response
     if chat_request.stream:
@@ -339,6 +370,7 @@ async def chat(request: Request, chat_request: ChatRequest):
             history=history,
         )
 
+        logger.info("🔴 ABOUT TO CALL OPENROUTER - THIS IS THE NEW CODE PATH")
         try:
             response = await openrouter_client.chat(
                 system_prompt=system_prompt,
@@ -364,6 +396,15 @@ async def chat(request: Request, chat_request: ChatRequest):
                 message=safe_content,
                 chunks_retrieved=chunks_retrieved,
                 tokens_used=response.tokens_used,
+            )
+        except OpenRouterAuthError as e:
+            log_llm_response(
+                request_log=request_log,
+                error=str(e),
+            )
+            raise HTTPException(
+                status_code=503,
+                detail="AI service not configured. Please contact the administrator.",
             )
         except OpenRouterError as e:
             log_llm_response(
@@ -451,6 +492,17 @@ async def _stream_chat_response(
             error="cancelled_by_client",
         )
         raise
+
+    except OpenRouterAuthError as e:
+        log_llm_response(
+            request_log=request_log,
+            error=str(e),
+        )
+        event = ChatStreamEvent(
+            type="error",
+            error="AI service not configured. Please contact the administrator.",
+        )
+        yield f"data: {event.model_dump_json()}\n\n"
 
     except OpenRouterError as e:
         log_llm_response(
@@ -584,8 +636,7 @@ async def get_suggested_questions() -> SuggestedQuestionsResponse:
         )
 
     questions = [
-        SuggestedQuestion(question=q, category="general")
-        for q in profile["suggested_questions"]
+        SuggestedQuestion(question=q, category="general") for q in profile["suggested_questions"]
     ]
     return SuggestedQuestionsResponse(questions=questions)
 
@@ -614,29 +665,45 @@ async def assess_fit(request: Request, assess_request: AssessFitRequest) -> Asse
     # Get OpenRouter client
     openrouter_client = await get_openrouter_client()
 
-    if not openrouter_client.is_configured:
-        raise HTTPException(
-            status_code=503,
-            detail="AI service not configured. Set OPENROUTER_API_KEY to enable real-time fit assessment.",
-        )
-
-    # Query memvid for relevant context about candidate
+    # Query memvid for relevant context about candidate using Ask mode (with re-ranking)
     # Search for: experience, skills, failures, fit assessment guidance
     try:
         memvid_client = await get_memvid_client()
-        search_response = await memvid_client.search(
-            query=f"relevant experience and skills for role fit assessment: {assess_request.job_description[:200]}",
+        ask_response = await memvid_client.ask(
+            question=f"What relevant experience, skills, and qualifications does the candidate have for this role: {assess_request.job_description[:300]}",
+            use_llm=False,  # Get context only, we'll use OpenRouter for generation
             top_k=10,
             snippet_chars=500,
+            mode="hybrid",  # Use hybrid search (BM25 + vector) with re-ranking
         )
-        context = "\n\n".join(
-            f"**{hit.title}**\n{hit.snippet}" for hit in search_response.hits
+        context = ask_response["answer"]  # Pre-formatted context from Ask mode
+        chunks_retrieved = ask_response["stats"]["results_returned"]
+
+        logger.info(
+            "Memvid ask completed for fit assessment",
+            chunks_retrieved=chunks_retrieved,
+            total_candidates=ask_response["stats"]["total_candidates"],
         )
-        chunks_retrieved = len(search_response.hits)
-    except Exception as e:
-        logger.error("Memvid search failed for fit assessment", error=str(e))
-        context = ""
-        chunks_retrieved = 0
+
+        if chunks_retrieved == 0:
+            logger.warning(
+                "Memvid ask returned no results for fit assessment",
+                job_description_preview=assess_request.job_description[:100],
+            )
+            # Continue with empty context - assessment will be limited
+
+    except MemvidConnectionError as e:
+        logger.error("Memvid service unavailable for fit assessment", error=str(e))
+        raise HTTPException(
+            status_code=503,
+            detail="Search service unavailable. Please try again later.",
+        )
+    except MemvidSearchError as e:
+        logger.error("Memvid ask failed for fit assessment", error=str(e))
+        raise HTTPException(
+            status_code=502,
+            detail="Search service error. Please try again later.",
+        )
 
     # Build fit assessment prompt
     fit_assessment_prompt = f"""Analyze the candidate's fit for this job description and provide an honest, structured assessment.
@@ -746,6 +813,12 @@ RECOMMENDATION: [recommendation text]
             tokens_used=tokens_used,
         )
 
+    except OpenRouterAuthError as e:
+        logger.error("OpenRouter not configured for fit assessment", error=str(e))
+        raise HTTPException(
+            status_code=503,
+            detail="AI service not configured. Please contact the administrator.",
+        )
     except OpenRouterError as e:
         logger.error("OpenRouter error during fit assessment", error=str(e))
         raise HTTPException(status_code=502, detail=f"AI service error: {str(e)}")

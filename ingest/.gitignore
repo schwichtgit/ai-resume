@@ -21,3 +21,6 @@ __pycache__/
 
 # Temporary training outputs (final .mv2 files go to data/.memvid/)
 *.mv2
+
+.claude
+.fastembed_cache

@@ -67,6 +67,7 @@ def _format_guardrail_response(
 
     return "\n".join(response_parts)
 
+
 # =============================================================================
 # Input Guardrails - Detect Prompt Injection Attempts
 # =============================================================================
@@ -168,8 +169,7 @@ OUTPUT_FILTER_PATTERNS = [
 
 # Compile patterns for efficiency
 _compiled_output_patterns = [
-    re.compile(pattern, re.IGNORECASE | re.MULTILINE)
-    for pattern in OUTPUT_FILTER_PATTERNS
+    re.compile(pattern, re.IGNORECASE | re.MULTILINE) for pattern in OUTPUT_FILTER_PATTERNS
 ]
 
 

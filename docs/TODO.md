@@ -1011,6 +1011,307 @@ class CandidateOntology(BaseModel):
 
 ---
 
+## Phase 11: Ask Mode Integration with Re-Ranking ✅
+
+**Goal:** Upgrade from Find mode (basic vector search) to Ask mode (retrieval + cross-encoder re-ranking) for improved search precision.
+
+**Status:** ✅ Complete (February 4, 2026)
+
+**Reference:** `docs/ARCHITECTURE.md` - "Memvid Query Modes: Find vs Ask"
+
+**Priority:** 🟡 HIGH (improves search quality significantly)
+
+**Estimated Effort:** ~20 hours (2-3 days)
+
+### Background
+
+Current implementation uses `memvid find` which:
+- Returns chunks based solely on embedding distance
+- Cannot distinguish "AI" (artificial intelligence) from "AI" (Adobe Illustrator)
+- Struggles with acronym expansion queries
+- No metadata or temporal filtering capabilities
+
+Ask mode adds a cross-encoder re-ranking layer that:
+- Re-scores initial retrieval candidates based on query-document interaction
+- Provides evidence-based relevance (not just embedding distance)
+- Supports metadata filtering (section, company, role)
+- Supports temporal filtering (since/until timestamps)
+- Allows engine selection (HYBRID/VECTOR/LEXICAL)
+
+**Trade-off:** +160ms latency for significantly better precision
+
+### 11.1: Proto File Updates
+
+- [ ] Update `proto/memvid/v1/memvid.proto`:
+  - [ ] Add `AskRequest` message with fields:
+    - [ ] `query: string`
+    - [ ] `top_k: int32` (default: 5)
+    - [ ] `retrieval_k: int32` (default: 50)
+    - [ ] `filters: map<string, string>`
+    - [ ] `since: int64` (Unix timestamp)
+    - [ ] `until: int64` (Unix timestamp)
+    - [ ] `engine: SearchEngine` enum
+  - [ ] Add `SearchEngine` enum (HYBRID=0, VECTOR=1, LEXICAL=2)
+  - [ ] Add `AskResponse` message with fields:
+    - [ ] `hits: repeated RerankedHit`
+    - [ ] `total_candidates: int32`
+    - [ ] `reranked_count: int32`
+    - [ ] `reranking_latency_ms: float`
+  - [ ] Add `RerankedHit` message with fields:
+    - [ ] `title, snippet, tags` (existing fields)
+    - [ ] `similarity_score: float` (original BM25/vector score)
+    - [ ] `rerank_score: float` (cross-encoder score 0.0-1.0)
+    - [ ] `metadata: map<string, string>`
+    - [ ] `timestamp: int64`
+  - [ ] Add `rpc Ask(AskRequest) returns (AskResponse)` to service definition
+- [ ] Regenerate Python stubs: `python -m grpc_tools.protoc ...`
+- [ ] Regenerate Rust code: `cargo build` (via build.rs)
+
+### 11.2: Rust Memvid Service Updates
+
+- [ ] Update `memvid-service/src/real.rs`:
+  - [ ] Use memvid SDK's built-in Ask API (not custom re-ranker)
+  - [ ] Call memvid Ask with query, filters, temporal params, engine selection
+  - [ ] Receive re-ranked results from memvid SDK directly
+  - [ ] Map SDK response to gRPC `AskResponse` proto
+- [ ] Create `memvid-service/src/proto_ask.rs`:
+  - [ ] Implement `Ask` RPC handler
+  - [ ] Parse `AskRequest` (query, top_k, retrieval_k, filters, since/until, engine)
+  - [ ] Call memvid SDK Ask API with parameters
+  - [ ] Return `AskResponse` with re-ranked hits
+  - [ ] Record metrics: `ask_requests_total`, `ask_latency_seconds`
+- [ ] Update `memvid-service/src/main.rs`:
+  - [ ] Register Ask RPC handler in service builder
+- [ ] Add Prometheus metrics:
+  - [ ] `memvid_ask_requests_total{engine, status}`
+  - [ ] `memvid_ask_latency_seconds{engine}`
+  - [ ] `memvid_retrieval_candidates` (histogram)
+
+### 11.3: Python Client Updates
+
+- [ ] Update `api-service/ai_resume_api/memvid_client.py`:
+  - [ ] Add `async def ask()` method with parameters:
+    - [ ] `query: str`
+    - [ ] `top_k: int = 5`
+    - [ ] `retrieval_k: int = 50`
+    - [ ] `filters: dict[str, str] | None = None`
+    - [ ] `since: int | None = None`
+    - [ ] `until: int | None = None`
+    - [ ] `engine: SearchEngine = SearchEngine.HYBRID`
+  - [ ] Build `AskRequest` proto message
+  - [ ] Call `self.stub.Ask(request, timeout=5.0)`
+  - [ ] Handle errors (MemvidUnavailableError)
+  - [ ] Log structured output: `memvid_ask_complete` with stats
+  - [ ] Return `AskResponse` with re-ranked hits
+
+### 11.4: Chat Endpoint Integration
+
+- [ ] Update `api-service/ai_resume_api/main.py`:
+  - [ ] Replace `memvid_client.search()` call with `memvid_client.ask()`
+  - [ ] Pass full question (not transformed query) to Ask mode
+  - [ ] Extract `ask_response.hits` and format context
+  - [ ] Include `rerank_score` in context formatting (show confidence)
+  - [ ] Log comparison metrics: `ask_vs_find_comparison` (if running A/B test)
+- [ ] Update context formatting:
+  - [ ] Show both `similarity_score` and `rerank_score` in logs
+  - [ ] Format context with confidence: `**{title}** (Relevance: {rerank_score:.0%})`
+- [ ] Add fallback logic:
+  - [ ] If Ask mode fails, fall back to Find mode
+  - [ ] Log fallback event for monitoring
+
+### 11.5: Ingest Pipeline Updates
+
+- [ ] Update `ingest/ingest.py`:
+  - [ ] Add timestamp to each frame (current date or parsed from markdown)
+  - [ ] Add rich metadata tags for filtering:
+    - [ ] `section: str` (e.g., "experience", "skills", "faq")
+    - [ ] `company: str` (for experience chunks)
+    - [ ] `role: str` (e.g., "leadership", "technical")
+    - [ ] `keywords: list[str]` (extracted from content)
+  - [ ] Call memvid SDK with temporal index: `client.put(..., timestamp=...)`
+  - [ ] Verify temporal index builds correctly
+- [ ] Run re-ingestion with new metadata:
+  - [ ] `python ingest/ingest.py --input data/master_resume.md`
+  - [ ] Verify .mv2 file includes metadata and timestamps
+  - [ ] Run `memvid doctor --rebuild-time-index` if needed
+
+### 11.6: Testing & Validation
+
+- [ ] Create comparison script `scripts/compare_find_vs_ask.py`:
+  - [ ] Run same query through both Find and Ask
+  - [ ] Compare top results
+  - [ ] Show score differences (distance vs rerank_score)
+  - [ ] Identify queries where Ask improves results
+- [ ] Add unit tests:
+  - [ ] `test_reranker.py` - Verify cross-encoder improves precision
+  - [ ] `test_ask_rpc.py` - gRPC Ask endpoint tests
+  - [ ] `test_metadata_filtering.py` - Verify filters work
+  - [ ] `test_temporal_filtering.py` - Verify since/until work
+- [ ] Add integration tests:
+  - [ ] Test Ask mode end-to-end (Python → Rust → memvid)
+  - [ ] Test engine selection (HYBRID/VECTOR/LEXICAL)
+  - [ ] Test fallback (Ask fails → Find mode)
+- [ ] Performance testing:
+  - [ ] Measure Ask mode latency (target: <200ms P95)
+  - [ ] Measure re-ranking latency (target: <160ms for 50 candidates)
+  - [ ] Load test with concurrent Ask requests
+
+### 11.7: A/B Testing & Rollout
+
+- [ ] Implement parallel mode (optional):
+  - [ ] Run both Find and Ask for same query
+  - [ ] Log divergence metrics for analysis
+  - [ ] Use Ask results, keep Find for comparison
+- [ ] Gradual rollout plan:
+  - [ ] Week 1: 10% traffic uses Ask mode
+  - [ ] Week 2: 50% traffic uses Ask mode
+  - [ ] Week 3: 90% traffic uses Ask mode
+  - [ ] Week 4: 100% Ask mode, remove Find code
+- [ ] Monitor metrics:
+  - [ ] Search precision improvement (manual review)
+  - [ ] Latency impact (P50/P95/P99)
+  - [ ] Error rate (Ask failures)
+  - [ ] User feedback (if available)
+
+### 11.8: Documentation Updates
+
+- [ ] Update `docs/ARCHITECTURE.md`:
+  - [ ] Mark Ask mode as "✅ Implemented"
+  - [ ] Update Data Flow diagram with Ask mode
+  - [ ] Update latency breakdown with actual measurements
+- [ ] Update `docs/AGENTIC_FLOW.md`:
+  - [ ] Update "RAG Pipeline" section with Ask mode
+  - [ ] Update "Retrieval Flow" code examples
+- [ ] Update `README.md`:
+  - [ ] Mention Ask mode in features section
+  - [ ] Update performance benchmarks
+- [ ] Create `docs/ASK_MODE_MIGRATION.md`:
+  - [ ] Document Find → Ask migration process
+  - [ ] Troubleshooting guide
+  - [ ] Rollback procedure
+
+### 11.9: Optimization (Post-Launch)
+
+- [ ] Cache re-ranking results:
+  - [ ] Add Redis or in-memory cache for frequent queries
+  - [ ] Cache key: `hash(query)` → top 5 re-ranked hits
+  - [ ] TTL: 1 hour
+- [ ] Tune parameters:
+  - [ ] Experiment with `retrieval_k` (50 vs 100 candidates)
+  - [ ] A/B test engine selection strategies
+- [ ] Add query classification:
+  - [ ] Auto-detect acronyms → use LEXICAL engine
+  - [ ] Auto-detect conceptual queries → use VECTOR engine
+  - [ ] Default to HYBRID for general queries
+
+### 11.10: Future Research - Custom Cross-Encoder Models
+
+**Status:** Future work (after testing memvid's built-in Ask capabilities)
+
+- [ ] Research custom cross-encoder models for Rust:
+  - [ ] Evaluate `sentence-transformers-rs` or FFI to Python models
+  - [ ] Compare models: `ms-marco-MiniLM-L-6-v2` vs `qnli-electra-base`
+  - [ ] Benchmark latency vs accuracy trade-offs
+- [ ] Implement custom re-ranker (if memvid's built-in Ask is insufficient):
+  - [ ] Create `reranker.rs` module
+  - [ ] Load and manage cross-encoder model lifecycle
+  - [ ] Replace memvid SDK Ask with custom re-ranking pipeline
+- [ ] A/B test memvid Ask vs custom cross-encoder:
+  - [ ] Measure precision improvement (if any)
+  - [ ] Measure latency impact
+  - [ ] Decide which approach to keep
+
+### Success Criteria
+
+- [ ] Ask RPC returns re-ranked results with `rerank_score` field
+- [ ] Re-ranking improves precision for ambiguous queries ("AI", "ML", acronyms)
+- [ ] Metadata filtering works (section, company, role filters)
+- [ ] Temporal filtering works (since/until timestamps)
+- [ ] Engine selection works (HYBRID, VECTOR, LEXICAL modes)
+- [ ] Ask mode latency <200ms P95 (including re-ranking)
+- [ ] No regression in Find mode performance (if keeping for fallback)
+- [ ] Integration tests pass (Ask vs Find comparison shows improvement)
+- [ ] Documentation updated and accurate
+
+### Dependencies
+
+- Memvid SDK with Ask API support (built-in re-ranking)
+- Memvid SDK support for metadata and temporal filtering
+- Updated .mv2 file with rich metadata and timestamps
+
+### Estimated Timeline
+
+| Task | Effort | Priority |
+|------|--------|----------|
+| 11.1 Proto Updates | 2h | 🔴 CRITICAL |
+| 11.2 Rust Service (using memvid SDK Ask) | 4h | 🔴 CRITICAL |
+| 11.3 Python Client | 2h | 🔴 CRITICAL |
+| 11.4 Chat Integration | 2h | 🔴 CRITICAL |
+| 11.5 Ingest Updates | 2h | 🟡 HIGH |
+| 11.6 Testing | 4h | 🟡 HIGH |
+| 11.7 A/B Testing | 2h | 🟢 MEDIUM |
+| 11.8 Documentation | 2h | 🟢 MEDIUM |
+| 11.9 Optimization | 4h | 🟢 LOW |
+| 11.10 Custom Cross-Encoder (future) | TBD | 🟢 FUTURE |
+| **Total** | **~24h** | **2-3 days** |
+
+---
+
+## Phase 12: Future Research & Enhancements 🔮
+
+**Status:** Research / Long-term roadmap
+
+### 12.1: Ontology-Based Knowledge Extraction
+
+**Goal:** Move from flat text embeddings to structured knowledge graph extraction.
+
+**Benefits:**
+- Precision queries: "Find someone with 5+ years of Python" (via metadata filtering)
+- Relationship mapping: Link specific projects to exact skills used
+- Prevent context poisoning: Skills from one role don't bleed into another
+- Enable complex queries: "Which companies used distributed systems?"
+
+**Approach:**
+1. Define Pydantic ontology schema (Job, Skill, Project, Achievement entities)
+2. Use LLM-based structured extraction (`instructor` library)
+3. Store ontological entities as Memvid frames with rich metadata
+4. Enable hybrid semantic + structured querying
+
+**Reference:** See consolidated notes from `ONTOLOGY-CONSIDERATIONS.md` research
+
+**Priority:** 🟢 LOW (research item, current Ask mode provides good results)
+
+### 12.2: Advanced Memvid Features
+
+**Adaptive Retrieval:**
+- Implement `AdaptiveConfig` for dynamic retrieval strategies
+- Auto-tune retrieval_k based on query complexity
+
+**Pagination:**
+- Use `cursor` parameter for large result sets
+- Implement infinite scroll for evidence display
+
+**Time-Travel Queries:**
+- Use `as_of_frame` and `as_of_ts` for historical views
+- Show candidate evolution over time
+
+**Priority:** 🟢 LOW (API exposed, implementation deferred)
+
+### 12.3: Custom Cross-Encoder Models
+
+**Goal:** Fine-tune cross-encoder for resume-specific re-ranking.
+
+**Approach:**
+- Collect resume Q&A pairs as training data
+- Fine-tune `cross-encoder/ms-marco-MiniLM-L-6-v2` on domain data
+- Replace memvid's built-in cross-encoder with custom model
+
+**Current:** Using memvid SDK's built-in cross-encoder (general-purpose)
+
+**Priority:** 🟢 FUTURE (requires significant ML engineering effort)
+
+---
+
 ## Success Criteria
 
 - [ ] All three services running in containers

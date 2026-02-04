@@ -8,10 +8,11 @@ use crate::generated::memvid::v1::{
     health_check_response::Status as HealthStatus,
     health_server::Health,
     memvid_service_server::MemvidService,
-    GetStateRequest, GetStateResponse, HealthCheckRequest, HealthCheckResponse, SearchHit,
-    SearchRequest, SearchResponse,
+    AskMode as ProtoAskMode, AskRequest, AskResponse, AskStats, GetStateRequest,
+    GetStateResponse, HealthCheckRequest, HealthCheckResponse, SearchHit, SearchRequest,
+    SearchResponse,
 };
-use crate::memvid::Searcher;
+use crate::memvid::{AskMode as SearcherAskMode, AskRequest as SearcherAskRequest, Searcher};
 use crate::metrics;
 
 /// gRPC implementation of the MemvidService.
@@ -79,6 +80,97 @@ impl MemvidService for MemvidGrpcService {
             hits,
             total_hits: result.total_hits,
             took_ms: result.took_ms,
+        };
+
+        Ok(Response::new(response))
+    }
+
+    #[instrument(skip(self, request), fields(question))]
+    async fn ask(
+        &self,
+        request: Request<AskRequest>,
+    ) -> Result<Response<AskResponse>, Status> {
+        let req = request.into_inner();
+
+        // Record the question in span
+        tracing::Span::current().record("question", &req.question);
+
+        info!(
+            question = %req.question,
+            mode = ?req.mode,
+            top_k = req.top_k,
+            "Processing ask request"
+        );
+
+        // Apply defaults
+        let top_k = if req.top_k == 0 { 5 } else { req.top_k };
+        let snippet_chars = if req.snippet_chars == 0 {
+            200
+        } else {
+            req.snippet_chars
+        };
+
+        // Map proto AskMode to searcher AskMode
+        let mode = match ProtoAskMode::try_from(req.mode) {
+            Ok(ProtoAskMode::Sem) => SearcherAskMode::Sem,
+            Ok(ProtoAskMode::Lex) => SearcherAskMode::Lex,
+            _ => SearcherAskMode::Hybrid, // Default to Hybrid
+        };
+
+        // Build searcher request
+        let ask_request = SearcherAskRequest {
+            question: req.question.clone(),
+            use_llm: req.use_llm,
+            top_k,
+            filters: req.filters,
+            start: req.start,
+            end: req.end,
+            snippet_chars,
+            mode,
+            uri: if req.uri.is_empty() {
+                None
+            } else {
+                Some(req.uri)
+            },
+            cursor: if req.cursor.is_empty() {
+                None
+            } else {
+                Some(req.cursor)
+            },
+            as_of_frame: req.as_of_frame,
+            as_of_ts: req.as_of_ts,
+            adaptive: req.adaptive,
+        };
+
+        // Perform ask operation
+        let result = self
+            .searcher
+            .ask(ask_request)
+            .await
+            .map_err(|e| Status::from(e))?;
+
+        // Convert to gRPC response
+        let evidence: Vec<SearchHit> = result
+            .evidence
+            .into_iter()
+            .map(|e| SearchHit {
+                title: e.title,
+                score: e.score,
+                snippet: e.snippet,
+                tags: e.tags,
+            })
+            .collect();
+
+        let response = AskResponse {
+            answer: result.answer,
+            evidence,
+            stats: Some(AskStats {
+                candidates_retrieved: result.stats.candidates_retrieved,
+                results_returned: result.stats.results_returned,
+                retrieval_ms: result.stats.retrieval_ms,
+                reranking_ms: result.stats.reranking_ms,
+                used_fallback: result.stats.used_fallback,
+            }),
         };
 
         Ok(Response::new(response))

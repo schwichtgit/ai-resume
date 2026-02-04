@@ -18,6 +18,7 @@ Run with: uv run python ingest.py [--output PATH]
 import argparse
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 
 import memvid_sdk
@@ -25,9 +26,12 @@ from memvid_sdk.embeddings import HuggingFaceEmbeddings
 
 
 # Embedding model configuration
-# all-mpnet-base-v2 is recommended for resume/job-focused semantic search (768 dimensions)
-# See: https://www.sbert.net/docs/pretrained_models.html
-EMBEDDING_MODEL = "all-mpnet-base-v2"
+# BAAI/bge-small-en-v1.5 is optimized for asymmetric retrieval (short query → long document)
+# - Trained with hard negative mining (distinguishes "AI" from "Adobe Illustrator")
+# - 3x smaller (130MB vs 420MB), 2x faster (384 dims vs 768 dims)
+# - Higher MTEB scores than all-mpnet-base-v2 for retrieval tasks
+# See: https://huggingface.co/BAAI/bge-small-en-v1.5
+EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
 
 # Project paths
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -36,6 +40,11 @@ RESUME_PATH = DATA_DIR / "master_resume.md"
 EXAMPLE_PATH = DATA_DIR / "example_resume.md"
 OUTPUT_DIR = DATA_DIR / ".memvid"
 DEFAULT_OUTPUT = OUTPUT_DIR / "resume.mv2"
+
+
+def get_current_timestamp() -> int:
+    """Get current Unix timestamp for frame metadata."""
+    return int(datetime.now().timestamp())
 
 
 def parse_frontmatter(content: str) -> tuple[dict, str]:
@@ -520,6 +529,7 @@ def ingest_memory(
     input_path: Path = RESUME_PATH,
     output_path: Path = DEFAULT_OUTPUT,
     verbose: bool = True,
+    debug: bool = False,
     embedding_model: str = EMBEDDING_MODEL,
 ) -> dict:
     """
@@ -603,6 +613,10 @@ def ingest_memory(
             "label": "AI System Prompt",
             "text": system_prompt,
             "tags": ["system-prompt", "ai-instructions"],
+            "metadata": {
+                "section": "system",
+            },
+            "timestamp": get_current_timestamp(),
         })
         if verbose:
             print(f"  Prepared: AI System Prompt")
@@ -620,14 +634,27 @@ def ingest_memory(
                 chunk_tags = extract_tags_from_content(chunk["content"])
                 tags = list(set(global_tags + chunk_tags + ["experience"]))
 
+                # Extract keywords for metadata
+                keywords = extract_keywords_from_content(chunk["content"])
+
                 documents.append({
                     "title": f"Experience: {chunk['title']}",
                     "label": f"Experience: {chunk['title']}",
                     "text": chunk["content"],
                     "tags": tags,
+                    "metadata": {
+                        "section": "experience",
+                        "company": chunk['title'],
+                        "keywords": ",".join(keywords[:10]) if keywords else "",  # Top 10 keywords
+                    },
+                    "timestamp": get_current_timestamp(),  # Current timestamp (resume doesn't have time-series data)
                 })
                 if verbose:
                     print(f"  Prepared: Experience: {chunk['title']}")
+                    if debug:
+                        print(f"    Tags: {tags}")
+                        print(f"    Metadata: section=experience, company={chunk['title']}")
+                        print(f"    Text: {chunk['content'][:200]}..." if len(chunk['content']) > 200 else f"    Text: {chunk['content']}")
 
         elif title == "Frequently Asked Questions":
             # Chunk by individual FAQ entry for optimal retrieval
@@ -643,9 +670,19 @@ def ingest_memory(
                     "label": f"FAQ: {chunk['title']}",
                     "text": chunk["content"],
                     "tags": tags,
+                    "metadata": {
+                        "section": "faq",
+                        "keywords": ",".join(keywords[:10]) if keywords else "",
+                    },
+                    "timestamp": get_current_timestamp(),
                 })
                 if verbose:
                     print(f"  Prepared: FAQ: {chunk['title']}")
+                    if debug:
+                        print(f"    Tags: {tags}")
+                        print(f"    Keywords: {keywords}")
+                        print(f"    Metadata: section=faq")
+                        print(f"    Text: {chunk['content'][:200]}..." if len(chunk['content']) > 200 else f"    Text: {chunk['content']}")
 
         elif title == "Documented Failures & Lessons Learned":
             # Chunk by individual failure
@@ -658,6 +695,10 @@ def ingest_memory(
                     "label": chunk["title"],
                     "text": chunk["content"],
                     "tags": tags,
+                    "metadata": {
+                        "section": "failures",
+                    },
+                    "timestamp": get_current_timestamp(),
                 })
                 if verbose:
                     print(f"  Prepared: {chunk['title']}")
@@ -665,14 +706,24 @@ def ingest_memory(
         elif title == "Skills Assessment":
             # Add as single chunk with skill tags
             tags = list(set(global_tags + ["skills", "assessment"]))
+            keywords = extract_keywords_from_content(content)
             documents.append({
                 "title": "Skills Assessment",
                 "label": "Skills Assessment",
                 "text": content,
                 "tags": tags,
+                "metadata": {
+                    "section": "skills",
+                    "keywords": ",".join(keywords[:15]) if keywords else "",  # More keywords for skills
+                },
+                "timestamp": get_current_timestamp(),
             })
             if verbose:
                 print(f"  Prepared: Skills Assessment")
+                if debug:
+                    print(f"    Tags: {tags}")
+                    print(f"    Metadata: section=skills")
+                    print(f"    Text: {content[:200]}..." if len(content) > 200 else f"    Text: {content}")
 
         elif title == "Fit Assessment Guidance":
             # Add as single chunk for fit matching
@@ -682,9 +733,17 @@ def ingest_memory(
                 "label": "Fit Assessment Guidance",
                 "text": content,
                 "tags": tags,
+                "metadata": {
+                    "section": "fit-assessment",
+                },
+                "timestamp": get_current_timestamp(),
             })
             if verbose:
                 print(f"  Prepared: Fit Assessment Guidance")
+                if debug:
+                    print(f"    Tags: {tags}")
+                    print(f"    Metadata: section=fit-assessment")
+                    print(f"    Text: {content[:200]}..." if len(content) > 200 else f"    Text: {content}")
 
         elif title == "Leadership & Management":
             tags = list(set(global_tags + ["leadership", "management", "soft-skills"]))
@@ -693,9 +752,17 @@ def ingest_memory(
                 "label": "Leadership & Management",
                 "text": content,
                 "tags": tags,
+                "metadata": {
+                    "section": "leadership",
+                },
+                "timestamp": get_current_timestamp(),
             })
             if verbose:
                 print(f"  Prepared: Leadership & Management")
+                if debug:
+                    print(f"    Tags: {tags}")
+                    print(f"    Metadata: section=leadership")
+                    print(f"    Text: {content[:200]}..." if len(content) > 200 else f"    Text: {content}")
 
         elif title == "Summary":
             tags = list(set(global_tags + ["summary", "overview"]))
@@ -704,9 +771,17 @@ def ingest_memory(
                 "label": "Professional Summary",
                 "text": content,
                 "tags": tags,
+                "metadata": {
+                    "section": "summary",
+                },
+                "timestamp": get_current_timestamp(),
             })
             if verbose:
                 print(f"  Prepared: Professional Summary")
+                if debug:
+                    print(f"    Tags: {tags}")
+                    print(f"    Metadata: section=summary")
+                    print(f"    Text: {content[:200]}..." if len(content) > 200 else f"    Text: {content}")
 
         elif title not in ["Contact & Links", "Metadata for Memvid Chunking"]:
             # Add other sections as-is
@@ -716,9 +791,17 @@ def ingest_memory(
                 "label": title,
                 "text": content,
                 "tags": tags,
+                "metadata": {
+                    "section": title.lower().replace(" ", "-").replace("&", "and"),
+                },
+                "timestamp": get_current_timestamp(),
             })
             if verbose:
                 print(f"  Prepared: {title}")
+                if debug:
+                    print(f"    Tags: {tags}")
+                    print(f"    Metadata: section={title}")
+                    print(f"    Text: {content[:200]}..." if len(content) > 200 else f"    Text: {content}")
 
     # Store profile as a memory card using add_memory_cards() for O(1) retrieval
     # This avoids text truncation issues in search results
@@ -928,8 +1011,17 @@ def main():
         action="store_true",
         help="Suppress verbose output",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Show detailed content being indexed (implies verbose)",
+    )
 
     args = parser.parse_args()
+
+    # Debug mode implies verbose
+    if args.debug:
+        args.quiet = False
 
     # Check input file exists
     if not check_input_file(args.input, verbose=not args.quiet):
@@ -940,6 +1032,7 @@ def main():
         input_path=args.input,
         output_path=args.output,
         verbose=not args.quiet,
+        debug=args.debug,
     )
 
     # Verify if requested
