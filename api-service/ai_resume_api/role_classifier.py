@@ -1,8 +1,8 @@
 """Classify job descriptions by career domain and role level.
 
 Used to select appropriate assessor personas for fit assessment.
-Currently supports the 'technology' domain. Add new domains by
-extending CAREER_DOMAINS.
+Supports multiple career domains (technology, culinary, finance, etc.).
+Add new domains by extending CAREER_DOMAINS.
 """
 
 import re
@@ -18,8 +18,6 @@ logger = structlog.get_logger(__name__)
 
 CAREER_DOMAINS = {
     "technology": {
-        # Keywords that signal this JD belongs to the technology domain.
-        # Matched case-insensitively against the full JD text.
         "keywords": [
             "software", "engineer", "infrastructure", "platform",
             "cloud", "distributed systems", "AI", "ML", "machine learning",
@@ -27,8 +25,6 @@ CAREER_DOMAINS = {
             "API", "microservices", "kubernetes", "security", "cyber",
             "architecture", "scalable", "deployment", "CI/CD",
         ],
-        # Role levels ordered from most senior to least senior.
-        # First match wins, so more specific patterns come first.
         "levels": {
             "c-suite": {
                 "patterns": [
@@ -170,9 +166,226 @@ CAREER_DOMAINS = {
             },
         },
     },
-    # Future domains can be added here:
-    # "culinary": { "keywords": [...], "levels": { ... } },
-    # "finance": { "keywords": [...], "levels": { ... } },
+    "culinary": {
+        "keywords": [
+            "chef", "culinary", "kitchen", "menu", "fine dining", "gastronomy",
+            "catering", "michelin", "food safety", "beverage", "hospitality",
+            "pastry", "sous chef", "back of house", "BOH", "sanitation",
+        ],
+        "levels": {
+            "c-suite": {
+                "patterns": [
+                    r"\bChief\s+Culinary\s+Officer\b",
+                    r"\bCCO\b",
+                    r"\bGroup\s+Executive\s+Chef\b",
+                ],
+                "persona": (
+                    "You are a hospitality executive recruiter. You evaluate "
+                    "candidates on global brand strategy, multi-unit P&L, and "
+                    "culinary innovation at a corporate or international scale."
+                ),
+                "eval_criteria": [
+                    "Multi-unit P&L management",
+                    "Global brand consistency",
+                    "Supply chain oversight",
+                    "Executive leadership",
+                ],
+            },
+            "director": {
+                "patterns": [
+                    r"\bExecutive\s+Chef\b",
+                    r"\bDirector\s+of\s+Culinary\b",
+                    r"\bHead\s+Chef\b",
+                ],
+                "persona": (
+                    "You are a headhunter for elite restaurants. You look for "
+                    "menu engineering, kitchen labor management, and high-volume "
+                    "fine dining excellence."
+                ),
+                "eval_criteria": [
+                    "Menu innovation",
+                    "Kitchen operations",
+                    "Cost control (Labor/COGS)",
+                    "Staff mentoring",
+                ],
+            },
+        },
+    },
+    "finance_trading": {
+        "keywords": [
+            "trader", "quant", "portfolio", "equity", "fixed income", "hedge fund",
+            "arbitrage", "derivatives", "risk management", "alpha", "execution",
+            "algorithmic", "bloomberg", "backtesting", "fintech",
+        ],
+        "levels": {
+            "c-suite": {
+                "patterns": [
+                    r"\bChief\s+Investment\s+Officer\b",
+                    r"\bHead\s+of\s+Trading\b",
+                ],
+                "persona": (
+                    "You are a high-finance executive recruiter. You evaluate "
+                    "candidates on multi-billion dollar AUM strategy, risk appetite, "
+                    "and regulatory compliance."
+                ),
+                "eval_criteria": [
+                    "AUM Growth",
+                    "Risk Framework Ownership",
+                    "Regulatory Relations",
+                    "Capital Allocation",
+                ],
+            },
+            "ic-senior": {
+                "patterns": [
+                    r"\bSenior\s+Quantitative\s+Trader\b",
+                    r"\bPortfolio\s+Manager\b",
+                    r"\bQuant\s+Lead\b",
+                ],
+                "persona": (
+                    "You are a quantitative talent specialist. You focus on "
+                    "alpha generation, mathematical modeling, and consistent "
+                    "P&L performance."
+                ),
+                "eval_criteria": [
+                    "Sharpe Ratio/Performance",
+                    "Algorithm Development",
+                    "Market Microstructure Knowledge",
+                ],
+            },
+        },
+    },
+    "life_sciences": {
+        "keywords": [
+            "drug discovery", "clinical", "biotech", "pharmacology", "R&D",
+            "bioinformatics", "FDA", "regulatory", "molecular", "assay",
+            "toxicology", "genetics", "laboratory", "IND", "GLP",
+        ],
+        "levels": {
+            "director": {
+                "patterns": [
+                    r"\bDirector\s+of\s+Drug\s+Discovery\b",
+                    r"\bHead\s+of\s+R&D\b",
+                    r"\bClinical\s+Director\b",
+                ],
+                "persona": (
+                    "You are a biotech recruiter. You evaluate the ability to "
+                    "move candidates through the pipeline from discovery to "
+                    "Phase I-III trials."
+                ),
+                "eval_criteria": [
+                    "Pipeline Strategy",
+                    "CRO Management",
+                    "Regulatory Filing Success",
+                    "Scientific Leadership",
+                ],
+            },
+            "ic": {
+                "patterns": [
+                    r"\bResearch\s+Scientist\b",
+                    r"\bPharmacologist\b",
+                    r"\bLab\s+Manager\b",
+                ],
+                "persona": (
+                    "You are a scientific recruiter focused on technical "
+                    "methodology, data integrity, and laboratory execution."
+                ),
+                "eval_criteria": [
+                    "Experimental Design",
+                    "Data Analysis",
+                    "Protocol Development",
+                    "Technical Publications",
+                ],
+            },
+        },
+    },
+    "healthcare": {
+        "keywords": [
+            "patient care", "nursing", "clinical operations", "EHR", "HIPAA",
+            "diagnosis", "acute care", "medical board", "telehealth", "physician",
+            "hospital", "outpatient", "oncology", "ICU",
+        ],
+        "levels": {
+            "c-suite": {
+                "patterns": [
+                    r"\bChief\s+Medical\s+Officer\b",
+                    r"\bChief\s+Nursing\s+Officer\b",
+                    r"\bCNO\b",
+                ],
+                "persona": (
+                    "You are a healthcare executive recruiter focusing on "
+                    "clinical governance, patient safety metrics, and hospital "
+                    "system integration."
+                ),
+                "eval_criteria": [
+                    "Clinical Governance",
+                    "Safety/Quality Metrics",
+                    "Healthcare Economics",
+                    "Staff Retention",
+                ],
+            },
+            "manager": {
+                "patterns": [
+                    r"\bNurse\s+Manager\b",
+                    r"\bClinic\s+Manager\b",
+                    r"\bDepartment\s+Head\b",
+                ],
+                "persona": (
+                    "You are a clinical lead recruiter focused on patient flow, "
+                    "staff scheduling, and frontline compliance."
+                ),
+                "eval_criteria": [
+                    "Patient Throughput",
+                    "Unit Budgeting",
+                    "Compliance Auditing",
+                    "Clinical Mentoring",
+                ],
+            },
+        },
+    },
+    "sales_growth": {
+        "keywords": [
+            "revenue", "quota", "SaaS", "account executive", "pipeline",
+            "lead gen", "CRM", "growth", "partnerships", "closing",
+            "B2B", "market share", "ARR", "salesforce",
+        ],
+        "levels": {
+            "vp": {
+                "patterns": [
+                    r"\bVP\s+of\s+Sales\b",
+                    r"\bHead\s+of\s+Revenue\b",
+                ],
+                "persona": (
+                    "You are a growth-focused recruiter. You evaluate candidates "
+                    "on scaling revenue, GTM strategy, and building high-velocity "
+                    "sales machines."
+                ),
+                "eval_criteria": [
+                    "ARR Growth",
+                    "Sales Methodology Implementation",
+                    "Global Expansion",
+                    "Forecasting Accuracy",
+                ],
+            },
+            "ic": {
+                "patterns": [
+                    r"\bAccount\s+Executive\b",
+                    r"\bSales\s+Representative\b",
+                    r"\bSDR\b",
+                    r"\bBDR\b",
+                ],
+                "persona": (
+                    "You are a sales recruiter focused on grit, activity metrics, "
+                    "closing ratios, and relationship management."
+                ),
+                "eval_criteria": [
+                    "Quota Attainment",
+                    "Prospecting Skills",
+                    "Negotiation",
+                    "CRM Hygiene",
+                ],
+            },
+        },
+    },
 }
 
 # Fallback when no domain or level matches
@@ -189,31 +402,106 @@ FALLBACK_CRITERIA = [
     "Domain knowledge",
 ]
 
+# Minimum confidence gap between first and second domain to classify
+# with high confidence. Below this threshold, secondary domain is reported.
+_CONFIDENCE_GAP = 2
+
+
+# ---------------------------------------------------------------------------
+# Pre-compiled keyword patterns (word-boundary matching)
+# ---------------------------------------------------------------------------
+# Built once at import time to avoid recompiling on every request.
+
+def _compile_keyword_patterns(domains: dict) -> dict[str, list[tuple[re.Pattern, str]]]:
+    """Pre-compile word-boundary regex for each domain's keywords."""
+    compiled = {}
+    for domain, config in domains.items():
+        patterns = []
+        for kw in config["keywords"]:
+            # Use word boundaries to prevent substring false positives.
+            # re.IGNORECASE handles case-insensitive matching.
+            pattern = re.compile(r"\b" + re.escape(kw) + r"\b", re.IGNORECASE)
+            patterns.append((pattern, kw))
+        compiled[domain] = patterns
+    return compiled
+
+
+_KEYWORD_PATTERNS = _compile_keyword_patterns(CAREER_DOMAINS)
+
 
 # ---------------------------------------------------------------------------
 # Classification Functions
 # ---------------------------------------------------------------------------
 
-def classify_domain(job_description: str) -> str | None:
-    """Identify the career domain from JD content using keyword frequency.
+def _score_domain(jd_text: str, domain: str) -> int:
+    """Count keyword matches for a domain using word-boundary regex."""
+    return sum(1 for pattern, _ in _KEYWORD_PATTERNS[domain] if pattern.search(jd_text))
 
-    Returns the domain key (e.g., "technology") or None if no domain
-    matches with sufficient confidence.
+
+def classify_domain(job_description: str) -> dict:
+    """Identify the career domain(s) from JD content using keyword frequency.
+
+    Uses word-boundary matching to prevent substring false positives
+    (e.g., "AI" no longer matches "catering").
+
+    Returns:
+        {
+            "primary": "technology" | None,
+            "secondary": "finance_trading" | None,
+            "primary_score": 8,
+            "secondary_score": 3,
+            "confident": True,   # primary leads by >= _CONFIDENCE_GAP
+        }
     """
-    jd_lower = job_description.lower()
-    best_domain = None
-    best_score = 0
+    scores = {}
+    for domain in CAREER_DOMAINS:
+        score = _score_domain(job_description, domain)
+        if score > 0:
+            scores[domain] = score
 
-    for domain, config in CAREER_DOMAINS.items():
-        score = sum(1 for kw in config["keywords"] if kw.lower() in jd_lower)
-        if score > best_score:
-            best_score = score
-            best_domain = domain
+    if not scores:
+        return {
+            "primary": None,
+            "secondary": None,
+            "primary_score": 0,
+            "secondary_score": 0,
+            "confident": False,
+        }
 
-    # Require at least 3 keyword matches to avoid false classification
-    if best_score >= 3:
-        return best_domain
-    return None
+    # Sort by score descending
+    ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+
+    primary, primary_score = ranked[0]
+    secondary = None
+    secondary_score = 0
+
+    if len(ranked) > 1:
+        secondary, secondary_score = ranked[1]
+
+    # Require at least 3 keyword matches to classify
+    if primary_score < 3:
+        return {
+            "primary": None,
+            "secondary": None,
+            "primary_score": primary_score,
+            "secondary_score": secondary_score,
+            "confident": False,
+        }
+
+    confident = (primary_score - secondary_score) >= _CONFIDENCE_GAP
+
+    # Only report secondary if it also meets minimum threshold
+    if secondary_score < 3:
+        secondary = None
+        confident = True  # No real competition
+
+    return {
+        "primary": primary,
+        "secondary": secondary,
+        "primary_score": primary_score,
+        "secondary_score": secondary_score,
+        "confident": confident,
+    }
 
 
 def classify_role_level(job_description: str, domain: str) -> str | None:
@@ -247,6 +535,8 @@ def classify_job_description(job_description: str) -> dict:
     Returns:
         {
             "domain": "technology" | None,
+            "secondary_domain": "finance_trading" | None,
+            "domain_confident": True,
             "level": "c-suite" | "vp" | ... | None,
             "jd_title": "Chief Technology Officer",
             "persona": "You are a ...",
@@ -254,12 +544,21 @@ def classify_job_description(job_description: str) -> dict:
         }
     """
     jd_title = extract_jd_title(job_description)
-    domain = classify_domain(job_description)
+    domain_result = classify_domain(job_description)
+    domain = domain_result["primary"]
 
     if domain is None:
-        logger.info("role_classification", domain=None, level=None, jd_title=jd_title)
+        logger.info(
+            "role_classification",
+            domain=None,
+            level=None,
+            jd_title=jd_title,
+            primary_score=domain_result["primary_score"],
+        )
         return {
             "domain": None,
+            "secondary_domain": None,
+            "domain_confident": False,
             "level": None,
             "jd_title": jd_title,
             "persona": FALLBACK_PERSONA,
@@ -269,9 +568,18 @@ def classify_job_description(job_description: str) -> dict:
     level = classify_role_level(job_description, domain)
 
     if level is None:
-        logger.info("role_classification", domain=domain, level=None, jd_title=jd_title)
+        logger.info(
+            "role_classification",
+            domain=domain,
+            secondary_domain=domain_result["secondary"],
+            domain_confident=domain_result["confident"],
+            level=None,
+            jd_title=jd_title,
+        )
         return {
             "domain": domain,
+            "secondary_domain": domain_result["secondary"],
+            "domain_confident": domain_result["confident"],
             "level": None,
             "jd_title": jd_title,
             "persona": FALLBACK_PERSONA,
@@ -283,12 +591,18 @@ def classify_job_description(job_description: str) -> dict:
     logger.info(
         "role_classification",
         domain=domain,
+        secondary_domain=domain_result["secondary"],
+        domain_confident=domain_result["confident"],
         level=level,
         jd_title=jd_title,
+        primary_score=domain_result["primary_score"],
+        secondary_score=domain_result["secondary_score"],
     )
 
     return {
         "domain": domain,
+        "secondary_domain": domain_result["secondary"],
+        "domain_confident": domain_result["confident"],
         "level": level,
         "jd_title": jd_title,
         "persona": level_config["persona"],

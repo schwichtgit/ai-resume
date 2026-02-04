@@ -709,9 +709,26 @@ async def assess_fit(request: Request, assess_request: AssessFitRequest) -> Asse
     role_info = classify_job_description(assess_request.job_description)
     eval_criteria_text = "\n".join(f"- {c}" for c in role_info["eval_criteria"])
 
+    # Build domain context for the LLM prompt
+    domain_context = ""
+    if role_info["domain"] and role_info["secondary_domain"]:
+        domain_context = (
+            f"\nDOMAIN CLASSIFICATION NOTE: This JD was classified as primarily "
+            f"'{role_info['domain']}' with secondary signals from "
+            f"'{role_info['secondary_domain']}'. "
+        )
+        if not role_info["domain_confident"]:
+            domain_context += (
+                "The classification is ambiguous — the JD straddles both domains. "
+                "Consider whether the role is genuinely cross-domain "
+                "(e.g., a tech role at a healthcare company)."
+            )
+
     logger.info(
         "Fit assessment role classification",
         domain=role_info["domain"],
+        secondary_domain=role_info["secondary_domain"],
+        domain_confident=role_info["domain_confident"],
         level=role_info["level"],
         jd_title=role_info["jd_title"],
     )
@@ -724,7 +741,7 @@ JOB DESCRIPTION:
 
 CANDIDATE CONTEXT (from resume):
 {context}
-
+{domain_context}
 INSTRUCTIONS:
 
 Step 1: DOMAIN CHECK (critical — do this first).
