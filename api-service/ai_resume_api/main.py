@@ -682,7 +682,7 @@ async def assess_fit(request: Request, assess_request: AssessFitRequest) -> Asse
         logger.info(
             "Memvid ask completed for fit assessment",
             chunks_retrieved=chunks_retrieved,
-            total_candidates=ask_response["stats"]["total_candidates"],
+            total_candidates=ask_response["stats"]["candidates_retrieved"],
         )
 
         if chunks_retrieved == 0:
