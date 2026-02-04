@@ -727,23 +727,31 @@ CANDIDATE CONTEXT (from resume):
 
 INSTRUCTIONS:
 
-Step 1: Identify the JD's role title and seniority level.
-Step 2: Identify the candidate's highest role title from the resume context.
-Step 3: Assess whether there is a seniority or scope gap.
-Step 4: Evaluate the candidate against these criteria specific to this role level:
+Step 1: DOMAIN CHECK (critical — do this first).
+Determine the professional domain of the job description (e.g., technology, culinary, finance, healthcare, legal).
+Determine the professional domain of the candidate from the resume context.
+If these domains are fundamentally different (e.g., a software engineer applying for a chef role, or a nurse applying for a lawyer role), STOP HERE and rate ⭐ — the candidate is in a different profession entirely. Do NOT award stars for transferable soft skills like "leadership" or "team management" when the core professional discipline does not match. Proceed to Step 2 only if the domains are the same or closely related.
+
+Step 2: Identify the JD's role title and seniority level.
+Step 3: Identify the candidate's highest role title from the resume context.
+Step 4: Assess whether there is a seniority or scope gap.
+Step 5: Evaluate the candidate against these criteria specific to this role level:
 {eval_criteria_text}
-Step 5: Count how many of the JD's hard requirements the candidate clearly meets with evidence.
-Step 6: Rate using this rubric:
+Step 6: Count how many of the JD's hard requirements the candidate clearly meets with evidence.
+Step 7: Rate using this rubric:
 
 RATING RUBRIC (follow strictly):
-⭐ = Fundamentally mismatched (different discipline or career stage)
+⭐ = Fundamentally mismatched (different professional domain or career stage)
 ⭐⭐ = Weak fit (<40% of requirements met, or significant seniority/scope gap)
 ⭐⭐⭐ = Partial fit (40-60% met, some gaps addressable with growth)
 ⭐⭐⭐⭐ = Strong fit (60-80% met, minor gaps only)
 ⭐⭐⭐⭐⭐ = Exceptional fit (>80% met, exceeds in key areas)
 
-A seniority gap (e.g., Director→VP, VP→CTO) should reduce the rating by at least one star unless the candidate demonstrates equivalent scope.
-If the JD requires domain experience the candidate lacks entirely (e.g., defense/government), that is a significant gap.
+MANDATORY RULES:
+- Different professional domain (e.g., technology vs culinary) = ⭐ maximum, regardless of leadership parallels.
+- A seniority gap (e.g., Director→VP, VP→CTO) should reduce the rating by at least one star unless the candidate demonstrates equivalent scope.
+- If the JD requires domain experience the candidate lacks entirely (e.g., defense/government), that is a significant gap.
+- The star rating MUST be consistent with the GAPS and RECOMMENDATION sections. If the recommendation says "not recommended," the rating cannot be ⭐⭐⭐⭐ or higher.
 
 Format your response EXACTLY as shown below. Do NOT repeat sections. Do NOT add any text after RECOMMENDATION.
 
