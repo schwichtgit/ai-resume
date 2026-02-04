@@ -1204,7 +1204,43 @@ Ask mode adds a cross-encoder re-ranking layer that:
   - [ ] Auto-detect conceptual queries → use VECTOR engine
   - [ ] Default to HYBRID for general queries
 
-### 11.10: Future Research - Custom Cross-Encoder Models
+### 11.10: Multi-Domain Role Classifier ✅
+
+**Status:** ✅ Complete (February 4, 2026)
+
+**Goal:** Extend role classification from technology-only to multiple career domains with intelligent cross-domain handling.
+
+- [x] Fix substring matching bug:
+  - [x] Replace `kw in jd_lower` with word-boundary regex `\b{keyword}\b`
+  - [x] Pre-compile patterns at module load for performance
+  - [x] Prevents false positives ("AI" matching "catering")
+- [x] Add 5 new career domains:
+  - [x] Culinary (chef, kitchen, fine dining, etc.)
+  - [x] Finance/Trading (quant, portfolio, derivatives, etc.)
+  - [x] Life Sciences (biotech, clinical, R&D, etc.)
+  - [x] Healthcare (patient care, nursing, clinical operations, etc.)
+  - [x] Sales/Growth (revenue, quota, SaaS, pipeline, etc.)
+- [x] Implement primary/secondary domain detection:
+  - [x] Return both primary and secondary domain with confidence scoring
+  - [x] Flag ambiguous classifications when keyword gap < 2
+  - [x] Inject domain context into LLM prompt for cross-domain JDs
+- [x] Update main.py to use domain context:
+  - [x] Build domain classification note for cross-domain roles
+  - [x] Log secondary_domain and domain_confident fields
+- [x] Add comprehensive E2E tests:
+  - [x] 35 tests covering all domains, role levels, edge cases
+  - [x] Real-world JD samples (Executive Chef, Quant Trader, CMO, etc.)
+  - [x] Word-boundary validation tests
+  - [x] Cross-domain scenario tests
+  - [x] 96% code coverage on role_classifier.py
+
+**Results:**
+- Better fit assessments for non-tech roles
+- Prevents 5-star ratings for cross-domain mismatches (culinary vs tech)
+- Handles ambiguous roles (VP Eng at healthcare company)
+- Prevents acronym false positives (AI, SRE, ML, CIO)
+
+### 11.11: Future Research - Custom Cross-Encoder Models
 
 **Status:** Future work (after testing memvid's built-in Ask capabilities)
 
