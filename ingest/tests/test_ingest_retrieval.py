@@ -13,15 +13,17 @@ import os
 import tempfile
 from pathlib import Path
 
+import pytest
 import memvid_sdk
 
 
+@pytest.mark.anyio
 async def test_profile_metadata_retrieval():
     """Test that profile metadata can be retrieved after ingest."""
     print("\n🔍 Test: Profile Metadata Retrieval")
 
     # Use the example resume as input
-    input_file = Path(__file__).parent.parent / "data" / "example_resume.md"
+    input_file = Path(__file__).parent.parent.parent / "data" / "example_resume.md"
 
     # Create temporary output file
     with tempfile.NamedTemporaryFile(suffix=".mv2", delete=False) as tmp:
@@ -132,11 +134,12 @@ async def test_profile_metadata_retrieval():
             print(f"  🧹 Cleaned up: {output_file}")
 
 
+@pytest.mark.anyio
 async def test_experience_retrieval():
     """Test that experience entries can be retrieved."""
     print("\n🔍 Test: Experience Entry Retrieval")
 
-    input_file = Path(__file__).parent.parent / "data" / "example_resume.md"
+    input_file = Path(__file__).parent.parent.parent / "data" / "example_resume.md"
 
     with tempfile.NamedTemporaryFile(suffix=".mv2", delete=False) as tmp:
         output_file = tmp.name
@@ -185,11 +188,12 @@ async def test_experience_retrieval():
             os.unlink(output_file)
 
 
+@pytest.mark.anyio
 async def test_fit_assessment_examples_retrieval():
     """Test that fit assessment examples can be retrieved."""
     print("\n🔍 Test: Fit Assessment Examples Retrieval")
 
-    input_file = Path(__file__).parent.parent / "data" / "example_resume.md"
+    input_file = Path(__file__).parent.parent.parent / "data" / "example_resume.md"
 
     with tempfile.NamedTemporaryFile(suffix=".mv2", delete=False) as tmp:
         output_file = tmp.name

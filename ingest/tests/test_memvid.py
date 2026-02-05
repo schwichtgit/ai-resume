@@ -107,7 +107,7 @@ def test_open_existing():
     print("\n=== Open Existing Test ===")
 
     # Check for existing resume.mv2 in data/.memvid/
-    project_root = Path(__file__).parent.parent
+    project_root = Path(__file__).parent.parent.parent
     mv2_path = project_root / "data" / ".memvid" / "resume.mv2"
 
     if mv2_path.exists():
