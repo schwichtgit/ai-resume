@@ -1,9 +1,10 @@
 """Tests for OpenRouter LLM client."""
 
+import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.openrouter_client import (
+from ai_resume_api.openrouter_client import (
     LLMMessage,
     LLMResponse,
     OpenRouterClient,
@@ -20,7 +21,7 @@ class TestOpenRouterClient:
     def test_init_default_values(self):
         """Test client initialization with defaults."""
         client = OpenRouterClient()
-        assert client._model == "nvidia/nemotron-nano-2407-instruct"
+        assert client._model == "nvidia/nemotron-nano-9b-v2:free"
         assert client._max_tokens == 1024
         assert client._temperature == 0.7
 
@@ -265,7 +266,7 @@ class TestOpenRouterUsage:
 
     def test_usage_defaults(self):
         """Test usage default values."""
-        from app.openrouter_client import OpenRouterUsage
+        from ai_resume_api.openrouter_client import OpenRouterUsage
 
         usage = OpenRouterUsage()
         assert usage.prompt_tokens == 0
@@ -274,7 +275,7 @@ class TestOpenRouterUsage:
 
     def test_usage_with_values(self):
         """Test usage with custom values."""
-        from app.openrouter_client import OpenRouterUsage
+        from ai_resume_api.openrouter_client import OpenRouterUsage
 
         usage = OpenRouterUsage(prompt_tokens=100, completion_tokens=50, total_tokens=150)
         assert usage.prompt_tokens == 100
@@ -288,16 +289,16 @@ class TestGlobalClientFunctions:
     @pytest.mark.asyncio
     async def test_get_openrouter_client_creates_singleton(self):
         """Test that get_openrouter_client creates a singleton."""
-        from app.openrouter_client import (
+        from ai_resume_api.openrouter_client import (
             _openrouter_client,
             close_openrouter_client,
             get_openrouter_client,
         )
 
         # Reset global state
-        import app.openrouter_client
+        import ai_resume_api.openrouter_client
 
-        app.openrouter_client._openrouter_client = None
+        ai_resume_api.openrouter_client._openrouter_client = None
 
         client1 = await get_openrouter_client()
         client2 = await get_openrouter_client()
@@ -305,16 +306,361 @@ class TestGlobalClientFunctions:
 
         # Clean up
         await close_openrouter_client()
-        assert app.openrouter_client._openrouter_client is None
+        assert ai_resume_api.openrouter_client._openrouter_client is None
 
     @pytest.mark.asyncio
     async def test_close_openrouter_client_when_none(self):
         """Test closing when client is None."""
-        import app.openrouter_client
+        import ai_resume_api.openrouter_client
 
-        app.openrouter_client._openrouter_client = None
+        ai_resume_api.openrouter_client._openrouter_client = None
 
         # Should not raise
-        from app.openrouter_client import close_openrouter_client
+        from ai_resume_api.openrouter_client import close_openrouter_client
 
         await close_openrouter_client()
+
+
+class TestOpenRouterMockModes:
+    """Tests for mock mode functionality."""
+
+    @pytest.mark.asyncio
+    async def test_chat_with_mock_enabled(self, mock_settings):
+        """Test chat() with mock mode enabled."""
+        # Configure mock mode before creating client
+        settings = mock_settings(mock_openrouter="true", openrouter_api_key="")
+        # Create client after settings are configured
+        client = OpenRouterClient(api_key="")
+
+        response = await client.chat(
+            system_prompt="Be helpful",
+            context="Resume content",
+            user_message="What are your skills?",
+        )
+
+        assert response is not None
+        assert isinstance(response, LLMResponse)
+        assert "mock" in response.content.lower()
+        assert response.tokens_used > 0
+        assert response.finish_reason == "stop"
+
+    @pytest.mark.asyncio
+    async def test_chat_with_mock_disabled_no_api_key(self, mock_settings):
+        """Test chat() raises error when mock disabled but no API key."""
+        mock_settings(mock_openrouter="false", openrouter_api_key="")
+        client = OpenRouterClient(api_key="")
+
+        with pytest.raises(OpenRouterAuthError) as exc_info:
+            await client.chat(
+                system_prompt="Be helpful",
+                context="Resume content",
+                user_message="What are your skills?",
+            )
+        assert "MOCK_OPENROUTER=false" in str(exc_info.value)
+        assert "OPENROUTER_API_KEY" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_chat_stream_with_mock_enabled(self, mock_settings):
+        """Test chat_stream() with mock mode enabled."""
+        # Configure mock mode before creating client
+        settings = mock_settings(mock_openrouter="true", openrouter_api_key="")
+        # Create client after settings are configured
+        client = OpenRouterClient(api_key="")
+
+        chunks = []
+        async for chunk in client.chat_stream(
+            system_prompt="Be helpful",
+            context="Resume content",
+            user_message="Tell me about yourself",
+        ):
+            chunks.append(chunk)
+
+        assert len(chunks) > 0
+        # Should have content chunks
+        content_chunks = [c for c in chunks if c.content]
+        assert len(content_chunks) > 0
+        # Last chunk should have finish_reason
+        assert chunks[-1].finish_reason == "stop"
+        assert chunks[-1].tokens_used > 0
+
+    @pytest.mark.asyncio
+    async def test_chat_stream_with_mock_disabled_no_api_key(self, mock_settings):
+        """Test chat_stream() raises error when mock disabled but no API key."""
+        mock_settings(mock_openrouter="false", openrouter_api_key="")
+        client = OpenRouterClient(api_key="")
+
+        with pytest.raises(OpenRouterAuthError) as exc_info:
+            async for _ in client.chat_stream(
+                system_prompt="Be helpful",
+                context="Resume content",
+                user_message="What are your skills?",
+            ):
+                pass
+        assert "MOCK_OPENROUTER=false" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_mock_chat_response_format(self):
+        """Test _mock_chat() generates proper responses."""
+        client = OpenRouterClient(api_key="sk-test")
+
+        response = await client._mock_chat("What are your skills?")
+
+        assert isinstance(response, LLMResponse)
+        assert "mock" in response.content.lower()
+        assert "What are your skills?" in response.content or len(response.content) > 10
+        assert response.tokens_used == 50
+        assert response.finish_reason == "stop"
+
+    @pytest.mark.asyncio
+    async def test_mock_chat_stream_chunks(self):
+        """Test _mock_chat_stream() generates proper chunks."""
+        client = OpenRouterClient(api_key="sk-test")
+
+        chunks = []
+        async for chunk in client._mock_chat_stream("Tell me about yourself"):
+            chunks.append(chunk)
+
+        # Should have multiple chunks
+        assert len(chunks) > 5
+        # All but last should have content
+        for chunk in chunks[:-1]:
+            assert len(chunk.content) > 0
+        # Last chunk should have finish_reason and token count
+        assert chunks[-1].finish_reason == "stop"
+        assert chunks[-1].tokens_used > 0
+
+
+class TestOpenRouterStreamingSuccess:
+    """Tests for successful streaming scenarios."""
+
+    @pytest.mark.asyncio
+    async def test_chat_stream_success_with_sse_parsing(self):
+        """Test chat_stream() success with SSE parsing."""
+        client = OpenRouterClient(api_key="sk-test-key")
+
+        # Mock successful streaming response
+        mock_lines = [
+            "data: " + json.dumps({
+                "choices": [{"delta": {"content": "Hello"}, "finish_reason": None}],
+            }),
+            "data: " + json.dumps({
+                "choices": [{"delta": {"content": " world"}, "finish_reason": None}],
+            }),
+            "data: " + json.dumps({
+                "choices": [{"delta": {}, "finish_reason": "stop"}],
+                "usage": {"total_tokens": 42}
+            }),
+        ]
+
+        async def mock_aiter_lines():
+            for line in mock_lines:
+                yield line
+
+        mock_response = MagicMock()
+        mock_response.aiter_lines = mock_aiter_lines
+        mock_response.raise_for_status = MagicMock()
+
+        # Create proper async context manager
+        class MockStreamContext:
+            async def __aenter__(self):
+                return mock_response
+            async def __aexit__(self, *args):
+                return None
+
+        mock_client = AsyncMock()
+        mock_client.stream = MagicMock(return_value=MockStreamContext())
+
+        client._client = mock_client
+
+        chunks = []
+        async for chunk in client.chat_stream(
+            system_prompt="Be helpful",
+            context="Context",
+            user_message="Hi",
+        ):
+            chunks.append(chunk)
+
+        assert len(chunks) == 3
+        assert chunks[0].content == "Hello"
+        assert chunks[1].content == " world"
+        assert chunks[2].finish_reason == "stop"
+        assert chunks[2].tokens_used == 42
+
+    @pytest.mark.asyncio
+    async def test_chat_stream_handles_done_event(self):
+        """Test chat_stream() handles [DONE] event."""
+        client = OpenRouterClient(api_key="sk-test-key")
+
+        mock_lines = [
+            "data: " + json.dumps({
+                "choices": [{"delta": {"content": "Test"}, "finish_reason": None}],
+            }),
+            "data: [DONE]",
+        ]
+
+        async def mock_aiter_lines():
+            for line in mock_lines:
+                yield line
+
+        mock_response = MagicMock()
+        mock_response.aiter_lines = mock_aiter_lines
+        mock_response.raise_for_status = MagicMock()
+
+        # Create proper async context manager
+        class MockStreamContext:
+            async def __aenter__(self):
+                return mock_response
+            async def __aexit__(self, *args):
+                return None
+
+        mock_client = AsyncMock()
+        mock_client.stream = MagicMock(return_value=MockStreamContext())
+
+        client._client = mock_client
+
+        chunks = []
+        async for chunk in client.chat_stream(
+            system_prompt="Be helpful",
+            context="Context",
+            user_message="Hi",
+        ):
+            chunks.append(chunk)
+
+        # Should get content chunk and DONE chunk
+        assert len(chunks) == 2
+        assert chunks[0].content == "Test"
+        assert chunks[1].finish_reason == "stop"
+
+    @pytest.mark.asyncio
+    async def test_chat_stream_handles_malformed_json(self):
+        """Test chat_stream() handles malformed JSON chunks."""
+        client = OpenRouterClient(api_key="sk-test-key")
+
+        mock_lines = [
+            "data: " + json.dumps({
+                "choices": [{"delta": {"content": "Valid"}, "finish_reason": None}],
+            }),
+            "data: {invalid json}",  # Malformed JSON
+            "data: " + json.dumps({
+                "choices": [{"delta": {"content": " content"}, "finish_reason": None}],
+            }),
+            "data: [DONE]",
+        ]
+
+        async def mock_aiter_lines():
+            for line in mock_lines:
+                yield line
+
+        mock_response = MagicMock()
+        mock_response.aiter_lines = mock_aiter_lines
+        mock_response.raise_for_status = MagicMock()
+
+        # Create proper async context manager
+        class MockStreamContext:
+            async def __aenter__(self):
+                return mock_response
+            async def __aexit__(self, *args):
+                return None
+
+        mock_client = AsyncMock()
+        mock_client.stream = MagicMock(return_value=MockStreamContext())
+
+        client._client = mock_client
+
+        chunks = []
+        async for chunk in client.chat_stream(
+            system_prompt="Be helpful",
+            context="Context",
+            user_message="Hi",
+        ):
+            chunks.append(chunk)
+
+        # Should skip malformed chunk
+        assert len(chunks) == 3
+        assert chunks[0].content == "Valid"
+        assert chunks[1].content == " content"
+
+    @pytest.mark.asyncio
+    async def test_chat_stream_handles_http_errors(self):
+        """Test chat_stream() handles HTTP errors."""
+        import httpx
+
+        client = OpenRouterClient(api_key="sk-test-key")
+
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.json.return_value = {"error": {"message": "Server error"}}
+
+        mock_http_error = httpx.HTTPStatusError(
+            message="500 Internal Server Error",
+            request=MagicMock(),
+            response=mock_response,
+        )
+
+        # Create async context manager that raises on enter
+        class MockStreamContext:
+            async def __aenter__(self):
+                raise mock_http_error
+            async def __aexit__(self, *args):
+                return None
+
+        mock_client = AsyncMock()
+        mock_client.stream = MagicMock(return_value=MockStreamContext())
+
+        client._client = mock_client
+
+        with pytest.raises(OpenRouterError) as exc_info:
+            async for _ in client.chat_stream(
+                system_prompt="Be helpful",
+                context="Context",
+                user_message="Hi",
+            ):
+                pass
+        assert "API error (500)" in str(exc_info.value)
+
+
+class TestOpenRouterChatSuccess:
+    """Tests for successful non-streaming chat."""
+
+    @pytest.mark.asyncio
+    async def test_chat_success_response(self):
+        """Test chat() with successful response."""
+        client = OpenRouterClient(api_key="sk-test-key")
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "choices": [{
+                "message": {"content": "This is the response"},
+                "finish_reason": "stop"
+            }],
+            "usage": {
+                "prompt_tokens": 10,
+                "completion_tokens": 20,
+                "total_tokens": 30
+            }
+        }
+        mock_response.raise_for_status = MagicMock()
+
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        client._client = mock_client
+
+        response = await client.chat(
+            system_prompt="Be helpful",
+            context="Resume data",
+            user_message="What are your skills?",
+        )
+
+        assert response.content == "This is the response"
+        assert response.tokens_used == 30
+        assert response.finish_reason == "stop"
+
+        # Verify request was made correctly
+        mock_client.post.assert_called_once()
+        call_args = mock_client.post.call_args
+        assert call_args[0][0] == "/chat/completions"
+        payload = call_args[1]["json"]
+        assert payload["model"] == "nvidia/nemotron-nano-9b-v2:free"
+        assert payload["stream"] is False

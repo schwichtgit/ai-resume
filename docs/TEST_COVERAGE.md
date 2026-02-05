@@ -1,354 +1,259 @@
-# Test Coverage Assessment
+# API Service Test Coverage
 
-**Date:** January 24, 2026 (Updated after Phase 6.2-6.4)
-**Status:** Post-Phase 4 Data-Driven Architecture + Phase 6 QA
-
----
-
-## Phase 6 Test Coverage Achievements ✅
-
-**Completed:** January 24, 2026
-
-- **26 new tests added** across frontend and backend
-- **Priority 1 critical gaps** fully addressed
-- **Frontend coverage**: 0% → ~60% (critical modules)
-- **Backend coverage**: 49% → 53% (main.py)
-- **All tests passing**: 24 frontend + 6 backend assess-fit tests
-
-**New Test Files:**
-1. `frontend/src/lib/__tests__/api-client.test.ts` - 13 tests
-2. `frontend/src/hooks/__tests__/useProfile.test.ts` - 10 tests
-3. `api-service/tests/test_main.py` - Added TestAssessFitEndpoint class (6 tests)
-
-**Key Finding:** Integration testing gap identified - unit tests with mocks don't catch real-world issues like search query mismatches with actual .mv2 files.
+**Last Updated:** February 5, 2026
+**Status:** 253 tests passing, 88% overall coverage
 
 ---
 
-## Current Test Coverage Summary
+## Overview
 
-### Backend (Python) - **Good Coverage** ✅
-
-| Module | Test File | Coverage | Status |
-|--------|-----------|----------|--------|
-| `config.py` | `test_config.py` | ✅ Good | Settings, env vars, profile loading |
-| `models.py` | `test_models.py` | ✅ Good | Pydantic models, validation |
-| `openrouter_client.py` | `test_openrouter_client.py` | ✅ Good | LLM API calls, streaming |
-| `memvid_client.py` | `test_memvid_client.py` | ✅ Good | gRPC client, search |
-| `session_store.py` | `test_session_store.py` | ✅ Good | Session management, TTL |
-| `main.py` | `test_main.py` | ⚠️ Partial | Endpoints tested, fit assessment missing |
-| Integration | `test_integration.py` | ✅ Good | End-to-end RAG flow |
-
-### Ingest Pipeline - **Good Coverage** ✅
-
-| Component | Test File | Coverage | Status |
-|-----------|-----------|----------|--------|
-| Ingest script | `test_e2e.py` | ✅ Good | Full pipeline, profile export |
-| Memvid SDK | `test_memvid.py` | ✅ Good | SDK functionality |
-
-### Frontend (TypeScript/React) - **Good Coverage** ✅
-
-| Component | Test File | Coverage | Status |
-|-----------|-----------|----------|--------|
-| `useProfile` hook | `useProfile.test.ts` | ✅ Good | Profile loading, meta tags, errors (10 tests) |
-| `api-client.ts` | `api-client.test.ts` | ✅ Good | All API functions, camelCase transform (13 tests) |
-| `FitAssessment` | None | ❌ Missing | Hybrid fit assessment component |
-| `Experience` | None | ❌ Missing | Experience rendering |
-| `AIChat` | None | ❌ Missing | Chat functionality |
-| Example test | `example.test.ts` | ✅ Exists | Placeholder only |
-
-### Scripts - **Minimal Coverage** ⚠️
-
-| Script | Test | Coverage | Status |
-|--------|------|----------|--------|
-| `test_portability.py` | Self | ⚠️ Partial | Validation script (needs execution test) |
+Comprehensive test suite for the FastAPI backend covering API endpoints, LLM integration, gRPC client, role classification, and business logic. Tests execute in ~5 seconds using pytest with async support.
 
 ---
 
-## Critical Gaps Requiring Tests
+## Test Files
 
-### Priority 1: CRITICAL ❗ - ✅ COMPLETED
+| Test File                     | Focus Area                                   | Coverage |
+| ----------------------------- | -------------------------------------------- | -------- |
+| `test_config.py`              | Configuration, settings, profile loading     | 99%      |
+| `test_guardrails.py`          | Input validation, content safety             | 100%     |
+| `test_integration.py`         | End-to-end RAG flows                         | 46%\*    |
+| `test_main.py`                | FastAPI endpoints, streaming, error handling | 99%      |
+| `test_memvid_client.py`       | gRPC client (REST fallback mode)             | 100%     |
+| `test_memvid_client_grpc.py`  | gRPC client (native mode)                    | 99%      |
+| `test_models.py`              | Pydantic models, validation                  | 100%     |
+| `test_openrouter_client.py`   | OpenRouter LLM API integration               | 99%      |
+| `test_query_transform.py`     | Query rewriting strategies                   | 100%     |
+| `test_role_classifier_e2e.py` | Multi-domain role classification             | 96%      |
+| `test_session_store.py`       | Session management, TTL                      | 100%     |
 
-1. **Frontend API Client** (`api-client.ts`) - ✅ **DONE**
-   - ✅ Error handling tests (13 tests total)
-   - ✅ assessFit() function tests
-   - ✅ All API functions covered
-   - **Impact:** HIGH - Critical for all frontend functionality
-
-2. **useProfile Hook** (`useProfile.ts`) - ✅ **DONE**
-   - ✅ Profile loading tests (10 tests total)
-   - ✅ Error state tests
-   - ✅ Meta tag update tests
-   - **Impact:** HIGH - Used by all components
-
-3. **POST /api/v1/assess-fit Endpoint** - ✅ **DONE**
-   - ✅ Request validation tests (6 tests total)
-   - ✅ LLM response parsing tests
-   - ✅ Error handling covered
-   - **Impact:** MEDIUM - New Phase 4.8 feature
-
-###  Priority 1: NEWLY IDENTIFIED ❗
-
-4. **Integration Testing Gap** - ⚠️ **CRITICAL**
-   - Missing: Real .mv2 file integration tests
-   - Missing: Actual search query validation (found via production testing)
-   - Missing: Profile metadata retrieval with real memvid
-   - **Impact:** HIGH - Unit tests with mocks don't catch query mismatches
-   - **Example:** Profile search query mismatch only found in production
-
-### Priority 2: Important 🟡
-
-4. **FitAssessment Component**
-   - Missing: Tab switching tests
-   - Missing: Custom JD submission tests
-   - Missing: Example rendering tests
-   - **Impact:** MEDIUM - Core feature but isolated
-
-5. **Profile Loading from Memvid** (`config.py`)
-   - Partially covered but missing:
-     - Failure scenarios (memvid down)
-     - JSON parsing errors
-     - Missing fields handling
-   - **Impact:** MEDIUM - Affects all endpoints
-
-6. **Ingest Fit Assessment Examples**
-   - Missing: parse_fit_assessment_examples() tests
-   - Missing: Malformed example handling
-   - **Impact:** MEDIUM - New Phase 4.8 feature
-
-### Priority 3: Nice to Have 🟢
-
-7. **Experience Component**
-   - Missing: Experience card rendering
-   - Missing: Skills grid rendering
-   - **Impact:** LOW - Mostly presentational
-
-8. **SEO Handler** (`seo-handler.lua`)
-   - Missing: Lua endpoint tests
-   - Missing: Bot detection tests
-   - **Impact:** LOW - SEO optimization, not core functionality
+\* Integration tests use real external services, lower coverage expected
 
 ---
 
-## Reasonable Test Coverage Goals
+## Module Coverage
 
-**Philosophy:** Focus on critical paths and data flows, not 100% coverage.
-
-### Backend Goals
-
-- **Target:** 80% line coverage for critical modules
-- **Critical modules:**
-  - `main.py` endpoints (especially /assess-fit)
-  - `config.py` profile loading
-  - `memvid_client.py` gRPC communication
-  - `openrouter_client.py` LLM integration
-
-- **Not critical to test:**
-  - Logging statements
-  - Type annotations
-  - Trivial getters/setters
-  - Third-party library wrappers (unless complex logic)
-
-### Frontend Goals
-
-- **Target:** 60% coverage for hooks and critical components
-- **Critical to test:**
-  - `useProfile` hook (profile loading, error states)
-  - `api-client.ts` (API calls, error handling)
-  - `assessFit()` function (new Phase 4.8 feature)
-
-- **Not critical to test:**
-  - Pure presentational components (buttons, cards)
-  - Styling/layout components
-  - Animation logic
-  - shadcn/ui wrappers
-
-### Integration Goals
-
-- **Target:** Happy path + major error scenarios
-- **Critical scenarios:**
-  - Full RAG flow (question → memvid → LLM → response)
-  - Fit assessment flow (JD → memvid context → LLM → structured output)
-  - Profile loading from memvid (fallback to profile.json)
-
-- **Not critical to test:**
-  - Network flakiness edge cases
-  - Extreme load scenarios
-  - All possible LLM response variations
+| Module                 | Coverage | Notable Gaps                     |
+| ---------------------- | -------- | -------------------------------- |
+| `config.py`            | 99%      | Profile loading edge case        |
+| `guardrails.py`        | 100%     | -                                |
+| `main.py`              | 90%      | Startup/shutdown, error handlers |
+| `memvid_client.py`     | 94%      | Connection error paths           |
+| `models.py`            | 100%     | -                                |
+| `observability.py`     | 100%     | -                                |
+| `openrouter_client.py` | 96%      | Rate limit handling              |
+| `query_transform.py`   | 100%     | -                                |
+| `role_classifier.py`   | 96%      | Regex edge cases                 |
+| `session_store.py`     | 100%     | -                                |
 
 ---
 
-## Recommended Test Additions
+## Test Strategies
 
-### Immediate Additions (This Session)
+### Async Testing
 
-1. **Frontend API Client Tests** (`frontend/src/lib/__tests__/api-client.test.ts`)
-   - Test getProfile() success and error cases
-   - Test assessFit() with valid/invalid input
-   - Test error handling (network errors, 404, 500)
+```python
+@pytest.mark.asyncio
+async def test_chat_endpoint():
+    async with httpx.AsyncClient(app=app) as client:
+        response = await client.post("/api/v1/chat", json=payload)
+```
 
-2. **useProfile Hook Tests** (`frontend/src/hooks/__tests__/useProfile.test.ts`)
-   - Test profile loading and caching
-   - Test loading state
-   - Test error state
-   - Test meta tag updates
+### Mocking
 
-3. **Assess Fit Endpoint Tests** (`api-service/tests/test_assess_fit.py`)
-   - Test request validation
-   - Test memvid context retrieval
-   - Test LLM response parsing
-   - Test error cases (no API key, memvid unavailable)
+**Environment Variables:**
 
-4. **Ingest Fit Examples Tests** (`ingest/test_fit_examples.py`)
-   - Test parse_fit_assessment_examples()
-   - Test malformed examples
-   - Test example inclusion in profile
+- `MOCK_MEMVID_CLIENT=true` - Enables mock mode
+- `RATE_LIMIT_PER_MINUTE=1000` - High limits for testing
 
-### Future Additions (Phase 5)
+**Fixtures in `conftest.py`:**
 
-5. **Component Integration Tests**
-   - FitAssessment component (React Testing Library)
-   - Experience component (data rendering)
+- `reset_caches` - Clears settings/sessions between tests
+- `mock_settings` - Injects test environment variables
 
-6. **E2E Tests**
-   - Full user flow: visit site → ask question → get response
-   - Full fit assessment: paste JD → analyze → view results
+**Strategy:**
 
----
+- Unit tests: Mock external services (OpenRouter, memvid)
+- Integration tests: Use real services when available
 
-## Test Infrastructure
+### Common Patterns
 
-### Backend Testing
+**FastAPI Client:**
 
-**Framework:** pytest
-**Fixtures:** `api-service/tests/conftest.py`
-**Mocking:** pytest-mock, httpx-mock
-**Run:** `cd api-service && pytest`
+```python
+from fastapi.testclient import TestClient
+client = TestClient(app)
+response = client.get("/api/v1/profile")
+```
 
-### Frontend Testing
+**Streaming Responses:**
 
-**Framework:** Vitest + React Testing Library
-**Config:** `frontend/vitest.config.ts`
-**Run:** `cd frontend && npm test`
+```python
+with client.stream("POST", "/api/v1/chat", json=data) as response:
+    for line in response.iter_lines():
+        assert line.startswith("data: ")
+```
 
-### Integration Testing
+**Parametrized Tests:**
 
-**Approach:** Real services (memvid + OpenRouter) with test data
-**Location:** `api-service/tests/test_integration.py`, `ingest/test_e2e.py`
-
----
-
-## Success Metrics
-
-### Coverage Targets
-
-- **Backend Critical Modules:** 80%+ line coverage
-- **Frontend Critical Modules:** 60%+ line coverage
-- **Integration Tests:** All critical paths covered
-
-### Test Quality
-
-- ✅ Tests are fast (<1s per test for unit tests)
-- ✅ Tests are isolated (no shared state)
-- ✅ Tests are deterministic (no flakiness)
-- ✅ Error cases covered (not just happy path)
-- ✅ Mock external dependencies (OpenRouter, in unit tests)
-- ✅ Use real dependencies in integration tests
+```python
+@pytest.mark.parametrize("query,expected", [
+    ("python", ["python"]),
+    ("senior engineer", ["senior", "engineer"]),
+])
+def test_extraction(query, expected):
+    assert extract(query) == expected
+```
 
 ---
 
 ## Running Tests
 
+### Commands
+
 ```bash
-# Backend unit tests
-cd api-service && pytest tests/ -v
+# Run all tests
+pytest
 
-# Backend with coverage
-cd api-service && pytest tests/ --cov=ai_resume_api --cov-report=html
+# With coverage
+pytest --cov=ai_resume_api --cov-report=term-missing
 
-# Frontend tests
-cd frontend && npm test
+# Specific test file
+pytest tests/test_main.py -v
 
-# Frontend with coverage
-cd frontend && npm test -- --coverage
+# Specific test class
+pytest tests/test_main.py::TestChatEndpoint -v
 
-# E2E integration tests (requires services running)
-cd ingest && python test_e2e.py
-cd api-service && pytest tests/test_integration.py -v
+# Specific test
+pytest tests/test_main.py::TestChatEndpoint::test_valid_message -v
 
-# Portability test (requires .mv2 file)
-python scripts/test_portability.py
+# HTML coverage report
+pytest --cov=ai_resume_api --cov-report=html
+open htmlcov/index.html
 ```
 
 ---
 
-## Next Steps
+## Adding New Tests
 
-1. ✅ Create test coverage assessment (this document)
-2. ⏳ Add frontend API client tests
-3. ⏳ Add useProfile hook tests
-4. ⏳ Add assess-fit endpoint tests
-5. ⏳ Add ingest fit examples tests
-6. ⏳ Run coverage reports
-7. ⏳ Document gaps and target next round of tests
+### Structure
 
-**Estimated Effort:** 3-4 hours for Priority 1 tests
+```python
+class TestFeatureName:
+    """Test suite for feature description."""
 
----
+    def test_scenario_description(self):
+        """Test specific scenario."""
+        # Arrange - Set up test data
+        data = {...}
 
-## End-to-End Quality Testing Results
+        # Act - Execute code under test
+        result = function(data)
 
-### Test Execution History
+        # Assert - Verify expectations
+        assert result.status == "success"
+```
 
-**Baseline Test Run:**
-- **Date**: January 29, 2026, 15:27 UTC-5
-- **Commit**: `bd886e3` - Add E2E quality acceptance criteria to PRD
-- **Branch**: `feature/ai-agent-v2-hybrid`
-- **Live Site**: https://jane-doe-ai-resume.schwichtenberg.us/
-- **Test Data**: `data/example_resume.md`
-- **Profile**: Jane Chen, VP of Platform Engineering
+### File Organization
 
-**Ask Mode Upgrade Test Run:**
-- **Date**: February 4, 2026
-- **Branch**: `investigate/memvid-lex-index-disabled`
-- **Changes**: Implemented Ask mode with cross-encoder re-ranking
-- **Results**: Significant improvement in search precision and relevance
-  - Suggested questions: All passing with relevant responses
-  - Kurt vs Jane detection: Working correctly (AI identifies wrong candidate)
-  - Fit assessment: Improved from 0 context chunks to proper retrieval
-  - Key metrics: Better KEY MATCHES and GAPS identification
+1. Create `tests/test_<module>.py`
+2. Import: `from ai_resume_api import <module>`
+3. Name classes: `class Test<Feature>:`
+4. Name functions: `def test_<scenario>():`
 
-### Test Methodology
+### Fixtures
 
-**Approach:**
-1. Navigate to live deployment
-2. Execute validation queries from PRD acceptance criteria
-3. Capture LLM streaming responses
-4. Parse responses for factual accuracy
-5. Score against ground truth (source resume markdown)
-
-**Test Categories:**
-- Profile Information (name, title, contact)
-- Experience Timeline (companies, dates, roles)
-- Technical Skills (languages, frameworks, systems)
-- Accomplishments (metrics, impact)
-- Fit Assessment (job description analysis)
-
-### Known Issues
-
-**Integration Testing Gap:**
-- Unit tests with mocks don't catch real-world issues
-- Example: Search query mismatches with actual .mv2 files
-- **Mitigation**: Regular E2E testing against production .mv2 files
+```python
+@pytest.fixture
+def sample_request():
+    """Provide test request data."""
+    return ChatRequest(
+        message="Test question",
+        session_id="test-123"
+    )
+```
 
 ---
 
-## Test Coverage Roadmap
+## Coverage Goals
 
-**Next Steps:**
-1. ✅ Complete Priority 1 tests (Phase 6.2-6.4) - DONE
-2. ✅ Implement Ask mode integration (Phase 11) - DONE
-3. ⏳ Add integration tests for Ask mode
-4. ⏳ Add metadata filtering tests
-5. ⏳ Add temporal filtering tests
-6. ⏳ Monitor production metrics for Ask mode performance
+### Philosophy
 
+Focus on critical paths and business logic over 100% coverage.
+
+**Priorities:**
+
+1. API endpoints (request/response validation)
+2. Business logic (role classification, fit assessment)
+3. External integrations (LLM, gRPC)
+4. Error handling (graceful degradation)
+
+**Lower Priority:**
+
+- Logging statements
+- Type annotations
+- Trivial getters/setters
+- Startup/shutdown code
+
+### Targets
+
+- **Critical modules:** 90%+ (main.py, memvid_client.py)
+- **Business logic:** 95%+ (role_classifier.py, query_transform.py)
+- **Models:** 100% (models.py)
+- **Overall:** 85%+
+
+**Current:** 88% (exceeding target)
+
+---
+
+## Configuration
+
+**pyproject.toml:**
+
+```toml
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=ai_resume_api --cov-report=term-missing"
+```
+
+**Test Environment (conftest.py):**
+
+```python
+os.environ.setdefault("MOCK_MEMVID_CLIENT", "true")
+os.environ.setdefault("RATE_LIMIT_PER_MINUTE", "1000")
+```
+
+---
+
+## Best Practices
+
+1. **Isolation** - Tests run independently, no shared state
+2. **Clarity** - Names describe what's being tested
+3. **AAA Pattern** - Arrange, Act, Assert structure
+4. **Mock External Services** - No real API calls in unit tests
+5. **Test Error Paths** - Cover failures, not just happy path
+6. **Fast Execution** - Unit tests under 1 second each
+7. **Meaningful Assertions** - Verify behavior, not implementation
+
+---
+
+## Known Limitations
+
+**Integration Tests:**
+
+- Lower coverage (46%) due to external service dependency
+- Some paths only testable with real memvid instance
+- Network errors difficult to simulate
+
+**Startup/Shutdown:**
+
+- Application lifecycle events not fully tested
+- Lifespan context managers skipped in TestClient
+
+**Rate Limiting:**
+
+- Concurrent request scenarios not fully covered
+- Production rate limit edge cases not tested

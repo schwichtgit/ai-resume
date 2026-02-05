@@ -9,20 +9,22 @@ os.environ.setdefault("OPENROUTER_API_KEY", "")
 os.environ.setdefault("ENVIRONMENT", "development")
 # Increase rate limit for testing
 os.environ.setdefault("RATE_LIMIT_PER_MINUTE", "1000")
+# Enable mock mode for memvid client in tests
+os.environ.setdefault("MOCK_MEMVID_CLIENT", "true")
 
 
 @pytest.fixture(autouse=True)
 def reset_caches():
     """Reset cached settings and stores before each test."""
-    from app.config import get_settings
-    from app.session_store import reset_session_store
+    from ai_resume_api.config import get_settings
+    from ai_resume_api.session_store import reset_session_store
 
     get_settings.cache_clear()
     reset_session_store()
 
     # Reset rate limiter storage
     try:
-        from app.main import limiter
+        from ai_resume_api.main import limiter
 
         if hasattr(limiter, "_storage") and limiter._storage:
             limiter._storage.reset()
@@ -41,7 +43,7 @@ def mock_settings(monkeypatch):
     def _mock_settings(**kwargs):
         for key, value in kwargs.items():
             monkeypatch.setenv(key.upper(), str(value))
-        from app.config import get_settings
+        from ai_resume_api.config import get_settings
 
         get_settings.cache_clear()
         return get_settings()

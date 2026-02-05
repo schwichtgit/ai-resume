@@ -10,12 +10,19 @@ Run with:
     cd api-service
     source .venv/bin/activate
     python tests/test_integration.py
+
+Or run with pytest:
+    cd api-service
+    source .venv/bin/activate
+    pytest tests/test_integration.py -v
 """
 
 import asyncio
 import os
 import sys
 from pathlib import Path
+
+import pytest
 
 # Load environment from deployment/.env
 DEPLOYMENT_ENV = Path(__file__).parent.parent.parent / "deployment" / ".env"
@@ -56,6 +63,7 @@ from ai_resume_api.openrouter_client import OpenRouterClient
 from ai_resume_api.query_transform import transform_query
 
 
+@pytest.mark.asyncio
 async def test_openrouter_connection():
     """Test that we can connect to OpenRouter."""
     print("\n" + "=" * 60)
@@ -79,6 +87,7 @@ async def test_openrouter_connection():
     return True
 
 
+@pytest.mark.asyncio
 async def test_query_transformation():
     """Test query transformation with real LLM."""
     print("\n" + "=" * 60)
@@ -121,6 +130,7 @@ async def test_query_transformation():
     return True
 
 
+@pytest.mark.asyncio
 async def test_chat_response():
     """Test full chat response (without memvid - uses mock context)."""
     print("\n" + "=" * 60)
@@ -178,6 +188,7 @@ Limitations: Not a frontend developer, no mobile experience
     return True
 
 
+@pytest.mark.asyncio
 async def test_streaming_response():
     """Test streaming chat response."""
     print("\n" + "=" * 60)

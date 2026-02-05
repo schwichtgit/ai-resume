@@ -1,13 +1,17 @@
-# API Service
+# AI Resume API Service
 
-FastAPI orchestration service providing HTTP API for AI-powered resume chat.
+FastAPI-based backend service providing:
 
-**What it does:**
-
-- HTTP REST endpoints for chat, profile, fit assessment
-- OpenRouter LLM integration with streaming responses
-- gRPC communication with memvid service (Rust)
+- AI-powered chat with RAG (Retrieval-Augmented Generation)
+- Role classification and fit assessment
+- Profile and experience data endpoints
 - Session management and rate limiting
+- gRPC integration with memvid vector database
+
+This service is part of a hybrid Rust + Python architecture:
+
+- **Rust memvid service** - Vector search, profile storage (gRPC on :50051)
+- **Python API service** - HTTP API, LLM orchestration, business logic
 
 ## Quick Start
 
@@ -42,7 +46,7 @@ Visit <http://localhost:3000/docs> for interactive API documentation.
 
 ### POST /api/v1/chat
 
-Stream AI responses with semantic search context.
+Stream AI chat responses with semantic search context.
 
 **Request:**
 
@@ -58,7 +62,7 @@ Stream AI responses with semantic search context.
 
 ```text
 data: {"type":"retrieval","chunks":3}
-data: {"type":"token","content":"They"}
+data: {"type":"token","content":"Extensive"}
 ...
 event: stats
 data: {"chunks_retrieved":3,"tokens_used":42,"elapsed_seconds":1.2}
@@ -138,7 +142,7 @@ AI-powered job fit assessment with role classification.
 
 Service health check with memvid connection status.
 
-### GET /metrics
+**Response:**
 
 Prometheus metrics exposition.
 
@@ -149,14 +153,19 @@ Environment variables:
 | Variable                | Default                           | Description                     |
 | ----------------------- | --------------------------------- | ------------------------------- |
 | `OPENROUTER_API_KEY`    | Required                          | OpenRouter API key              |
-| `MEMVID_GRPC_URL`       | `localhost:50051`                 | Memvid service gRPC endpoint    |
+| `MEMVID_GRPC_URL`       | `localhost:50051`                 | memvid service gRPC endpoint    |
 | `LLM_MODEL`             | `nvidia/nemotron-nano-9b-v2:free` | OpenRouter model ID             |
 | `SESSION_TTL`           | `1800`                            | Session TTL in seconds (30 min) |
-| `RATE_LIMIT_PER_MINUTE` | `10`                              | Rate limit per IP               |
+| `RATE_LIMIT_PER_MINUTE` | `10`                              | Rate limit per IP address       |
 | `PORT`                  | `3000`                            | HTTP server port                |
-| `LOG_LEVEL`             | `INFO`                            | Logging level                   |
+| `LOG_LEVEL`             | `INFO`                            | Logging level (DEBUG/INFO/WARN) |
+| `MOCK_MEMVID_CLIENT`    | `false`                           | Use mock client for testing     |
 
 ## Testing
+
+**Test suite:** 253 tests, 88% coverage
+
+**Run tests:**
 
 ```bash
 # Run tests
@@ -164,6 +173,11 @@ uv run pytest
 
 # With coverage
 uv run pytest --cov=ai_resume_api --cov-report=html
+open htmlcov/index.html
+
+# Run specific test
+uv run pytest tests/test_main.py -v
+uv run pytest tests/test_main.py::TestChatEndpoint::test_valid_message -v
 
 # Type checking
 uv run mypy ai_resume_api/
@@ -175,29 +189,36 @@ uv run ruff format ai_resume_api/
 uv run ruff check ai_resume_api/
 ```
 
+See [docs/TEST_COVERAGE.md](../docs/TEST_COVERAGE.md) for detailed coverage report.
+
 ## Project Structure
 
 ```text
 api-service/
 ├── ai_resume_api/
-│   ├── main.py              # FastAPI app entrypoint
-│   ├── config.py            # Environment configuration
-│   ├── models.py            # Pydantic request/response models
-│   ├── memvid_client.py     # gRPC client for Rust service
-│   ├── openrouter_client.py # OpenRouter LLM client
-│   ├── session_store.py     # In-memory session management
-│   ├── role_classifier.py   # Multi-domain job classifier
-│   ├── observability.py     # Trace IDs and LLM logging
-│   ├── guardrails.py        # Input/output safety checks
-│   └── proto/               # gRPC protobuf definitions
+│   ├── main.py                # FastAPI app and endpoints
+│   ├── config.py              # Environment configuration
+│   ├── models.py              # Pydantic request/response models
+│   ├── memvid_client.py       # gRPC client for memvid service
+│   ├── openrouter_client.py   # OpenRouter LLM client
+│   ├── role_classifier.py     # Multi-domain role classification
+│   ├── query_transform.py     # Query rewriting strategies
+│   ├── guardrails.py          # Input validation and safety
+│   ├── session_store.py       # Session management (TTL-based)
+│   └── observability.py       # Logging and metrics
 ├── tests/
-│   ├── conftest.py          # Pytest fixtures
-│   ├── test_main.py         # API endpoint tests
-│   ├── test_memvid_client.py
-│   ├── test_role_classifier_e2e.py
-│   └── test_integration.py  # End-to-end tests
-├── pyproject.toml           # UV/pip dependencies
-├── Dockerfile
+│   ├── conftest.py                  # Pytest fixtures and config
+│   ├── test_main.py                 # API endpoint tests
+│   ├── test_memvid_client.py        # gRPC client tests (REST mode)
+│   ├── test_memvid_client_grpc.py   # gRPC client tests (native mode)
+│   ├── test_openrouter_client.py    # OpenRouter client tests
+│   ├── test_role_classifier_e2e.py  # Role classification tests
+│   ├── test_query_transform.py      # Query transformation tests
+│   ├── test_guardrails.py           # Input validation tests
+│   ├── test_integration.py          # End-to-end integration tests
+│   └── ...                          # Additional test modules
+├── pyproject.toml              # UV/pip dependencies and config
+├── Dockerfile                  # Multi-stage container build
 └── README.md
 ```
 
@@ -241,8 +262,13 @@ Data flow:
 **Hot reload:**
 
 ```bash
-uvicorn ai_resume_api.main:app --reload
+uv run uvicorn ai_resume_api.main:app --reload
 ```
+
+**View API docs:**
+
+- Swagger UI: <http://localhost:3000/docs>
+- ReDoc: <http://localhost:3000/redoc>
 
 **Run without OpenRouter (mock responses):**
 
@@ -261,3 +287,16 @@ cargo run --release -- serve --port 50051 --mv2 ../data/.memvid/resume.mv2
 export MEMVID_GRPC_URL="localhost:50051"
 uvicorn ai_resume_api.main:app --reload
 ```
+
+## Features
+
+- FastAPI app with CORS and middleware
+- gRPC client for memvid service (with REST fallback)
+- OpenRouter streaming LLM integration (SSE)
+- Multi-domain role classification (9 domains)
+- Fit assessment with structured verdicts
+- Session management with TTL (in-memory)
+- Rate limiting per IP address
+- Structured logging (JSON format)
+- Input validation and guardrails
+- OpenAPI documentation (/docs, /redoc)
