@@ -1,127 +1,151 @@
-# Memvid Ingest Pipeline
+# Resume Data Ingestion Pipeline
 
-This directory contains the local ingestion pipeline for creating memvid memory files (.mv2) from the master resume.
+This directory contains the **data ingestion pipeline** for creating memvid memory files (.mv2) from resume markdown files.
 
-**Note:** This is data ingestion/indexing, not ML training. No model parameters are updated - documents are embedded and indexed for hybrid retrieval.
-
-## Why Native (Not Containerized)?
-
-The ingest pipeline runs **natively on MacOS** (not in containers) because:
-
-- Apple Silicon Neural Engine (NPU) acceleration requires native execution
-- Faster iteration during development
-- The output (.mv2 files) is small and can be copied into containers for deployment
+**Key Concept:** This is data ingestion/indexing, **not ML training**. Pre-trained embedding models are used to vectorize and index documents - no model parameters are modified.
 
 ## Prerequisites
 
 - Python 3.12+
-- UV package manager
+- UV package manager (for dependency management)
 
-## Setup
+## Quick Start
 
 ```bash
+# From project root
 cd ingest
-uv sync
+uv sync                          # Install dependencies
+uv run python ingest.py          # Ingest default resume
+uv run python ingest.py --verify # Ingest + run verification queries
 ```
 
-This creates a `.venv` with:
+## Data Flow
 
-- `memvid-sdk` - Core memory file creation and search
-- `sentence-transformers` - Local embedding model support
-
-## Usage
-
-### Ingest from master_resume.md
-
-```bash
-uv run python ingest.py
+```
+data/example_resume.md (YAML + Markdown)
+    ↓
+ingest.py (parse, chunk, embed, index)
+    ↓
+data/.memvid/resume.mv2 (~290KB vector database)
+    ↓
+memvid-service (Rust gRPC server)
+    ↓
+api-service (Python FastAPI)
+    ↓
+Frontend (React UI)
 ```
 
-Options:
-
-- `--input PATH` - Custom input markdown (default: `data/master_resume.md`)
-- `--output PATH` - Custom output .mv2 (default: `data/.memvid/resume.mv2`)
-- `--verify` - Run verification queries after ingestion
-- `--quiet` - Suppress verbose output
-
-### Run Tests
-
-```bash
-# SDK validation test
-uv run python test_memvid.py
-
-# Run pytest suite
-uv run pytest
-```
-
-## Output
-
-Ingestion creates:
-
-- `data/.memvid/resume.mv2` - The memvid memory file (~280KB)
-
-This file contains:
-
-- 13 frames (chunked content) with 768-dimensional embeddings
-- Profile metadata
-- AI system prompt
-- Experience entries (4 companies)
-- Skills assessment
-- Leadership & management
-- Failure stories (3)
-- Fit assessment guidance
+The `.mv2` file is a self-contained vector database containing:
+- Chunked resume content (~13 frames)
+- 384-dimensional embeddings per chunk
+- Profile metadata (name, title, email, skills, experience entries)
+- Tags for semantic filtering during retrieval
 
 ## Embedding Model
 
-The ingest pipeline uses **`all-mpnet-base-v2`** from sentence-transformers:
+**Current:** `BAAI/bge-small-en-v1.5`
 
-- 768-dimensional embeddings
-- Optimized for semantic search on professional/career documents
-- Runs locally on CPU (no API keys required)
-- Model is downloaded on first run (~420MB)
+- 384 dimensions (2x faster than 768-dim models)
+- Trained with hard negative mining (distinguishes "AI" from "Adobe Illustrator")
+- Higher MTEB scores than all-mpnet-base-v2 for retrieval tasks
+- Model size: ~130MB (downloads automatically on first run)
+- Runs locally via `sentence-transformers` (no API keys required)
 
-Alternative models can be configured in `ingest.py` by changing `EMBEDDING_MODEL`.
+**Why BGE over MPNet?** Better semantic understanding for acronyms and technical terms common in resumes (e.g., "AI" vs "artificial intelligence").
+
+See `compare_models.py` for the benchmark that drove this choice.
+
+## Commands
+
+### Core Operations
+
+```bash
+# Ingest with custom paths
+uv run python ingest.py --input data/your_resume.md --output data/.memvid/your_resume.mv2
+
+# Verify semantic quality after ingestion
+uv run python ingest.py --verify
+
+# Quiet mode (suppress verbose logs)
+uv run python ingest.py --quiet
+```
+
+### Testing Tools
+
+```bash
+# Validate memvid SDK integration
+uv run python test_memvid.py
+
+# Test embedding similarity (validates semantic search)
+uv run python test_embeddings.py
+
+# Compare BGE vs MPNet for AI/ML queries
+uv run python compare_models.py
+
+# Run full pytest suite (requires: uv sync --extra test)
+uv sync --extra test
+uv run pytest
+```
+
+### Update Workflow
+
+When you update `data/example_resume.md`:
+
+1. Run ingestion: `uv run python ingest.py --verify`
+2. Restart memvid-service (it loads the .mv2 file on startup)
+3. Restart api-service (it queries memvid-service for data)
+4. Frontend automatically picks up new data via API
+
+**Note:** The .mv2 file must be regenerated after ANY resume content changes.
 
 ## Chunking Strategy
 
-The ingest script follows the chunking guidance in `master_resume.md`:
+Content is chunked according to semantic boundaries defined in the resume markdown:
 
-| Section                 | Chunking           |
-| ----------------------- | ------------------ |
-| Professional Experience | By company/role    |
-| Skills Assessment       | Single chunk       |
-| Documented Failures     | Individual stories |
-| Fit Assessment          | Single chunk       |
-| Leadership              | Single chunk       |
+| Section                 | Chunking Strategy  | Tag Example         |
+| ----------------------- | ------------------ | ------------------- |
+| Professional Experience | One chunk per role | `experience`, `aws` |
+| Skills Assessment       | Single chunk       | `skills`            |
+| Documented Failures     | One per story      | `failure`, `lessons-learned` |
+| Fit Assessment          | Single chunk       | `fit-assessment`    |
+| Leadership              | Single chunk       | `leadership`, `management` |
 
-Each chunk is tagged with relevant keywords for semantic retrieval.
+Each chunk includes relevant tags for filtering during semantic search.
 
 ## Verification
 
-Run with `--verify` to test semantic quality:
+The `--verify` flag runs test queries to validate semantic quality:
 
 ```bash
 uv run python ingest.py --verify
 ```
 
-Verification checks:
+**Checks performed:**
+- Minimum frame count (>= 5 chunks)
+- Relevance scores meet threshold (>= 0.3)
+- Expected tags are present for domain queries
 
-- Minimum frame count (>= 5)
-- Score thresholds for relevance (>= 0.3)
-- Tag matching for expected content
-
-Test queries:
-
+**Example queries:**
 - "Python experience" → expects `experience` or `skills` tags
 - "leadership philosophy" → expects `leadership` or `management` tags
-- "failure lessons" → expects `failure` or `lessons-learned` tags
+- "failure lessons" → expects `failure` tag
 - "professional summary" → expects `summary` or `overview` tags
 
-## Integration
+## Integration with Services
 
-The generated `.mv2` file is used by:
+The generated `.mv2` file integrates with downstream services:
 
-- `memvid-service/` - Rust gRPC service for memvid queries
-- `api-service/` - Python FastAPI orchestration layer
+- **`memvid-service/`** - Rust gRPC server that loads the .mv2 file and handles vector similarity queries (<5ms response time)
+- **`api-service/`** - Python FastAPI layer that calls memvid-service and serves profile data to the frontend
 
-**Important:** Containers do NOT embed instance data. The `.mv2` file is mounted into containers at runtime via Podman volumes (see `docs/DESIGN.md` for storage design).
+**Important:** Services do NOT perform embedding or indexing. The `.mv2` file is a read-only resource mounted at runtime.
+
+## Why Native (Not Containerized)?
+
+Ingestion runs **natively** rather than in containers because:
+
+1. **Apple Silicon NPU acceleration** - sentence-transformers can leverage the Neural Engine for faster embedding generation
+2. **Development speed** - Faster iteration when tuning chunking/tagging strategies
+3. **Small output** - The .mv2 file (~295KB) is portable and copied into containers for deployment
+
+The output is platform-agnostic, so native ingestion on MacOS produces files that work in Linux containers.

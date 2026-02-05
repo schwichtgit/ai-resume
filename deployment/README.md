@@ -1,48 +1,42 @@
-# Deployment Configuration
+# Deployment Guide
 
-This directory contains the Podman Compose configuration for the Hybrid Rust + Python architecture with yellow zone network isolation.
+This directory contains the Podman Compose configuration for deploying the AI Resume application with network isolation.
 
-## Architecture (Pattern B: Frontend as Router)
+## Quick Reference
 
-```text
-┌─────────────────────────────────────────────────────────────────────┐
-│                         Host (OpenWrt)                              │
-│                                                                     │
-│  ┌──────────────┐                                                   │
-│  │ Host nginx   │  TLS termination only                             │
-│  │    (LB)      │  frank-resume.domain.com → 192.168.100.10:8080    │
-│  └──────┬───────┘                                                   │
-│         │ HTTP (no TLS)                                             │
-│         ▼                                                           │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │              Yellow Zone: 192.168.100.0/24                   │   │
-│  │              Podman Network: yellow-net                      │   │
-│  │                                                              │   │
-│  │  ┌─────────────────┐                                         │   │
-│  │  │ frontend        │ .10:8080  (nginx + SPA)                 │   │
-│  │  │ /     → SPA     │                                         │   │
-│  │  │ /api/* → ───────┼──────────────────────┐                  │   │
-│  │  └─────────────────┘                      │                  │   │
-│  │                                           ▼                  │   │
-│  │                              ┌─────────────────┐             │   │
-│  │                              │ python-api      │ .11:3000    │   │
-│  │                              │ (FastAPI)       │             │   │
-│  │                              └────────┬────────┘             │   │
-│  │                                       │ gRPC                 │   │
-│  │                                       ▼                      │   │
-│  │                              ┌─────────────────┐             │   │
-│  │                              │ rust-memvid     │ .12:50051   │   │
-│  │                              │ (gRPC)          │             │   │
-│  │                              └─────────────────┘             │   │
-│  └──────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
+```bash
+# Start all services
+podman-compose up -d
+
+# View logs
+podman-compose logs -f [ai-resume-frontend|ai-resume-api|ai-resume-memvid]
+
+# Stop services
+podman-compose down
+
+# Restart single service
+podman-compose restart ai-resume-api
+
+# Update .mv2 file
+scp data/.memvid/resume.mv2 user@edge:/opt/ai-resume/data/.memvid/
+ssh user@edge "cd /opt/ai-resume/deployment && podman-compose restart ai-resume-memvid ai-resume-api"
 ```
 
-**Key Design Decisions:**
-- No ports exposed on containers; host nginx connects directly to yellow-net
-- Frontend handles all URL routing (`/api/*` → python-api)
-- Host LB only knows domain → IP mapping, not application routes
-- Static IPs enable precise firewall rules
+## Architecture Overview
+
+This deployment uses an isolated Podman network (`yellow-net`) with static IP assignments. While the default bridge driver provides automatic DNS resolution via Podman's built-in DNS server, this project uses static IPs to demonstrate compatibility with network drivers like `macvlan` (used when connecting to parent VLAN devices) that don't provide DNS services. This approach ensures the configuration works across different network driver scenarios where the host OS would need to provide DHCP/DNS services.
+
+**Network Topology:** See [ARCHITECTURE.md](../docs/ARCHITECTURE.md) for full details.
+
+```text
+Host nginx (TLS) → ai-resume-frontend (.10:8080) → ai-resume-api (.11:3000) → ai-resume-memvid (.12:50051)
+                                Yellow Zone: 192.168.100.0/24
+```
+
+- **ai-resume-frontend**: nginx serving SPA, routes `/api/*` to ai-resume-api
+- **ai-resume-api**: FastAPI backend, gRPC client
+- **ai-resume-memvid**: memvid gRPC server
+- **yellow-net**: Isolated Podman network with static IPs (bridge driver)
 
 ## Prerequisites
 
@@ -52,11 +46,6 @@ This directory contains the Podman Compose configuration for the Hybrid Rust + P
 podman network create yellow-net \
   --subnet 192.168.100.0/24 \
   --gateway 192.168.100.1
-```
-
-Verify:
-```bash
-podman network inspect yellow-net
 ```
 
 ### 2. Create Host Directory Structure
@@ -73,7 +62,7 @@ cd /path/to/ai-resume
 ./scripts/build-all.sh latest
 ```
 
-### 4. Ingest and Deploy .mv2 File
+### 4. Deploy .mv2 File
 
 ```bash
 # Ingest locally (on dev machine)
@@ -92,9 +81,9 @@ cp .env.example .env
 nano .env  # Add your OPENROUTER_API_KEY
 ```
 
-### 6. Configure Host nginx LB
+### 6. Configure Host nginx
 
-Add to your host nginx configuration:
+For TLS termination and routing to yellow zone. See [docs/SETUP.md](../docs/SETUP.md) for full nginx configuration.
 
 ```nginx
 # /etc/nginx/sites-available/frank-resume.conf
@@ -107,16 +96,13 @@ server {
 
     location / {
         proxy_pass http://192.168.100.10:8080;
-        proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
 
         # SSE support for streaming
         proxy_set_header Connection '';
         proxy_buffering off;
-        proxy_cache off;
     }
 }
 ```
@@ -129,94 +115,71 @@ cd deployment
 podman-compose up -d
 ```
 
-**View logs:**
-```bash
-podman-compose logs -f
-```
-
-**Stop services:**
-```bash
-podman-compose down
-```
-
-**Restart single service:**
-```bash
-podman-compose restart python-api
-```
-
-## Verification
-
-**Check container IPs:**
+**Verify container IPs:**
 ```bash
 podman network inspect yellow-net | grep -A2 '"Name"'
 ```
 
 Expected:
-- frontend: 192.168.100.10
-- python-api: 192.168.100.11
-- rust-memvid: 192.168.100.12
+- ai-resume-frontend: 192.168.100.10
+- ai-resume-api: 192.168.100.11
+- ai-resume-memvid: 192.168.100.12
 
-**Test from host (must have route to yellow-net):**
+**Test endpoints (requires route to yellow-net):**
 ```bash
 # Frontend health
 curl http://192.168.100.10:8080/health
 
 # API health (via frontend routing)
 curl http://192.168.100.10:8080/api/v1/health
-```
 
-**Test chat endpoint:**
-```bash
+# Chat endpoint
 curl -X POST http://192.168.100.10:8080/api/v1/chat \
   -H "Content-Type: application/json" \
-  -d '{
-    "message": "What experience do they have with Kubernetes?",
-    "session_id": "test-123",
-    "stream": false
-  }'
+  -d '{"message": "What experience do they have?", "session_id": "test-123", "stream": false}'
 ```
 
-## Updating .mv2 File
+## Production Deployment (Edge Server)
 
-When you update the resume data:
-
-1. **Re-ingest locally:**
+1. **Build locally:**
    ```bash
-   cd ingest
-   uv run python ingest.py --verify
+   ./scripts/build-all.sh latest
    ```
 
-2. **Copy to edge server:**
+2. **Save and transfer images:**
    ```bash
-   scp ../data/.memvid/resume.mv2 \
-     user@edge-server:/opt/ai-resume/data/.memvid/
+   podman save localhost/ai-resume-frontend:latest -o frontend.tar
+   podman save localhost/ai-resume-api:latest -o api.tar
+   podman save localhost/ai-resume-rust:latest -o rust.tar
+
+   scp *.tar user@edge:/tmp/
+   scp data/.memvid/resume.mv2 user@edge:/opt/ai-resume/data/.memvid/
+   scp deployment/{compose.yaml,.env} user@edge:/opt/ai-resume/deployment/
    ```
 
-3. **Restart memvid service:**
+3. **On edge server:**
    ```bash
-   ssh user@edge-server
+   # Create network (one-time)
+   podman network create yellow-net --subnet 192.168.100.0/24
+
+   # Load images
+   cd /tmp
+   podman load -i frontend.tar
+   podman load -i api.tar
+   podman load -i rust.tar
+
+   # Deploy
    cd /opt/ai-resume/deployment
-   podman-compose restart rust-memvid python-api
+   podman-compose up -d
    ```
 
-## Firewall Rules (OpenWrt)
-
-Isolate yellow zone from other networks:
-
-```bash
-# Block yellow → other zones
-iptables -A FORWARD -s 192.168.100.0/24 -d 192.168.200.0/24 -j DROP
-iptables -A FORWARD -s 192.168.100.0/24 -d 192.168.1.0/24 -j DROP
-
-# Allow yellow → internet (for OpenRouter API)
-iptables -A FORWARD -s 192.168.100.0/24 -j ACCEPT
-```
+4. **Configure host nginx and firewall** (see [docs/SETUP.md](../docs/SETUP.md))
 
 ## Troubleshooting
 
 **Host nginx can't reach frontend:**
 ```bash
-# Check routing to yellow-net
+# Check routing
 ip route | grep 192.168.100
 
 # Add route if missing
@@ -226,65 +189,22 @@ sudo ip route add 192.168.100.0/24 dev podman1
 **Containers not getting static IPs:**
 ```bash
 # Verify network is external
-podman network ls
-# Should show: yellow-net  bridge  external
+podman network ls | grep yellow-net
 
-# Check compose uses external network
+# Check compose configuration
 grep -A2 "yellow-net:" compose.yaml
 ```
 
-**python-api can't reach rust-memvid:**
+**ai-resume-api can't reach ai-resume-memvid:**
 ```bash
-# Test from inside container
-podman exec python-api ping 192.168.100.12
-
-# Check gRPC port
-podman exec python-api nc -zv 192.168.100.12 50051
+# Test connectivity
+podman exec ai-resume-api ping 192.168.100.12
+podman exec ai-resume-api nc -zv 192.168.100.12 50051
 ```
 
 **Memvid service failing to load .mv2:**
 ```bash
-# Check volume mount
-podman inspect rust-memvid | jq '.[0].Mounts'
-
-# Verify file exists and permissions
-ls -la /opt/ai-resume/data/.memvid/
+# Check volume mount and permissions
+podman inspect ai-resume-memvid | jq '.[0].Mounts'
+ls -la /opt/ai-resume/data/.memvid/resume.mv2
 ```
-
-## Production Deployment (Edge Server)
-
-1. **Build locally (multi-arch):**
-   ```bash
-   ./scripts/build-all.sh latest
-   ```
-
-2. **Save images:**
-   ```bash
-   podman save localhost/ai-resume-frontend:latest -o frontend.tar
-   podman save localhost/ai-resume-rust:latest -o rust.tar
-   podman save localhost/ai-resume-python:latest -o python.tar
-   ```
-
-3. **Transfer to edge server:**
-   ```bash
-   scp *.tar user@edge-server:/tmp/
-   scp data/.memvid/resume.mv2 user@edge-server:/opt/ai-resume/data/.memvid/
-   scp deployment/{compose.yaml,.env} user@edge-server:/opt/ai-resume/deployment/
-   ```
-
-4. **On edge server:**
-   ```bash
-   # Create network (one-time)
-   podman network create yellow-net --subnet 192.168.100.0/24 --gateway 192.168.100.1
-
-   # Load images
-   podman load -i /tmp/frontend.tar
-   podman load -i /tmp/rust.tar
-   podman load -i /tmp/python.tar
-
-   # Deploy
-   cd /opt/ai-resume/deployment
-   podman-compose up -d
-   ```
-
-5. **Configure host nginx and firewall** (see sections above)

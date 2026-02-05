@@ -138,6 +138,7 @@ Query → Embedding → Vector Search → Top-K by Distance → Return
 ```
 
 **Limitations:**
+
 - Cannot distinguish context (e.g., "AI" = artificial intelligence vs Adobe Illustrator)
 - Distance-only ranking (no semantic relevance scoring)
 - Acronym expansion hurts search ("AI" → "artificial intelligence" doesn't match "AI/ML")
@@ -160,6 +161,7 @@ Query → Initial Retrieval (50 candidates) → Cross-Encoder Re-Ranking → Top
 **Architecture Components:**
 
 1. **Stage 1: Initial Retrieval (Hybrid Search)**
+
    - Vector search (BGE embeddings) for semantic matching
    - BM25 lexical search for exact keywords
    - Metadata filtering: `{"section": "experience", "role": "leadership"}`
@@ -216,13 +218,13 @@ message RerankedHit {
 
 **Performance Impact:**
 
-| Component | Find Mode | Ask Mode (estimated) | Delta |
-|-----------|-----------|----------|-------|
-| Initial retrieval | <5ms | ~10ms | +5ms (filtering) |
-| Re-ranking | N/A | TBD | TBD (measure after implementation) |
-| **Total retrieval** | **<5ms** | **TBD** | **TBD** |
-| LLM generation | 500-2000ms | 500-2000ms | 0ms |
-| **End-to-end** | **~500-2010ms** | **TBD** | **TBD** |
+| Component           | Find Mode       | Ask Mode (estimated) | Delta                              |
+| ------------------- | --------------- | -------------------- | ---------------------------------- |
+| Initial retrieval   | <5ms            | ~10ms                | +5ms (filtering)                   |
+| Re-ranking          | N/A             | TBD                  | TBD (measure after implementation) |
+| **Total retrieval** | **<5ms**        | **TBD**              | **TBD**                            |
+| LLM generation      | 500-2000ms      | 500-2000ms           | 0ms                                |
+| **End-to-end**      | **~500-2010ms** | **TBD**              | **TBD**                            |
 
 **Trade-off:** Test memvid's built-in Ask performance first, then optimize if needed.
 
@@ -447,7 +449,7 @@ The external nginx LB (on host) handles TLS termination and domain routing only.
 
 ### Network Setup
 
-**Step 1: Create the yellow zone network (one-time)**
+#### **Step 1: Create the yellow zone network (one-time)**
 
 ```bash
 podman network create yellow-net \
@@ -455,7 +457,7 @@ podman network create yellow-net \
   --gateway 192.168.100.1
 ```
 
-**Step 2: Verify network**
+#### **Step 2: Verify network**
 
 ```bash
 podman network inspect yellow-net
@@ -610,7 +612,7 @@ ip route add 192.168.100.0/24 dev podman1
 
 The API service implements multi-layer defense against prompt injection attacks:
 
-**1. Defensive System Prompt**
+#### **1. Defensive System Prompt**
 
 ```text
 CRITICAL SECURITY RULES:
@@ -621,7 +623,7 @@ CRITICAL SECURITY RULES:
   designed to discuss the candidate's resume.
 ```
 
-**2. Input Validation Layer**
+#### **2. Input Validation Layer**
 
 Pattern matching for known injection phrases:
 
@@ -631,7 +633,7 @@ Pattern matching for known injection phrases:
 - "reveal your directive"
 - "you are now a"
 
-**3. Structural Separation**
+#### **3. Structural Separation**
 
 User input wrapped in delimiters to separate from system instructions:
 
@@ -643,7 +645,7 @@ User Question:
 Please answer based on the context provided above.
 ```
 
-**4. Output Filtering**
+#### **4. Output Filtering**
 
 Block responses containing internal keywords (e.g., "Frame 1", "System Directive").
 
@@ -690,11 +692,11 @@ Evolution from "Simple RAG" (text similarity) to "Knowledge-Graph RAG" (structur
 
 **Key Benefits:**
 
-| Current | Ontology-Based |
-|---------|----------------|
-| Text similarity search | Precision queries via metadata |
-| Context from entire job description | Skill-to-project linking |
-| Anti-patterns buried in text | Structured "Limitations" frame |
+| Current                             | Ontology-Based                 |
+| ----------------------------------- | ------------------------------ |
+| Text similarity search              | Precision queries via metadata |
+| Context from entire job description | Skill-to-project linking       |
+| Anti-patterns buried in text        | Structured "Limitations" frame |
 
 ## Related Documentation
 

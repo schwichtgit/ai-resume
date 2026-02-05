@@ -8,7 +8,6 @@ AI-Resume is a containerized web application that acts as your digital professio
 
 https://github.com/user-attachments/assets/0b183e42-db28-4ac0-ad22-8cd66d68308c
 
-
 > _A recruiter asks about AI experience, tests job fit with a real job description, and explores leadership style — all without scheduling a call._
 
 ## Live Demo
