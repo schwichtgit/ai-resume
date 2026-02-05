@@ -27,7 +27,7 @@ import pytest
 import memvid_sdk
 
 # Project paths
-PROJECT_ROOT = Path(__file__).parent.parent
+PROJECT_ROOT = Path(__file__).parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 MV2_PATH = DATA_DIR / ".memvid" / "resume.mv2"
 DEPLOYMENT_ENV = PROJECT_ROOT / "deployment" / ".env"

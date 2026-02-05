@@ -18,7 +18,7 @@ import pytest
 import memvid_sdk
 
 # Project paths
-PROJECT_ROOT = Path(__file__).parent.parent
+PROJECT_ROOT = Path(__file__).parent.parent.parent
 MV2_PATH = PROJECT_ROOT / "data/.memvid/resume.mv2"
 
 
