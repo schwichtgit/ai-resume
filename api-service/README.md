@@ -1,25 +1,25 @@
-# Python FastAPI Service
+# AI Resume API Service
 
-FastAPI-based orchestration service that handles:
+FastAPI-based backend service providing:
 
-- HTTP API endpoints (`/api/v1/chat`, `/health`, `/metrics`)
-- OpenRouter LLM integration for streaming responses
-- Session management (in-memory, TTL-based)
-- Rate limiting
-- gRPC communication with Rust memvid service
+- AI-powered chat with RAG (Retrieval-Augmented Generation)
+- Role classification and fit assessment
+- Profile and experience data endpoints
+- Session management and rate limiting
+- gRPC integration with memvid vector database
 
 ## Architecture
 
-This service is part of the Hybrid Rust + Python architecture:
+This service is part of a hybrid Rust + Python architecture:
 
-- **Rust** handles performance-critical memvid operations (gRPC on :50051)
-- **Python** handles API orchestration, OpenRouter calls, session management
+- **Rust memvid service** - Vector search, profile storage (gRPC on :50051)
+- **Python API service** - HTTP API, LLM orchestration, business logic
 
 ## API Endpoints
 
 ### POST /api/v1/chat
 
-Stream chat response with memvid context.
+Stream AI chat responses with semantic search context.
 
 **Request:**
 
@@ -35,22 +35,48 @@ Stream chat response with memvid context.
 
 ```text
 data: {"type":"retrieval","chunks":3}
-data: {"type":"token","content":"They"}
+data: {"type":"token","content":"Extensive"}
 ...
 data: {"type":"done"}
 ```
 
-### GET /api/v1/health
+### POST /api/v1/assess-fit
+
+Analyze job description fit with AI assessment.
+
+**Request:**
 
 ```json
-{ "status": "healthy", "memvid_connected": true }
+{
+  "job_description": "Looking for senior Python engineer...",
+  "session_id": "550e8400-e29b-41d4-a716-446655440000"
+}
 ```
 
-### GET /metrics
+**Response:**
 
-Prometheus metrics exposition
+```json
+{
+  "verdict": "STRONG_FIT",
+  "key_matches": ["Python", "FastAPI", "Docker"],
+  "gaps": ["Kubernetes experience"],
+  "recommendation": "Excellent match for core requirements..."
+}
+```
 
-## Setup with UV
+### GET /api/v1/profile
+
+Load complete profile (name, title, experience, skills).
+
+### GET /api/v1/suggested-questions
+
+Retrieve suggested questions for chat interface.
+
+### GET /api/v1/health
+
+Service health check with memvid connection status.
+
+## Setup
 
 **Prerequisites:**
 
@@ -63,45 +89,41 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 **Install dependencies:**
 
 ```bash
-# UV automatically creates and manages .venv
 uv sync
 ```
 
 **Run development server:**
 
 ```bash
-# Activate virtual environment
-source .venv/bin/activate
-
 # Set environment variables
 export OPENROUTER_API_KEY="sk-or-v1-..."
 export MEMVID_GRPC_URL="localhost:50051"
 export LLM_MODEL="nvidia/nemotron-nano-9b-v2:free"
 
 # Run with hot reload
-uvicorn app.main:app --reload --host 0.0.0.0 --port 3000
-
-# Or run directly with uv:
-uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 3000
+uv run uvicorn ai_resume_api.main:app --reload --host 0.0.0.0 --port 3000
 ```
 
 ## Configuration
 
-All configuration via environment variables:
+Environment variables:
 
-| Variable                | Default                              | Description                       |
-| ----------------------- | ------------------------------------ | --------------------------------- |
-| `OPENROUTER_API_KEY`    | Required                             | OpenRouter API key                |
-| `MEMVID_GRPC_URL`       | `localhost:50051`                    | Rust memvid service gRPC endpoint |
-| `LLM_MODEL`             | `nvidia/nemotron-nano-9b-v2:free`    | OpenRouter model ID               |
-| `SESSION_TTL`           | `1800`                               | Session TTL in seconds (30 min)   |
-| `RATE_LIMIT_PER_MINUTE` | `10`                                 | Rate limit per IP                 |
-| `PORT`                  | `3000`                               | HTTP server port                  |
-| `LOG_LEVEL`             | `INFO`                               | Logging level                     |
+| Variable                | Default                           | Description                     |
+| ----------------------- | --------------------------------- | ------------------------------- |
+| `OPENROUTER_API_KEY`    | Required                          | OpenRouter API key              |
+| `MEMVID_GRPC_URL`       | `localhost:50051`                 | memvid service gRPC endpoint    |
+| `LLM_MODEL`             | `nvidia/nemotron-nano-9b-v2:free` | OpenRouter model ID             |
+| `SESSION_TTL`           | `1800`                            | Session TTL in seconds (30 min) |
+| `RATE_LIMIT_PER_MINUTE` | `10`                              | Rate limit per IP address       |
+| `PORT`                  | `3000`                            | HTTP server port                |
+| `LOG_LEVEL`             | `INFO`                            | Logging level (DEBUG/INFO/WARN) |
+| `MOCK_MEMVID_CLIENT`    | `false`                           | Use mock client for testing     |
 
 ## Testing
 
-**Run tests with UV:**
+**Test suite:** 253 tests, 88% coverage
+
+**Run tests:**
 
 ```bash
 uv run pytest
@@ -110,27 +132,35 @@ uv run pytest
 **Run with coverage:**
 
 ```bash
-uv run pytest --cov=app --cov-report=html
+uv run pytest --cov=ai_resume_api --cov-report=html
+open htmlcov/index.html
 ```
+
+**Run specific test:**
+
+```bash
+uv run pytest tests/test_main.py -v
+uv run pytest tests/test_main.py::TestChatEndpoint::test_valid_message -v
+```
+
+See [docs/TEST_COVERAGE.md](../docs/TEST_COVERAGE.md) for detailed coverage report.
 
 **Type checking:**
 
 ```bash
-uv run mypy app/
+uv run mypy ai_resume_api/
 ```
 
 **Code formatting:**
 
 ```bash
-uv run black app/
-uv run isort app/
-# or: uv run ruff format app/
+uv run ruff format ai_resume_api/
 ```
 
 **Linting:**
 
 ```bash
-uv run ruff check app/
+uv run ruff check ai_resume_api/
 ```
 
 ## Container Build
@@ -157,48 +187,54 @@ podman run -d \
 **Hot reload:**
 
 ```bash
-uvicorn app.main:app --reload
+uv run uvicorn ai_resume_api.main:app --reload
 ```
+
+**View API docs:**
+
+- Swagger UI: <http://localhost:3000/docs>
+- ReDoc: <http://localhost:3000/redoc>
 
 ## Project Structure
 
 ```text
 api-service/
 ├── ai_resume_api/
-│   ├── __init__.py
-│   ├── main.py              # FastAPI app entrypoint
-│   ├── config.py            # Environment configuration
-│   ├── models.py            # Pydantic request/response models
-│   ├── memvid_client.py     # gRPC client for Rust service
-│   ├── openrouter_client.py # OpenRouter LLM client
-│   ├── session_store.py     # In-memory session management
-│   └── rate_limiter.py      # Per-IP rate limiting
-├── proto/
-│   └── memvid/v1/memvid.proto  # gRPC service definition (shared with Rust)
+│   ├── main.py                # FastAPI app and endpoints
+│   ├── config.py              # Environment configuration
+│   ├── models.py              # Pydantic request/response models
+│   ├── memvid_client.py       # gRPC client for memvid service
+│   ├── openrouter_client.py   # OpenRouter LLM client
+│   ├── role_classifier.py     # Multi-domain role classification
+│   ├── query_transform.py     # Query rewriting strategies
+│   ├── guardrails.py          # Input validation and safety
+│   ├── session_store.py       # Session management (TTL-based)
+│   └── observability.py       # Logging and metrics
 ├── tests/
-│   ├── conftest.py             # Pytest fixtures
-│   ├── test_config.py          # Config tests
-│   ├── test_main.py            # API endpoint tests
-│   ├── test_memvid_client.py   # gRPC client tests
-│   ├── test_models.py          # Pydantic model tests
-│   ├── test_openrouter_client.py  # OpenRouter client tests
-│   └── test_session_store.py   # Session store tests
-├── pyproject.toml              # UV/pip dependencies
-├── Dockerfile
+│   ├── conftest.py                  # Pytest fixtures and config
+│   ├── test_main.py                 # API endpoint tests
+│   ├── test_memvid_client.py        # gRPC client tests (REST mode)
+│   ├── test_memvid_client_grpc.py   # gRPC client tests (native mode)
+│   ├── test_openrouter_client.py    # OpenRouter client tests
+│   ├── test_role_classifier_e2e.py  # Role classification tests
+│   ├── test_query_transform.py      # Query transformation tests
+│   ├── test_guardrails.py           # Input validation tests
+│   ├── test_integration.py          # End-to-end integration tests
+│   └── ...                          # Additional test modules
+├── pyproject.toml              # UV/pip dependencies and config
+├── Dockerfile                  # Multi-stage container build
 └── README.md
 ```
 
-## Implementation Status
+## Features
 
-✅ **Complete** - All features implemented with 80% test coverage (102 tests)
-
-- [x] FastAPI app with CORS and middleware
-- [x] gRPC client for Rust memvid service (with mock fallback)
-- [x] OpenRouter streaming client (SSE responses)
-- [x] Session management with TTL (cachetools)
-- [x] Rate limiting middleware (slowapi)
-- [x] Structured logging (structlog)
-- [x] Prometheus metrics endpoint
-- [x] Health check with memvid status
-- [x] Suggested questions endpoint
-- [x] OpenAPI documentation (auto-generated at /docs)
+- FastAPI app with CORS and middleware
+- gRPC client for memvid service (with REST fallback)
+- OpenRouter streaming LLM integration (SSE)
+- Multi-domain role classification (9 domains)
+- Fit assessment with structured verdicts
+- Session management with TTL (in-memory)
+- Rate limiting per IP address
+- Structured logging (JSON format)
+- Input validation and guardrails
+- OpenAPI documentation (/docs, /redoc)

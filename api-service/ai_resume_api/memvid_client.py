@@ -640,3 +640,9 @@ async def close_memvid_client() -> None:
     if _memvid_client:
         await _memvid_client.close()
         _memvid_client = None
+
+
+def reset_memvid_client() -> None:
+    """Reset the global memvid client (for testing)."""
+    global _memvid_client
+    _memvid_client = None

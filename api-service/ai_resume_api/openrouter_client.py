@@ -445,3 +445,9 @@ async def close_openrouter_client() -> None:
     if _openrouter_client:
         await _openrouter_client.close()
         _openrouter_client = None
+
+
+def reset_openrouter_client() -> None:
+    """Reset the global OpenRouter client (for testing)."""
+    global _openrouter_client
+    _openrouter_client = None
