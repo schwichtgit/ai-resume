@@ -8,12 +8,39 @@ FastAPI-based backend service providing:
 - Session management and rate limiting
 - gRPC integration with memvid vector database
 
-## Architecture
-
 This service is part of a hybrid Rust + Python architecture:
 
 - **Rust memvid service** - Vector search, profile storage (gRPC on :50051)
 - **Python API service** - HTTP API, LLM orchestration, business logic
+
+## Quick Start
+
+**Prerequisites:**
+
+```bash
+# Install uv (https://github.com/astral-sh/uv)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**Install and run:**
+
+```bash
+# Install dependencies (creates .venv automatically)
+uv sync
+
+# Activate virtual environment
+source .venv/bin/activate
+
+# Set environment variables
+export OPENROUTER_API_KEY="sk-or-v1-..."
+export MEMVID_GRPC_URL="localhost:50051"
+export LLM_MODEL="nvidia/nemotron-nano-9b-v2:free"
+
+# Run with hot reload
+uvicorn ai_resume_api.main:app --reload --host 0.0.0.0 --port 3000
+```
+
+Visit <http://localhost:3000/docs> for interactive API documentation.
 
 ## API Endpoints
 
@@ -25,7 +52,7 @@ Stream AI chat responses with semantic search context.
 
 ```json
 {
-  "message": "What experience do they have with cloud infrastructure?",
+  "message": "What cloud infrastructure experience do they have?",
   "session_id": "550e8400-e29b-41d4-a716-446655440000",
   "stream": true
 }
@@ -37,19 +64,58 @@ Stream AI chat responses with semantic search context.
 data: {"type":"retrieval","chunks":3}
 data: {"type":"token","content":"Extensive"}
 ...
-data: {"type":"done"}
+event: stats
+data: {"chunks_retrieved":3,"tokens_used":42,"elapsed_seconds":1.2}
+event: end
+data: [DONE]
+```
+
+### GET /api/v1/suggested-questions
+
+Get AI-generated suggested questions for the chat interface.
+
+**Response:**
+
+```json
+{
+  "questions": [
+    {
+      "question": "What cloud infrastructure experience do they have?",
+      "category": "general"
+    },
+    {
+      "question": "Tell me about their leadership philosophy",
+      "category": "general"
+    }
+  ]
+}
+```
+
+### GET /api/v1/profile
+
+Get profile metadata (name, title, experience, skills, fit examples).
+
+**Response:**
+
+```json
+{
+  "name": "Frank Schwichtenberg",
+  "title": "Senior Engineering Leader",
+  "experience": [...],
+  "skills": {...},
+  "fit_assessment_examples": [...]
+}
 ```
 
 ### POST /api/v1/assess-fit
 
-Analyze job description fit with AI assessment.
+AI-powered job fit assessment with role classification.
 
 **Request:**
 
 ```json
 {
-  "job_description": "Looking for senior Python engineer...",
-  "session_id": "550e8400-e29b-41d4-a716-446655440000"
+  "job_description": "Senior ML Engineer..."
 }
 ```
 
@@ -57,52 +123,28 @@ Analyze job description fit with AI assessment.
 
 ```json
 {
-  "verdict": "STRONG_FIT",
-  "key_matches": ["Python", "FastAPI", "Docker"],
-  "gaps": ["Kubernetes experience"],
-  "recommendation": "Excellent match for core requirements..."
+  "verdict": "⭐⭐⭐⭐ Strong fit",
+  "key_matches": ["10+ years ML experience", "Led distributed teams"],
+  "gaps": ["Limited computer vision experience"],
+  "recommendation": "Strong candidate with transferable leadership...",
+  "chunks_retrieved": 8,
+  "tokens_used": 512
 }
 ```
 
-### GET /api/v1/profile
+**Features:**
 
-Load complete profile (name, title, experience, skills).
-
-### GET /api/v1/suggested-questions
-
-Retrieve suggested questions for chat interface.
+- Multi-domain role classifier (Technology, Healthcare, Legal, Finance, Culinary, Other)
+- Dynamic LLM persona selection based on role domain and seniority
+- Cross-domain mismatch detection
 
 ### GET /api/v1/health
 
 Service health check with memvid connection status.
 
-## Setup
+**Response:**
 
-**Prerequisites:**
-
-```bash
-# Install uv (https://github.com/astral-sh/uv)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-# or: brew install uv
-```
-
-**Install dependencies:**
-
-```bash
-uv sync
-```
-
-**Run development server:**
-
-```bash
-# Set environment variables
-export OPENROUTER_API_KEY="sk-or-v1-..."
-export MEMVID_GRPC_URL="localhost:50051"
-export LLM_MODEL="nvidia/nemotron-nano-9b-v2:free"
-
-# Run with hot reload
-uv run uvicorn ai_resume_api.main:app --reload --host 0.0.0.0 --port 3000
-```
+Prometheus metrics exposition.
 
 ## Configuration
 
@@ -126,74 +168,28 @@ Environment variables:
 **Run tests:**
 
 ```bash
+# Run tests
 uv run pytest
-```
 
-**Run with coverage:**
-
-```bash
+# With coverage
 uv run pytest --cov=ai_resume_api --cov-report=html
 open htmlcov/index.html
-```
 
-**Run specific test:**
-
-```bash
+# Run specific test
 uv run pytest tests/test_main.py -v
 uv run pytest tests/test_main.py::TestChatEndpoint::test_valid_message -v
-```
 
-See [docs/TEST_COVERAGE.md](../docs/TEST_COVERAGE.md) for detailed coverage report.
-
-**Type checking:**
-
-```bash
+# Type checking
 uv run mypy ai_resume_api/
-```
 
-**Code formatting:**
-
-```bash
+# Formatting
 uv run ruff format ai_resume_api/
-```
 
-**Linting:**
-
-```bash
+# Linting
 uv run ruff check ai_resume_api/
 ```
 
-## Container Build
-
-**Multi-arch build:**
-
-```bash
-cd ..
-./scripts/build-all.sh
-```
-
-**Run locally:**
-
-```bash
-podman run -d \
-  -p 3000:3000 \
-  -e OPENROUTER_API_KEY="sk-or-v1-..." \
-  -e MEMVID_GRPC_URL="memvid-service:50051" \
-  localhost/ai-resume-api:latest
-```
-
-## Development
-
-**Hot reload:**
-
-```bash
-uv run uvicorn ai_resume_api.main:app --reload
-```
-
-**View API docs:**
-
-- Swagger UI: <http://localhost:3000/docs>
-- ReDoc: <http://localhost:3000/redoc>
+See [docs/TEST_COVERAGE.md](../docs/TEST_COVERAGE.md) for detailed coverage report.
 
 ## Project Structure
 
@@ -224,6 +220,72 @@ api-service/
 ├── pyproject.toml              # UV/pip dependencies and config
 ├── Dockerfile                  # Multi-stage container build
 └── README.md
+```
+
+## Container Build
+
+**Build multi-arch image:**
+
+```bash
+cd ..
+./scripts/build-all.sh
+```
+
+**Run locally:**
+
+```bash
+podman run -d \
+  -p 3000:3000 \
+  -e OPENROUTER_API_KEY="sk-or-v1-..." \
+  -e MEMVID_GRPC_URL="memvid-service:50051" \
+  localhost/ai-resume-api:latest
+```
+
+## Architecture Notes
+
+This service is part of a hybrid Rust + Python architecture:
+
+- **Rust (memvid-service)**: Performance-critical vector search, BM25 retrieval, re-ranking
+- **Python (api-service)**: API orchestration, LLM calls, session management
+
+Communication: Python gRPC client → Rust gRPC server (port 50051)
+
+Data flow:
+
+1. Client sends chat message → `/api/v1/chat`
+2. Python calls memvid gRPC `Ask()` for semantic search context
+3. Python sends context + message to OpenRouter LLM
+4. Streaming response returned to client via SSE
+
+## Development Tips
+
+**Hot reload:**
+
+```bash
+uv run uvicorn ai_resume_api.main:app --reload
+```
+
+**View API docs:**
+
+- Swagger UI: <http://localhost:3000/docs>
+- ReDoc: <http://localhost:3000/redoc>
+
+**Run without OpenRouter (mock responses):**
+
+```bash
+# Don't set OPENROUTER_API_KEY
+# API will return mock responses using context from memvid
+```
+
+**Test against local memvid:**
+
+```bash
+# In memvid-service directory:
+cargo run --release -- serve --port 50051 --mv2 ../data/.memvid/resume.mv2
+
+# In api-service directory:
+export MEMVID_GRPC_URL="localhost:50051"
+uvicorn ai_resume_api.main:app --reload
 ```
 
 ## Features
