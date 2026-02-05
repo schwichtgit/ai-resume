@@ -277,16 +277,16 @@ Comprehensive test suite for the data ingestion pipeline that creates `.mv2` vec
 
 ### Test Files
 
-| Test File                         | Focus Area                              | Tests | Coverage |
-| --------------------------------- | --------------------------------------- | ----- | -------- |
-| `test_parsing.py`                 | Core parsing functions (YAML, markdown) | 40    | 100%     |
-| `test_ingest_edge_cases.py`       | Integration and edge cases              | 21    | 99%      |
-| `test_e2e.py`                     | End-to-end RAG pipeline                 | 3     | 66%\*    |
-| `test_compare_models.py`          | Embedding model comparison              | 3     | 100%     |
-| `test_ingest_retrieval.py`        | Profile/experience retrieval            | 3     | 68%\*    |
-| `test_memvid_lex_diagnostics.py`  | Index diagnostics                       | 1     | 92%      |
-| `test_memvid.py`                  | Memvid SDK operations                   | 3     | 86%      |
-| `test_embeddings.py`              | Semantic similarity validation          | 1     | 93%      |
+| Test File                        | Focus Area                              | Tests | Coverage |
+| -------------------------------- | --------------------------------------- | ----- | -------- |
+| `test_parsing.py`                | Core parsing functions (YAML, markdown) | 40    | 100%     |
+| `test_ingest_edge_cases.py`      | Integration and edge cases              | 21    | 99%      |
+| `test_e2e.py`                    | End-to-end RAG pipeline                 | 3     | 66%\*    |
+| `test_compare_models.py`         | Embedding model comparison              | 3     | 100%     |
+| `test_ingest_retrieval.py`       | Profile/experience retrieval            | 3     | 68%\*    |
+| `test_memvid_lex_diagnostics.py` | Index diagnostics                       | 1     | 92%      |
+| `test_memvid.py`                 | Memvid SDK operations                   | 3     | 86%      |
+| `test_embeddings.py`             | Semantic similarity validation          | 1     | 93%      |
 
 \* E2E and retrieval tests use real external services, lower coverage expected
 
@@ -294,10 +294,10 @@ Comprehensive test suite for the data ingestion pipeline that creates `.mv2` vec
 
 ### Module Coverage
 
-| Module             | Coverage | Notable Gaps                      |
-| ------------------ | -------- | --------------------------------- |
-| `ingest.py`        | 91%      | Verbose output, error edge cases  |
-| `compare_models.py`| 51%      | CLI argparse boilerplate          |
+| Module              | Coverage | Notable Gaps                     |
+| ------------------- | -------- | -------------------------------- |
+| `ingest.py`         | 91%      | Verbose output, error edge cases |
+| `compare_models.py` | 51%      | CLI argparse boilerplate         |
 
 **Uncovered code:** Primarily verbose/debug print statements and defensive error handling that represent acceptable gaps.
 
@@ -323,6 +323,7 @@ Resume content here."""
 ```
 
 **Coverage:**
+
 - Frontmatter parsing (6 tests)
 - Section extraction (5 tests)
 - Experience parsing (6 tests)
@@ -350,6 +351,7 @@ def test_ingest_with_failures_section():
 ```
 
 **Coverage:**
+
 - Profile building (4 tests)
 - Ingest memory operations (5 tests)
 - Verification (3 tests)
@@ -419,17 +421,20 @@ pytest tests/test_parsing.py::test_parse_frontmatter_basic -v
 **Philosophy:** Focus on critical parsing logic and data flow over 100% coverage.
 
 **Priorities:**
+
 1. Parsing functions (YAML, markdown, chunking)
 2. Ingestion pipeline (frame creation, tagging)
 3. Verification (semantic quality checks)
 4. Error handling (malformed input, missing files)
 
 **Lower Priority:**
+
 - Verbose/debug output (logging)
 - CLI boilerplate (argparse wiring)
 - One-off utility scripts (compare_models.py main)
 
 **Targets:**
+
 - **Critical modules:** 90%+ (ingest.py)
 - **Parsing functions:** 100% (test_parsing.py)
 - **Overall:** 85%+
@@ -471,15 +476,18 @@ markers = [
 ### Known Limitations
 
 **E2E Tests:**
+
 - Lower coverage (66%) due to external LLM dependency
 - Require real .mv2 file and optional OpenRouter API key
 - Network conditions affect reliability
 
 **Slow Tests:**
+
 - Model downloads (~130MB) on first run
 - Skipped by default in fast test runs
 - Run explicitly with `pytest -m slow`
 
 **Verbose Output:**
+
 - Debug/verbose print statements not covered (9% gap)
 - Acceptable for diagnostic logging code

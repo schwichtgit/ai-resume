@@ -21,7 +21,7 @@ uv run python ingest.py --verify # Ingest + run verification queries
 
 ## Data Flow
 
-```
+```text
 data/example_resume.md (YAML + Markdown)
     ↓
 ingest.py (parse, chunk, embed, index)
@@ -36,6 +36,7 @@ Frontend (React UI)
 ```
 
 The `.mv2` file is a self-contained vector database containing:
+
 - Chunked resume content (~13 frames)
 - 384-dimensional embeddings per chunk
 - Profile metadata (name, title, email, skills, experience entries)
@@ -93,6 +94,7 @@ uv run pytest tests/test_parsing.py -v
 ```
 
 **Test Organization:**
+
 - All tests in `tests/` subdirectory
 - 70 passing, 1 skipped (slow test)
 - ingest.py: 91% coverage, compare_models.py: 51%
@@ -132,13 +134,13 @@ When you update `data/example_resume.md`:
 
 Content is chunked according to semantic boundaries defined in the resume markdown:
 
-| Section                 | Chunking Strategy  | Tag Example         |
-| ----------------------- | ------------------ | ------------------- |
-| Professional Experience | One chunk per role | `experience`, `aws` |
-| Skills Assessment       | Single chunk       | `skills`            |
+| Section                 | Chunking Strategy  | Tag Example                  |
+| ----------------------- | ------------------ | ---------------------------- |
+| Professional Experience | One chunk per role | `experience`, `aws`          |
+| Skills Assessment       | Single chunk       | `skills`                     |
 | Documented Failures     | One per story      | `failure`, `lessons-learned` |
-| Fit Assessment          | Single chunk       | `fit-assessment`    |
-| Leadership              | Single chunk       | `leadership`, `management` |
+| Fit Assessment          | Single chunk       | `fit-assessment`             |
+| Leadership              | Single chunk       | `leadership`, `management`   |
 
 Each chunk includes relevant tags for filtering during semantic search.
 
@@ -151,11 +153,13 @@ uv run python ingest.py --verify
 ```
 
 **Checks performed:**
+
 - Minimum frame count (>= 5 chunks)
 - Relevance scores meet threshold (>= 0.3)
 - Expected tags are present for domain queries
 
 **Example queries:**
+
 - "Python experience" → expects `experience` or `skills` tags
 - "leadership philosophy" → expects `leadership` or `management` tags
 - "failure lessons" → expects `failure` tag
