@@ -13,9 +13,11 @@ import os
 import tempfile
 from pathlib import Path
 
+import pytest
 import memvid_sdk
 
 
+@pytest.mark.anyio
 async def test_profile_metadata_retrieval():
     """Test that profile metadata can be retrieved after ingest."""
     print("\n🔍 Test: Profile Metadata Retrieval")
@@ -132,6 +134,7 @@ async def test_profile_metadata_retrieval():
             print(f"  🧹 Cleaned up: {output_file}")
 
 
+@pytest.mark.anyio
 async def test_experience_retrieval():
     """Test that experience entries can be retrieved."""
     print("\n🔍 Test: Experience Entry Retrieval")
@@ -185,6 +188,7 @@ async def test_experience_retrieval():
             os.unlink(output_file)
 
 
+@pytest.mark.anyio
 async def test_fit_assessment_examples_retrieval():
     """Test that fit assessment examples can be retrieved."""
     print("\n🔍 Test: Fit Assessment Examples Retrieval")

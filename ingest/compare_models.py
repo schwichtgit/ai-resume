@@ -1,48 +1,110 @@
 #!/usr/bin/env python3
-"""Compare MPNet vs BGE-small for AI/ML query retrieval."""
+"""
+Compare embedding models for semantic similarity.
 
-from sentence_transformers import SentenceTransformer
+Usage:
+    python compare_models.py [MODEL1] [MODEL2]
+
+    If no models specified, compares:
+    - all-MiniLM-L6-v2 (default, fast)
+    - BAAI/bge-small-en-v1.5 (current)
+"""
+
+import argparse
 import numpy as np
+from sentence_transformers import SentenceTransformer
 
-def cosine_similarity(a, b):
+
+def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
+    """Calculate cosine similarity between two vectors."""
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
-def test_model(model_name):
-    """Test a model's ability to match AI queries with AI content."""
-    print(f"\n{'='*80}")
-    print(f"Model: {model_name}")
-    print(f"{'='*80}")
+
+def test_model(model_name: str) -> dict:
+    """Test a single model on sample queries."""
+    print(f"\n{'='*60}")
+    print(f"Testing: {model_name}")
+    print('='*60)
 
     model = SentenceTransformer(model_name)
 
-    # Critical test case: full term vs acronym
-    query = "artificial intelligence experience"
-    content = "AI/ML infrastructure"
+    # Sample queries
+    queries = [
+        "What cloud platforms has she used?",
+        "Tell me about her leadership experience",
+        "What programming languages does she know?"
+    ]
 
-    q_emb = model.encode([query])[0]
-    c_emb = model.encode([content])[0]
+    # Sample context from resume
+    context = """
+    Led platform engineering teams at scale, managing AWS and GCP infrastructure.
+    Proficient in Python, Go, Rust. 10+ years building distributed systems.
+    """
 
-    sim = cosine_similarity(q_emb, c_emb)
+    context_embedding = model.encode(context)
+    results = []
 
-    print(f"\nQuery:   '{query}'")
-    print(f"Content: '{content}'")
-    print(f"Similarity: {sim:.4f}")
-    print(f"Status: {'✅ PASS (>0.4)' if sim >= 0.4 else '❌ FAIL (<0.4)'}")
+    for query in queries:
+        query_embedding = model.encode(query)
+        similarity = cosine_similarity(query_embedding, context_embedding)
+        results.append({"query": query, "similarity": similarity})
+        print(f"Query: {query}")
+        print(f"  Similarity: {similarity:.4f}\n")
 
-    return sim
+    avg_similarity = np.mean([r["similarity"] for r in results])
+
+    return {
+        "model_name": model_name,
+        "results": results,
+        "avg_similarity": avg_similarity
+    }
+
+
+def main():
+    """Main comparison script."""
+    parser = argparse.ArgumentParser(
+        description="Compare two embedding models for semantic similarity"
+    )
+    parser.add_argument(
+        "model1",
+        nargs="?",
+        default="sentence-transformers/all-MiniLM-L6-v2",
+        help="First model name (default: all-MiniLM-L6-v2)"
+    )
+    parser.add_argument(
+        "model2",
+        nargs="?",
+        default="BAAI/bge-small-en-v1.5",
+        help="Second model name (default: BAAI/bge-small-en-v1.5)"
+    )
+
+    args = parser.parse_args()
+
+    print("EMBEDDING MODEL COMPARISON")
+    print("="*60)
+
+    # Test both models
+    result1 = test_model(args.model1)
+    result2 = test_model(args.model2)
+
+    # Summary
+    print("\n" + "="*60)
+    print("SUMMARY")
+    print("="*60)
+    print(f"\n{result1['model_name']}")
+    print(f"  Average Similarity: {result1['avg_similarity']:.4f}")
+    print(f"\n{result2['model_name']}")
+    print(f"  Average Similarity: {result2['avg_similarity']:.4f}")
+
+    if result2['avg_similarity'] > result1['avg_similarity']:
+        diff = result2['avg_similarity'] - result1['avg_similarity']
+        print(f"\n✓ {result2['model_name']} is better by {diff:.4f}")
+    elif result1['avg_similarity'] > result2['avg_similarity']:
+        diff = result1['avg_similarity'] - result2['avg_similarity']
+        print(f"\n✓ {result1['model_name']} is better by {diff:.4f}")
+    else:
+        print("\n= Models perform equally")
+
 
 if __name__ == "__main__":
-    mpnet_score = test_model("all-mpnet-base-v2")
-    bge_score = test_model("BAAI/bge-small-en-v1.5")
-
-    print(f"\n{'='*80}")
-    print("COMPARISON")
-    print(f"{'='*80}")
-    print(f"MPNet:     {mpnet_score:.4f}")
-    print(f"BGE-small: {bge_score:.4f}")
-    print(f"Improvement: {((bge_score - mpnet_score) / mpnet_score * 100):.1f}%")
-
-    if bge_score > mpnet_score:
-        print("\n✅ BGE is BETTER for this use case!")
-    else:
-        print("\n⚠️  MPNet performed better (unexpected)")
+    main()

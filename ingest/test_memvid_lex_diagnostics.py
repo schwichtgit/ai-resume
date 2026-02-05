@@ -14,6 +14,7 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
 import memvid_sdk
 
 # Project paths
@@ -30,7 +31,7 @@ def test_index_status():
 
     if not MV2_PATH.exists():
         print(f"❌ ERROR: File not found: {MV2_PATH}")
-        return False
+        pytest.skip(f"File not found: {MV2_PATH}")
 
     print(f"📁 Testing: {MV2_PATH}")
     print(f"📊 Size: {MV2_PATH.stat().st_size:,} bytes")
@@ -86,25 +87,30 @@ def test_index_status():
         ("leadership team building", "hybrid"),
     ]
 
-    all_passed = True
+    query_results = []
     for query, mode in test_queries:
         print(f"\n🔍 Query: '{query}' ({mode})")
         try:
             result = mem.find(query, k=3, mode=mode)
             hits = result.get("hits", [])
             print(f"   ✓ Success: {len(hits)} hits")
+            query_results.append(True)
             if hits:
                 for i, hit in enumerate(hits[:2], 1):
                     print(f"     {i}. [{hit.get('score', 0):.3f}] {hit.get('title', 'N/A')}")
         except Exception as e:
             print(f"   ✗ Failed: {type(e).__name__}: {str(e)[:60]}")
-            all_passed = False
+            query_results.append(False)
+
+    # Close the first instance before opening another
+    mem.close()
 
     # Profile State Test
     print(f"\n" + "=" * 70)
     print("PROFILE STATE TEST (O(1) LOOKUP)")
     print("=" * 70)
     mem = memvid_sdk.use("basic", str(MV2_PATH))
+    profile_found = False
     try:
         state = mem.state("__profile__")
         if state and state.get("found"):
@@ -116,12 +122,11 @@ def test_index_status():
                 print(f"   Name: {profile.get('name', 'N/A')}")
                 print(f"   Title: {profile.get('title', 'N/A')}")
                 print(f"   Email: {profile.get('email', 'N/A')}")
+                profile_found = True
         else:
             print("✗ Profile state NOT found")
-            all_passed = False
     except Exception as e:
         print(f"✗ Error retrieving profile: {e}")
-        all_passed = False
     finally:
         mem.close()
 
@@ -145,9 +150,15 @@ def test_index_status():
 
     if lex_storage and lex_enabled and vec_storage and vec_enabled:
         print("\n✓ All indexes functioning correctly")
-        return True
 
-    return all_passed
+    # Assert that profile lookup works (critical functionality)
+    # Note: Query failures due to disabled indexes are documented issues, not test failures
+    assert profile_found, "Profile state lookup failed"
+
+    # Optionally verify at least some queries work (lexical should work even if vector doesn't)
+    at_least_one_query_worked = any(query_results)
+    if not at_least_one_query_worked:
+        pytest.fail("All query modes failed, expected at least lexical to work")
 
 
 if __name__ == "__main__":

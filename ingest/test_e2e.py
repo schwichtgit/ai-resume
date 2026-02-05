@@ -23,6 +23,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+import pytest
 import memvid_sdk
 
 # Project paths
@@ -58,7 +59,7 @@ for key, value in env_vars.items():
 
 
 @dataclass
-class TestCase:
+class RetrievalTestCase:
     """A test case for retrieval validation."""
     name: str
     query: str
@@ -73,50 +74,50 @@ class TestCase:
 
 RETRIEVAL_TEST_CASES = [
     # FAQ Mirroring Tests - suggested questions should find their FAQ entries
-    TestCase(
+    RetrievalTestCase(
         name="FAQ: Programming Languages",
         query="What programming languages does she know?",
         expected_title_contains="FAQ: What programming languages",
         expected_content_contains=["Python", "Go", "Bash", "10+ years"],
     ),
-    TestCase(
+    RetrievalTestCase(
         name="FAQ: Security Track Record",
         query="security track record",  # Keywords work better than full question
         expected_title_contains="FAQ: What's her security track record",
         expected_content_contains=["FedRAMP", "SOC 2", "zero-trust"],
     ),
-    TestCase(
+    RetrievalTestCase(
         name="FAQ: AI/ML Experience",
         query="Tell me about her AI/ML experience.",
         expected_title_contains="FAQ: Tell me about her AI/ML experience",
         expected_content_contains=["MLOps", "model serving", "10M inferences"],
     ),
-    TestCase(
+    RetrievalTestCase(
         name="FAQ: Biggest Failures",
         query="What are her biggest failures?",
         expected_title_contains="FAQ: What are her biggest failures",
         expected_content_contains=["Over-Engineered Platform", "Migration"],
     ),
-    TestCase(
+    RetrievalTestCase(
         name="FAQ: Early-Stage Startup Fit",
         query="Would she be good for an early-stage startup?",
         expected_title_contains="FAQ: Would she be good for an early-stage startup",
         expected_content_contains=["Series A/B", "Strong fit", "Weak fit"],
     ),
     # General Semantic Queries
-    TestCase(
+    RetrievalTestCase(
         name="General: Python Experience",
         query="Python programming data pipelines",
         expected_title_contains="programming languages",
         expected_content_contains=["Python"],
     ),
-    TestCase(
+    RetrievalTestCase(
         name="General: Leadership",
         query="leadership team management philosophy",
         expected_title_contains="Leadership",
         expected_content_contains=["team", "leadership"],
     ),
-    TestCase(
+    RetrievalTestCase(
         name="General: Kubernetes",
         query="Kubernetes clusters cloud infrastructure",
         expected_title_contains="",  # Could match multiple sections
@@ -125,7 +126,7 @@ RETRIEVAL_TEST_CASES = [
 ]
 
 
-def test_memvid_retrieval() -> tuple[int, int]:
+def test_memvid_retrieval():
     """Test that memvid retrieves expected content for each test case."""
     print("\n" + "=" * 70)
     print("TEST SUITE: Memvid Retrieval Accuracy")
@@ -133,7 +134,7 @@ def test_memvid_retrieval() -> tuple[int, int]:
 
     if not MV2_PATH.exists():
         print(f"ERROR: {MV2_PATH} not found. Run ingest first.")
-        return 0, len(RETRIEVAL_TEST_CASES)
+        pytest.skip(f"{MV2_PATH} not found. Run ingest first.")
 
     mem = memvid_sdk.use("basic", str(MV2_PATH))
     stats = mem.stats()
@@ -193,9 +194,12 @@ def test_memvid_retrieval() -> tuple[int, int]:
 
     print(f"\n{'=' * 70}")
     print(f"Retrieval Tests: {passed} passed, {failed} failed")
-    return passed, failed
+
+    # Assert all tests passed
+    assert failed == 0, f"{failed} retrieval test(s) failed"
 
 
+@pytest.mark.anyio
 async def test_query_transformation_improves_retrieval() -> tuple[int, int]:
     """Test that query transformation improves retrieval for ambiguous queries."""
     print("\n" + "=" * 70)
@@ -307,6 +311,7 @@ async def test_query_transformation_improves_retrieval() -> tuple[int, int]:
     return passed, failed
 
 
+@pytest.mark.anyio
 async def test_full_rag_pipeline() -> tuple[int, int]:
     """Test the complete RAG pipeline produces correct answers."""
     print("\n" + "=" * 70)

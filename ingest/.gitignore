@@ -11,6 +11,9 @@ __pycache__/
 # Testing
 .pytest_cache/
 .coverage
+coverage.json
+*.py,cover
+htmlcov/
 
 # IDE
 .vscode/
