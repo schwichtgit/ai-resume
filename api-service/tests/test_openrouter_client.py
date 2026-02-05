@@ -20,7 +20,7 @@ class TestOpenRouterClient:
     def test_init_default_values(self):
         """Test client initialization with defaults."""
         client = OpenRouterClient()
-        assert client._model == "nvidia/nemotron-nano-2407-instruct"
+        assert client._model == "nvidia/nemotron-nano-9b-v2:free"
         assert client._max_tokens == 1024
         assert client._temperature == 0.7
 

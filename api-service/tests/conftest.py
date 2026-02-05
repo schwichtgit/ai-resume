@@ -9,6 +9,8 @@ os.environ.setdefault("OPENROUTER_API_KEY", "")
 os.environ.setdefault("ENVIRONMENT", "development")
 # Increase rate limit for testing
 os.environ.setdefault("RATE_LIMIT_PER_MINUTE", "1000")
+# Enable mock mode for memvid client in tests
+os.environ.setdefault("MOCK_MEMVID_CLIENT", "true")
 
 
 @pytest.fixture(autouse=True)

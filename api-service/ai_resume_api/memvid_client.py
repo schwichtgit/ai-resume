@@ -15,11 +15,17 @@ from ai_resume_api.observability import get_trace_id
 logger = structlog.get_logger()
 
 # Memvid retrieval latency histogram
-memvid_search_latency = Histogram(
-    "memvid_search_latency_seconds",
-    "Memvid search latency in seconds",
-    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0],
-)
+# Handle re-registration during test collection
+try:
+    memvid_search_latency = Histogram(
+        "memvid_search_latency_seconds",
+        "Memvid search latency in seconds",
+        buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0],
+    )
+except ValueError as e:
+    # Metric already registered (during test collection)
+    from prometheus_client import REGISTRY
+    memvid_search_latency = REGISTRY._names_to_collectors.get("memvid_search_latency_seconds")
 
 # Try to import generated protobuf code
 # If not available, we'll use a mock client
