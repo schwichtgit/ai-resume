@@ -70,21 +70,51 @@ uv run python ingest.py --verify
 uv run python ingest.py --quiet
 ```
 
-### Testing Tools
+### Testing
+
+**Test Suite:** 71 tests, 87% coverage
 
 ```bash
-# Validate memvid SDK integration
-uv run python test_memvid.py
+# Run all tests
+uv run pytest tests/ -v
 
-# Test embedding similarity (validates semantic search)
-uv run python test_embeddings.py
+# Run with coverage report
+uv run pytest tests/ --cov=. --cov-report=html
+open htmlcov/index.html
 
-# Compare BGE vs MPNet for AI/ML queries
+# Fast tests only (skip slow model downloads)
+uv run pytest tests/ -m "not slow"
+
+# Run slow tests (model downloads required, ~16s)
+uv run pytest tests/ -m slow
+
+# Specific test file
+uv run pytest tests/test_parsing.py -v
+```
+
+**Test Organization:**
+- All tests in `tests/` subdirectory
+- 70 passing, 1 skipped (slow test)
+- ingest.py: 91% coverage, compare_models.py: 51%
+- Execution time: ~69 seconds (fast tests ~40s)
+
+See [../docs/TEST_COVERAGE.md](../docs/TEST_COVERAGE.md) for detailed analysis.
+
+### Model Comparison Tool
+
+Compare embedding models for your resume data:
+
+```bash
+# Compare default models (BGE vs MPNet)
 uv run python compare_models.py
 
-# Run full pytest suite (requires: uv sync --extra test)
-uv sync --extra test
-uv run pytest
+# Compare custom models
+uv run python compare_models.py model-name-1 model-name-2
+
+# Example: Compare different model sizes
+uv run python compare_models.py \
+  sentence-transformers/all-MiniLM-L6-v2 \
+  sentence-transformers/all-mpnet-base-v2
 ```
 
 ### Update Workflow

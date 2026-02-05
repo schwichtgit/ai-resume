@@ -28,6 +28,11 @@ dev = [
     "pytest-cov>=7.0.0",
 ]
 
+# New group for local developer utilities
+tools = [
+    "it2 @ git+https://github.com/mkusaka/it2.git",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
