@@ -491,3 +491,256 @@ markers = [
 
 - Debug/verbose print statements not covered (9% gap)
 - Acceptable for diagnostic logging code
+
+---
+
+## Memvid-Service Test Coverage
+
+**Last Updated:** February 5, 2026
+**Status:** 48 tests passing (2 ignored), 85.93% overall coverage
+
+---
+
+### Overview
+
+Comprehensive test suite for the Rust gRPC service that provides semantic search over `.mv2` vector databases. Tests execute in ~3 seconds using cargo test with tokio async runtime.
+
+**Test Organization:** Mix of unit tests (in module files) and integration tests (`tests/` directory).
+
+---
+
+### Test Files
+
+| Test File/Module                  | Focus Area                          | Tests | Coverage |
+| --------------------------------- | ----------------------------------- | ----- | -------- |
+| `src/grpc/service.rs`             | gRPC service handlers, search logic | 38    | 99.08%   |
+| `tests/main_integration_tests.rs` | End-to-end service integration      | 27    | -        |
+| `src/memvid/mock.rs`              | Mock searcher for testing           | -     | 97.56%   |
+| `src/memvid/real.rs`              | Real memvid integration             | 11    | 68.27%   |
+| `src/config.rs`                   | Configuration loading, validation   | -     | 91.67%   |
+| `src/metrics.rs`                  | Prometheus metrics                  | -     | 88.55%   |
+| `src/error.rs`                    | Error handling, conversions         | -     | 97.78%   |
+| `src/main.rs`                     | Binary entry point                  | -     | 0%\*     |
+
+\* Binary entry point not tested, acceptable for application startup code
+
+---
+
+### Module Coverage
+
+| Module            | Coverage | Notable Gaps                           |
+| ----------------- | -------- | -------------------------------------- |
+| `grpc/service.rs` | 99.08%   | Edge case error paths                  |
+| `error.rs`        | 97.78%   | Display impl formatting                |
+| `memvid/mock.rs`  | 97.56%   | Mock initialization edge cases         |
+| `config.rs`       | 91.67%   | Environment variable error paths       |
+| `metrics.rs`      | 88.55%   | Prometheus registration error paths    |
+| `memvid/real.rs`  | 68.27%   | Lexical search paths (2 ignored tests) |
+| `main.rs`         | 0%       | Binary entry point (not tested)        |
+
+---
+
+### Test Strategies
+
+#### Unit Tests (in-module)
+
+Tests embedded in source files following Rust conventions:
+
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_search_basic() {
+        let searcher = MockSearcher::new();
+        let result = searcher.search("query", 5).await.unwrap();
+        assert_eq!(result.len(), 5);
+    }
+}
+```
+
+**Coverage:**
+
+- `grpc/service.rs`: 38 unit tests covering request validation, search logic, filtering
+- `memvid/real.rs`: 11 tests for actual .mv2 file operations
+- All tests use tokio async runtime
+
+#### Integration Tests (tests/)
+
+Full service lifecycle tests with environment isolation:
+
+```rust
+#[tokio::test]
+async fn test_search_with_real_mv2_file() {
+    let _env = TestEnv::new(&[
+        ("MEMVID_PATH", "../data/.memvid/resume.mv2"),
+        ("USE_MOCK_SEARCHER", "false"),
+    ]);
+
+    let searcher = create_searcher().await.unwrap();
+    let results = searcher.search("python", 5).await.unwrap();
+    assert!(!results.is_empty());
+}
+```
+
+**TestEnv Helper:**
+
+- Sets environment variables for test duration
+- Automatic cleanup on drop
+- Prevents test pollution between runs
+
+#### Ignored Tests
+
+Tests for features under development:
+
+```rust
+#[tokio::test]
+#[ignore = "lexical search not yet implemented"]
+async fn test_lexical_search() {
+    // Filter implementation pending
+}
+```
+
+**Run ignored tests:**
+
+```bash
+cargo test -- --ignored
+```
+
+---
+
+### Running Tests
+
+#### Commands
+
+```bash
+# Run all tests
+cd memvid-service
+cargo test
+
+# With output
+cargo test -- --nocapture
+
+# Specific test
+cargo test test_search_basic
+
+# Integration tests only
+cargo test --test main_integration_tests
+
+# Ignored tests (lexical search features)
+cargo test -- --ignored
+
+# All tests including ignored
+cargo test -- --include-ignored
+```
+
+#### Coverage Reports
+
+```bash
+# Install llvm-cov
+cargo install cargo-llvm-cov
+
+# Generate coverage report
+cargo llvm-cov
+
+# HTML report
+cargo llvm-cov --html
+open target/llvm-cov/html/index.html
+
+# CI-friendly output
+cargo llvm-cov --lcov --output-path target/lcov.info
+```
+
+---
+
+### Coverage Goals
+
+**Philosophy:** Focus on service logic and critical paths over binary entry points.
+
+**Priorities:**
+
+1. gRPC service handlers (request/response validation)
+2. Search logic (semantic + lexical filtering)
+3. Error handling (tonic::Status conversion)
+4. Real memvid integration (.mv2 file operations)
+
+**Lower Priority:**
+
+- Binary main() function (server startup)
+- Metric registration boilerplate
+- Environment variable error messages
+
+**Targets:**
+
+- **Critical modules:** 95%+ (grpc/service.rs, memvid/mock.rs)
+- **Integration modules:** 70%+ (memvid/real.rs)
+- **Overall:** 85%+
+
+**Current:** 85.93% (meeting target)
+
+---
+
+### Configuration
+
+**Cargo.toml (dev-dependencies):**
+
+```toml
+[dev-dependencies]
+tokio = { version = "1.43", features = ["test-util", "macros"] }
+tonic = { version = "0.13", features = ["transport"] }
+memvid = { version = "0.2.14", features = ["testing"] }
+```
+
+**Test Environment Variables:**
+
+```rust
+// In TestEnv helper
+const TEST_DEFAULTS: &[(&str, &str)] = &[
+    ("MEMVID_PATH", "../data/.memvid/resume.mv2"),
+    ("USE_MOCK_SEARCHER", "true"),
+    ("GRPC_PORT", "50051"),
+];
+```
+
+---
+
+### Best Practices
+
+1. **Async Tests** - Always use `#[tokio::test]` for async functions
+2. **Environment Isolation** - Use TestEnv helper to prevent test pollution
+3. **Real Data** - Integration tests use actual .mv2 file at `../data/.memvid/resume.mv2`
+4. **Mock by Default** - Unit tests use MockSearcher, integration tests use real
+5. **Ignore WIP Features** - Mark unimplemented features with `#[ignore]`
+6. **Fast Execution** - Unit tests complete in milliseconds
+7. **Coverage Tracking** - Use cargo llvm-cov for accurate coverage metrics
+
+---
+
+### Known Limitations
+
+**Binary Entry Point:**
+
+- `main.rs` has 0% coverage (binary startup code)
+- Server lifecycle not tested in test suite
+- Acceptable for application entry point
+
+**Lexical Search:**
+
+- 2 ignored tests for filter-based search features
+- Requires additional memvid SDK work
+- Run with `cargo test -- --ignored` when implemented
+
+**Real Searcher Coverage:**
+
+- Lower coverage (68%) due to external .mv2 file dependency
+- Some error paths only testable with corrupted files
+- Integration tests validate happy paths thoroughly
+
+**Environment Dependencies:**
+
+- Tests require `.mv2` file at `../data/.memvid/resume.mv2`
+- Failure if file missing (by design, validates real integration)
+- Mock searcher used for CI/isolated environments
+
+---

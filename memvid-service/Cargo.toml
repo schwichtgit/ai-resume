@@ -55,6 +55,10 @@ default = []
 # Enable real memvid-core integration (disabled by default for mock testing)
 # real-memvid = ["memvid-core"]
 
+[lib]
+name = "ai_resume_memvid"
+path = "src/lib.rs"
+
 [[bin]]
 name = "memvid-service"
 path = "src/main.rs"

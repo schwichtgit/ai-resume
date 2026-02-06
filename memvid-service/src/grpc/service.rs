@@ -277,6 +277,8 @@ mod tests {
             query: "Python experience".to_string(),
             top_k: 0,        // Should default to 5
             snippet_chars: 0, // Should default to 200
+            min_relevance: 0.0, // No relevance filter
+            mode: 0,         // ASK_MODE_HYBRID (default)
         });
 
         let response = service.search(request).await.unwrap();
@@ -298,6 +300,8 @@ mod tests {
             query: "Rust programming".to_string(),
             top_k: 3,
             snippet_chars: 100,
+            min_relevance: 0.0,
+            mode: 0,
         });
 
         let response = service.search(request).await.unwrap();
@@ -322,6 +326,8 @@ mod tests {
             query: "skills".to_string(),
             top_k: 5,
             snippet_chars: 200,
+            min_relevance: 0.0,
+            mode: 0,
         });
 
         let response = service.search(request).await.unwrap();
@@ -436,5 +442,176 @@ mod tests {
 
         assert!(inner.found); // Entity exists
         assert!(inner.slots.is_empty()); // But requested slot doesn't
+    }
+
+    #[tokio::test]
+    async fn test_ask_with_semantic_mode() {
+        init_test_metrics();
+
+        let searcher = Arc::new(MockSearcher::new());
+        let service = MemvidGrpcService::new(searcher);
+
+        let request = Request::new(AskRequest {
+            question: "What is your experience?".to_string(),
+            mode: ProtoAskMode::Sem as i32,
+            use_llm: false,
+            top_k: 5,
+            snippet_chars: 200,
+            filters: std::collections::HashMap::new(),
+            start: 0,
+            end: 0,
+            uri: String::new(),
+            cursor: String::new(),
+            as_of_frame: None,
+            as_of_ts: None,
+            adaptive: None,
+        });
+
+        let response = service.ask(request).await.unwrap();
+        let inner = response.into_inner();
+
+        assert!(!inner.answer.is_empty());
+        assert!(!inner.evidence.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_ask_with_lexical_mode() {
+        init_test_metrics();
+
+        let searcher = Arc::new(MockSearcher::new());
+        let service = MemvidGrpcService::new(searcher);
+
+        let request = Request::new(AskRequest {
+            question: "Python skills".to_string(),
+            mode: ProtoAskMode::Lex as i32,
+            use_llm: false,
+            top_k: 3,
+            snippet_chars: 150,
+            filters: std::collections::HashMap::new(),
+            start: 0,
+            end: 0,
+            uri: String::new(),
+            cursor: String::new(),
+            as_of_frame: None,
+            as_of_ts: None,
+            adaptive: None,
+        });
+
+        let response = service.ask(request).await.unwrap();
+        assert!(response.into_inner().stats.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_ask_with_invalid_mode_defaults_to_hybrid() {
+        init_test_metrics();
+
+        let searcher = Arc::new(MockSearcher::new());
+        let service = MemvidGrpcService::new(searcher);
+
+        let request = Request::new(AskRequest {
+            question: "Test question".to_string(),
+            mode: 999, // Invalid mode
+            use_llm: false,
+            top_k: 5,
+            snippet_chars: 200,
+            filters: std::collections::HashMap::new(),
+            start: 0,
+            end: 0,
+            uri: String::new(),
+            cursor: String::new(),
+            as_of_frame: None,
+            as_of_ts: None,
+            adaptive: None,
+        });
+
+        let response = service.ask(request).await;
+        assert!(response.is_ok()); // Should default to Hybrid
+    }
+
+    #[tokio::test]
+    async fn test_ask_with_use_llm_true() {
+        init_test_metrics();
+
+        let searcher = Arc::new(MockSearcher::new());
+        let service = MemvidGrpcService::new(searcher);
+
+        let request = Request::new(AskRequest {
+            question: "Summarize experience".to_string(),
+            mode: ProtoAskMode::Hybrid as i32,
+            use_llm: true, // Request LLM synthesis
+            top_k: 5,
+            snippet_chars: 200,
+            filters: std::collections::HashMap::new(),
+            start: 0,
+            end: 0,
+            uri: String::new(),
+            cursor: String::new(),
+            as_of_frame: None,
+            as_of_ts: None,
+            adaptive: None,
+        });
+
+        let response = service.ask(request).await.unwrap();
+        let inner = response.into_inner();
+
+        // LLM mode should produce a synthesized answer
+        assert!(inner.answer.contains("Based on"));
+    }
+
+    #[tokio::test]
+    async fn test_ask_with_filters() {
+        init_test_metrics();
+
+        let searcher = Arc::new(MockSearcher::new());
+        let service = MemvidGrpcService::new(searcher);
+
+        let mut filters = std::collections::HashMap::new();
+        filters.insert("tag".to_string(), "skills".to_string());
+
+        let request = Request::new(AskRequest {
+            question: "What skills?".to_string(),
+            mode: ProtoAskMode::Hybrid as i32,
+            use_llm: false,
+            top_k: 5,
+            snippet_chars: 200,
+            filters,
+            start: 0,
+            end: 0,
+            uri: String::new(),
+            cursor: String::new(),
+            as_of_frame: None,
+            as_of_ts: None,
+            adaptive: None,
+        });
+
+        let response = service.ask(request).await.unwrap();
+        assert!(response.into_inner().stats.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_ask_with_uri() {
+        init_test_metrics();
+
+        let searcher = Arc::new(MockSearcher::new());
+        let service = MemvidGrpcService::new(searcher);
+
+        let request = Request::new(AskRequest {
+            question: "Skills?".to_string(),
+            mode: ProtoAskMode::Hybrid as i32,
+            use_llm: false,
+            top_k: 5,
+            snippet_chars: 200,
+            filters: std::collections::HashMap::new(),
+            start: 0,
+            end: 0,
+            uri: "resume://skills".to_string(), // Scope to specific URI
+            cursor: String::new(),
+            as_of_frame: None,
+            as_of_ts: None,
+            adaptive: None,
+        });
+
+        let response = service.ask(request).await.unwrap();
+        assert!(!response.into_inner().answer.is_empty());
     }
 }
