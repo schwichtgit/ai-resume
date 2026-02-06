@@ -23,6 +23,64 @@ if [[ ${#SUBJECT} -gt 72 ]]; then
     echo "WARNING: Subject line is ${#SUBJECT} characters (recommended max: 72)"
 fi
 
+# --- Emoji Detection (using python3 for reliable Unicode handling) ---
+if python3 -c "
+import sys, re
+
+msg = sys.stdin.read()
+
+# Comprehensive emoji Unicode ranges
+emoji_pattern = re.compile(
+    '['
+    '\U0001F300-\U0001F6FF'   # Misc Symbols, Emoticons, Transport, Maps
+    '\U0001F900-\U0001F9FF'   # Supplemental Symbols and Pictographs
+    '\U0001FA00-\U0001FA6F'   # Chess Symbols, Extended-A
+    '\U0001FA70-\U0001FAFF'   # Symbols and Pictographs Extended-A
+    '\U00002600-\U000026FF'   # Misc Symbols (sun, cloud, etc.)
+    '\U00002700-\U000027BF'   # Dingbats
+    '\U0000FE00-\U0000FE0F'   # Variation Selectors
+    '\U0001F000-\U0001F02F'   # Mahjong, Domino Tiles
+    '\U0000200D'              # Zero Width Joiner
+    '\U00002B50'              # Star
+    '\U000023E9-\U000023F3'   # Media control symbols
+    '\U0000231A-\U0000231B'   # Watch, Hourglass
+    '\U000025AA-\U000025AB'   # Small squares
+    '\U000025FB-\U000025FE'   # Medium squares
+    '\U00002934-\U00002935'   # Arrows
+    '\U00003030'              # Wavy dash
+    '\U0000303D'              # Part alternation mark
+    '\U00003297'              # Circled Ideograph Congratulation
+    '\U00003299'              # Circled Ideograph Secret
+    ']+',
+    flags=re.UNICODE,
+)
+
+match = emoji_pattern.search(msg)
+if match:
+    sys.exit(0)  # emoji found
+else:
+    sys.exit(1)  # no emoji
+" <<< "$COMMIT_MSG"; then
+    echo "ERROR: Commit message contains emoji. Please remove them."
+    exit 1
+fi
+
+# --- Anti-AI-isms Detection ---
+# Detect common AI-generated phrases (case-insensitive)
+AI_PATTERN='(\bI have\b|\bI'\''ve\b|\bmy changes\b|\bI updated\b|\bI fixed\b|\bI added\b|\bI refactored\b|as an ai\bcertainly\b|\bI'\''d be happy to\b|\brefined\b|\bpolished\b|\benhanced\b|\bbeautified\b|\bimproved efficiency\b|\bseamless\b|\brobust\b|\bclaude\b|\banthropic\b|\bgpt\b|\bopenai\b|\bcopilot\b|\bpowerful\b|\belegant\b|\bstreamlined\b)'
+
+if echo "$COMMIT_MSG" | grep -iqE "$AI_PATTERN"; then
+    # Find the specific match to report it
+    MATCHED=$(echo "$COMMIT_MSG" | grep -ioE "$AI_PATTERN" | head -n1)
+    echo "ERROR: Commit message contains AI-ism: '$MATCHED'"
+    echo "       Please rewrite using direct, imperative language."
+    echo "       Detected patterns include: self-references (I have, I fixed, etc.),"
+    echo "       fluff phrases (Certainly, Seamless, Robust, etc.),"
+    echo "       AI branding (Claude, GPT, Copilot, etc.),"
+    echo "       and marketing adjectives (powerful, elegant, streamlined)."
+    exit 1
+fi
+
 # Conventional commit pattern
 # Format: type(scope): description
 # Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert

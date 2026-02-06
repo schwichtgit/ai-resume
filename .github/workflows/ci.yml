@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 env:
-  NODE_VERSION: '18'
-  PYTHON_VERSION: '3.11'
+  NODE_VERSION: "18"
+  PYTHON_VERSION: "3.11"
 
 jobs:
   # Detect which services changed
@@ -60,7 +60,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
@@ -93,7 +93,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
+          cache: "pip"
           cache-dependency-path: api-service/requirements*.txt
 
       - name: Install dependencies
@@ -133,7 +133,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
+          cache: "pip"
           cache-dependency-path: ingest/requirements*.txt
 
       - name: Install dependencies
@@ -183,6 +183,102 @@ jobs:
       - name: Test
         run: cargo test
 
+  # Commit message standards (PRs only)
+  commit-standards:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate commit messages
+        run: |
+          ERRORS=""
+          WARNINGS=""
+          COMMIT_COUNT=0
+
+          VALID_TYPES="feat|fix|chore|docs|style|refactor|perf|test|ci|build"
+          CONVENTIONAL_RE="^(${VALID_TYPES})(\(.+\))?: .+"
+
+          # Emoji pattern: common Unicode emoji ranges
+          EMOJI_RE='[\xF0\x9F]|[\xE2\x9C]|[\xE2\x9A]|[\xE2\xAD]|[\xF0\x9F\x8E]|[\xF0\x9F\x9A]|🎉|🚀|✨|🐛|📝|🔧|♻️|⬆️|⬇️|🔥|💡|✅|❌|🎨|🩹|🔒'
+
+          # AI-ism patterns (case-insensitive)
+          AIISM_PATTERNS=(
+            "Co-Authored-By:"
+            "co-authored-by:"
+            "Claude"
+            "Anthropic"
+            "GPT"
+            "OpenAI"
+            "As an AI"
+            "as an AI"
+            "I have"
+            "Refined"
+            "Polished"
+          )
+
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+
+          while IFS= read -r SUBJECT; do
+            [ -z "$SUBJECT" ] && continue
+            COMMIT_COUNT=$((COMMIT_COUNT + 1))
+            COMMIT_ERRORS=""
+
+            # Check conventional commit format
+            if ! echo "$SUBJECT" | grep -qE "$CONVENTIONAL_RE"; then
+              COMMIT_ERRORS="${COMMIT_ERRORS}  - NOT conventional commit format (expected: type(scope): description)\n"
+            fi
+
+            # Check for emoji
+            if echo "$SUBJECT" | grep -qP '[\x{1F300}-\x{1F9FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}\x{FE00}-\x{FE0F}\x{1F000}-\x{1FFFF}]'; then
+              COMMIT_ERRORS="${COMMIT_ERRORS}  - Contains emoji (not allowed in commit messages)\n"
+            fi
+
+            # Check for AI-isms
+            for PATTERN in "${AIISM_PATTERNS[@]}"; do
+              if echo "$SUBJECT" | grep -qF "$PATTERN"; then
+                COMMIT_ERRORS="${COMMIT_ERRORS}  - Contains AI-ism/branding: '${PATTERN}'\n"
+              fi
+            done
+
+            # Check subject line length (warning only)
+            SUBJECT_LEN=${#SUBJECT}
+            if [ "$SUBJECT_LEN" -gt 72 ]; then
+              WARNINGS="${WARNINGS}WARNING: Subject line too long (${SUBJECT_LEN} chars, recommended max 72):\n  ${SUBJECT}\n\n"
+            fi
+
+            if [ -n "$COMMIT_ERRORS" ]; then
+              ERRORS="${ERRORS}FAIL: ${SUBJECT}\n${COMMIT_ERRORS}\n"
+            fi
+          done < <(git log --format=%s "${BASE_SHA}..${HEAD_SHA}")
+
+          echo "=== Commit Message Validation ==="
+          echo "Checked ${COMMIT_COUNT} commit(s)"
+          echo ""
+
+          if [ -n "$WARNINGS" ]; then
+            echo "--- Warnings ---"
+            printf "$WARNINGS"
+          fi
+
+          if [ -n "$ERRORS" ]; then
+            echo "--- Errors ---"
+            printf "$ERRORS"
+            echo ""
+            echo "Commit message rules:"
+            echo "  1. Use conventional commits: type(scope): description"
+            echo "     Valid types: feat, fix, chore, docs, style, refactor, perf, test, ci, build"
+            echo "  2. No emoji in commit messages"
+            echo "  3. No AI-isms or branding (Claude, Anthropic, GPT, OpenAI, etc.)"
+            echo "  4. Subject line should be 72 chars or fewer"
+            exit 1
+          fi
+
+          echo "All commit messages passed validation!"
+
   # Docs: Markdown linting
   docs:
     needs: changes
@@ -203,7 +299,16 @@ jobs:
 
   # Summary job (always runs, reports overall status)
   summary:
-    needs: [changes, frontend, api-service, ingest, memvid-service, docs]
+    needs:
+      [
+        changes,
+        frontend,
+        api-service,
+        ingest,
+        memvid-service,
+        docs,
+        commit-standards,
+      ]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -215,12 +320,14 @@ jobs:
           echo "Ingest: ${{ needs.ingest.result || 'skipped' }}"
           echo "Memvid Service: ${{ needs.memvid-service.result || 'skipped' }}"
           echo "Docs: ${{ needs.docs.result || 'skipped' }}"
+          echo "Commit Standards: ${{ needs.commit-standards.result || 'skipped' }}"
 
           # Fail if any required job failed
           if [[ "${{ needs.frontend.result }}" == "failure" ]] || \
              [[ "${{ needs.api-service.result }}" == "failure" ]] || \
              [[ "${{ needs.ingest.result }}" == "failure" ]] || \
-             [[ "${{ needs.memvid-service.result }}" == "failure" ]]; then
+             [[ "${{ needs.memvid-service.result }}" == "failure" ]] || \
+             [[ "${{ needs.commit-standards.result }}" == "failure" ]]; then
             echo "One or more jobs failed!"
             exit 1
           fi
