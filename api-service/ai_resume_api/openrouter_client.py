@@ -104,7 +104,19 @@ class OpenRouterClient:
         await self.close()
 
     async def connect(self) -> None:
-        """Create the HTTP client."""
+        """Create the HTTP client.
+
+        In mock mode (MOCK_OPENROUTER=true), skips creating a real HTTP client
+        since all requests will be served by mock handlers.
+        """
+        settings = get_settings()
+        if settings.mock_openrouter:
+            logger.info(
+                "OpenRouter client in mock mode, skipping HTTP client creation",
+                model=self._model,
+            )
+            return
+
         self._client = httpx.AsyncClient(
             base_url=self._base_url,
             headers={
@@ -152,7 +164,8 @@ CONTEXT FROM RESUME:
 {context}
 ---
 
-Use the context above to answer the user's question. If the context doesn't contain relevant information, say so honestly."""
+Use the context above to answer the user's question. \
+If the context doesn't contain relevant information, say so honestly."""
 
         messages.append({"role": "system", "content": full_system})
 

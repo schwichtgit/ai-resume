@@ -54,7 +54,9 @@ class Settings(BaseSettings):
     profile_json_path: str = "data/.memvid/profile.json"
 
     # System prompt for the LLM (fallback if profile.json not found)
-    system_prompt: str = """You are an AI assistant representing a job candidate. Your role is to answer questions about their professional background, skills, and experience based on the context provided.
+    system_prompt: str = """You are an AI assistant representing a job candidate.\
+ Your role is to answer questions about their professional background,\
+ skills, and experience based on the context provided.
 
 Guidelines:
 - Only answer based on the provided context from the resume
@@ -71,20 +73,32 @@ Guidelines:
 
     @property
     def has_openrouter_key(self) -> bool:
-        """Check if OpenRouter API key is configured."""
+        """Check if OpenRouter API key is configured.
+
+        In mock mode (MOCK_OPENROUTER=true), always returns True since
+        the mock handler does not need a real API key.
+        """
+        if self.mock_openrouter:
+            return True
         return bool(self.openrouter_api_key and self.openrouter_api_key.startswith("sk-"))
 
     def validate_openrouter_api_key(self) -> int:
         """Validate OpenRouter API key format.
 
+        In mock mode (MOCK_OPENROUTER=true), always returns 1 (valid)
+        since the mock handler does not need a real API key.
+
         Returns:
             Integer status code (not derived from key content):
             - 0: not set
-            - 1: valid format
+            - 1: valid format (or mock mode)
             - 2: incorrect prefix
             - 3: incorrect length
             - 4: invalid characters
         """
+        if self.mock_openrouter:
+            return 1
+
         if not self.openrouter_api_key:
             return 0
 
@@ -205,7 +219,11 @@ Guidelines:
                 # Add company names from experience
                 experiences = profile.get("experience", [])
                 if experiences and len(experiences) > 0:
-                    companies = [exp.get("company") for exp in experiences[:3] if exp.get("company")]
+                    companies = [
+                        exp.get("company")
+                        for exp in experiences[:3]
+                        if exp.get("company")
+                    ]
                     if companies:
                         facts.append(f"Key Companies: {', '.join(companies)}")
 
@@ -214,7 +232,8 @@ Guidelines:
 GROUND FACTS (NEVER VIOLATE THESE):
   {facts_text}
   - If a question asks about a different person, respond:
-    "This resume is for {candidate_name}, not [other name]. Please ask about {candidate_name}'s qualifications."
+    "This resume is for {candidate_name}, not [other name]. \
+Please ask about {candidate_name}'s qualifications."
   - NEVER answer questions about people, companies, or experiences not mentioned in the context
 
 """

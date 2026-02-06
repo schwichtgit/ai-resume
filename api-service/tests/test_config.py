@@ -45,14 +45,24 @@ class TestSettings:
         assert settings.has_openrouter_key is True
 
     def test_has_openrouter_key_invalid(self):
-        """Test has_openrouter_key with invalid key."""
-        settings = Settings(openrouter_api_key="invalid-key")
+        """Test has_openrouter_key with invalid key (non-mock mode)."""
+        settings = Settings(openrouter_api_key="invalid-key", mock_openrouter=False)
         assert settings.has_openrouter_key is False
 
     def test_has_openrouter_key_empty(self):
-        """Test has_openrouter_key with empty key."""
-        settings = Settings(openrouter_api_key="")
+        """Test has_openrouter_key with empty key (non-mock mode)."""
+        settings = Settings(openrouter_api_key="", mock_openrouter=False)
         assert settings.has_openrouter_key is False
+
+    def test_has_openrouter_key_mock_mode_bypasses(self):
+        """Test has_openrouter_key returns True in mock mode regardless of key."""
+        settings = Settings(openrouter_api_key="", mock_openrouter=True)
+        assert settings.has_openrouter_key is True
+
+    def test_validate_openrouter_api_key_mock_mode(self):
+        """Test validate_openrouter_api_key returns 1 in mock mode."""
+        settings = Settings(openrouter_api_key="", mock_openrouter=True)
+        assert settings.validate_openrouter_api_key() == 1
 
     @patch.dict(os.environ, {"OPENROUTER_API_KEY": "sk-or-v1-envtest"})
     def test_load_from_env(self):
@@ -124,7 +134,10 @@ class TestSettings:
         mock_client = MagicMock()
         mock_client.get_state = AsyncMock(return_value=mock_state)
 
-        with patch("ai_resume_api.memvid_client.get_memvid_client", AsyncMock(return_value=mock_client)):
+        with patch(
+            "ai_resume_api.memvid_client.get_memvid_client",
+            AsyncMock(return_value=mock_client),
+        ):
             profile = await settings.load_profile_from_memvid()
 
         assert profile is not None
@@ -145,7 +158,10 @@ class TestSettings:
         mock_client = MagicMock()
         mock_client.get_state = AsyncMock(return_value=mock_state)
 
-        with patch("ai_resume_api.memvid_client.get_memvid_client", AsyncMock(return_value=mock_client)):
+        with patch(
+            "ai_resume_api.memvid_client.get_memvid_client",
+            AsyncMock(return_value=mock_client),
+        ):
             profile = await settings.load_profile_from_memvid()
 
         assert profile is None
@@ -168,7 +184,10 @@ class TestSettings:
         mock_client = MagicMock()
         mock_client.get_state = AsyncMock(return_value=mock_state)
 
-        with patch("ai_resume_api.memvid_client.get_memvid_client", AsyncMock(return_value=mock_client)):
+        with patch(
+            "ai_resume_api.memvid_client.get_memvid_client",
+            AsyncMock(return_value=mock_client),
+        ):
             profile = await settings.load_profile_from_memvid()
 
         assert profile is None
@@ -206,7 +225,10 @@ class TestSettings:
         mock_client = MagicMock()
         mock_client.get_state = AsyncMock(return_value=mock_state)
 
-        with patch("ai_resume_api.memvid_client.get_memvid_client", AsyncMock(return_value=mock_client)):
+        with patch(
+            "ai_resume_api.memvid_client.get_memvid_client",
+            AsyncMock(return_value=mock_client),
+        ):
             profile = await settings.load_profile_from_memvid()
 
         assert profile is None
@@ -289,7 +311,10 @@ class TestSettings:
         mock_profile = {
             "name": "John Smith",
             "title": "DevOps Engineer",
-            "system_prompt": "You are an assistant.\n\nGROUND FACTS (NEVER VIOLATE THESE):\n- Existing fact",
+            "system_prompt": (
+                "You are an assistant.\n\n"
+                "GROUND FACTS (NEVER VIOLATE THESE):\n- Existing fact"
+            ),
             "experience": [],
         }
 

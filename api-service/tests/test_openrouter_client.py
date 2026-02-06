@@ -141,8 +141,9 @@ class TestOpenRouterClientAsync:
     """Async tests for OpenRouterClient."""
 
     @pytest.mark.asyncio
-    async def test_connect_and_close(self):
-        """Test connect and close lifecycle."""
+    async def test_connect_and_close(self, mock_settings):
+        """Test connect and close lifecycle (non-mock mode)."""
+        mock_settings(mock_openrouter="false")
         client = OpenRouterClient(api_key="sk-test")
         await client.connect()
         assert client._client is not None
@@ -150,11 +151,21 @@ class TestOpenRouterClientAsync:
         assert client._client is None
 
     @pytest.mark.asyncio
-    async def test_context_manager(self):
-        """Test async context manager."""
+    async def test_context_manager(self, mock_settings):
+        """Test async context manager (non-mock mode)."""
+        mock_settings(mock_openrouter="false")
         async with OpenRouterClient(api_key="sk-test") as client:
             assert client._client is not None
         # Client should be closed after exiting context
+
+    @pytest.mark.asyncio
+    async def test_connect_skips_http_client_in_mock_mode(self, mock_settings):
+        """Test connect skips HTTP client creation in mock mode."""
+        mock_settings(mock_openrouter="true")
+        client = OpenRouterClient(api_key="")
+        await client.connect()
+        assert client._client is None
+        await client.close()
 
     @pytest.mark.asyncio
     async def test_chat_without_connection(self):
@@ -172,7 +183,7 @@ class TestOpenRouterClientAsync:
             mock_client.post = AsyncMock(return_value=mock_response)
 
             # This should work without explicit connect
-            response = await client.chat(
+            await client.chat(
                 system_prompt="Be helpful",
                 context="Context",
                 user_message="Hi",
@@ -290,7 +301,6 @@ class TestGlobalClientFunctions:
     async def test_get_openrouter_client_creates_singleton(self):
         """Test that get_openrouter_client creates a singleton."""
         from ai_resume_api.openrouter_client import (
-            _openrouter_client,
             close_openrouter_client,
             get_openrouter_client,
         )
@@ -328,7 +338,7 @@ class TestOpenRouterMockModes:
     async def test_chat_with_mock_enabled(self, mock_settings):
         """Test chat() with mock mode enabled."""
         # Configure mock mode before creating client
-        settings = mock_settings(mock_openrouter="true", openrouter_api_key="")
+        mock_settings(mock_openrouter="true", openrouter_api_key="")
         # Create client after settings are configured
         client = OpenRouterClient(api_key="")
 
@@ -363,7 +373,7 @@ class TestOpenRouterMockModes:
     async def test_chat_stream_with_mock_enabled(self, mock_settings):
         """Test chat_stream() with mock mode enabled."""
         # Configure mock mode before creating client
-        settings = mock_settings(mock_openrouter="true", openrouter_api_key="")
+        mock_settings(mock_openrouter="true", openrouter_api_key="")
         # Create client after settings are configured
         client = OpenRouterClient(api_key="")
 
