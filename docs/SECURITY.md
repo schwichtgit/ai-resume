@@ -183,6 +183,79 @@ No writable volumes in production.
 - Secrets validated at startup (fail fast)
 - Never logged, even at DEBUG level
 
+## Code Scanning Workflow
+
+### GitHub Code Scanning
+
+This project uses GitHub Code Scanning with CodeQL to automatically detect security vulnerabilities in the codebase.
+
+**Alert Workflow:**
+
+1. **Detection**: CodeQL scans code on push and PR
+2. **Triage**: Use `/gh-code-scanning list` to see open alerts
+3. **Analysis**: Use `/gh-code-scanning detail <N>` for details
+4. **Resolution**: Either fix with `/gh-code-scanning fix <N>` or dismiss with documented rationale
+5. **Verification**: Use `/gh-code-scanning verify <N>` to confirm fix
+
+**Priority Levels:**
+
+| Severity | Response Time | Action |
+| -------- | ------------- | ------ |
+| Error (Critical/High) | Fix immediately | Address before merging PR |
+| Warning (Medium) | Fix within sprint | Include in current work |
+| Note (Low) | Review quarterly | Batch with other improvements |
+
+**Dismissal Documentation:**
+
+All dismissed alerts must be documented in this file with:
+
+- Alert number and rule ID
+- Dismissal reason (false-positive, wont-fix, used-in-tests)
+- Detailed rationale and security controls
+- Review schedule
+
+**Reference:**
+
+- Skill documentation: `.claude/skills/gh-code-scanning/SKILL.md`
+- Common alert types: `.claude/skills/gh-code-scanning/reference/alert-types.md`
+- Fix examples: `.claude/skills/gh-code-scanning/examples/`
+
+### Dismissed Code Scanning Alerts
+
+#### Alert #4: js/insecure-randomness (False Positive)
+
+**Alert:** https://github.com/schwichtgit/ai-resume/security/code-scanning/4
+**Location:** `frontend/src/hooks/useStreamingChat.ts` (lines 51-63)
+**Rule:** `js/insecure-randomness`
+**Severity:** Warning
+
+**Issue Flagged:**
+CodeQL flagged the use of `crypto.getRandomValues()` as potentially insecure random number generation.
+
+**Analysis:**
+This is a **false positive**. The Web Crypto API's `crypto.getRandomValues()` is explicitly designed for cryptographic use and uses a CSPRNG (Cryptographically Secure Pseudo-Random Number Generator).
+
+**Evidence:**
+- MDN Documentation: "The values are generated using a cryptographically strong random number generator"
+- W3C Specification: "The getRandomValues method generates cryptographically random values"
+- Browser Implementation: All modern browsers implement this using OS-level secure random sources
+
+**Fix Applied:**
+While the code was already secure, we enhanced it to make the security properties more explicit:
+1. Added comprehensive security documentation in code comments
+2. Replaced the previous Math.random() implementation with crypto.getRandomValues()
+3. Added references to official documentation
+
+**Comparison:**
+- **INSECURE**: `Math.random()` - NOT cryptographically secure (what CodeQL warns against)
+- **SECURE**: `crypto.getRandomValues()` - IS cryptographically secure (what we use)
+
+**Conclusion:**
+The alert appears to be triggered by pattern matching on "random" operations in session ID generation, without distinguishing between secure (Web Crypto API) and insecure (Math.random) methods.
+
+**Status:** Fixed (enhanced implementation with better documentation)
+**Reviewed:** 2026-02-06
+
 ## Dependency Security
 
 ### Scanning

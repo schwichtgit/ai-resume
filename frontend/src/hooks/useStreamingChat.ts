@@ -46,14 +46,28 @@ export interface UseStreamingChatReturn {
 }
 
 /**
- * Generate a random session ID
+ * Generate a cryptographically secure random session ID (UUID v4)
+ *
+ * SECURITY NOTE: This function uses the Web Crypto API's crypto.getRandomValues(),
+ * which is cryptographically secure in browser environments. This is the recommended
+ * method for generating secure random values in browsers (unlike Math.random()).
+ *
+ * Reference: https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues
+ * "The values are generated using a cryptographically strong random number generator"
  */
 function generateSessionId(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+  // Use Web Crypto API for cryptographically secure random generation
+  // crypto.getRandomValues() is CSPRNG (Cryptographically Secure Pseudo-Random Number Generator)
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+
+  // Set UUID version 4 bits (RFC 4122 section 4.4)
+  array[6] = (array[6] & 0x0f) | 0x40; // Version 4
+  array[8] = (array[8] & 0x3f) | 0x80; // Variant 10
+
+  // Convert to UUID string format
+  const hex = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
 }
 
 /**
