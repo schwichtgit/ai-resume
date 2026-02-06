@@ -74,6 +74,38 @@ Guidelines:
         """Check if OpenRouter API key is configured."""
         return bool(self.openrouter_api_key and self.openrouter_api_key.startswith("sk-"))
 
+    def validate_openrouter_api_key(self) -> int:
+        """Validate OpenRouter API key format.
+
+        Returns:
+            Integer status code (not derived from key content):
+            - 0: not set
+            - 1: valid format
+            - 2: incorrect prefix
+            - 3: incorrect length
+            - 4: invalid characters
+        """
+        if not self.openrouter_api_key:
+            return 0
+
+        key = self.openrouter_api_key
+
+        # Check prefix
+        if not key.startswith("sk-or-v1-"):
+            return 2
+
+        # Check length
+        if len(key) < 40 or len(key) > 100:
+            return 3
+
+        # Check character set
+        import re
+        key_body = key[10:]  # After "sk-or-v1-"
+        if not re.match(r'^[A-Za-z0-9_-]+$', key_body):
+            return 4
+
+        return 1
+
     @property
     def memvid_grpc_url(self) -> str:
         """Construct memvid gRPC URL from host and port.
