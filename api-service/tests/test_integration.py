@@ -71,7 +71,9 @@ async def test_openrouter_connection():
     print("=" * 60)
 
     settings = get_settings()
-    print(f"API Key: {settings.openrouter_api_key[:20]}..." if settings.openrouter_api_key else "NOT SET")
+    # Mask API key in test output for security
+    api_key_status = "CONFIGURED" if settings.openrouter_api_key else "NOT SET"
+    print(f"API Key: {api_key_status}")
     print(f"Model: {settings.llm_model}")
 
     client = OpenRouterClient()

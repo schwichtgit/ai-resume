@@ -881,6 +881,7 @@ class TestStreamingErrorHandling:
             # OpenRouter raises CancelledError in streaming
             async def mock_chat_stream_cancelled(*args, **kwargs):
                 raise CancelledError()
+                yield  # Unreachable but makes this an async generator
 
             mock_or = AsyncMock()
             mock_or.chat_stream = mock_chat_stream_cancelled
