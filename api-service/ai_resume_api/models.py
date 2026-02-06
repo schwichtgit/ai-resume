@@ -2,9 +2,15 @@
 
 from datetime import datetime, timezone
 from typing import Literal
-from uuid import UUID, uuid4
+from uuid import UUID
+import secrets
 
 from pydantic import BaseModel, Field
+
+
+def generate_secure_session_id() -> UUID:
+    """Generate cryptographically secure session ID using secrets module."""
+    return UUID(bytes=secrets.token_bytes(16))
 
 # =============================================================================
 # Chat API Models
@@ -49,7 +55,7 @@ class ChatStreamEvent(BaseModel):
 class ChatResponse(BaseModel):
     """Non-streaming chat response."""
 
-    session_id: UUID = Field(default_factory=uuid4)
+    session_id: UUID = Field(default_factory=generate_secure_session_id)
     message: str = Field(..., description="Assistant response")
     chunks_retrieved: int = Field(..., description="Number of context chunks used")
     tokens_used: int = Field(..., description="Total tokens used")
@@ -213,7 +219,7 @@ class MemvidHealthResponse(BaseModel):
 class Session(BaseModel):
     """A chat session with conversation history."""
 
-    id: UUID = Field(default_factory=uuid4)
+    id: UUID = Field(default_factory=generate_secure_session_id)
     messages: list[ChatMessage] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_activity: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
