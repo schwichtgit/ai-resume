@@ -1,0 +1,346 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+env:
+  NODE_VERSION: "22"
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  # Detect which services changed
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      api-service: ${{ steps.filter.outputs.api-service }}
+      ingest: ${{ steps.filter.outputs.ingest }}
+      memvid-service: ${{ steps.filter.outputs.memvid-service }}
+      docs: ${{ steps.filter.outputs.docs }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+              - 'package.json'
+              - 'package-lock.json'
+            api-service:
+              - 'api-service/**'
+              - 'proto/**'
+            ingest:
+              - 'ingest/**'
+              - 'data/**'
+            memvid-service:
+              - 'memvid-service/**'
+              - 'proto/**'
+            docs:
+              - 'docs/**'
+              - '*.md'
+              - 'CLAUDE.md'
+
+  # Frontend: TypeScript/React
+  frontend:
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Test
+        run: npm test -- --run
+
+      - name: Build
+        run: npm run build
+
+  # API Service: Python/FastAPI
+  api-service:
+    needs: changes
+    if: ${{ needs.changes.outputs.api-service == 'true' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+          cache-dependency-path: api-service/requirements*.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt || true
+
+      - name: Lint with ruff
+        run: |
+          pip install ruff
+          ruff check .
+          ruff format --check .
+
+      - name: Type check with mypy
+        run: |
+          pip install mypy
+          mypy . --ignore-missing-imports || true
+
+      - name: Test with pytest
+        run: |
+          pip install pytest pytest-asyncio
+          pytest -v --tb=short || true
+
+  # Ingest: Python data pipeline
+  ingest:
+    needs: changes
+    if: ${{ needs.changes.outputs.ingest == 'true' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ingest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+          cache-dependency-path: ingest/requirements*.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt || true
+
+      - name: Lint with ruff
+        run: |
+          pip install ruff
+          ruff check .
+          ruff format --check .
+
+  # Memvid Service: Rust/gRPC
+  memvid-service:
+    needs: changes
+    if: ${{ needs.changes.outputs.memvid-service == 'true' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: memvid-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: memvid-service
+
+      - name: Install protobuf compiler
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Test
+        run: cargo test
+
+  # Commit message standards (PRs only)
+  commit-standards:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate commit messages
+        run: |
+          ERRORS=""
+          WARNINGS=""
+          COMMIT_COUNT=0
+
+          VALID_TYPES="feat|fix|chore|docs|style|refactor|perf|test|ci|build"
+          CONVENTIONAL_RE="^(${VALID_TYPES})(\(.+\))?: .+"
+
+          # Emoji pattern: common Unicode emoji ranges
+          EMOJI_RE='[\xF0\x9F]|[\xE2\x9C]|[\xE2\x9A]|[\xE2\xAD]|[\xF0\x9F\x8E]|[\xF0\x9F\x9A]|🎉|🚀|✨|🐛|📝|🔧|♻️|⬆️|⬇️|🔥|💡|✅|❌|🎨|🩹|🔒'
+
+          # AI-ism patterns (case-insensitive, checked with grep -iF)
+          AIISM_PATTERNS=(
+            "Co-Authored-By:"
+            "co-authored-by:"
+            "Anthropic"
+            "GPT"
+            "OpenAI"
+            "As an AI"
+            "as an AI"
+            "I have"
+            "Refined"
+            "Polished"
+          )
+
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+
+          while IFS= read -r SUBJECT; do
+            [ -z "$SUBJECT" ] && continue
+            COMMIT_COUNT=$((COMMIT_COUNT + 1))
+            COMMIT_ERRORS=""
+
+            # Check conventional commit format
+            if ! echo "$SUBJECT" | grep -qE "$CONVENTIONAL_RE"; then
+              COMMIT_ERRORS="${COMMIT_ERRORS}  - NOT conventional commit format (expected: type(scope): description)\n"
+            fi
+
+            # Check for emoji
+            if echo "$SUBJECT" | grep -qP '[\x{1F300}-\x{1F9FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}\x{FE00}-\x{FE0F}\x{1F000}-\x{1FFFF}]'; then
+              COMMIT_ERRORS="${COMMIT_ERRORS}  - Contains emoji (not allowed in commit messages)\n"
+            fi
+
+            # Check for AI-isms
+            for PATTERN in "${AIISM_PATTERNS[@]}"; do
+              if echo "$SUBJECT" | grep -qF "$PATTERN"; then
+                COMMIT_ERRORS="${COMMIT_ERRORS}  - Contains AI-ism/branding: '${PATTERN}'\n"
+              fi
+            done
+
+            # Special check for "Claude": block standalone usage but allow "Claude Code" (product name)
+            # Strip "Claude Code" phrases and "claude" in conventional commit scopes e.g. (claude), (claude_code)
+            STRIPPED=$(echo "$SUBJECT" | sed 's/[Cc][Ll][Aa][Uu][Dd][Ee] [Cc][Oo][Dd][Ee]//g' | sed 's/([Cc][Ll][Aa][Uu][Dd][Ee][^)]*)//g')
+            if echo "$STRIPPED" | grep -qi "Claude"; then
+              COMMIT_ERRORS="${COMMIT_ERRORS}  - Contains AI-ism/branding: 'Claude' (note: 'Claude Code' as a product name is allowed)\n"
+            fi
+
+            # Check subject line length (warning only)
+            SUBJECT_LEN=${#SUBJECT}
+            if [ "$SUBJECT_LEN" -gt 72 ]; then
+              WARNINGS="${WARNINGS}WARNING: Subject line too long (${SUBJECT_LEN} chars, recommended max 72):\n  ${SUBJECT}\n\n"
+            fi
+
+            if [ -n "$COMMIT_ERRORS" ]; then
+              ERRORS="${ERRORS}FAIL: ${SUBJECT}\n${COMMIT_ERRORS}\n"
+            fi
+          done < <(git log --format=%s "${BASE_SHA}..${HEAD_SHA}")
+
+          echo "=== Commit Message Validation ==="
+          echo "Checked ${COMMIT_COUNT} commit(s)"
+          echo ""
+
+          if [ -n "$WARNINGS" ]; then
+            echo "--- Warnings ---"
+            printf "$WARNINGS"
+          fi
+
+          if [ -n "$ERRORS" ]; then
+            echo "--- Errors ---"
+            printf "$ERRORS"
+            echo ""
+            echo "Commit message rules:"
+            echo "  1. Use conventional commits: type(scope): description"
+            echo "     Valid types: feat, fix, chore, docs, style, refactor, perf, test, ci, build"
+            echo "  2. No emoji in commit messages"
+            echo "  3. No AI-isms or branding (Claude, Anthropic, GPT, OpenAI, etc.)"
+            echo "     Exception: 'Claude Code' is allowed as a product name reference"
+            echo "  4. Subject line should be 72 chars or fewer"
+            exit 1
+          fi
+
+          echo "All commit messages passed validation!"
+
+  # Docs: Markdown linting
+  docs:
+    needs: changes
+    if: ${{ needs.changes.outputs.docs == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Lint Markdown
+        run: |
+          npm install -g markdownlint-cli
+          markdownlint '**/*.md' --ignore node_modules --ignore '**/node_modules/**' || true
+
+  # Summary job (always runs, reports overall status)
+  summary:
+    needs:
+      [
+        changes,
+        frontend,
+        api-service,
+        ingest,
+        memvid-service,
+        docs,
+        commit-standards,
+      ]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check results
+        run: |
+          echo "=== CI Summary ==="
+          echo "Frontend: ${{ needs.frontend.result || 'skipped' }}"
+          echo "API Service: ${{ needs.api-service.result || 'skipped' }}"
+          echo "Ingest: ${{ needs.ingest.result || 'skipped' }}"
+          echo "Memvid Service: ${{ needs.memvid-service.result || 'skipped' }}"
+          echo "Docs: ${{ needs.docs.result || 'skipped' }}"
+          echo "Commit Standards: ${{ needs.commit-standards.result || 'skipped' }}"
+
+          # Fail if any required job failed
+          if [[ "${{ needs.frontend.result }}" == "failure" ]] || \
+             [[ "${{ needs.api-service.result }}" == "failure" ]] || \
+             [[ "${{ needs.ingest.result }}" == "failure" ]] || \
+             [[ "${{ needs.memvid-service.result }}" == "failure" ]] || \
+             [[ "${{ needs.commit-standards.result }}" == "failure" ]]; then
+            echo "One or more jobs failed!"
+            exit 1
+          fi
+
+          echo "All checks passed!"

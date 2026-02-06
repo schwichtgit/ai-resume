@@ -167,7 +167,7 @@ describe('useProfile', () => {
       tags: [],
     };
 
-    vi.mocked(apiClient.getProfile).mockResolvedValueOnce(minimalProfile as any);
+    vi.mocked(apiClient.getProfile).mockResolvedValueOnce(minimalProfile as apiClient.ProfileResponse);
 
     const { result } = renderHook(() => useProfile());
 

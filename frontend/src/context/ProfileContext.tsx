@@ -1,7 +1,7 @@
 import { createContext, useContext, ReactNode } from "react";
 import { Profile, useProfile, UseProfileResult } from "@/hooks/useProfile";
 
-interface ProfileContextValue extends UseProfileResult {}
+type ProfileContextValue = UseProfileResult;
 
 const ProfileContext = createContext<ProfileContextValue | undefined>(undefined);
 

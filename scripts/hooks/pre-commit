@@ -1,0 +1,135 @@
+#!/bin/bash
+# Pre-commit hook: Validate code quality before committing
+# Install with: cp scripts/hooks/pre-commit .git/hooks/ && chmod +x .git/hooks/pre-commit
+
+set -euo pipefail
+
+# Get the project root
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+
+echo "Running pre-commit checks..."
+
+# Get list of staged files
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+
+if [[ -z "$STAGED_FILES" ]]; then
+    echo "No staged files to check."
+    exit 0
+fi
+
+FAILED=0
+
+# Check for files that should never be committed
+check_forbidden_files() {
+    local forbidden_patterns=(
+        ".env"
+        ".env.local"
+        ".env.production"
+        "*.pem"
+        "*.key"
+        "id_rsa"
+        "id_ed25519"
+        "credentials.json"
+        "service-account*.json"
+    )
+
+    for file in $STAGED_FILES; do
+        for pattern in "${forbidden_patterns[@]}"; do
+            if [[ "$(basename "$file")" == $pattern ]] || [[ "$file" == *"$pattern"* ]]; then
+                echo "ERROR: Attempted to commit forbidden file: $file"
+                echo "       This file matches pattern: $pattern"
+                FAILED=$((FAILED + 1))
+            fi
+        done
+    done
+}
+
+# Check for secrets in staged files
+check_for_secrets() {
+    # Patterns compatible with grep -E (no Perl-style assertions)
+    local secret_patterns=(
+        "AKIA[0-9A-Z]{16}"                    # AWS Access Key
+        "sk-[a-zA-Z0-9]{48}"                  # OpenAI API Key
+        "ghp_[a-zA-Z0-9]{36}"                 # GitHub Personal Access Token
+        "gho_[a-zA-Z0-9]{36}"                 # GitHub OAuth Token
+        "glpat-[a-zA-Z0-9-]{20}"              # GitLab Personal Access Token
+        "xoxb-[0-9]{11}-[0-9]{11}-[a-zA-Z0-9]{24}"  # Slack Bot Token
+    )
+
+    for file in $STAGED_FILES; do
+        # Skip binary files and non-existent staged files
+        if [[ -f "$PROJECT_ROOT/$file" ]] && file "$PROJECT_ROOT/$file" 2>/dev/null | grep -q "text"; then
+            for pattern in "${secret_patterns[@]}"; do
+                if git show ":$file" 2>/dev/null | grep -qE "$pattern" 2>/dev/null; then
+                    echo "WARNING: Possible secret detected in: $file"
+                    echo "         Pattern: $pattern"
+                fi
+            done
+        fi
+    done
+}
+
+# Run linting on changed files by type
+lint_staged_files() {
+    local ts_files=""
+    local py_files=""
+    local rs_files=""
+
+    for file in $STAGED_FILES; do
+        case "$file" in
+            frontend/*.ts|frontend/*.tsx|frontend/*.js|frontend/*.jsx)
+                ts_files="$ts_files ${file#frontend/}"
+                ;;
+            api-service/*.py|ingest/*.py)
+                py_files="$py_files $file"
+                ;;
+            memvid-service/*.rs)
+                rs_files="$rs_files $file"
+                ;;
+        esac
+    done
+
+    # Lint TypeScript/JavaScript files
+    if [[ -n "$ts_files" ]] && [[ -d "$PROJECT_ROOT/frontend/node_modules" ]]; then
+        echo "Checking TypeScript/JavaScript files..."
+        (cd "$PROJECT_ROOT/frontend" && npx eslint $ts_files 2>/dev/null) || {
+            echo "ERROR: ESLint failed"
+            FAILED=$((FAILED + 1))
+        }
+    fi
+
+    # Lint Python files
+    if [[ -n "$py_files" ]]; then
+        echo "Checking Python files..."
+        if command -v ruff &> /dev/null; then
+            ruff check $py_files 2>/dev/null || {
+                echo "ERROR: Ruff lint failed"
+                FAILED=$((FAILED + 1))
+            }
+        fi
+    fi
+
+    # Check Rust formatting
+    if [[ -n "$rs_files" ]] && command -v cargo &> /dev/null; then
+        echo "Checking Rust files..."
+        (cd "$PROJECT_ROOT/memvid-service" && cargo fmt --check 2>/dev/null) || {
+            echo "ERROR: Rust formatting check failed"
+            FAILED=$((FAILED + 1))
+        }
+    fi
+}
+
+# Run checks
+check_forbidden_files
+check_for_secrets
+lint_staged_files
+
+if [[ $FAILED -gt 0 ]]; then
+    echo ""
+    echo "Pre-commit checks failed with $FAILED error(s)."
+    echo "Please fix the issues and try again."
+    exit 1
+fi
+
+echo "All pre-commit checks passed!"
+exit 0
