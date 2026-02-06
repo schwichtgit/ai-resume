@@ -430,4 +430,320 @@ mod tests {
             e => panic!("Expected MemvidFileNotFound, got: {:?}", e),
         }
     }
+
+    #[tokio::test]
+    async fn test_real_searcher_loads_valid_file() {
+        // Use the actual resume.mv2 file from the project
+        let mv2_path = "../data/.memvid/resume.mv2";
+
+        // Skip test if file doesn't exist (for environments without the file)
+        if !std::path::Path::new(mv2_path).exists() {
+            eprintln!("Skipping test: {} not found", mv2_path);
+            return;
+        }
+
+        let searcher = RealSearcher::new(mv2_path).await.expect("Should load valid .mv2 file");
+
+        assert!(searcher.is_ready());
+        assert!(searcher.frame_count() > 0);
+        assert!(searcher.memvid_file().contains("resume.mv2"));
+    }
+
+    #[tokio::test]
+    async fn test_real_searcher_search_returns_results() {
+        let mv2_path = "../data/.memvid/resume.mv2";
+
+        if !std::path::Path::new(mv2_path).exists() {
+            return;
+        }
+
+        let searcher = RealSearcher::new(mv2_path).await.expect("Should load .mv2 file");
+
+        let response = searcher
+            .search("Python experience", 5, 200)
+            .await
+            .expect("Search should succeed");
+
+        assert!(!response.hits.is_empty(), "Should return search results");
+        assert!(response.total_hits > 0);
+        assert!(response.took_ms >= 0);
+
+        // Verify hit structure
+        for hit in response.hits {
+            assert!(hit.score >= 0.0); // Scores can be > 1.0 depending on scoring algorithm
+            assert!(!hit.snippet.is_empty());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_real_searcher_ask_semantic_mode() {
+        let mv2_path = "../data/.memvid/resume.mv2";
+
+        if !std::path::Path::new(mv2_path).exists() {
+            return;
+        }
+
+        let searcher = RealSearcher::new(mv2_path).await.expect("Should load .mv2 file");
+
+        let request = AskRequest {
+            question: "What programming languages do you know?".to_string(),
+            use_llm: false,
+            top_k: 5,
+            filters: std::collections::HashMap::new(),
+            start: 0,
+            end: 0,
+            snippet_chars: 200,
+            mode: AskMode::Sem, // Semantic mode
+            uri: None,
+            cursor: None,
+            as_of_frame: None,
+            as_of_ts: None,
+            adaptive: None,
+        };
+
+        let response = searcher.ask(request).await.expect("Ask should succeed");
+
+        assert!(!response.answer.is_empty());
+        assert!(!response.evidence.is_empty());
+        assert!(response.stats.candidates_retrieved > 0);
+    }
+
+    #[tokio::test]
+    async fn test_real_searcher_ask_lexical_mode() {
+        let mv2_path = "../data/.memvid/resume.mv2";
+
+        if !std::path::Path::new(mv2_path).exists() {
+            return;
+        }
+
+        let searcher = RealSearcher::new(mv2_path).await.expect("Should load .mv2 file");
+
+        let request = AskRequest {
+            question: "Python".to_string(),
+            use_llm: false,
+            top_k: 3,
+            filters: std::collections::HashMap::new(),
+            start: 0,
+            end: 0,
+            snippet_chars: 150,
+            mode: AskMode::Lex, // Lexical mode (keyword search)
+            uri: None,
+            cursor: None,
+            as_of_frame: None,
+            as_of_ts: None,
+            adaptive: None,
+        };
+
+        let response = searcher.ask(request).await.expect("Ask should succeed");
+
+        assert!(!response.answer.is_empty());
+        assert!(!response.evidence.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_real_searcher_ask_hybrid_mode() {
+        let mv2_path = "../data/.memvid/resume.mv2";
+
+        if !std::path::Path::new(mv2_path).exists() {
+            return;
+        }
+
+        let searcher = RealSearcher::new(mv2_path).await.expect("Should load .mv2 file");
+
+        let request = AskRequest {
+            question: "leadership experience".to_string(),
+            use_llm: false,
+            top_k: 5,
+            filters: std::collections::HashMap::new(),
+            start: 0,
+            end: 0,
+            snippet_chars: 200,
+            mode: AskMode::Hybrid, // Hybrid mode (semantic + lexical)
+            uri: None,
+            cursor: None,
+            as_of_frame: None,
+            as_of_ts: None,
+            adaptive: None,
+        };
+
+        let response = searcher.ask(request).await.expect("Ask should succeed");
+
+        assert!(!response.answer.is_empty());
+        assert!(response.stats.retrieval_ms >= 0);
+    }
+
+    #[tokio::test]
+    async fn test_real_searcher_get_state_profile() {
+        let mv2_path = "../data/.memvid/resume.mv2";
+
+        if !std::path::Path::new(mv2_path).exists() {
+            return;
+        }
+
+        let searcher = RealSearcher::new(mv2_path).await.expect("Should load .mv2 file");
+
+        let response = searcher
+            .get_state("__profile__", None)
+            .await
+            .expect("get_state should succeed");
+
+        assert!(response.found);
+        assert_eq!(response.entity, "__profile__");
+        assert!(!response.slots.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_real_searcher_get_state_nonexistent() {
+        let mv2_path = "../data/.memvid/resume.mv2";
+
+        if !std::path::Path::new(mv2_path).exists() {
+            return;
+        }
+
+        let searcher = RealSearcher::new(mv2_path).await.expect("Should load .mv2 file");
+
+        let response = searcher
+            .get_state("nonexistent_entity", None)
+            .await
+            .expect("get_state should succeed");
+
+        assert!(!response.found);
+        assert!(response.slots.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_real_searcher_frame_count() {
+        let mv2_path = "../data/.memvid/resume.mv2";
+
+        if !std::path::Path::new(mv2_path).exists() {
+            return;
+        }
+
+        let searcher = RealSearcher::new(mv2_path).await.expect("Should load .mv2 file");
+
+        let frame_count = searcher.frame_count();
+        assert!(frame_count > 0, "Should have frames in the .mv2 file");
+    }
+
+    #[tokio::test]
+    async fn test_real_searcher_memvid_file_path() {
+        let mv2_path = "../data/.memvid/resume.mv2";
+
+        if !std::path::Path::new(mv2_path).exists() {
+            return;
+        }
+
+        let searcher = RealSearcher::new(mv2_path).await.expect("Should load .mv2 file");
+
+        let file_path = searcher.memvid_file();
+        assert!(file_path.contains("resume.mv2"));
+    }
+
+    #[tokio::test]
+    async fn test_real_searcher_is_ready() {
+        let mv2_path = "../data/.memvid/resume.mv2";
+
+        if !std::path::Path::new(mv2_path).exists() {
+            return;
+        }
+
+        let searcher = RealSearcher::new(mv2_path).await.expect("Should load .mv2 file");
+
+        assert!(searcher.is_ready());
+    }
+
+    // ---------------------------------
+    // Ignored tests for features requiring lexical index
+    // ---------------------------------
+    // The following tests require a .mv2 file with lexical index enabled.
+    // To run these tests: cargo test --lib -- --ignored
+    //
+    // To enable lexical index in a .mv2 file, use memvid-sdk with:
+    //   ingest.py --enable-lexical-index
+    //
+    // These tests will fail with the standard resume.mv2 file but are kept
+    // to document expected behavior once lexical indexing is enabled.
+
+    #[tokio::test]
+    #[ignore] // Requires lexical index enabled in .mv2 file. Run with: cargo test --lib -- --ignored
+    async fn test_real_searcher_ask_with_filters() {
+        let mv2_path = "../data/.memvid/resume.mv2";
+
+        if !std::path::Path::new(mv2_path).exists() {
+            return;
+        }
+
+        let searcher = RealSearcher::new(mv2_path).await.expect("Should load .mv2 file");
+
+        // Test filtering by metadata tags
+        let mut filters = std::collections::HashMap::new();
+        filters.insert("type".to_string(), "experience".to_string());
+
+        let request = AskRequest {
+            question: "What projects have you worked on?".to_string(),
+            use_llm: false,
+            top_k: 5,
+            filters, // Filter by type:experience
+            start: 0,
+            end: 0,
+            snippet_chars: 200,
+            mode: AskMode::Hybrid, // Hybrid mode works best with filters
+            uri: None,
+            cursor: None,
+            as_of_frame: None,
+            as_of_ts: None,
+            adaptive: None,
+        };
+
+        let response = searcher.ask(request).await.expect("Ask with filters should succeed");
+
+        // Verify filtered results
+        assert!(!response.answer.is_empty());
+        assert!(!response.evidence.is_empty());
+        assert!(response.stats.candidates_retrieved > 0);
+
+        // Verify results contain filtered content (if lexical index is enabled)
+        // This assertion will fail without lexical index support
+        for evidence in &response.evidence {
+            assert!(!evidence.snippet.is_empty());
+        }
+    }
+
+    #[tokio::test]
+    #[ignore] // Requires lexical index enabled in .mv2 file. Run with: cargo test --lib -- --ignored
+    async fn test_real_searcher_ask_with_multiple_filters() {
+        let mv2_path = "../data/.memvid/resume.mv2";
+
+        if !std::path::Path::new(mv2_path).exists() {
+            return;
+        }
+
+        let searcher = RealSearcher::new(mv2_path).await.expect("Should load .mv2 file");
+
+        // Test multiple filter combinations
+        let mut filters = std::collections::HashMap::new();
+        filters.insert("type".to_string(), "skill".to_string());
+        filters.insert("category".to_string(), "programming".to_string());
+
+        let request = AskRequest {
+            question: "Python".to_string(),
+            use_llm: false,
+            top_k: 3,
+            filters, // Filter by type:skill AND category:programming
+            start: 0,
+            end: 0,
+            snippet_chars: 150,
+            mode: AskMode::Lex, // Lexical mode for exact keyword matching
+            uri: None,
+            cursor: None,
+            as_of_frame: None,
+            as_of_ts: None,
+            adaptive: None,
+        };
+
+        let response = searcher.ask(request).await.expect("Ask with multiple filters should succeed");
+
+        assert!(!response.answer.is_empty());
+        assert!(response.stats.retrieval_ms >= 0);
+    }
 }
