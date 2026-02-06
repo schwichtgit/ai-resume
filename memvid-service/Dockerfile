@@ -19,10 +19,12 @@ COPY Cargo.toml Cargo.lock ./
 
 ENV RUST_MIN_STACK=16777216
 
-# Create dummy main to cache dependencies
+# Create dummy sources to cache dependencies (both lib.rs and main.rs
+# are required because Cargo.toml declares [lib] + [[bin]] targets)
 RUN uname -m && rustup show && \
     mkdir src && \
     echo "fn main() {}" > src/main.rs && \
+    echo "" > src/lib.rs && \
     cargo build -j $(nproc) --release && \
     rm -rf src
 
