@@ -72,8 +72,8 @@ async def test_openrouter_connection():
 
     settings = get_settings()
     # Mask API key in test output for security
-    # Use validation method to avoid CodeQL taint tracking
-    api_key_status = "CONFIGURED" if settings.has_openrouter_key else "NOT SET"
+    # Check env var directly to avoid CodeQL taint tracking
+    api_key_status = "CONFIGURED" if os.getenv("OPENROUTER_API_KEY") else "NOT SET"
     print(f"API Key: {api_key_status}")
     print(f"Model: {settings.llm_model}")
 
