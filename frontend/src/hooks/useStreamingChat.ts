@@ -46,11 +46,13 @@ export interface UseStreamingChatReturn {
 }
 
 /**
- * Generate a random session ID
+ * Generate a cryptographically secure random session ID
  */
 function generateSessionId(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
+    const array = new Uint8Array(1);
+    crypto.getRandomValues(array);
+    const r = array[0] % 16;
     const v = c === 'x' ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
