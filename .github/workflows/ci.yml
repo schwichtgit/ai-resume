@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  NODE_VERSION: "18"
+  NODE_VERSION: "22"
   PYTHON_VERSION: "3.11"
 
 jobs:
@@ -204,11 +204,10 @@ jobs:
           # Emoji pattern: common Unicode emoji ranges
           EMOJI_RE='[\xF0\x9F]|[\xE2\x9C]|[\xE2\x9A]|[\xE2\xAD]|[\xF0\x9F\x8E]|[\xF0\x9F\x9A]|🎉|🚀|✨|🐛|📝|🔧|♻️|⬆️|⬇️|🔥|💡|✅|❌|🎨|🩹|🔒'
 
-          # AI-ism patterns (case-insensitive)
+          # AI-ism patterns (case-insensitive, checked with grep -iF)
           AIISM_PATTERNS=(
             "Co-Authored-By:"
             "co-authored-by:"
-            "Claude"
             "Anthropic"
             "GPT"
             "OpenAI"
@@ -244,6 +243,13 @@ jobs:
               fi
             done
 
+            # Special check for "Claude": block standalone usage but allow "Claude Code" (product name)
+            # Strip "Claude Code" phrases and "claude" in conventional commit scopes e.g. (claude), (claude_code)
+            STRIPPED=$(echo "$SUBJECT" | sed 's/[Cc][Ll][Aa][Uu][Dd][Ee] [Cc][Oo][Dd][Ee]//g' | sed 's/([Cc][Ll][Aa][Uu][Dd][Ee][^)]*)//g')
+            if echo "$STRIPPED" | grep -qi "Claude"; then
+              COMMIT_ERRORS="${COMMIT_ERRORS}  - Contains AI-ism/branding: 'Claude' (note: 'Claude Code' as a product name is allowed)\n"
+            fi
+
             # Check subject line length (warning only)
             SUBJECT_LEN=${#SUBJECT}
             if [ "$SUBJECT_LEN" -gt 72 ]; then
@@ -273,6 +279,7 @@ jobs:
             echo "     Valid types: feat, fix, chore, docs, style, refactor, perf, test, ci, build"
             echo "  2. No emoji in commit messages"
             echo "  3. No AI-isms or branding (Claude, Anthropic, GPT, OpenAI, etc.)"
+            echo "     Exception: 'Claude Code' is allowed as a product name reference"
             echo "  4. Subject line should be 72 chars or fewer"
             exit 1
           fi

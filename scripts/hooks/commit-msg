@@ -67,7 +67,8 @@ fi
 
 # --- Anti-AI-isms Detection ---
 # Detect common AI-generated phrases (case-insensitive)
-AI_PATTERN='(\bI have\b|\bI'\''ve\b|\bmy changes\b|\bI updated\b|\bI fixed\b|\bI added\b|\bI refactored\b|as an ai\bcertainly\b|\bI'\''d be happy to\b|\brefined\b|\bpolished\b|\benhanced\b|\bbeautified\b|\bimproved efficiency\b|\bseamless\b|\brobust\b|\bclaude\b|\banthropic\b|\bgpt\b|\bopenai\b|\bcopilot\b|\bpowerful\b|\belegant\b|\bstreamlined\b)'
+# Note: "Claude" is checked separately below to allow "Claude Code" as a product name
+AI_PATTERN='(\bI have\b|\bI'\''ve\b|\bmy changes\b|\bI updated\b|\bI fixed\b|\bI added\b|\bI refactored\b|as an ai\bcertainly\b|\bI'\''d be happy to\b|\brefined\b|\bpolished\b|\benhanced\b|\bbeautified\b|\bimproved efficiency\b|\bseamless\b|\brobust\b|\banthropic\b|\bgpt\b|\bopenai\b|\bcopilot\b|\bpowerful\b|\belegant\b|\bstreamlined\b)'
 
 if echo "$COMMIT_MSG" | grep -iqE "$AI_PATTERN"; then
     # Find the specific match to report it
@@ -76,8 +77,19 @@ if echo "$COMMIT_MSG" | grep -iqE "$AI_PATTERN"; then
     echo "       Please rewrite using direct, imperative language."
     echo "       Detected patterns include: self-references (I have, I fixed, etc.),"
     echo "       fluff phrases (Certainly, Seamless, Robust, etc.),"
-    echo "       AI branding (Claude, GPT, Copilot, etc.),"
+    echo "       AI branding (Anthropic, GPT, Copilot, etc.),"
     echo "       and marketing adjectives (powerful, elegant, streamlined)."
+    exit 1
+fi
+
+# Special check for "Claude": block standalone usage but allow "Claude Code" (product name)
+# Strip "Claude Code" phrases and "claude" in conventional commit scopes e.g. (claude), (claude_code)
+STRIPPED_MSG=$(echo "$COMMIT_MSG" | sed 's/[Cc][Ll][Aa][Uu][Dd][Ee] [Cc][Oo][Dd][Ee]//g' | sed 's/([Cc][Ll][Aa][Uu][Dd][Ee][^)]*)//g')
+if echo "$STRIPPED_MSG" | grep -qi "Claude"; then
+    echo "ERROR: Commit message contains AI-ism: 'Claude'"
+    echo "       Note: 'Claude Code' is allowed as a product name reference,"
+    echo "       but standalone 'Claude' as attribution is not permitted."
+    echo "       Please rewrite using direct, imperative language."
     exit 1
 fi
 
