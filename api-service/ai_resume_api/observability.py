@@ -7,7 +7,7 @@ This module provides:
 """
 
 import time
-import uuid
+import secrets
 from contextvars import ContextVar
 from dataclasses import dataclass
 
@@ -25,8 +25,8 @@ trace_id_ctx: ContextVar[str] = ContextVar("trace_id", default="")
 
 
 def generate_trace_id() -> str:
-    """Generate a new trace ID (UUID4 hex, 32 chars)."""
-    return uuid.uuid4().hex
+    """Generate cryptographically secure trace ID for request tracking."""
+    return secrets.token_hex(16)  # 32 hex chars, same format as uuid4().hex
 
 
 def get_trace_id() -> str:
