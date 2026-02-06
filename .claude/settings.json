@@ -1,0 +1,51 @@
+{
+  "$schema": "https://claude.ai/schemas/settings.json",
+  "version": "1.0",
+  "hooks": {
+    "post-edit": {
+      "command": ".claude/hooks/post-edit.sh",
+      "description": "Auto-format files after edits (prettier, ruff)",
+      "enabled": true
+    },
+    "validate-bash": {
+      "command": ".claude/hooks/validate-bash.sh",
+      "description": "Block dangerous bash commands before execution",
+      "enabled": true
+    },
+    "protect-files": {
+      "command": ".claude/hooks/protect-files.sh",
+      "description": "Block edits to sensitive files (.env, credentials)",
+      "enabled": true
+    },
+    "stop": {
+      "command": ".claude/hooks/verify-quality.sh",
+      "description": "Verify quality before stopping (lint, tests)",
+      "enabled": true
+    }
+  },
+  "safety": {
+    "blockedCommands": [
+      "rm -rf /",
+      "rm -rf /*",
+      "git push --force",
+      "git push -f",
+      "git reset --hard",
+      "git clean -fd",
+      "chmod -R 777",
+      "> /dev/sda",
+      "mkfs",
+      "dd if=/dev/zero"
+    ],
+    "protectedFiles": [
+      ".env",
+      ".env.local",
+      ".env.production",
+      "*.pem",
+      "*.key",
+      "*credentials*",
+      "*secret*",
+      "id_rsa",
+      "id_ed25519"
+    ]
+  }
+}
