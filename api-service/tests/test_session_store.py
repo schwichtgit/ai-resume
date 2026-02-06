@@ -2,8 +2,6 @@
 
 from uuid import uuid4
 
-import pytest
-
 from app.models import Session
 from app.session_store import SessionStore, get_session_store, reset_session_store
 

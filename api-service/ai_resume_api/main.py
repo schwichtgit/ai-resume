@@ -52,7 +52,6 @@ from ai_resume_api.openrouter_client import (
     close_openrouter_client,
     get_openrouter_client,
 )
-from ai_resume_api.query_transform import transform_query
 from ai_resume_api.session_store import get_session_store
 
 # Configure structlog
@@ -262,7 +261,7 @@ async def chat(request: Request, chat_request: ChatRequest):
     # TEMPORARILY DISABLED: Query transformation was expanding "AI" to "artificial intelligence"
     # which doesn't match "AI/ML" content. Need to improve transformation logic.
     # TODO: Re-enable with better keyword extraction that preserves acronyms
-    transformed_query = chat_request.message
+    # transformed_query = chat_request.message
     # try:
     #     transformed_query = await transform_query(
     #         question=chat_request.message,
@@ -329,13 +328,13 @@ async def chat(request: Request, chat_request: ChatRequest):
         raise HTTPException(
             status_code=503,
             detail="Search service unavailable. Please try again later.",
-        )
+        ) from e
     except MemvidSearchError as e:
         logger.error("Memvid search failed", error=str(e))
         raise HTTPException(
             status_code=502,
             detail="Search service error. Please try again later.",
-        )
+        ) from e
 
     # Get conversation history
     history = session.get_history_for_llm(settings.max_history_messages)
@@ -405,13 +404,13 @@ async def chat(request: Request, chat_request: ChatRequest):
             raise HTTPException(
                 status_code=503,
                 detail="AI service not configured. Please contact the administrator.",
-            )
+            ) from e
         except OpenRouterError as e:
             log_llm_response(
                 request_log=request_log,
                 error=str(e),
             )
-            raise HTTPException(status_code=502, detail=str(e))
+            raise HTTPException(status_code=502, detail=str(e)) from e
 
 
 async def _stream_chat_response(
@@ -697,13 +696,13 @@ async def assess_fit(request: Request, assess_request: AssessFitRequest) -> Asse
         raise HTTPException(
             status_code=503,
             detail="Search service unavailable. Please try again later.",
-        )
+        ) from e
     except MemvidSearchError as e:
         logger.error("Memvid ask failed for fit assessment", error=str(e))
         raise HTTPException(
             status_code=502,
             detail="Search service error. Please try again later.",
-        )
+        ) from e
 
     # Classify the job description to select appropriate assessor persona
     role_info = classify_job_description(assess_request.job_description)
@@ -885,10 +884,10 @@ RECOMMENDATION: [2-3 sentences. Address whether the candidate should be consider
         raise HTTPException(
             status_code=503,
             detail="AI service not configured. Please contact the administrator.",
-        )
+        ) from e
     except OpenRouterError as e:
         logger.error("OpenRouter error during fit assessment", error=str(e))
-        raise HTTPException(status_code=502, detail=f"AI service error: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"AI service error: {str(e)}") from e
 
 
 # =============================================================================

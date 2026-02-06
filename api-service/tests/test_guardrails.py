@@ -1,6 +1,5 @@
 """Tests for guardrails module."""
 
-import pytest
 from unittest.mock import patch
 
 from app.guardrails import (
@@ -10,7 +9,6 @@ from app.guardrails import (
     check_input,
     check_output,
     MAX_SUGGESTED_QUESTIONS,
-    InjectionDetectionResult,
     OutputFilterResult,
 )
 

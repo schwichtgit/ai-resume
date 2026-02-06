@@ -74,7 +74,7 @@ def test_main_runs_without_errors(monkeypatch, capsys):
     test_args = [
         "compare_models.py",
         "sentence-transformers/all-MiniLM-L6-v2",
-        "sentence-transformers/all-MiniLM-L6-v2"
+        "sentence-transformers/all-MiniLM-L6-v2",
     ]
     monkeypatch.setattr(sys, "argv", test_args)
 

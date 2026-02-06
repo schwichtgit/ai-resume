@@ -18,7 +18,6 @@ Run with:
 """
 
 import textwrap
-from pathlib import Path
 
 from ingest import (
     extract_experience_chunks,

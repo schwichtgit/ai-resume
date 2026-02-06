@@ -1,9 +1,6 @@
-# Proto files (synced from project root at build time)
+# Proto source files (synced from project root at build time)
 # Authoritative source: proto/memvid/v1/memvid.proto
-proto/
-
-# Generated proto stubs
-ai_resume_api/proto/
+/proto/
 
 # UV virtual environment
 .venv/

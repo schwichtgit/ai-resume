@@ -22,9 +22,10 @@ try:
         "Memvid search latency in seconds",
         buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0],
     )
-except ValueError as e:
+except ValueError:
     # Metric already registered (during test collection)
     from prometheus_client import REGISTRY
+
     memvid_search_latency = REGISTRY._names_to_collectors.get("memvid_search_latency_seconds")
 
 # Try to import generated protobuf code
@@ -317,8 +318,12 @@ class MemvidClient:
             ]
 
             stats = {
-                "candidates_retrieved": response.stats.candidates_retrieved if response.stats else 0,
-                "results_returned": response.stats.results_returned if response.stats else len(evidence),
+                "candidates_retrieved": response.stats.candidates_retrieved
+                if response.stats
+                else 0,
+                "results_returned": response.stats.results_returned
+                if response.stats
+                else len(evidence),
                 "retrieval_ms": response.stats.retrieval_ms if response.stats else 0,
                 "reranking_ms": response.stats.reranking_ms if response.stats else 0,
                 "used_fallback": response.stats.used_fallback if response.stats else False,
@@ -604,9 +609,7 @@ class MemvidClient:
         ]
 
         # Generate mock answer (concatenate snippets)
-        answer = "\n\n".join(
-            [f"**{e['title']}**\n{e['snippet']}" for e in evidence]
-        )
+        answer = "\n\n".join([f"**{e['title']}**\n{e['snippet']}" for e in evidence])
 
         return {
             "answer": answer,

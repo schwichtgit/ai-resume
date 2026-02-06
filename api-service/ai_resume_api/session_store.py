@@ -1,7 +1,7 @@
 """In-memory session store with TTL-based expiration."""
 
 import threading
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from uuid import UUID
 
 from cachetools import TTLCache

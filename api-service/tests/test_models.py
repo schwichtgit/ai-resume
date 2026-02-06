@@ -1,6 +1,5 @@
 """Tests for Pydantic models."""
 
-from datetime import datetime
 from uuid import uuid4
 
 import pytest
@@ -14,7 +13,6 @@ from app.models import (
     HealthResponse,
     MemvidSearchHit,
     MemvidSearchResponse,
-    RetrievalChunk,
     Session,
     SuggestedQuestion,
 )

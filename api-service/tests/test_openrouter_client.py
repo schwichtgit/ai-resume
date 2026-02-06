@@ -161,7 +161,7 @@ class TestOpenRouterClientAsync:
         """Test that chat auto-connects."""
         client = OpenRouterClient(api_key="sk-test")
         # Mock the HTTP client to avoid actual API calls
-        with patch.object(client, '_client') as mock_client:
+        with patch.object(client, "_client") as mock_client:
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_response.json.return_value = {
@@ -172,7 +172,7 @@ class TestOpenRouterClientAsync:
             mock_client.post = AsyncMock(return_value=mock_response)
 
             # This should work without explicit connect
-            response = await client.chat(
+            await client.chat(
                 system_prompt="Be helpful",
                 context="Context",
                 user_message="Hi",
@@ -290,7 +290,6 @@ class TestGlobalClientFunctions:
     async def test_get_openrouter_client_creates_singleton(self):
         """Test that get_openrouter_client creates a singleton."""
         from ai_resume_api.openrouter_client import (
-            _openrouter_client,
             close_openrouter_client,
             get_openrouter_client,
         )
@@ -328,7 +327,7 @@ class TestOpenRouterMockModes:
     async def test_chat_with_mock_enabled(self, mock_settings):
         """Test chat() with mock mode enabled."""
         # Configure mock mode before creating client
-        settings = mock_settings(mock_openrouter="true", openrouter_api_key="")
+        mock_settings(mock_openrouter="true", openrouter_api_key="")
         # Create client after settings are configured
         client = OpenRouterClient(api_key="")
 
@@ -363,7 +362,7 @@ class TestOpenRouterMockModes:
     async def test_chat_stream_with_mock_enabled(self, mock_settings):
         """Test chat_stream() with mock mode enabled."""
         # Configure mock mode before creating client
-        settings = mock_settings(mock_openrouter="true", openrouter_api_key="")
+        mock_settings(mock_openrouter="true", openrouter_api_key="")
         # Create client after settings are configured
         client = OpenRouterClient(api_key="")
 
@@ -440,16 +439,22 @@ class TestOpenRouterStreamingSuccess:
 
         # Mock successful streaming response
         mock_lines = [
-            "data: " + json.dumps({
-                "choices": [{"delta": {"content": "Hello"}, "finish_reason": None}],
-            }),
-            "data: " + json.dumps({
-                "choices": [{"delta": {"content": " world"}, "finish_reason": None}],
-            }),
-            "data: " + json.dumps({
-                "choices": [{"delta": {}, "finish_reason": "stop"}],
-                "usage": {"total_tokens": 42}
-            }),
+            "data: "
+            + json.dumps(
+                {
+                    "choices": [{"delta": {"content": "Hello"}, "finish_reason": None}],
+                }
+            ),
+            "data: "
+            + json.dumps(
+                {
+                    "choices": [{"delta": {"content": " world"}, "finish_reason": None}],
+                }
+            ),
+            "data: "
+            + json.dumps(
+                {"choices": [{"delta": {}, "finish_reason": "stop"}], "usage": {"total_tokens": 42}}
+            ),
         ]
 
         async def mock_aiter_lines():
@@ -464,6 +469,7 @@ class TestOpenRouterStreamingSuccess:
         class MockStreamContext:
             async def __aenter__(self):
                 return mock_response
+
             async def __aexit__(self, *args):
                 return None
 
@@ -492,9 +498,12 @@ class TestOpenRouterStreamingSuccess:
         client = OpenRouterClient(api_key="sk-test-key")
 
         mock_lines = [
-            "data: " + json.dumps({
-                "choices": [{"delta": {"content": "Test"}, "finish_reason": None}],
-            }),
+            "data: "
+            + json.dumps(
+                {
+                    "choices": [{"delta": {"content": "Test"}, "finish_reason": None}],
+                }
+            ),
             "data: [DONE]",
         ]
 
@@ -510,6 +519,7 @@ class TestOpenRouterStreamingSuccess:
         class MockStreamContext:
             async def __aenter__(self):
                 return mock_response
+
             async def __aexit__(self, *args):
                 return None
 
@@ -537,13 +547,19 @@ class TestOpenRouterStreamingSuccess:
         client = OpenRouterClient(api_key="sk-test-key")
 
         mock_lines = [
-            "data: " + json.dumps({
-                "choices": [{"delta": {"content": "Valid"}, "finish_reason": None}],
-            }),
+            "data: "
+            + json.dumps(
+                {
+                    "choices": [{"delta": {"content": "Valid"}, "finish_reason": None}],
+                }
+            ),
             "data: {invalid json}",  # Malformed JSON
-            "data: " + json.dumps({
-                "choices": [{"delta": {"content": " content"}, "finish_reason": None}],
-            }),
+            "data: "
+            + json.dumps(
+                {
+                    "choices": [{"delta": {"content": " content"}, "finish_reason": None}],
+                }
+            ),
             "data: [DONE]",
         ]
 
@@ -559,6 +575,7 @@ class TestOpenRouterStreamingSuccess:
         class MockStreamContext:
             async def __aenter__(self):
                 return mock_response
+
             async def __aexit__(self, *args):
                 return None
 
@@ -601,6 +618,7 @@ class TestOpenRouterStreamingSuccess:
         class MockStreamContext:
             async def __aenter__(self):
                 raise mock_http_error
+
             async def __aexit__(self, *args):
                 return None
 
@@ -630,15 +648,8 @@ class TestOpenRouterChatSuccess:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "choices": [{
-                "message": {"content": "This is the response"},
-                "finish_reason": "stop"
-            }],
-            "usage": {
-                "prompt_tokens": 10,
-                "completion_tokens": 20,
-                "total_tokens": 30
-            }
+            "choices": [{"message": {"content": "This is the response"}, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
         }
         mock_response.raise_for_status = MagicMock()
 

@@ -22,9 +22,9 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
 
 def test_model(model_name: str) -> dict:
     """Test a single model on sample queries."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Testing: {model_name}")
-    print('='*60)
+    print("=" * 60)
 
     model = SentenceTransformer(model_name)
 
@@ -32,7 +32,7 @@ def test_model(model_name: str) -> dict:
     queries = [
         "What cloud platforms has she used?",
         "Tell me about her leadership experience",
-        "What programming languages does she know?"
+        "What programming languages does she know?",
     ]
 
     # Sample context from resume
@@ -53,11 +53,7 @@ def test_model(model_name: str) -> dict:
 
     avg_similarity = np.mean([r["similarity"] for r in results])
 
-    return {
-        "model_name": model_name,
-        "results": results,
-        "avg_similarity": avg_similarity
-    }
+    return {"model_name": model_name, "results": results, "avg_similarity": avg_similarity}
 
 
 def main():
@@ -69,38 +65,38 @@ def main():
         "model1",
         nargs="?",
         default="sentence-transformers/all-MiniLM-L6-v2",
-        help="First model name (default: all-MiniLM-L6-v2)"
+        help="First model name (default: all-MiniLM-L6-v2)",
     )
     parser.add_argument(
         "model2",
         nargs="?",
         default="BAAI/bge-small-en-v1.5",
-        help="Second model name (default: BAAI/bge-small-en-v1.5)"
+        help="Second model name (default: BAAI/bge-small-en-v1.5)",
     )
 
     args = parser.parse_args()
 
     print("EMBEDDING MODEL COMPARISON")
-    print("="*60)
+    print("=" * 60)
 
     # Test both models
     result1 = test_model(args.model1)
     result2 = test_model(args.model2)
 
     # Summary
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("SUMMARY")
-    print("="*60)
+    print("=" * 60)
     print(f"\n{result1['model_name']}")
     print(f"  Average Similarity: {result1['avg_similarity']:.4f}")
     print(f"\n{result2['model_name']}")
     print(f"  Average Similarity: {result2['avg_similarity']:.4f}")
 
-    if result2['avg_similarity'] > result1['avg_similarity']:
-        diff = result2['avg_similarity'] - result1['avg_similarity']
+    if result2["avg_similarity"] > result1["avg_similarity"]:
+        diff = result2["avg_similarity"] - result1["avg_similarity"]
         print(f"\n✓ {result2['model_name']} is better by {diff:.4f}")
-    elif result1['avg_similarity'] > result2['avg_similarity']:
-        diff = result1['avg_similarity'] - result2['avg_similarity']
+    elif result1["avg_similarity"] > result2["avg_similarity"]:
+        diff = result1["avg_similarity"] - result2["avg_similarity"]
         print(f"\n✓ {result1['model_name']} is better by {diff:.4f}")
     else:
         print("\n= Models perform equally")

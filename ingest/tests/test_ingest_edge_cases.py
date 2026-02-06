@@ -26,11 +26,8 @@ import memvid_sdk
 from ingest import (
     build_profile_dict,
     check_input_file,
-    extract_sections,
     ingest_memory,
-    parse_frontmatter,
     verify,
-    RESUME_PATH,
 )
 
 
@@ -48,10 +45,7 @@ def test_build_profile_dict_complete():
         "linkedin": "linkedin.com/in/janedoe",
         "location": "San Francisco, CA",
         "status": "open_to_opportunities",
-        "suggested_questions": [
-            "What is your experience?",
-            "What technologies do you know?"
-        ],
+        "suggested_questions": ["What is your experience?", "What technologies do you know?"],
         "system_prompt": "You are a helpful assistant.",
         "tags": ["python", "golang"],
     }
@@ -209,7 +203,8 @@ def test_ingest_memory_basic():
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create minimal test markdown
         input_path = Path(tmpdir) / "test_resume.md"
-        input_path.write_text(textwrap.dedent("""
+        input_path.write_text(
+            textwrap.dedent("""
             ---
             name: Test User
             title: Software Engineer
@@ -276,7 +271,8 @@ def test_ingest_memory_basic():
             - **Key Matches:** Python expertise
             - **Gaps:** None
             - **Recommendation:** Excellent match
-        """).strip())
+        """).strip()
+        )
 
         output_path = Path(tmpdir) / "test.mv2"
 
@@ -314,7 +310,8 @@ def test_ingest_memory_with_debug_mode():
     """Test ingestion with debug mode enabled."""
     with tempfile.TemporaryDirectory() as tmpdir:
         input_path = Path(tmpdir) / "test.md"
-        input_path.write_text(textwrap.dedent("""
+        input_path.write_text(
+            textwrap.dedent("""
             ---
             name: Debug Test
             title: Test
@@ -329,7 +326,8 @@ def test_ingest_memory_with_debug_mode():
 
             ## Summary
             Test summary.
-        """).strip())
+        """).strip()
+        )
 
         output_path = Path(tmpdir) / "test.mv2"
 
@@ -349,7 +347,8 @@ def test_ingest_memory_overwrites_existing():
     """Test that ingestion overwrites existing .mv2 file."""
     with tempfile.TemporaryDirectory() as tmpdir:
         input_path = Path(tmpdir) / "test.md"
-        input_path.write_text(textwrap.dedent("""
+        input_path.write_text(
+            textwrap.dedent("""
             ---
             name: First Version
             title: Engineer
@@ -364,16 +363,18 @@ def test_ingest_memory_overwrites_existing():
 
             ## Summary
             First version.
-        """).strip())
+        """).strip()
+        )
 
         output_path = Path(tmpdir) / "test.mv2"
 
         # First ingestion
         ingest_memory(input_path, output_path, verbose=False)
-        first_size = output_path.stat().st_size
+        _ = output_path.stat().st_size
 
         # Update content
-        input_path.write_text(textwrap.dedent("""
+        input_path.write_text(
+            textwrap.dedent("""
             ---
             name: Second Version
             title: Senior Engineer
@@ -392,7 +393,8 @@ def test_ingest_memory_overwrites_existing():
             ## Skills Assessment
             ### Strong Skills
             - **Python:** Expert
-        """).strip())
+        """).strip()
+        )
 
         # Second ingestion
         ingest_memory(input_path, output_path, verbose=False)
@@ -410,7 +412,8 @@ def test_ingest_memory_empty_sections():
     """Test ingestion with document containing only frontmatter."""
     with tempfile.TemporaryDirectory() as tmpdir:
         input_path = Path(tmpdir) / "test.md"
-        input_path.write_text(textwrap.dedent("""
+        input_path.write_text(
+            textwrap.dedent("""
             ---
             name: Minimal User
             title: Developer
@@ -422,7 +425,8 @@ def test_ingest_memory_empty_sections():
             system_prompt: Test prompt
             suggested_questions: []
             ---
-        """).strip())
+        """).strip()
+        )
 
         output_path = Path(tmpdir) / "test.mv2"
 
@@ -437,7 +441,8 @@ def test_ingest_memory_custom_embedding_model():
     """Test ingestion with custom embedding model specification."""
     with tempfile.TemporaryDirectory() as tmpdir:
         input_path = Path(tmpdir) / "test.md"
-        input_path.write_text(textwrap.dedent("""
+        input_path.write_text(
+            textwrap.dedent("""
             ---
             name: Test
             title: Test
@@ -452,16 +457,14 @@ def test_ingest_memory_custom_embedding_model():
 
             ## Summary
             Test content.
-        """).strip())
+        """).strip()
+        )
 
         output_path = Path(tmpdir) / "test.mv2"
 
         # Use default model (already tested in basic test)
         stats = ingest_memory(
-            input_path,
-            output_path,
-            verbose=False,
-            embedding_model="BAAI/bge-small-en-v1.5"
+            input_path, output_path, verbose=False, embedding_model="BAAI/bge-small-en-v1.5"
         )
 
         assert output_path.exists()
@@ -478,7 +481,8 @@ def test_verify_valid_memory():
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create valid test data
         input_path = Path(tmpdir) / "test.md"
-        input_path.write_text(textwrap.dedent("""
+        input_path.write_text(
+            textwrap.dedent("""
             ---
             name: Verify Test
             title: Engineer
@@ -530,7 +534,8 @@ def test_verify_valid_memory():
             ## Leadership & Management
 
             Leadership philosophy focused on team building and mentoring.
-        """).strip())
+        """).strip()
+        )
 
         output_path = Path(tmpdir) / "test.mv2"
 
@@ -538,7 +543,7 @@ def test_verify_valid_memory():
         ingest_memory(input_path, output_path, verbose=False)
 
         # Verify
-        result = verify(output_path, verbose=False)
+        verify(output_path, verbose=False)
 
         # Should pass basic checks (frame count, etc.)
         # Note: Some semantic queries may not match perfectly with minimal data
@@ -560,12 +565,16 @@ def test_verify_insufficient_frames():
 
         # Add only 2 frames (below threshold of 5)
         from memvid_sdk.embeddings import HuggingFaceEmbeddings
+
         embedder = HuggingFaceEmbeddings(model="BAAI/bge-small-en-v1.5")
 
-        mem.put_many([
-            {"title": "Frame 1", "label": "Frame 1", "text": "Content 1", "timestamp": 1000000},
-            {"title": "Frame 2", "label": "Frame 2", "text": "Content 2", "timestamp": 1000001},
-        ], embedder=embedder)
+        mem.put_many(
+            [
+                {"title": "Frame 1", "label": "Frame 1", "text": "Content 1", "timestamp": 1000000},
+                {"title": "Frame 2", "label": "Frame 2", "text": "Content 2", "timestamp": 1000001},
+            ],
+            embedder=embedder,
+        )
 
         mem.close()
 
@@ -604,7 +613,8 @@ def test_ingest_malformed_frontmatter():
     with tempfile.TemporaryDirectory() as tmpdir:
         input_path = Path(tmpdir) / "test.md"
         # Create file with malformed/incomplete frontmatter
-        input_path.write_text(textwrap.dedent("""
+        input_path.write_text(
+            textwrap.dedent("""
             ---
             name: Test User
             title: Engineer
@@ -617,12 +627,13 @@ def test_ingest_malformed_frontmatter():
 
             ## Summary
             Content here.
-        """).strip())
+        """).strip()
+        )
 
         output_path = Path(tmpdir) / "test.mv2"
 
         # Should handle gracefully (parser is lenient)
-        stats = ingest_memory(input_path, output_path, verbose=False)
+        ingest_memory(input_path, output_path, verbose=False)
 
         assert output_path.exists()
 
@@ -631,12 +642,13 @@ def test_ingest_directory_permission_error():
     """Test ingestion handles directory permission issues."""
     # This test is platform-specific and may not work on all systems
     # Skip if running in environment without permission control
-    if os.name == 'nt':  # Skip on Windows
+    if os.name == "nt":  # Skip on Windows
         pytest.skip("Permission test not applicable on Windows")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         input_path = Path(tmpdir) / "test.md"
-        input_path.write_text(textwrap.dedent("""
+        input_path.write_text(
+            textwrap.dedent("""
             ---
             name: Test
             title: Test
@@ -651,7 +663,8 @@ def test_ingest_directory_permission_error():
 
             ## Summary
             Test.
-        """).strip())
+        """).strip()
+        )
 
         # Create read-only directory
         readonly_dir = Path(tmpdir) / "readonly"
@@ -662,7 +675,7 @@ def test_ingest_directory_permission_error():
 
         try:
             # Should raise PermissionError or similar
-            with pytest.raises(Exception):  # Could be PermissionError or OSError
+            with pytest.raises(OSError):  # PermissionError is a subclass of OSError
                 ingest_memory(input_path, output_path, verbose=False)
         finally:
             # Restore permissions for cleanup
@@ -673,7 +686,8 @@ def test_ingest_with_failures_section():
     """Test ingestion of Documented Failures & Lessons Learned section."""
     with tempfile.TemporaryDirectory() as tmpdir:
         input_path = Path(tmpdir) / "test.md"
-        input_path.write_text(textwrap.dedent("""
+        input_path.write_text(
+            textwrap.dedent("""
             ---
             name: Test Candidate
             title: Senior Engineer
@@ -695,7 +709,8 @@ def test_ingest_with_failures_section():
             **What Went Wrong:** No rollback plan, underestimated data volume.
 
             **Lesson:** Always have automated rollback and test on staging.
-        """).strip())
+        """).strip()
+        )
 
         output_path = Path(tmpdir) / "test.mv2"
         ingest_memory(input_path, output_path, verbose=False)
@@ -711,7 +726,9 @@ def test_ingest_with_failures_section():
 
         assert len(hits) >= 1
         failure_hit = hits[0]
-        assert "failure" in failure_hit.get("tags", []) or "lessons-learned" in failure_hit.get("tags", [])
+        assert "failure" in failure_hit.get("tags", []) or "lessons-learned" in failure_hit.get(
+            "tags", []
+        )
 
         mem.close()
 
@@ -723,7 +740,8 @@ def test_ingest_verbose_output_comprehensive():
 
     with tempfile.TemporaryDirectory() as tmpdir:
         input_path = Path(tmpdir) / "test.md"
-        input_path.write_text(textwrap.dedent("""
+        input_path.write_text(
+            textwrap.dedent("""
             ---
             name: Test
             title: Engineer
@@ -752,7 +770,8 @@ def test_ingest_verbose_output_comprehensive():
 
             ### Question 1: What do you do?
             I write code.
-        """).strip())
+        """).strip()
+        )
 
         output_path = Path(tmpdir) / "test.mv2"
 
@@ -783,7 +802,7 @@ def test_check_input_file_missing_default_path():
 
 def test_check_input_file_exists():
     """Test check_input_file with existing file."""
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
         f.write("# Test")
         temp_path = Path(f.name)
 
@@ -801,7 +820,8 @@ def test_ingest_debug_mode_all_sections():
 
     with tempfile.TemporaryDirectory() as tmpdir:
         input_path = Path(tmpdir) / "comprehensive.md"
-        input_path.write_text(textwrap.dedent("""
+        input_path.write_text(
+            textwrap.dedent("""
             ---
             name: Test
             title: Engineer
@@ -837,7 +857,8 @@ def test_ingest_debug_mode_all_sections():
             **Role:** Senior Engineer
             **Job Description:** Python expert needed
             **Verdict:** ⭐⭐⭐⭐ Strong fit
-        """).strip())
+        """).strip()
+        )
 
         output_path = Path(tmpdir) / "test.mv2"
 
@@ -865,7 +886,8 @@ def test_verify_function_verbose_mode():
 
     with tempfile.TemporaryDirectory() as tmpdir:
         input_path = Path(tmpdir) / "test.md"
-        input_path.write_text(textwrap.dedent("""
+        input_path.write_text(
+            textwrap.dedent("""
             ---
             name: Test
             title: Engineer
@@ -894,7 +916,8 @@ def test_verify_function_verbose_mode():
             Python and Go.
 
             **Keywords:** python, go, programming, languages
-        """).strip())
+        """).strip()
+        )
 
         output_path = Path(tmpdir) / "test.mv2"
         ingest_memory(input_path, output_path, verbose=False)

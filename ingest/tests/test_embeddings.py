@@ -10,9 +10,11 @@ import numpy as np
 # Use the same model as ingest
 MODEL = "all-mpnet-base-v2"
 
+
 def cosine_similarity(a, b):
     """Calculate cosine similarity between two vectors."""
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+
 
 def test_embeddings():
     """Test if model understands AI = Artificial Intelligence."""
@@ -33,9 +35,9 @@ def test_embeddings():
         "Python for data pipelines and MLOps",
     ]
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("SIMILARITY MATRIX")
-    print("="*80)
+    print("=" * 80)
 
     # Compute embeddings
     query_embeddings = model.encode(queries)
@@ -52,17 +54,17 @@ def test_embeddings():
             print(f"{query:<30} | {snippet[:48]:<50} | {sim:.4f}{marker}")
         print()
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("ANALYSIS")
-    print("="*80)
+    print("=" * 80)
 
     # Test specific case: "artificial intelligence" vs "AI/ML infrastructure"
     ai_query_emb = model.encode(["artificial intelligence"])[0]
     ai_resume_emb = model.encode(["AI/ML infrastructure"])[0]
     sim = cosine_similarity(ai_query_emb, ai_resume_emb)
 
-    print(f"\nQuery: 'artificial intelligence'")
-    print(f"Resume: 'AI/ML infrastructure'")
+    print("\nQuery: 'artificial intelligence'")
+    print("Resume: 'AI/ML infrastructure'")
     print(f"Similarity: {sim:.4f}")
 
     if sim > 0.5:
@@ -72,9 +74,10 @@ def test_embeddings():
     else:
         print("❌ FAIL: Model doesn't understand the relationship")
 
-    print(f"\nRecommended min-relevancy: 0.4 (from memvid stats)")
+    print("\nRecommended min-relevancy: 0.4 (from memvid stats)")
     print(f"This similarity: {sim:.4f}")
     print(f"Above threshold: {'✅ YES' if sim >= 0.4 else '❌ NO'}")
+
 
 if __name__ == "__main__":
     test_embeddings()

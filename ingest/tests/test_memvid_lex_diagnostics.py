@@ -52,12 +52,12 @@ def test_index_status():
     vec_enabled = stats.get("vec_enabled", False)
     vec_bytes = stats.get("vec_index_bytes", 0)
 
-    print(f"\n📑 LEXICAL INDEX (BM25)")
+    print("\n📑 LEXICAL INDEX (BM25)")
     print(f"   Storage present: {'✓ YES' if lex_storage else '✗ NO'} ({lex_bytes:,} bytes)")
     print(f"   Enabled at runtime: {'✓ YES' if lex_enabled else '✗ NO'}")
     print(f"   Status: {'🟢 OK' if lex_storage and lex_enabled else '🔴 BROKEN'}")
 
-    print(f"\n📊 VECTOR INDEX (Semantic)")
+    print("\n📊 VECTOR INDEX (Semantic)")
     print(f"   Storage present: {'✓ YES' if vec_storage else '✗ NO'} ({vec_bytes:,} bytes)")
     print(f"   Enabled at runtime: {'✓ YES' if vec_enabled else '✗ NO'}")
     print(f"   Status: {'🟢 OK' if vec_storage and vec_enabled else '🔴 BROKEN'}")
@@ -70,7 +70,7 @@ def test_index_status():
     embed_info = stats.get("embedding_identity_summary", {})
     if embed_info:
         identity = embed_info.get("identity", {})
-        print(f"\n🔧 EMBEDDING MODEL")
+        print("\n🔧 EMBEDDING MODEL")
         print(f"   Provider: {identity.get('provider', 'N/A')}")
         print(f"   Model: {identity.get('model', 'N/A')}")
         print(f"   Dimension: {identity.get('dimension', 'N/A')}")
@@ -106,7 +106,7 @@ def test_index_status():
     mem.close()
 
     # Profile State Test
-    print(f"\n" + "=" * 70)
+    print("\n" + "=" * 70)
     print("PROFILE STATE TEST (O(1) LOOKUP)")
     print("=" * 70)
     mem = memvid_sdk.use("basic", str(MV2_PATH))

@@ -17,8 +17,9 @@ import subprocess
 
 # Ensure we're in /app for module imports
 # The ai_resume_api module needs to be importable
-os.chdir('/app')
-sys.path.insert(0, '/app')
+os.chdir("/app")
+sys.path.insert(0, "/app")
+
 
 def can_bind_ipv6_dualstack(port: int) -> bool:
     """Test if we can bind to IPv6 with dual-stack support on the given port.
@@ -82,10 +83,7 @@ def main():
             sock.setblocking(False)
 
             # Pass socket to uvicorn
-            config_with_socket = uvicorn.Config(
-                "ai_resume_api.main:app",
-                log_level="info"
-            )
+            config_with_socket = uvicorn.Config("ai_resume_api.main:app", log_level="info")
             server_with_socket = uvicorn.Server(config_with_socket)
             await server_with_socket.serve(sockets=[sock])
 
@@ -95,8 +93,10 @@ def main():
         cmd = [
             "uvicorn",
             "ai_resume_api.main:app",
-            "--host", host,
-            "--port", str(port),
+            "--host",
+            host,
+            "--port",
+            str(port),
         ]
         print(f"Starting: {' '.join(cmd)}", file=sys.stderr)
         sys.exit(subprocess.call(cmd))
