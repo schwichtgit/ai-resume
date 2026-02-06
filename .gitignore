@@ -14,8 +14,13 @@ dist-ssr
 
 # AI related
 .roo
-**/.claude/
-.claude/
+
+# Claude Code - Allow .claude directory for hooks and settings
+!.claude/
+!.claude/**
+# But ignore Claude Mind memory files
+.claude/mind.*
+.claude/*.mv2
 
 # Local working directories (for development, testing, temporary files)
 /local/
