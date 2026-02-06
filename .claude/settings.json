@@ -1,27 +1,48 @@
 {
-  "$schema": "https://claude.ai/schemas/settings.json",
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "version": "1.0",
   "hooks": {
-    "post-edit": {
-      "command": ".claude/hooks/post-edit.sh",
-      "description": "Auto-format files after edits (prettier, ruff)",
-      "enabled": true
-    },
-    "validate-bash": {
-      "command": ".claude/hooks/validate-bash.sh",
-      "description": "Block dangerous bash commands before execution",
-      "enabled": true
-    },
-    "protect-files": {
-      "command": ".claude/hooks/protect-files.sh",
-      "description": "Block edits to sensitive files (.env, credentials)",
-      "enabled": true
-    },
-    "stop": {
-      "command": ".claude/hooks/verify-quality.sh",
-      "description": "Verify quality before stopping (lint, tests)",
-      "enabled": true
-    }
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-edit.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/validate-bash.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/protect-files.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/verify-quality.sh"
+          }
+        ]
+      }
+    ]
   },
   "safety": {
     "blockedCommands": [

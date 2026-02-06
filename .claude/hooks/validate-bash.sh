@@ -4,11 +4,28 @@
 
 set -euo pipefail
 
-# The command to validate is passed as the first argument
-COMMAND="${1:-}"
+# Claude Code hooks receive JSON on stdin, not as positional arguments.
+# For PreToolUse hooks, the JSON structure is:
+# { "tool_name": "Bash", "tool_input": { "command": "..." } }
+INPUT=$(cat /dev/stdin 2>/dev/null) || true
+
+if [[ -z "$INPUT" ]]; then
+    # No input provided, nothing to validate
+    exit 0
+fi
+
+# Parse the command from the JSON input using python3
+COMMAND=$(echo "$INPUT" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    print(data.get('tool_input', {}).get('command', ''))
+except (json.JSONDecodeError, KeyError, TypeError):
+    print('')
+" 2>/dev/null) || true
 
 if [[ -z "$COMMAND" ]]; then
-    echo "No command provided to validate"
+    # Could not parse command from JSON, allow execution
     exit 0
 fi
 

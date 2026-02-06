@@ -163,9 +163,32 @@ export async function checkHealth(): Promise<HealthResponse> {
 }
 
 /**
+ * Snake_case AI context as returned by the API
+ */
+interface ApiAIContext {
+  situation?: string;
+  approach?: string;
+  technical_work?: string;
+  lessons_learned?: string;
+}
+
+/**
+ * Snake_case experience entry as returned by the API
+ */
+interface ApiExperience {
+  company: string;
+  role: string;
+  period: string;
+  location: string;
+  tags: string[];
+  highlights: string[];
+  ai_context?: ApiAIContext;
+}
+
+/**
  * Transform snake_case API response to camelCase for frontend
  */
-function transformExperience(apiExp: any): any {
+function transformExperience(apiExp: ApiExperience): Experience {
   return {
     ...apiExp,
     aiContext: apiExp.ai_context ? {

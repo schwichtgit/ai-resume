@@ -1,0 +1,97 @@
+#!/bin/bash
+# Commit-msg hook: Validate commit message format
+# Enforces conventional commits and blocks certain patterns
+
+set -euo pipefail
+
+COMMIT_MSG_FILE="$1"
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+# Extract just the first line (subject)
+SUBJECT=$(echo "$COMMIT_MSG" | head -n1)
+
+echo "Validating commit message..."
+
+# Check for empty commit message
+if [[ -z "$SUBJECT" ]]; then
+    echo "ERROR: Commit message cannot be empty"
+    exit 1
+fi
+
+# Check subject line length (max 72 characters recommended)
+if [[ ${#SUBJECT} -gt 72 ]]; then
+    echo "WARNING: Subject line is ${#SUBJECT} characters (recommended max: 72)"
+fi
+
+# Conventional commit pattern
+# Format: type(scope): description
+# Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
+CONVENTIONAL_PATTERN="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+"
+
+if ! echo "$SUBJECT" | grep -qE "$CONVENTIONAL_PATTERN"; then
+    echo "ERROR: Commit message does not follow conventional commits format"
+    echo ""
+    echo "Expected format: type(scope): description"
+    echo ""
+    echo "Valid types:"
+    echo "  feat     - A new feature"
+    echo "  fix      - A bug fix"
+    echo "  docs     - Documentation only changes"
+    echo "  style    - Formatting, missing semicolons, etc."
+    echo "  refactor - Code change that neither fixes a bug nor adds a feature"
+    echo "  perf     - Performance improvement"
+    echo "  test     - Adding or updating tests"
+    echo "  build    - Build system or external dependency changes"
+    echo "  ci       - CI configuration changes"
+    echo "  chore    - Other changes that don't modify src or test files"
+    echo "  revert   - Reverts a previous commit"
+    echo ""
+    echo "Examples:"
+    echo "  feat(api): add user authentication endpoint"
+    echo "  fix(frontend): resolve button alignment issue"
+    echo "  docs: update README with new instructions"
+    echo ""
+    exit 1
+fi
+
+# Block certain patterns in commit messages
+BLOCKED_PATTERNS=(
+    "WIP"
+    "wip"
+    "work in progress"
+    "DO NOT MERGE"
+    "DO NOT COMMIT"
+    "FIXME"
+    "TODO"
+    "XXX"
+    "temp"
+    "temporary"
+    "debug"
+)
+
+for pattern in "${BLOCKED_PATTERNS[@]}"; do
+    if echo "$COMMIT_MSG" | grep -qi "$pattern"; then
+        echo "WARNING: Commit message contains '$pattern'"
+        echo "         Consider removing this before pushing to main"
+    fi
+done
+
+# Check for Co-Authored-By (warn as per CLAUDE.md)
+if echo "$COMMIT_MSG" | grep -qi "Co-Authored-By"; then
+    echo "NOTE: Commit contains Co-Authored-By trailer"
+    echo "      Per CLAUDE.md, this is not required for this repository"
+fi
+
+# Validate body format if present
+BODY=$(echo "$COMMIT_MSG" | tail -n +3)
+if [[ -n "$BODY" ]]; then
+    # Check for line length in body (max 100 characters recommended)
+    while IFS= read -r line; do
+        if [[ ${#line} -gt 100 ]] && [[ ! "$line" =~ ^http ]]; then
+            echo "WARNING: Body line exceeds 100 characters"
+        fi
+    done <<< "$BODY"
+fi
+
+echo "Commit message validation passed!"
+exit 0

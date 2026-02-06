@@ -4,6 +4,13 @@
 
 set -euo pipefail
 
+# Read JSON input from stdin and check for infinite loop prevention
+INPUT="$(cat)"
+STOP_HOOK_ACTIVE="$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('stop_hook_active', False))" 2>/dev/null || echo "False")"
+if [[ "$STOP_HOOK_ACTIVE" == "True" ]]; then
+    exit 0
+fi
+
 # Get the project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -50,9 +57,9 @@ echo "=== Frontend Checks (frontend/) ==="
 if [[ -d "$PROJECT_ROOT/frontend" ]] && [[ -f "$PROJECT_ROOT/frontend/package.json" ]]; then
     # Check if node_modules exists
     if [[ -d "$PROJECT_ROOT/frontend/node_modules" ]]; then
-        run_check "ESLint" "npm run lint" "$PROJECT_ROOT/frontend" || ((FAILED++))
-        run_check "TypeScript" "npx tsc --noEmit" "$PROJECT_ROOT/frontend" || ((FAILED++))
-        run_optional_check "Tests" "npm test -- --run" "$PROJECT_ROOT/frontend" || ((WARNINGS++))
+        run_check "ESLint" "npm run lint" "$PROJECT_ROOT/frontend" || FAILED=$((FAILED + 1))
+        run_check "TypeScript" "npx tsc --noEmit" "$PROJECT_ROOT/frontend" || FAILED=$((FAILED + 1))
+        run_optional_check "Tests" "npm test -- --run" "$PROJECT_ROOT/frontend" || WARNINGS=$((WARNINGS + 1))
     else
         echo "  Skipping: node_modules not installed"
     fi
@@ -68,13 +75,13 @@ if [[ -d "$PROJECT_ROOT/api-service" ]]; then
         VENV_RUFF="$PROJECT_ROOT/api-service/.venv/bin/ruff"
 
         if [[ -x "$VENV_RUFF" ]]; then
-            run_check "Ruff lint" "$VENV_RUFF check ." "$PROJECT_ROOT/api-service" || ((FAILED++))
-            run_check "Ruff format" "$VENV_RUFF format --check ." "$PROJECT_ROOT/api-service" || ((FAILED++))
+            run_check "Ruff lint" "$VENV_RUFF check ." "$PROJECT_ROOT/api-service" || FAILED=$((FAILED + 1))
+            run_check "Ruff format" "$VENV_RUFF format --check ." "$PROJECT_ROOT/api-service" || FAILED=$((FAILED + 1))
         else
             echo "  Skipping ruff: not installed in venv"
         fi
 
-        run_optional_check "Pytest" "$VENV_PYTHON -m pytest --tb=no -q" "$PROJECT_ROOT/api-service" || ((WARNINGS++))
+        run_optional_check "Pytest" "$VENV_PYTHON -m pytest --tb=no -q" "$PROJECT_ROOT/api-service" || WARNINGS=$((WARNINGS + 1))
     else
         echo "  Skipping: .venv not found"
     fi
@@ -89,8 +96,8 @@ if [[ -d "$PROJECT_ROOT/ingest" ]]; then
         VENV_RUFF="$PROJECT_ROOT/ingest/.venv/bin/ruff"
 
         if [[ -x "$VENV_RUFF" ]]; then
-            run_check "Ruff lint" "$VENV_RUFF check ." "$PROJECT_ROOT/ingest" || ((FAILED++))
-            run_check "Ruff format" "$VENV_RUFF format --check ." "$PROJECT_ROOT/ingest" || ((FAILED++))
+            run_check "Ruff lint" "$VENV_RUFF check ." "$PROJECT_ROOT/ingest" || FAILED=$((FAILED + 1))
+            run_check "Ruff format" "$VENV_RUFF format --check ." "$PROJECT_ROOT/ingest" || FAILED=$((FAILED + 1))
         else
             echo "  Skipping ruff: not installed in venv"
         fi
@@ -105,9 +112,9 @@ echo ""
 echo "=== Memvid Service Checks (memvid-service/) ==="
 if [[ -d "$PROJECT_ROOT/memvid-service" ]] && [[ -f "$PROJECT_ROOT/memvid-service/Cargo.toml" ]]; then
     if command -v cargo &> /dev/null; then
-        run_check "Cargo check" "cargo check" "$PROJECT_ROOT/memvid-service" || ((FAILED++))
-        run_check "Cargo clippy" "cargo clippy -- -D warnings" "$PROJECT_ROOT/memvid-service" || ((WARNINGS++))
-        run_optional_check "Cargo test" "cargo test --no-run" "$PROJECT_ROOT/memvid-service" || ((WARNINGS++))
+        run_check "Cargo check" "cargo check" "$PROJECT_ROOT/memvid-service" || FAILED=$((FAILED + 1))
+        run_check "Cargo clippy" "cargo clippy -- -D warnings" "$PROJECT_ROOT/memvid-service" || WARNINGS=$((WARNINGS + 1))
+        run_optional_check "Cargo test" "cargo test --no-run" "$PROJECT_ROOT/memvid-service" || WARNINGS=$((WARNINGS + 1))
     else
         echo "  Skipping: cargo not found"
     fi
@@ -121,9 +128,9 @@ echo "Failed checks: $FAILED"
 echo "Warnings: $WARNINGS"
 
 if [[ $FAILED -gt 0 ]]; then
-    echo ""
-    echo "Quality checks failed. Please fix the issues before stopping."
-    exit 1
+    echo "" >&2
+    echo "Quality checks failed. Please fix the issues before stopping." >&2
+    exit 2
 fi
 
 if [[ $WARNINGS -gt 0 ]]; then

@@ -4,11 +4,28 @@
 
 set -euo pipefail
 
-# Get the edited file path from the first argument
-EDITED_FILE="${1:-}"
+# Claude Code hooks receive JSON on stdin, not as positional arguments.
+# For PostToolUse hooks, the JSON structure is:
+# { "tool_name": "Write", "tool_input": { "file_path": "/path/to/file" }, "tool_output": "..." }
+INPUT=$(cat /dev/stdin 2>/dev/null) || true
+
+if [[ -z "$INPUT" ]]; then
+    # No input provided, nothing to format
+    exit 0
+fi
+
+# Parse the file_path from the JSON input using python3
+EDITED_FILE=$(echo "$INPUT" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    print(data.get('tool_input', {}).get('file_path', ''))
+except (json.JSONDecodeError, KeyError, TypeError):
+    print('')
+" 2>/dev/null) || true
 
 if [[ -z "$EDITED_FILE" ]]; then
-    echo "No file provided to post-edit hook"
+    # Could not parse file path from JSON, allow execution
     exit 0
 fi
 

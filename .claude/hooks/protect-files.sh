@@ -4,11 +4,28 @@
 
 set -euo pipefail
 
-# The file path to check is passed as the first argument
-FILE_PATH="${1:-}"
+# Claude Code hooks receive JSON on stdin, not as positional arguments.
+# For PreToolUse hooks, the JSON structure is:
+# { "tool_name": "Write", "tool_input": { "file_path": "/path/to/file", ... } }
+INPUT=$(cat /dev/stdin 2>/dev/null) || true
+
+if [[ -z "$INPUT" ]]; then
+    # No input provided, nothing to validate
+    exit 0
+fi
+
+# Parse the file_path from the JSON input using python3
+FILE_PATH=$(echo "$INPUT" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    print(data.get('tool_input', {}).get('file_path', ''))
+except (json.JSONDecodeError, KeyError, TypeError):
+    print('')
+" 2>/dev/null) || true
 
 if [[ -z "$FILE_PATH" ]]; then
-    echo "No file path provided to protect-files hook"
+    # Could not parse file path from JSON, allow execution
     exit 0
 fi
 
