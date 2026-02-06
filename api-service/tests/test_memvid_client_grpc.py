@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from ai_resume_api.memvid_client import (
     MemvidClient,
-    MemvidClientError,
     MemvidConnectionError,
     MemvidSearchError,
 )
@@ -29,6 +28,7 @@ def require_proto():
     """Helper to skip tests if proto not available and import it."""
     try:
         from ai_resume_api.proto.memvid.v1 import memvid_pb2
+
         return memvid_pb2
     except ImportError:
         pytest.skip("gRPC proto not available")
@@ -202,7 +202,6 @@ class TestMemvidClientAsk:
 
         with patch("ai_resume_api.memvid_client.GRPC_AVAILABLE", True):
             with patch("ai_resume_api.memvid_client.memvid_pb2", memvid_pb2, create=True):
-
                 mock_response = MagicMock()
                 mock_response.answer = "Test answer"
                 mock_response.evidence = []
@@ -240,7 +239,6 @@ class TestMemvidClientAsk:
 
         with patch("ai_resume_api.memvid_client.GRPC_AVAILABLE", True):
             with patch("ai_resume_api.memvid_client.memvid_pb2", memvid_pb2, create=True):
-
                 mock_response = MagicMock()
                 mock_response.answer = "Test answer"
                 mock_response.evidence = []
@@ -382,7 +380,6 @@ class TestMemvidClientHealthCheck:
 
         with patch("ai_resume_api.memvid_client.GRPC_AVAILABLE", True):
             with patch("ai_resume_api.memvid_client.memvid_pb2", memvid_pb2, create=True):
-
                 mock_response = MagicMock()
                 mock_response.frame_count = 100
                 mock_response.memvid_file = "/path/to/resume.mv2"
@@ -391,7 +388,11 @@ class TestMemvidClientHealthCheck:
                 client._health_stub = mock_stub
 
                 # Test status mappings: 0=UNKNOWN, 1=SERVING, 2=NOT_SERVING
-                for status_code, expected_status in [(0, "UNKNOWN"), (1, "SERVING"), (2, "NOT_SERVING")]:
+                for status_code, expected_status in [
+                    (0, "UNKNOWN"),
+                    (1, "SERVING"),
+                    (2, "NOT_SERVING"),
+                ]:
                     mock_response.status = status_code
                     mock_stub.Check.return_value = mock_response
 
@@ -429,7 +430,6 @@ class TestMemvidClientGetState:
 
         with patch("ai_resume_api.memvid_client.GRPC_AVAILABLE", True):
             with patch("ai_resume_api.memvid_client.memvid_pb2", memvid_pb2, create=True):
-
                 mock_response = MagicMock()
                 mock_response.found = False
 
@@ -459,7 +459,6 @@ class TestMemvidClientGetState:
 
         with patch("ai_resume_api.memvid_client.GRPC_AVAILABLE", True):
             with patch("ai_resume_api.memvid_client.memvid_pb2", memvid_pb2, create=True):
-
                 mock_response = MagicMock()
                 mock_response.found = True
                 mock_response.entity = "__profile__"
@@ -494,6 +493,7 @@ class TestMemvidClientGetState:
 
         # Parse the JSON data
         import json
+
         profile_data = json.loads(result["slots"]["data"])
         assert "name" in profile_data
         assert "title" in profile_data

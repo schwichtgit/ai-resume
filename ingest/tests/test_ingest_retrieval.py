@@ -36,6 +36,7 @@ async def test_profile_metadata_retrieval():
 
         # Mock sys.argv for ingest
         import sys
+
         old_argv = sys.argv
         sys.argv = ["ingest.py", "--input", str(input_file), "--output", output_file, "--quiet"]
 
@@ -62,7 +63,7 @@ async def test_profile_metadata_retrieval():
             print("     Make sure ingest.py uses add_memory_cards() for profile storage")
             return False
 
-        print(f"  ✅ Profile memory card found")
+        print("  ✅ Profile memory card found")
 
         # Step 4: Parse the profile JSON from memory card
         profile_json = profile_state.get("slots", {}).get("data", {}).get("value", "")
@@ -82,9 +83,18 @@ async def test_profile_metadata_retrieval():
 
         # Step 5: Validate required fields
         required_fields = [
-            "name", "title", "email", "linkedin", "location", "status",
-            "suggested_questions", "tags", "system_prompt",
-            "experience", "skills", "fit_assessment_examples"
+            "name",
+            "title",
+            "email",
+            "linkedin",
+            "location",
+            "status",
+            "suggested_questions",
+            "tags",
+            "system_prompt",
+            "experience",
+            "skills",
+            "fit_assessment_examples",
         ]
 
         missing = [f for f in required_fields if f not in profile]
@@ -147,11 +157,13 @@ async def test_experience_retrieval():
     try:
         # Ingest
         import sys
+
         old_argv = sys.argv
         sys.argv = ["ingest.py", "--input", str(input_file), "--output", output_file, "--quiet"]
 
         try:
             from ingest import main as ingest_main
+
             ingest_main()
         finally:
             sys.argv = old_argv
@@ -171,9 +183,7 @@ async def test_experience_retrieval():
 
         # Verify at least one result mentions experience
         has_experience_content = any(
-            "experience" in r["text"].lower() or
-            "acme" in r["text"].lower()
-            for r in results
+            "experience" in r["text"].lower() or "acme" in r["text"].lower() for r in results
         )
 
         if not has_experience_content:
@@ -201,11 +211,13 @@ async def test_fit_assessment_examples_retrieval():
     try:
         # Ingest
         import sys
+
         old_argv = sys.argv
         sys.argv = ["ingest.py", "--input", str(input_file), "--output", output_file, "--quiet"]
 
         try:
             from ingest import main as ingest_main
+
             ingest_main()
         finally:
             sys.argv = old_argv
@@ -250,6 +262,7 @@ async def main():
         except Exception as e:
             print(f"\n  ❌ EXCEPTION in {test_name}: {e}")
             import traceback
+
             traceback.print_exc()
             results[test_name] = False
 

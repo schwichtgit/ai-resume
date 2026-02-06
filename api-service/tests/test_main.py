@@ -19,7 +19,7 @@ MOCK_PROFILE = {
     "suggested_questions": [
         "What experience do they have?",
         "Tell me about their skills",
-        "What projects have they worked on?"
+        "What projects have they worked on?",
     ],
     "tags": ["engineering", "leadership"],
     "experience": [
@@ -32,14 +32,14 @@ MOCK_PROFILE = {
                 "situation": "Test situation",
                 "approach": "Test approach",
                 "technical_work": "Test technical work",
-                "lessons_learned": "Test lessons"
-            }
+                "lessons_learned": "Test lessons",
+            },
         }
     ],
     "skills": {
         "strong": ["Python", "FastAPI"],
         "moderate": ["React", "TypeScript"],
-        "gaps": ["Mobile development"]
+        "gaps": ["Mobile development"],
     },
     "fit_assessment_examples": [
         {
@@ -50,9 +50,9 @@ MOCK_PROFILE = {
             "verdict": "Strong fit",
             "key_matches": ["Python expertise"],
             "gaps": ["Mobile experience"],
-            "recommendation": "Recommended"
+            "recommendation": "Recommended",
         }
-    ]
+    ],
 }
 
 
@@ -69,7 +69,7 @@ def mock_memvid_ask():
                     "title": "Professional Experience",
                     "score": 0.85,
                     "snippet": "Built self-service platform handling 1000+ deploys/day",
-                    "tags": ["engineering"]
+                    "tags": ["engineering"],
                 }
             ],
             "stats": {
@@ -77,13 +77,10 @@ def mock_memvid_ask():
                 "results_returned": 1,
                 "retrieval_ms": 2.5,
                 "reranking_ms": 1.2,
-                "total_ms": 3.7
-            }
+                "total_ms": 3.7,
+            },
         }
-        mock_client.health_check.return_value = AsyncMock(
-            status="SERVING",
-            frame_count=100
-        )
+        mock_client.health_check.return_value = AsyncMock(status="SERVING", frame_count=100)
         mock_get_client.return_value = mock_client
         yield mock_client
 
@@ -99,8 +96,9 @@ def mock_openrouter():
         mock_or.chat.return_value = LLMResponse(
             content="This is a test response based on the provided context.",
             tokens_used=50,
-            finish_reason="stop"
+            finish_reason="stop",
         )
+
         # Mock streaming
         async def mock_chat_stream(*args, **kwargs):
             chunks = ["This ", "is ", "a ", "test ", "response."]
@@ -108,9 +106,10 @@ def mock_openrouter():
                 chunk = LLMResponse(
                     content=chunk_text,
                     tokens_used=10 if i == len(chunks) - 1 else 0,
-                    finish_reason="stop" if i == len(chunks) - 1 else None
+                    finish_reason="stop" if i == len(chunks) - 1 else None,
                 )
                 yield chunk
+
         mock_or.chat_stream = mock_chat_stream
         mock_get_or.return_value = mock_or
         yield mock_or
@@ -365,8 +364,8 @@ class TestGenerateMockResponse:
                 "results_returned": 0,
                 "retrieval_ms": 0.5,
                 "reranking_ms": 0.0,
-                "total_ms": 0.5
-            }
+                "total_ms": 0.5,
+            },
         }
 
         response = client.post(
@@ -382,7 +381,7 @@ class TestHealthDegraded:
 
     def test_health_degraded_when_memvid_fails(self, client):
         """Test health returns degraded when memvid is unavailable."""
-        from unittest.mock import AsyncMock, patch
+        from unittest.mock import patch
 
         with patch("app.main.get_memvid_client") as mock_get_client:
             mock_get_client.side_effect = Exception("Connection failed")
@@ -404,10 +403,11 @@ class TestChatErrorHandling:
         # Create fresh client with custom mocked memvid that raises exception
         reset_session_store()
 
-        with patch("app.main.get_memvid_client") as mock_get_client, \
-             patch("app.config.get_settings") as mock_get_settings, \
-             patch("app.main.get_openrouter_client"):
-
+        with (
+            patch("app.main.get_memvid_client") as mock_get_client,
+            patch("app.config.get_settings") as mock_get_settings,
+            patch("app.main.get_openrouter_client"),
+        ):
             # Setup settings mock
             mock_settings = AsyncMock()
             mock_settings.load_profile_from_memvid = AsyncMock(return_value=MOCK_PROFILE)
@@ -443,10 +443,11 @@ class TestLifespanErrorHandling:
 
         reset_session_store()
 
-        with patch("app.main.get_memvid_client") as mock_get_memvid, \
-             patch("app.main.get_openrouter_client") as mock_get_or, \
-             patch("app.config.get_settings") as mock_get_settings:
-
+        with (
+            patch("app.main.get_memvid_client") as mock_get_memvid,
+            patch("app.main.get_openrouter_client") as mock_get_or,
+            patch("app.config.get_settings") as mock_get_settings,
+        ):
             # Setup settings mock
             mock_settings = AsyncMock()
             mock_settings.load_profile_from_memvid = AsyncMock(return_value=MOCK_PROFILE)
@@ -474,10 +475,11 @@ class TestLifespanErrorHandling:
 
         reset_session_store()
 
-        with patch("app.main.get_memvid_client") as mock_get_memvid, \
-             patch("app.main.get_openrouter_client") as mock_get_or, \
-             patch("app.config.get_settings") as mock_get_settings:
-
+        with (
+            patch("app.main.get_memvid_client") as mock_get_memvid,
+            patch("app.main.get_openrouter_client") as mock_get_or,
+            patch("app.config.get_settings") as mock_get_settings,
+        ):
             # Setup settings mock
             mock_settings = AsyncMock()
             mock_settings.load_profile_from_memvid = AsyncMock(return_value=MOCK_PROFILE)
@@ -510,13 +512,16 @@ class TestChatEndpointEdgeCases:
 
         reset_session_store()
 
-        with patch("app.main.get_memvid_client") as mock_get_memvid, \
-             patch("app.main.get_openrouter_client") as mock_get_or, \
-             patch("app.config.get_settings") as mock_get_settings:
-
+        with (
+            patch("app.main.get_memvid_client") as mock_get_memvid,
+            patch("app.main.get_openrouter_client") as mock_get_or,
+            patch("app.config.get_settings") as mock_get_settings,
+        ):
             # Setup settings mock where memvid profile loading fails
             mock_settings = AsyncMock()
-            mock_settings.load_profile_from_memvid = AsyncMock(side_effect=Exception("Memvid profile load failed"))
+            mock_settings.load_profile_from_memvid = AsyncMock(
+                side_effect=Exception("Memvid profile load failed")
+            )
             mock_settings.load_profile = lambda: MOCK_PROFILE  # Fallback works
             mock_settings.get_system_prompt_from_profile = lambda: "You are an AI assistant."
             mock_settings.max_history_messages = 10
@@ -534,17 +539,15 @@ class TestChatEndpointEdgeCases:
                     "results_returned": 1,
                     "retrieval_ms": 2.5,
                     "reranking_ms": 1.2,
-                    "total_ms": 3.7
-                }
+                    "total_ms": 3.7,
+                },
             }
             mock_get_memvid.return_value = mock_memvid
 
             # OpenRouter works
             mock_or = AsyncMock()
             mock_or.chat.return_value = LLMResponse(
-                content="Test response",
-                tokens_used=50,
-                finish_reason="stop"
+                content="Test response", tokens_used=50, finish_reason="stop"
             )
             mock_get_or.return_value = mock_or
 
@@ -564,11 +567,12 @@ class TestChatEndpointEdgeCases:
 
         reset_session_store()
 
-        with patch("app.main.get_memvid_client") as mock_get_memvid, \
-             patch("app.main.get_openrouter_client") as mock_get_or, \
-             patch("app.config.get_settings") as mock_get_settings, \
-             patch("app.main.check_input") as mock_check_input:
-
+        with (
+            patch("app.main.get_memvid_client") as mock_get_memvid,
+            patch("app.main.get_openrouter_client") as mock_get_or,
+            patch("app.config.get_settings") as mock_get_settings,
+            patch("app.main.check_input") as mock_check_input,
+        ):
             # Setup settings mock
             mock_settings = AsyncMock()
             mock_settings.load_profile_from_memvid = AsyncMock(return_value=MOCK_PROFILE)
@@ -583,7 +587,10 @@ class TestChatEndpointEdgeCases:
             mock_get_or.return_value = mock_or
 
             # Guardrail blocks input
-            mock_check_input.return_value = (False, "I can only answer questions about Test User's professional background.")
+            mock_check_input.return_value = (
+                False,
+                "I can only answer questions about Test User's professional background.",
+            )
 
             with TestClient(app) as client:
                 response = client.post(
@@ -601,17 +608,17 @@ class TestChatEndpointEdgeCases:
 
     def test_memvid_connection_error_returns_503(self):
         """Test that memvid connection errors return 503."""
-        from ai_resume_api.memvid_client import MemvidConnectionError, reset_memvid_client
-        from ai_resume_api.openrouter_client import reset_openrouter_client
+        from ai_resume_api.memvid_client import MemvidConnectionError
 
         reset_session_store()
 
-        with patch("app.main.get_memvid_client") as mock_get_client, \
-             patch("app.main.settings") as mock_settings, \
-             patch("app.main.get_openrouter_client") as mock_get_or, \
-             patch("ai_resume_api.memvid_client._memvid_client", None), \
-             patch("ai_resume_api.openrouter_client._openrouter_client", None):
-
+        with (
+            patch("app.main.get_memvid_client") as mock_get_client,
+            patch("app.main.settings") as mock_settings,
+            patch("app.main.get_openrouter_client") as mock_get_or,
+            patch("ai_resume_api.memvid_client._memvid_client", None),
+            patch("ai_resume_api.openrouter_client._openrouter_client", None),
+        ):
             # Setup settings mock
             mock_settings.load_profile_from_memvid = AsyncMock(return_value=MOCK_PROFILE)
             mock_settings.load_profile = lambda: MOCK_PROFILE
@@ -646,10 +653,11 @@ class TestChatEndpointEdgeCases:
         reset_memvid_client()
         reset_openrouter_client()
 
-        with patch("app.main.get_memvid_client") as mock_get_client, \
-             patch("app.main.settings") as mock_settings, \
-             patch("app.main.get_openrouter_client") as mock_get_or:
-
+        with (
+            patch("app.main.get_memvid_client") as mock_get_client,
+            patch("app.main.settings") as mock_settings,
+            patch("app.main.get_openrouter_client") as mock_get_or,
+        ):
             # Setup settings mock
             mock_settings.load_profile_from_memvid = AsyncMock(return_value=MOCK_PROFILE)
             mock_settings.load_profile = lambda: MOCK_PROFILE
@@ -684,10 +692,11 @@ class TestChatEndpointEdgeCases:
         reset_memvid_client()
         reset_openrouter_client()
 
-        with patch("app.main.get_memvid_client") as mock_get_memvid, \
-             patch("app.main.get_openrouter_client") as mock_get_or, \
-             patch("app.main.settings") as mock_settings:
-
+        with (
+            patch("app.main.get_memvid_client") as mock_get_memvid,
+            patch("app.main.get_openrouter_client") as mock_get_or,
+            patch("app.main.settings") as mock_settings,
+        ):
             # Setup settings mock
             mock_settings.load_profile_from_memvid = AsyncMock(return_value=MOCK_PROFILE)
             mock_settings.load_profile = lambda: MOCK_PROFILE
@@ -706,8 +715,8 @@ class TestChatEndpointEdgeCases:
                     "results_returned": 1,
                     "retrieval_ms": 2.5,
                     "reranking_ms": 1.2,
-                    "total_ms": 3.7
-                }
+                    "total_ms": 3.7,
+                },
             }
             mock_get_memvid.return_value = mock_memvid
 
@@ -738,10 +747,11 @@ class TestStreamingErrorHandling:
         reset_memvid_client()
         reset_openrouter_client()
 
-        with patch("app.main.get_memvid_client") as mock_get_memvid, \
-             patch("app.main.get_openrouter_client") as mock_get_or, \
-             patch("app.main.settings") as mock_settings:
-
+        with (
+            patch("app.main.get_memvid_client") as mock_get_memvid,
+            patch("app.main.get_openrouter_client") as mock_get_or,
+            patch("app.main.settings") as mock_settings,
+        ):
             # Setup settings mock
             mock_settings.load_profile_from_memvid = AsyncMock(return_value=MOCK_PROFILE)
             mock_settings.load_profile = lambda: MOCK_PROFILE
@@ -760,8 +770,8 @@ class TestStreamingErrorHandling:
                     "results_returned": 1,
                     "retrieval_ms": 2.5,
                     "reranking_ms": 1.2,
-                    "total_ms": 3.7
-                }
+                    "total_ms": 3.7,
+                },
             }
             mock_get_memvid.return_value = mock_memvid
 
@@ -795,10 +805,11 @@ class TestStreamingErrorHandling:
         reset_memvid_client()
         reset_openrouter_client()
 
-        with patch("app.main.get_memvid_client") as mock_get_memvid, \
-             patch("app.main.get_openrouter_client") as mock_get_or, \
-             patch("app.main.settings") as mock_settings:
-
+        with (
+            patch("app.main.get_memvid_client") as mock_get_memvid,
+            patch("app.main.get_openrouter_client") as mock_get_or,
+            patch("app.main.settings") as mock_settings,
+        ):
             # Setup settings mock
             mock_settings.load_profile_from_memvid = AsyncMock(return_value=MOCK_PROFILE)
             mock_settings.load_profile = lambda: MOCK_PROFILE
@@ -817,8 +828,8 @@ class TestStreamingErrorHandling:
                     "results_returned": 1,
                     "retrieval_ms": 2.5,
                     "reranking_ms": 1.2,
-                    "total_ms": 3.7
-                }
+                    "total_ms": 3.7,
+                },
             }
             mock_get_memvid.return_value = mock_memvid
 
@@ -849,10 +860,11 @@ class TestStreamingErrorHandling:
 
         reset_session_store()
 
-        with patch("app.main.get_memvid_client") as mock_get_memvid, \
-             patch("app.main.get_openrouter_client") as mock_get_or, \
-             patch("app.config.get_settings") as mock_get_settings:
-
+        with (
+            patch("app.main.get_memvid_client") as mock_get_memvid,
+            patch("app.main.get_openrouter_client") as mock_get_or,
+            patch("app.config.get_settings") as mock_get_settings,
+        ):
             # Setup settings mock
             mock_settings = AsyncMock()
             mock_settings.load_profile_from_memvid = AsyncMock(return_value=MOCK_PROFILE)
@@ -873,8 +885,8 @@ class TestStreamingErrorHandling:
                     "results_returned": 1,
                     "retrieval_ms": 2.5,
                     "reranking_ms": 1.2,
-                    "total_ms": 3.7
-                }
+                    "total_ms": 3.7,
+                },
             }
             mock_get_memvid.return_value = mock_memvid
 
@@ -988,7 +1000,7 @@ class TestProfileEndpointErrors:
                         # Missing required fields like 'role'
                         "company": "Test Co"
                     }
-                ]
+                ],
             }
             mock_settings.load_profile_from_memvid = AsyncMock(return_value=malformed_profile)
             mock_settings.load_profile = lambda: malformed_profile
@@ -1030,10 +1042,11 @@ class TestAssessFitErrorHandling:
         reset_memvid_client()
         reset_openrouter_client()
 
-        with patch("app.main.get_memvid_client") as mock_get_client, \
-             patch("app.main.settings") as mock_settings, \
-             patch("app.main.get_openrouter_client") as mock_get_or:
-
+        with (
+            patch("app.main.get_memvid_client") as mock_get_client,
+            patch("app.main.settings") as mock_settings,
+            patch("app.main.get_openrouter_client") as mock_get_or,
+        ):
             # Setup settings mock
             mock_settings.load_profile_from_memvid = AsyncMock(return_value=MOCK_PROFILE)
             mock_settings.load_profile = lambda: MOCK_PROFILE
@@ -1068,10 +1081,11 @@ class TestAssessFitErrorHandling:
         reset_memvid_client()
         reset_openrouter_client()
 
-        with patch("app.main.get_memvid_client") as mock_get_client, \
-             patch("app.main.settings") as mock_settings, \
-             patch("app.main.get_openrouter_client") as mock_get_or:
-
+        with (
+            patch("app.main.get_memvid_client") as mock_get_client,
+            patch("app.main.settings") as mock_settings,
+            patch("app.main.get_openrouter_client") as mock_get_or,
+        ):
             # Setup settings mock
             mock_settings.load_profile_from_memvid = AsyncMock(return_value=MOCK_PROFILE)
             mock_settings.load_profile = lambda: MOCK_PROFILE
@@ -1103,10 +1117,11 @@ class TestAssessFitErrorHandling:
 
         reset_session_store()
 
-        with patch("app.main.get_memvid_client") as mock_get_memvid, \
-             patch("app.main.get_openrouter_client") as mock_get_or, \
-             patch("app.config.get_settings") as mock_get_settings:
-
+        with (
+            patch("app.main.get_memvid_client") as mock_get_memvid,
+            patch("app.main.get_openrouter_client") as mock_get_or,
+            patch("app.config.get_settings") as mock_get_settings,
+        ):
             # Setup settings mock
             mock_settings = AsyncMock()
             mock_settings.load_profile_from_memvid = AsyncMock(return_value=MOCK_PROFILE)
@@ -1125,8 +1140,8 @@ class TestAssessFitErrorHandling:
                     "results_returned": 1,
                     "retrieval_ms": 2.5,
                     "reranking_ms": 1.2,
-                    "total_ms": 3.7
-                }
+                    "total_ms": 3.7,
+                },
             }
             mock_get_memvid.return_value = mock_memvid
 
@@ -1165,10 +1180,11 @@ class TestAssessFitErrorHandling:
         reset_memvid_client()
         reset_openrouter_client()
 
-        with patch("app.main.get_memvid_client") as mock_get_memvid, \
-             patch("app.main.get_openrouter_client") as mock_get_or, \
-             patch("app.main.settings") as mock_settings:
-
+        with (
+            patch("app.main.get_memvid_client") as mock_get_memvid,
+            patch("app.main.get_openrouter_client") as mock_get_or,
+            patch("app.main.settings") as mock_settings,
+        ):
             # Setup settings mock
             mock_settings.load_profile_from_memvid = AsyncMock(return_value=MOCK_PROFILE)
             mock_settings.load_profile = lambda: MOCK_PROFILE
@@ -1184,8 +1200,8 @@ class TestAssessFitErrorHandling:
                     "results_returned": 1,
                     "retrieval_ms": 2.5,
                     "reranking_ms": 1.2,
-                    "total_ms": 3.7
-                }
+                    "total_ms": 3.7,
+                },
             }
             mock_get_memvid.return_value = mock_memvid
 
@@ -1214,10 +1230,11 @@ class TestAssessFitErrorHandling:
         reset_memvid_client()
         reset_openrouter_client()
 
-        with patch("app.main.get_memvid_client") as mock_get_memvid, \
-             patch("app.main.get_openrouter_client") as mock_get_or, \
-             patch("app.main.settings") as mock_settings:
-
+        with (
+            patch("app.main.get_memvid_client") as mock_get_memvid,
+            patch("app.main.get_openrouter_client") as mock_get_or,
+            patch("app.main.settings") as mock_settings,
+        ):
             # Setup settings mock
             mock_settings.load_profile_from_memvid = AsyncMock(return_value=MOCK_PROFILE)
             mock_settings.load_profile = lambda: MOCK_PROFILE
@@ -1233,8 +1250,8 @@ class TestAssessFitErrorHandling:
                     "results_returned": 1,
                     "retrieval_ms": 2.5,
                     "reranking_ms": 1.2,
-                    "total_ms": 3.7
-                }
+                    "total_ms": 3.7,
+                },
             }
             mock_get_memvid.return_value = mock_memvid
 
@@ -1290,9 +1307,10 @@ RECOMMENDATION: Excellent fit for this VP Platform Engineering role. The candida
             tokens_used=450,
         )
 
-        with patch("app.main.get_memvid_client") as mock_get_client, \
-             patch("app.main.get_openrouter_client") as mock_get_or_client:
-
+        with (
+            patch("app.main.get_memvid_client") as mock_get_client,
+            patch("app.main.get_openrouter_client") as mock_get_or_client,
+        ):
             mock_memvid = AsyncMock()
             mock_memvid.search.return_value = mock_search_response
             mock_get_client.return_value = mock_memvid
@@ -1352,10 +1370,11 @@ RECOMMENDATION: Excellent fit for this VP Platform Engineering role. The candida
         # Create fresh client with custom mocked memvid that raises exception
         reset_session_store()
 
-        with patch("app.main.get_memvid_client") as mock_get_client, \
-             patch("app.config.get_settings") as mock_get_settings, \
-             patch("app.main.get_openrouter_client"):
-
+        with (
+            patch("app.main.get_memvid_client") as mock_get_client,
+            patch("app.config.get_settings") as mock_get_settings,
+            patch("app.main.get_openrouter_client"),
+        ):
             # Setup settings mock
             mock_settings = AsyncMock()
             mock_settings.load_profile_from_memvid = AsyncMock(return_value=MOCK_PROFILE)
@@ -1402,9 +1421,10 @@ RECOMMENDATION: Excellent fit for this VP Platform Engineering role. The candida
             tokens_used=50,
         )
 
-        with patch("app.main.get_memvid_client") as mock_get_client, \
-             patch("app.main.get_openrouter_client") as mock_get_or_client:
-
+        with (
+            patch("app.main.get_memvid_client") as mock_get_client,
+            patch("app.main.get_openrouter_client") as mock_get_or_client,
+        ):
             mock_memvid = AsyncMock()
             mock_memvid.search.return_value = mock_search_response
             mock_get_client.return_value = mock_memvid
@@ -1447,9 +1467,10 @@ RECOMMENDATION: Unable to properly assess fit due to lack of context.""",
             tokens_used=100,
         )
 
-        with patch("app.main.get_memvid_client") as mock_get_client, \
-             patch("app.main.get_openrouter_client") as mock_get_or_client:
-
+        with (
+            patch("app.main.get_memvid_client") as mock_get_client,
+            patch("app.main.get_openrouter_client") as mock_get_or_client,
+        ):
             mock_memvid = AsyncMock()
             # Return empty ask response
             mock_memvid.ask.return_value = {
@@ -1460,8 +1481,8 @@ RECOMMENDATION: Unable to properly assess fit due to lack of context.""",
                     "results_returned": 0,
                     "retrieval_ms": 0.5,
                     "reranking_ms": 0.0,
-                    "total_ms": 0.5
-                }
+                    "total_ms": 0.5,
+                },
             }
             mock_get_client.return_value = mock_memvid
 

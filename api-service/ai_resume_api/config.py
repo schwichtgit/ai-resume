@@ -100,8 +100,9 @@ Guidelines:
 
         # Check character set
         import re
+
         key_body = key[10:]  # After "sk-or-v1-"
-        if not re.match(r'^[A-Za-z0-9_-]+$', key_body):
+        if not re.match(r"^[A-Za-z0-9_-]+$", key_body):
             return 4
 
         return 1
@@ -205,7 +206,9 @@ Guidelines:
                 # Add company names from experience
                 experiences = profile.get("experience", [])
                 if experiences and len(experiences) > 0:
-                    companies = [exp.get("company") for exp in experiences[:3] if exp.get("company")]
+                    companies = [
+                        exp.get("company") for exp in experiences[:3] if exp.get("company")
+                    ]
                     if companies:
                         facts.append(f"Key Companies: {', '.join(companies)}")
 
@@ -219,9 +222,9 @@ GROUND FACTS (NEVER VIOLATE THESE):
 
 """
                 # Insert ground facts after the first line
-                lines = system_prompt.split('\n', 1)
+                lines = system_prompt.split("\n", 1)
                 if len(lines) == 2:
-                    system_prompt = lines[0] + '\n' + ground_facts + lines[1]
+                    system_prompt = lines[0] + "\n" + ground_facts + lines[1]
                 else:
                     system_prompt = ground_facts + system_prompt
 

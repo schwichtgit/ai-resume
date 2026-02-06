@@ -19,17 +19,36 @@ logger = structlog.get_logger(__name__)
 CAREER_DOMAINS = {
     "technology": {
         "keywords": [
-            "software", "engineer", "infrastructure", "platform",
-            "cloud", "distributed systems", "AI", "ML", "machine learning",
-            "data", "DevOps", "SRE", "backend", "frontend", "full-stack",
-            "API", "microservices", "kubernetes", "security", "cyber",
-            "architecture", "scalable", "deployment", "CI/CD",
+            "software",
+            "engineer",
+            "infrastructure",
+            "platform",
+            "cloud",
+            "distributed systems",
+            "AI",
+            "ML",
+            "machine learning",
+            "data",
+            "DevOps",
+            "SRE",
+            "backend",
+            "frontend",
+            "full-stack",
+            "API",
+            "microservices",
+            "kubernetes",
+            "security",
+            "cyber",
+            "architecture",
+            "scalable",
+            "deployment",
+            "CI/CD",
         ],
         "levels": {
             "c-suite": {
                 "patterns": [
-                    r"\bC[A-Z]O\b",                           # CTO, CIO, CISO, CPO, CDO
-                    r"\bChief\s+\w+\s+Officer\b",              # Chief Technology Officer
+                    r"\bC[A-Z]O\b",  # CTO, CIO, CISO, CPO, CDO
+                    r"\bChief\s+\w+\s+Officer\b",  # Chief Technology Officer
                     r"\bChief\s+Architect\b",
                 ],
                 "persona": (
@@ -168,9 +187,22 @@ CAREER_DOMAINS = {
     },
     "culinary": {
         "keywords": [
-            "chef", "culinary", "kitchen", "menu", "fine dining", "gastronomy",
-            "catering", "michelin", "food safety", "beverage", "hospitality",
-            "pastry", "sous chef", "back of house", "BOH", "sanitation",
+            "chef",
+            "culinary",
+            "kitchen",
+            "menu",
+            "fine dining",
+            "gastronomy",
+            "catering",
+            "michelin",
+            "food safety",
+            "beverage",
+            "hospitality",
+            "pastry",
+            "sous chef",
+            "back of house",
+            "BOH",
+            "sanitation",
         ],
         "levels": {
             "c-suite": {
@@ -213,9 +245,21 @@ CAREER_DOMAINS = {
     },
     "finance_trading": {
         "keywords": [
-            "trader", "quant", "portfolio", "equity", "fixed income", "hedge fund",
-            "arbitrage", "derivatives", "risk management", "alpha", "execution",
-            "algorithmic", "bloomberg", "backtesting", "fintech",
+            "trader",
+            "quant",
+            "portfolio",
+            "equity",
+            "fixed income",
+            "hedge fund",
+            "arbitrage",
+            "derivatives",
+            "risk management",
+            "alpha",
+            "execution",
+            "algorithmic",
+            "bloomberg",
+            "backtesting",
+            "fintech",
         ],
         "levels": {
             "c-suite": {
@@ -256,9 +300,21 @@ CAREER_DOMAINS = {
     },
     "life_sciences": {
         "keywords": [
-            "drug discovery", "clinical", "biotech", "pharmacology", "R&D",
-            "bioinformatics", "FDA", "regulatory", "molecular", "assay",
-            "toxicology", "genetics", "laboratory", "IND", "GLP",
+            "drug discovery",
+            "clinical",
+            "biotech",
+            "pharmacology",
+            "R&D",
+            "bioinformatics",
+            "FDA",
+            "regulatory",
+            "molecular",
+            "assay",
+            "toxicology",
+            "genetics",
+            "laboratory",
+            "IND",
+            "GLP",
         ],
         "levels": {
             "director": {
@@ -300,9 +356,20 @@ CAREER_DOMAINS = {
     },
     "healthcare": {
         "keywords": [
-            "patient care", "nursing", "clinical operations", "EHR", "HIPAA",
-            "diagnosis", "acute care", "medical board", "telehealth", "physician",
-            "hospital", "outpatient", "oncology", "ICU",
+            "patient care",
+            "nursing",
+            "clinical operations",
+            "EHR",
+            "HIPAA",
+            "diagnosis",
+            "acute care",
+            "medical board",
+            "telehealth",
+            "physician",
+            "hospital",
+            "outpatient",
+            "oncology",
+            "ICU",
         ],
         "levels": {
             "c-suite": {
@@ -344,9 +411,20 @@ CAREER_DOMAINS = {
     },
     "sales_growth": {
         "keywords": [
-            "revenue", "quota", "SaaS", "account executive", "pipeline",
-            "lead gen", "CRM", "growth", "partnerships", "closing",
-            "B2B", "market share", "ARR", "salesforce",
+            "revenue",
+            "quota",
+            "SaaS",
+            "account executive",
+            "pipeline",
+            "lead gen",
+            "CRM",
+            "growth",
+            "partnerships",
+            "closing",
+            "B2B",
+            "market share",
+            "ARR",
+            "salesforce",
         ],
         "levels": {
             "vp": {
@@ -412,6 +490,7 @@ _CONFIDENCE_GAP = 2
 # ---------------------------------------------------------------------------
 # Built once at import time to avoid recompiling on every request.
 
+
 def _compile_keyword_patterns(domains: dict) -> dict[str, list[tuple[re.Pattern, str]]]:
     """Pre-compile word-boundary regex for each domain's keywords."""
     compiled = {}
@@ -432,6 +511,7 @@ _KEYWORD_PATTERNS = _compile_keyword_patterns(CAREER_DOMAINS)
 # ---------------------------------------------------------------------------
 # Classification Functions
 # ---------------------------------------------------------------------------
+
 
 def _score_domain(jd_text: str, domain: str) -> int:
     """Count keyword matches for a domain using word-boundary regex."""

@@ -71,7 +71,7 @@ async def transform_query_keywords(
         unique_words = []
         seen = set()
         for word in words:
-            word_clean = word.lower().strip('.,!?;:"\'')
+            word_clean = word.lower().strip(".,!?;:\"'")
             if word_clean and word_clean not in seen and len(word_clean) > 2:
                 unique_words.append(word_clean)
                 seen.add(word_clean)

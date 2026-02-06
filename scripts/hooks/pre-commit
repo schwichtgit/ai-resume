@@ -81,6 +81,8 @@ lint_staged_files() {
                 ts_files="$ts_files ${file#frontend/}"
                 ;;
             api-service/*.py|ingest/*.py)
+                # Skip generated protobuf files
+                case "$file" in */proto/*) continue ;; esac
                 py_files="$py_files $file"
                 ;;
             memvid-service/*.rs)

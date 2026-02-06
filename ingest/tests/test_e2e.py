@@ -61,6 +61,7 @@ for key, value in env_vars.items():
 @dataclass
 class RetrievalTestCase:
     """A test case for retrieval validation."""
+
     name: str
     query: str
     expected_title_contains: str  # Expected substring in top result title
@@ -184,7 +185,7 @@ def test_memvid_retrieval():
         score_ok = score >= tc.min_score
 
         if title_ok and content_ok and score_ok:
-            print(f"  PASSED")
+            print("  PASSED")
             passed += 1
         else:
             print(f"  FAILED: title={title_ok}, content={content_ok}, score={score_ok}")
@@ -242,7 +243,6 @@ async def test_query_transformation_improves_retrieval() -> tuple[int, int]:
         },
         timeout=60.0,
     ) as client:
-
         for original_query, _ in test_cases:
             print(f"\n--- Query: {original_query} ---")
 
@@ -261,8 +261,14 @@ async def test_query_transformation_improves_retrieval() -> tuple[int, int]:
                     json={
                         "model": os.environ.get("LLM_MODEL", "nvidia/nemotron-nano-9b-v2:free"),
                         "messages": [
-                            {"role": "system", "content": "Extract search keywords. Output only space-separated keywords."},
-                            {"role": "user", "content": f"Extract 5-10 keywords for resume search:\n{original_query}\nKeywords:"},
+                            {
+                                "role": "system",
+                                "content": "Extract search keywords. Output only space-separated keywords.",
+                            },
+                            {
+                                "role": "user",
+                                "content": f"Extract 5-10 keywords for resume search:\n{original_query}\nKeywords:",
+                            },
                         ],
                         "max_tokens": 50,
                         "temperature": 0.3,
@@ -287,7 +293,9 @@ async def test_query_transformation_improves_retrieval() -> tuple[int, int]:
             transformed_result = mem.find(transformed_query, k=1)
             transformed_hits = transformed_result.get("hits", [])
             transformed_score = transformed_hits[0].get("score", 0) if transformed_hits else 0
-            transformed_title = transformed_hits[0].get("title", "N/A") if transformed_hits else "N/A"
+            transformed_title = (
+                transformed_hits[0].get("title", "N/A") if transformed_hits else "N/A"
+            )
 
             print(f"  Result: [{transformed_score:.2f}] {transformed_title[:50]}")
 
@@ -362,7 +370,6 @@ async def test_full_rag_pipeline() -> tuple[int, int]:
         },
         timeout=60.0,
     ) as client:
-
         for question, expected_terms in test_cases:
             print(f"\n--- Question: {question} ---")
 
@@ -408,6 +415,7 @@ async def test_full_rag_pipeline() -> tuple[int, int]:
             except Exception as e:
                 print(f"  Generation failed: {e}")
                 import traceback
+
                 traceback.print_exc()
                 failed += 1
                 continue
@@ -440,7 +448,9 @@ async def main():
     print("=" * 70)
     print(f"MV2 file: {MV2_PATH}")
     print(f"Environment: {DEPLOYMENT_ENV}")
-    print(f"OpenRouter configured: {bool(os.environ.get('OPENROUTER_API_KEY', '').startswith('sk-'))}")
+    print(
+        f"OpenRouter configured: {bool(os.environ.get('OPENROUTER_API_KEY', '').startswith('sk-'))}"
+    )
 
     total_passed = 0
     total_failed = 0

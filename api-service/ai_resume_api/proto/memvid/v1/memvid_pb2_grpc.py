@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-from . import memvid_pb2 as memvid_dot_v1_dot_memvid__pb2
+from ai_resume_api.proto.memvid.v1 import memvid_pb2 as memvid_dot_v1_dot_memvid__pb2
 
 GRPC_GENERATED_VERSION = '1.76.0'
 GRPC_VERSION = grpc.__version__
@@ -40,6 +40,11 @@ class MemvidServiceStub(object):
                 request_serializer=memvid_dot_v1_dot_memvid__pb2.SearchRequest.SerializeToString,
                 response_deserializer=memvid_dot_v1_dot_memvid__pb2.SearchResponse.FromString,
                 _registered_method=True)
+        self.Ask = channel.unary_unary(
+                '/memvid.v1.MemvidService/Ask',
+                request_serializer=memvid_dot_v1_dot_memvid__pb2.AskRequest.SerializeToString,
+                response_deserializer=memvid_dot_v1_dot_memvid__pb2.AskResponse.FromString,
+                _registered_method=True)
         self.GetState = channel.unary_unary(
                 '/memvid.v1.MemvidService/GetState',
                 request_serializer=memvid_dot_v1_dot_memvid__pb2.GetStateRequest.SerializeToString,
@@ -53,6 +58,15 @@ class MemvidServiceServicer(object):
 
     def Search(self, request, context):
         """Search performs semantic search over the loaded memvid index.
+        Now supports engine mode selection (Hybrid/Sem/Lex).
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Ask(self, request, context):
+        """Ask performs question-answering with intelligent retrieval and optional LLM synthesis.
+        Uses hybrid search, temporal filtering, and Reciprocal Rank Fusion.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -73,6 +87,11 @@ def add_MemvidServiceServicer_to_server(servicer, server):
                     servicer.Search,
                     request_deserializer=memvid_dot_v1_dot_memvid__pb2.SearchRequest.FromString,
                     response_serializer=memvid_dot_v1_dot_memvid__pb2.SearchResponse.SerializeToString,
+            ),
+            'Ask': grpc.unary_unary_rpc_method_handler(
+                    servicer.Ask,
+                    request_deserializer=memvid_dot_v1_dot_memvid__pb2.AskRequest.FromString,
+                    response_serializer=memvid_dot_v1_dot_memvid__pb2.AskResponse.SerializeToString,
             ),
             'GetState': grpc.unary_unary_rpc_method_handler(
                     servicer.GetState,
@@ -108,6 +127,33 @@ class MemvidService(object):
             '/memvid.v1.MemvidService/Search',
             memvid_dot_v1_dot_memvid__pb2.SearchRequest.SerializeToString,
             memvid_dot_v1_dot_memvid__pb2.SearchResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def Ask(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/memvid.v1.MemvidService/Ask',
+            memvid_dot_v1_dot_memvid__pb2.AskRequest.SerializeToString,
+            memvid_dot_v1_dot_memvid__pb2.AskResponse.FromString,
             options,
             channel_credentials,
             insecure,

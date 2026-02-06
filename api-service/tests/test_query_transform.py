@@ -27,7 +27,7 @@ class TestTransformQueryKeywords:
 
         assert result == "What is your experience with Python?"
         # Client should not be called
-        assert not hasattr(mock_client, 'chat') or not mock_client.chat.called
+        assert not hasattr(mock_client, "chat") or not mock_client.chat.called
 
     @pytest.mark.asyncio
     async def test_short_query_passes_through_unchanged(self):
@@ -48,7 +48,7 @@ class TestTransformQueryKeywords:
         assert result == "Python ML experience"
 
         # Client should not be called for short queries
-        assert not hasattr(mock_client, 'chat') or not mock_client.chat.called
+        assert not hasattr(mock_client, "chat") or not mock_client.chat.called
 
     @pytest.mark.asyncio
     async def test_successful_keyword_extraction(self):
@@ -173,7 +173,7 @@ class TestTransformQuery:
 
         # Should return original without calling LLM
         assert result == question
-        assert not hasattr(mock_client, 'chat') or not mock_client.chat.called
+        assert not hasattr(mock_client, "chat") or not mock_client.chat.called
 
     @pytest.mark.asyncio
     async def test_keywords_strategy(self):
@@ -209,7 +209,7 @@ class TestTransformQuery:
 
         # Should return original without calling LLM
         assert result == question
-        assert not hasattr(mock_client, 'chat') or not mock_client.chat.called
+        assert not hasattr(mock_client, "chat") or not mock_client.chat.called
 
     @pytest.mark.asyncio
     async def test_default_strategy_is_keywords(self):

@@ -124,10 +124,12 @@ def extract_sections(content: str) -> list[dict]:
         if line.startswith("## "):
             # Save previous section
             if current_section:
-                sections.append({
-                    "title": current_section,
-                    "content": "\n".join(current_content).strip(),
-                })
+                sections.append(
+                    {
+                        "title": current_section,
+                        "content": "\n".join(current_content).strip(),
+                    }
+                )
             current_section = line[3:].strip()
             current_content = []
         elif line.startswith("### ") and current_section:
@@ -139,10 +141,12 @@ def extract_sections(content: str) -> list[dict]:
 
     # Save final section
     if current_section:
-        sections.append({
-            "title": current_section,
-            "content": "\n".join(current_content).strip(),
-        })
+        sections.append(
+            {
+                "title": current_section,
+                "content": "\n".join(current_content).strip(),
+            }
+        )
 
     return sections
 
@@ -158,10 +162,12 @@ def extract_experience_chunks(section_content: str) -> list[dict]:
         if line.startswith("### "):
             # Save previous chunk
             if current_chunk:
-                chunks.append({
-                    "title": current_chunk,
-                    "content": "\n".join(current_content).strip(),
-                })
+                chunks.append(
+                    {
+                        "title": current_chunk,
+                        "content": "\n".join(current_content).strip(),
+                    }
+                )
             current_chunk = line[4:].strip()
             current_content = []
         else:
@@ -170,10 +176,12 @@ def extract_experience_chunks(section_content: str) -> list[dict]:
 
     # Save final chunk
     if current_chunk:
-        chunks.append({
-            "title": current_chunk,
-            "content": "\n".join(current_content).strip(),
-        })
+        chunks.append(
+            {
+                "title": current_chunk,
+                "content": "\n".join(current_content).strip(),
+            }
+        )
 
     return chunks
 
@@ -220,11 +228,13 @@ def extract_faq_chunks(section_content: str) -> list[dict]:
             if current_question:
                 content_text = "\n".join(current_content).strip()
                 keywords = extract_keywords_from_content(content_text)
-                chunks.append({
-                    "title": current_question,
-                    "content": content_text,
-                    "keywords": keywords,
-                })
+                chunks.append(
+                    {
+                        "title": current_question,
+                        "content": content_text,
+                        "keywords": keywords,
+                    }
+                )
             current_question = line[4:].strip()
             current_content = []
         else:
@@ -235,11 +245,13 @@ def extract_faq_chunks(section_content: str) -> list[dict]:
     if current_question:
         content_text = "\n".join(current_content).strip()
         keywords = extract_keywords_from_content(content_text)
-        chunks.append({
-            "title": current_question,
-            "content": content_text,
-            "keywords": keywords,
-        })
+        chunks.append(
+            {
+                "title": current_question,
+                "content": content_text,
+                "keywords": keywords,
+            }
+        )
 
     return chunks
 
@@ -255,10 +267,12 @@ def extract_failure_chunks(section_content: str) -> list[dict]:
         if line.startswith("### Failure"):
             # Save previous chunk
             if current_chunk:
-                chunks.append({
-                    "title": current_chunk,
-                    "content": "\n".join(current_content).strip(),
-                })
+                chunks.append(
+                    {
+                        "title": current_chunk,
+                        "content": "\n".join(current_content).strip(),
+                    }
+                )
             current_chunk = line[4:].strip()
             current_content = []
         else:
@@ -267,10 +281,12 @@ def extract_failure_chunks(section_content: str) -> list[dict]:
 
     # Save final chunk
     if current_chunk:
-        chunks.append({
-            "title": current_chunk,
-            "content": "\n".join(current_content).strip(),
-        })
+        chunks.append(
+            {
+                "title": current_chunk,
+                "content": "\n".join(current_content).strip(),
+            }
+        )
 
     return chunks
 
@@ -286,7 +302,7 @@ def parse_experience_entry(content: str) -> dict:
         "location": "",
         "tags": [],
         "highlights": [],
-        "ai_context": {}
+        "ai_context": {},
     }
 
     current_section = None
@@ -332,7 +348,10 @@ def parse_experience_entry(content: str) -> dict:
             entry["highlights"].append(line[2:].strip())  # Remove "- "
 
         # Continue accumulating content for current AI context section
-        elif current_section in ["situation", "approach", "technical_work", "lessons_learned"] and line.strip():
+        elif (
+            current_section in ["situation", "approach", "technical_work", "lessons_learned"]
+            and line.strip()
+        ):
             if not line.startswith("**") and not line.startswith("- **"):
                 current_content.append(line.strip())
 
@@ -345,11 +364,7 @@ def parse_experience_entry(content: str) -> dict:
 
 def parse_skills_section(content: str) -> dict:
     """Parse the Skills Assessment section."""
-    skills = {
-        "strong": [],
-        "moderate": [],
-        "gaps": []
-    }
+    skills = {"strong": [], "moderate": [], "gaps": []}
 
     current_category = None
 
@@ -414,7 +429,7 @@ def parse_fit_assessment_examples(content: str) -> list[dict]:
                 "verdict": "",
                 "key_matches": "",
                 "gaps": "",
-                "recommendation": ""
+                "recommendation": "",
             }
             current_field = None
 
@@ -494,7 +509,7 @@ def build_profile_dict(
         "tags": frontmatter.get("tags", []),
         "experience": [],
         "skills": {"strong": [], "moderate": [], "gaps": []},
-        "fit_assessment_examples": []
+        "fit_assessment_examples": [],
     }
 
     # Extract experience and skills from sections
@@ -517,9 +532,11 @@ def build_profile_dict(
             profile["fit_assessment_examples"] = parse_fit_assessment_examples(content)
 
     if verbose:
-        print(f"Built profile metadata:")
+        print("Built profile metadata:")
         print(f"  Experience entries: {len(profile['experience'])}")
-        print(f"  Skills: {len(profile['skills']['strong'])} strong, {len(profile['skills']['moderate'])} moderate, {len(profile['skills']['gaps'])} gaps")
+        print(
+            f"  Skills: {len(profile['skills']['strong'])} strong, {len(profile['skills']['moderate'])} moderate, {len(profile['skills']['gaps'])} gaps"
+        )
         print(f"  Fit assessment examples: {len(profile['fit_assessment_examples'])}")
 
     return profile
@@ -603,23 +620,27 @@ def ingest_memory(
     # Memory cards support O(1) retrieval without text truncation
     profile_json = json.dumps(profile, indent=2)
     if verbose:
-        print(f"  Prepared: Profile Metadata ({len(profile_json)} bytes, will store as memory card)")
+        print(
+            f"  Prepared: Profile Metadata ({len(profile_json)} bytes, will store as memory card)"
+        )
 
     # Add system prompt as frame (for retrieval)
     system_prompt = frontmatter.get("system_prompt", "")
     if system_prompt:
-        documents.append({
-            "title": "AI System Prompt",
-            "label": "AI System Prompt",
-            "text": system_prompt,
-            "tags": ["system-prompt", "ai-instructions"],
-            "metadata": {
-                "section": "system",
-            },
-            "timestamp": get_current_timestamp(),
-        })
+        documents.append(
+            {
+                "title": "AI System Prompt",
+                "label": "AI System Prompt",
+                "text": system_prompt,
+                "tags": ["system-prompt", "ai-instructions"],
+                "metadata": {
+                    "section": "system",
+                },
+                "timestamp": get_current_timestamp(),
+            }
+        )
         if verbose:
-            print(f"  Prepared: AI System Prompt")
+            print("  Prepared: AI System Prompt")
 
     # Process each section
     for section in sections:
@@ -637,24 +658,32 @@ def ingest_memory(
                 # Extract keywords for metadata
                 keywords = extract_keywords_from_content(chunk["content"])
 
-                documents.append({
-                    "title": f"Experience: {chunk['title']}",
-                    "label": f"Experience: {chunk['title']}",
-                    "text": chunk["content"],
-                    "tags": tags,
-                    "metadata": {
-                        "section": "experience",
-                        "company": chunk['title'],
-                        "keywords": ",".join(keywords[:10]) if keywords else "",  # Top 10 keywords
-                    },
-                    "timestamp": get_current_timestamp(),  # Current timestamp (resume doesn't have time-series data)
-                })
+                documents.append(
+                    {
+                        "title": f"Experience: {chunk['title']}",
+                        "label": f"Experience: {chunk['title']}",
+                        "text": chunk["content"],
+                        "tags": tags,
+                        "metadata": {
+                            "section": "experience",
+                            "company": chunk["title"],
+                            "keywords": ",".join(keywords[:10])
+                            if keywords
+                            else "",  # Top 10 keywords
+                        },
+                        "timestamp": get_current_timestamp(),  # Current timestamp (resume doesn't have time-series data)
+                    }
+                )
                 if verbose:
                     print(f"  Prepared: Experience: {chunk['title']}")
                     if debug:
                         print(f"    Tags: {tags}")
                         print(f"    Metadata: section=experience, company={chunk['title']}")
-                        print(f"    Text: {chunk['content'][:200]}..." if len(chunk['content']) > 200 else f"    Text: {chunk['content']}")
+                        print(
+                            f"    Text: {chunk['content'][:200]}..."
+                            if len(chunk["content"]) > 200
+                            else f"    Text: {chunk['content']}"
+                        )
 
         elif title == "Frequently Asked Questions":
             # Chunk by individual FAQ entry for optimal retrieval
@@ -665,24 +694,30 @@ def ingest_memory(
                 keywords = chunk.get("keywords", [])
                 tags = list(set(global_tags + keywords + ["faq", "question-answer"]))
 
-                documents.append({
-                    "title": f"FAQ: {chunk['title']}",
-                    "label": f"FAQ: {chunk['title']}",
-                    "text": chunk["content"],
-                    "tags": tags,
-                    "metadata": {
-                        "section": "faq",
-                        "keywords": ",".join(keywords[:10]) if keywords else "",
-                    },
-                    "timestamp": get_current_timestamp(),
-                })
+                documents.append(
+                    {
+                        "title": f"FAQ: {chunk['title']}",
+                        "label": f"FAQ: {chunk['title']}",
+                        "text": chunk["content"],
+                        "tags": tags,
+                        "metadata": {
+                            "section": "faq",
+                            "keywords": ",".join(keywords[:10]) if keywords else "",
+                        },
+                        "timestamp": get_current_timestamp(),
+                    }
+                )
                 if verbose:
                     print(f"  Prepared: FAQ: {chunk['title']}")
                     if debug:
                         print(f"    Tags: {tags}")
                         print(f"    Keywords: {keywords}")
-                        print(f"    Metadata: section=faq")
-                        print(f"    Text: {chunk['content'][:200]}..." if len(chunk['content']) > 200 else f"    Text: {chunk['content']}")
+                        print("    Metadata: section=faq")
+                        print(
+                            f"    Text: {chunk['content'][:200]}..."
+                            if len(chunk["content"]) > 200
+                            else f"    Text: {chunk['content']}"
+                        )
 
         elif title == "Documented Failures & Lessons Learned":
             # Chunk by individual failure
@@ -690,16 +725,18 @@ def ingest_memory(
             for chunk in failure_chunks:
                 tags = list(set(global_tags + ["failure", "lessons-learned"]))
 
-                documents.append({
-                    "title": chunk["title"],
-                    "label": chunk["title"],
-                    "text": chunk["content"],
-                    "tags": tags,
-                    "metadata": {
-                        "section": "failures",
-                    },
-                    "timestamp": get_current_timestamp(),
-                })
+                documents.append(
+                    {
+                        "title": chunk["title"],
+                        "label": chunk["title"],
+                        "text": chunk["content"],
+                        "tags": tags,
+                        "metadata": {
+                            "section": "failures",
+                        },
+                        "timestamp": get_current_timestamp(),
+                    }
+                )
                 if verbose:
                     print(f"  Prepared: {chunk['title']}")
 
@@ -707,116 +744,150 @@ def ingest_memory(
             # Add as single chunk with skill tags
             tags = list(set(global_tags + ["skills", "assessment"]))
             keywords = extract_keywords_from_content(content)
-            documents.append({
-                "title": "Skills Assessment",
-                "label": "Skills Assessment",
-                "text": content,
-                "tags": tags,
-                "metadata": {
-                    "section": "skills",
-                    "keywords": ",".join(keywords[:15]) if keywords else "",  # More keywords for skills
-                },
-                "timestamp": get_current_timestamp(),
-            })
+            documents.append(
+                {
+                    "title": "Skills Assessment",
+                    "label": "Skills Assessment",
+                    "text": content,
+                    "tags": tags,
+                    "metadata": {
+                        "section": "skills",
+                        "keywords": ",".join(keywords[:15])
+                        if keywords
+                        else "",  # More keywords for skills
+                    },
+                    "timestamp": get_current_timestamp(),
+                }
+            )
             if verbose:
-                print(f"  Prepared: Skills Assessment")
+                print("  Prepared: Skills Assessment")
                 if debug:
                     print(f"    Tags: {tags}")
-                    print(f"    Metadata: section=skills")
-                    print(f"    Text: {content[:200]}..." if len(content) > 200 else f"    Text: {content}")
+                    print("    Metadata: section=skills")
+                    print(
+                        f"    Text: {content[:200]}..."
+                        if len(content) > 200
+                        else f"    Text: {content}"
+                    )
 
         elif title == "Fit Assessment Guidance":
             # Add as single chunk for fit matching
             tags = list(set(global_tags + ["fit-assessment", "job-matching"]))
-            documents.append({
-                "title": "Fit Assessment Guidance",
-                "label": "Fit Assessment Guidance",
-                "text": content,
-                "tags": tags,
-                "metadata": {
-                    "section": "fit-assessment",
-                },
-                "timestamp": get_current_timestamp(),
-            })
+            documents.append(
+                {
+                    "title": "Fit Assessment Guidance",
+                    "label": "Fit Assessment Guidance",
+                    "text": content,
+                    "tags": tags,
+                    "metadata": {
+                        "section": "fit-assessment",
+                    },
+                    "timestamp": get_current_timestamp(),
+                }
+            )
             if verbose:
-                print(f"  Prepared: Fit Assessment Guidance")
+                print("  Prepared: Fit Assessment Guidance")
                 if debug:
                     print(f"    Tags: {tags}")
-                    print(f"    Metadata: section=fit-assessment")
-                    print(f"    Text: {content[:200]}..." if len(content) > 200 else f"    Text: {content}")
+                    print("    Metadata: section=fit-assessment")
+                    print(
+                        f"    Text: {content[:200]}..."
+                        if len(content) > 200
+                        else f"    Text: {content}"
+                    )
 
         elif title == "Leadership & Management":
             tags = list(set(global_tags + ["leadership", "management", "soft-skills"]))
-            documents.append({
-                "title": "Leadership & Management",
-                "label": "Leadership & Management",
-                "text": content,
-                "tags": tags,
-                "metadata": {
-                    "section": "leadership",
-                },
-                "timestamp": get_current_timestamp(),
-            })
+            documents.append(
+                {
+                    "title": "Leadership & Management",
+                    "label": "Leadership & Management",
+                    "text": content,
+                    "tags": tags,
+                    "metadata": {
+                        "section": "leadership",
+                    },
+                    "timestamp": get_current_timestamp(),
+                }
+            )
             if verbose:
-                print(f"  Prepared: Leadership & Management")
+                print("  Prepared: Leadership & Management")
                 if debug:
                     print(f"    Tags: {tags}")
-                    print(f"    Metadata: section=leadership")
-                    print(f"    Text: {content[:200]}..." if len(content) > 200 else f"    Text: {content}")
+                    print("    Metadata: section=leadership")
+                    print(
+                        f"    Text: {content[:200]}..."
+                        if len(content) > 200
+                        else f"    Text: {content}"
+                    )
 
         elif title == "Summary":
             tags = list(set(global_tags + ["summary", "overview"]))
-            documents.append({
-                "title": "Professional Summary",
-                "label": "Professional Summary",
-                "text": content,
-                "tags": tags,
-                "metadata": {
-                    "section": "summary",
-                },
-                "timestamp": get_current_timestamp(),
-            })
+            documents.append(
+                {
+                    "title": "Professional Summary",
+                    "label": "Professional Summary",
+                    "text": content,
+                    "tags": tags,
+                    "metadata": {
+                        "section": "summary",
+                    },
+                    "timestamp": get_current_timestamp(),
+                }
+            )
             if verbose:
-                print(f"  Prepared: Professional Summary")
+                print("  Prepared: Professional Summary")
                 if debug:
                     print(f"    Tags: {tags}")
-                    print(f"    Metadata: section=summary")
-                    print(f"    Text: {content[:200]}..." if len(content) > 200 else f"    Text: {content}")
+                    print("    Metadata: section=summary")
+                    print(
+                        f"    Text: {content[:200]}..."
+                        if len(content) > 200
+                        else f"    Text: {content}"
+                    )
 
         elif title not in ["Contact & Links", "Metadata for Memvid Chunking"]:
             # Add other sections as-is
             tags = list(set(global_tags))
-            documents.append({
-                "title": title,
-                "label": title,
-                "text": content,
-                "tags": tags,
-                "metadata": {
-                    "section": title.lower().replace(" ", "-").replace("&", "and"),
-                },
-                "timestamp": get_current_timestamp(),
-            })
+            documents.append(
+                {
+                    "title": title,
+                    "label": title,
+                    "text": content,
+                    "tags": tags,
+                    "metadata": {
+                        "section": title.lower().replace(" ", "-").replace("&", "and"),
+                    },
+                    "timestamp": get_current_timestamp(),
+                }
+            )
             if verbose:
                 print(f"  Prepared: {title}")
                 if debug:
                     print(f"    Tags: {tags}")
                     print(f"    Metadata: section={title}")
-                    print(f"    Text: {content[:200]}..." if len(content) > 200 else f"    Text: {content}")
+                    print(
+                        f"    Text: {content[:200]}..."
+                        if len(content) > 200
+                        else f"    Text: {content}"
+                    )
 
     # Store profile as a memory card using add_memory_cards() for O(1) retrieval
     # This avoids text truncation issues in search results
     # Retrieve with: mem.state('__profile__')['slots']['data']['value']
     if verbose:
-        print(f"\nAdding profile as memory card (O(1) retrieval)...")
+        print("\nAdding profile as memory card (O(1) retrieval)...")
 
-    profile_card_result = mem.add_memory_cards([
-        {
-            "entity": "__profile__",
-            "slot": "data",
-            "value": profile_json,  # Full JSON, no truncation
-            "kind": "Profile",
-        }
-    ])
+    profile_card_result = mem.add_memory_cards(
+        [
+            {
+                "entity": "__profile__",
+                "slot": "data",
+                "value": profile_json,  # Full JSON, no truncation
+                "kind": "Profile",
+            }
+        ]
+    )
 
     if verbose:
         print(f"  Inserted profile memory card: {profile_card_result}")
@@ -838,7 +909,7 @@ def ingest_memory(
     mem.close()
 
     if verbose:
-        print(f"\nIngestion complete!")
+        print("\nIngestion complete!")
         print(f"  Frames: {stats.get('frame_count', frame_count)}")
         print(f"  Size: {stats.get('size_bytes', 0):,} bytes")
         print(f"  Output: {output_path}")
@@ -909,13 +980,14 @@ def verify(output_path: Path = DEFAULT_OUTPUT, verbose: bool = True) -> bool:
 
         # Check if any hit has matching tags
         tag_match = any(
-            any(tag in h.get("tags", []) for tag in expected_tags)
-            for h in relevant_hits
+            any(tag in h.get("tags", []) for tag in expected_tags) for h in relevant_hits
         )
 
         if verbose:
             print(f"\n  Query: '{query}'")
-            print(f"    Hits: {len(hits)} total, {len(relevant_hits)} relevant (score >= {score_thresh})")
+            print(
+                f"    Hits: {len(hits)} total, {len(relevant_hits)} relevant (score >= {score_thresh})"
+            )
             print(f"    Tag match: {tag_match}")
             for hit in relevant_hits[:2]:
                 score = hit.get("score", 0)
@@ -935,7 +1007,7 @@ def verify(output_path: Path = DEFAULT_OUTPUT, verbose: bool = True) -> bool:
     for query, score_thresh in neg_queries:
         result = mem.find(query, k=3)
         hits = result.get("hits", [])
-        relevant_hits = [h for h in hits if h.get('score', 0) > score_thresh]
+        relevant_hits = [h for h in hits if h.get("score", 0) > score_thresh]
 
         if verbose:
             print(f"\n  Neg Query: '{query}' | Unexpected relevant: {len(relevant_hits)}")
@@ -986,9 +1058,7 @@ def check_input_file(input_path: Path, verbose: bool = True) -> bool:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Ingest master resume into memvid memory"
-    )
+    parser = argparse.ArgumentParser(description="Ingest master resume into memvid memory")
     parser.add_argument(
         "--input",
         type=Path,

@@ -130,6 +130,7 @@ Requirements: 8+ years in revenue operations or sales engineering. Strong techni
 # Test Cases: Pure Domain Classification
 # =============================================================================
 
+
 class TestDomainClassification:
     """Test domain classification with varying keyword densities."""
 
@@ -193,6 +194,7 @@ class TestDomainClassification:
 # Test Cases: Role Level Classification
 # =============================================================================
 
+
 class TestRoleLevelClassification:
     """Test role level detection within domains."""
 
@@ -232,6 +234,7 @@ class TestRoleLevelClassification:
 # =============================================================================
 # Test Cases: End-to-End Classification
 # =============================================================================
+
 
 class TestFullClassification:
     """Test complete classify_job_description() pipeline."""
@@ -305,6 +308,7 @@ class TestFullClassification:
 # Test Cases: Title Extraction
 # =============================================================================
 
+
 class TestTitleExtraction:
     """Test job title extraction from first line."""
 
@@ -315,7 +319,10 @@ class TestTitleExtraction:
         assert extract_jd_title(JD_FINANCE_SENIOR_QUANT_TRADER) == "Senior Quantitative Trader"
 
     def test_extract_title_with_of(self):
-        assert extract_jd_title(JD_LIFE_SCIENCES_DIRECTOR_DRUG_DISCOVERY) == "Director of Drug Discovery"
+        assert (
+            extract_jd_title(JD_LIFE_SCIENCES_DIRECTOR_DRUG_DISCOVERY)
+            == "Director of Drug Discovery"
+        )
 
     def test_extract_c_suite_title(self):
         assert extract_jd_title(JD_HEALTHCARE_CMO) == "Chief Medical Officer"
@@ -327,6 +334,7 @@ class TestTitleExtraction:
 # =============================================================================
 # Test Cases: Edge Cases and Fallbacks
 # =============================================================================
+
 
 class TestEdgeCases:
     """Test edge cases, fallbacks, and error handling."""
@@ -380,6 +388,7 @@ class TestEdgeCases:
 # =============================================================================
 # Test Cases: Confidence Thresholds
 # =============================================================================
+
 
 class TestConfidenceThresholds:
     """Test confidence scoring and thresholds."""

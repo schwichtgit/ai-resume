@@ -164,6 +164,7 @@ source .venv/bin/activate
 export MOCK_MEMVID_CLIENT=false
 export MOCK_OPENROUTER=true  # Mock OpenRouter to isolate memvid client test
 
+# Suppress stderr — the FATAL log lines are expected behavior being tested
 python -c "
 import asyncio
 from ai_resume_api.memvid_client import MemvidClient, MemvidConnectionError
@@ -185,7 +186,7 @@ async def test():
 
 result = asyncio.run(test())
 exit(0 if result else 1)
-" && print_pass "Python API correctly fails when MOCK_MEMVID_CLIENT=false and gRPC unavailable" || print_fail "Python API didn't fail correctly"
+" 2>/dev/null && print_pass "Python API correctly fails when MOCK_MEMVID_CLIENT=false and gRPC unavailable" || print_fail "Python API didn't fail correctly"
 
 cd ..
 
@@ -200,6 +201,7 @@ source .venv/bin/activate
 export MOCK_OPENROUTER=false
 export OPENROUTER_API_KEY=""  # No API key
 
+# Suppress stderr — the FATAL log lines are expected behavior being tested
 python -c "
 import asyncio
 from ai_resume_api.openrouter_client import OpenRouterClient, OpenRouterAuthError
@@ -220,7 +222,7 @@ async def test():
 
 result = asyncio.run(test())
 exit(0 if result else 1)
-" && print_pass "Python API correctly fails when MOCK_OPENROUTER=false and API key missing" || print_fail "Python API didn't fail correctly"
+" 2>/dev/null && print_pass "Python API correctly fails when MOCK_OPENROUTER=false and API key missing" || print_fail "Python API didn't fail correctly"
 
 cd ..
 

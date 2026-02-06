@@ -58,9 +58,9 @@ for key, value in env_vars.items():
         os.environ[key] = value
 
 # Now import app modules (after env is set)
-from ai_resume_api.config import get_settings
-from ai_resume_api.openrouter_client import OpenRouterClient
-from ai_resume_api.query_transform import transform_query
+from ai_resume_api.config import get_settings  # noqa: E402
+from ai_resume_api.openrouter_client import OpenRouterClient  # noqa: E402
+from ai_resume_api.query_transform import transform_query  # noqa: E402
 
 
 @pytest.mark.asyncio

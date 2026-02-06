@@ -124,7 +124,9 @@ class TestSettings:
         mock_client = MagicMock()
         mock_client.get_state = AsyncMock(return_value=mock_state)
 
-        with patch("ai_resume_api.memvid_client.get_memvid_client", AsyncMock(return_value=mock_client)):
+        with patch(
+            "ai_resume_api.memvid_client.get_memvid_client", AsyncMock(return_value=mock_client)
+        ):
             profile = await settings.load_profile_from_memvid()
 
         assert profile is not None
@@ -145,7 +147,9 @@ class TestSettings:
         mock_client = MagicMock()
         mock_client.get_state = AsyncMock(return_value=mock_state)
 
-        with patch("ai_resume_api.memvid_client.get_memvid_client", AsyncMock(return_value=mock_client)):
+        with patch(
+            "ai_resume_api.memvid_client.get_memvid_client", AsyncMock(return_value=mock_client)
+        ):
             profile = await settings.load_profile_from_memvid()
 
         assert profile is None
@@ -168,7 +172,9 @@ class TestSettings:
         mock_client = MagicMock()
         mock_client.get_state = AsyncMock(return_value=mock_state)
 
-        with patch("ai_resume_api.memvid_client.get_memvid_client", AsyncMock(return_value=mock_client)):
+        with patch(
+            "ai_resume_api.memvid_client.get_memvid_client", AsyncMock(return_value=mock_client)
+        ):
             profile = await settings.load_profile_from_memvid()
 
         assert profile is None
@@ -206,7 +212,9 @@ class TestSettings:
         mock_client = MagicMock()
         mock_client.get_state = AsyncMock(return_value=mock_state)
 
-        with patch("ai_resume_api.memvid_client.get_memvid_client", AsyncMock(return_value=mock_client)):
+        with patch(
+            "ai_resume_api.memvid_client.get_memvid_client", AsyncMock(return_value=mock_client)
+        ):
             profile = await settings.load_profile_from_memvid()
 
         assert profile is None

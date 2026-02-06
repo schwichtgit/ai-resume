@@ -12,6 +12,7 @@ def generate_secure_session_id() -> UUID:
     """Generate cryptographically secure session ID using secrets module."""
     return UUID(bytes=secrets.token_bytes(16))
 
+
 # =============================================================================
 # Chat API Models
 # =============================================================================

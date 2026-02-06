@@ -73,8 +73,11 @@ strict_equality = true
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+exclude = ["ai_resume_api/proto/"]
+
+[tool.ruff.lint]
 select = ["E", "F", "W", "B", "C4"]
-ignore = []
+ignore = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
