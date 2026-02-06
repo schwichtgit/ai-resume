@@ -71,7 +71,24 @@ async def test_openrouter_connection():
     print("=" * 60)
 
     settings = get_settings()
-    print(f"API Key: {settings.openrouter_api_key[:20]}..." if settings.openrouter_api_key else "NOT SET")
+
+    # Validate API key format (method breaks CodeQL taint)
+    status = settings.validate_openrouter_api_key()
+
+    # Log status with completely static strings (no variables in output)
+    if status == 1:
+        print("API Key: CONFIGURED")
+    elif status == 0:
+        print("API Key: NOT SET")
+    elif status == 2:
+        print("API Key: INVALID KEY FORMAT (wrong prefix)")
+    elif status == 3:
+        print("API Key: INVALID KEY FORMAT (wrong length)")
+    elif status == 4:
+        print("API Key: INVALID KEY FORMAT (invalid characters)")
+    else:
+        print("API Key: INVALID KEY FORMAT")
+
     print(f"Model: {settings.llm_model}")
 
     client = OpenRouterClient()
