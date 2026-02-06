@@ -32,16 +32,16 @@ print_test() {
 
 print_pass() {
     echo -e "${GREEN}✓ PASS: $1${NC}"
-    ((TESTS_PASSED++))
+    TESTS_PASSED=$((TESTS_PASSED + 1))
 }
 
 print_fail() {
     echo -e "${RED}✗ FAIL: $1${NC}"
-    ((TESTS_FAILED++))
+    TESTS_FAILED=$((TESTS_FAILED + 1))
 }
 
 run_test() {
-    ((TESTS_RUN++))
+    TESTS_RUN=$((TESTS_RUN + 1))
     print_test "$1"
 }
 
