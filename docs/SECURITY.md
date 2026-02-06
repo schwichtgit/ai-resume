@@ -159,6 +159,52 @@ user: nonroot  # or nginx
 └─────────────────────────────────────────┘
 ```
 
+#### Bind Address Security (0.0.0.0)
+
+**Context:** GitHub Code Scanning alerts #2 & #3 flag binding to `0.0.0.0` in `api-service/start.py` as a security risk.
+
+**Why This Is Safe:**
+
+The API service intentionally binds to `0.0.0.0` (all network interfaces) for these reasons:
+
+1. **Container Isolation**: Services run in isolated containers with their own network namespace
+2. **Reverse Proxy Protection**: All containers sit behind Traefik reverse proxy
+3. **Network Segmentation**: Containers are isolated to 192.168.100.0/24 (Yellow Zone)
+4. **No Direct Exposure**: Host firewall blocks direct access; only reverse proxy can reach containers
+5. **Standard Practice**: Binding to 0.0.0.0 is standard for containerized services
+
+**Network Architecture:**
+
+```text
+Internet → Traefik (443) → Container (0.0.0.0:3000)
+         ↓
+      TLS termination, auth, rate limiting
+         ↓
+      Internal network only (192.168.100.0/24)
+```
+
+**Security Controls:**
+
+- Containers cannot be reached directly from host or external networks
+- Traefik enforces TLS, authentication, and rate limiting
+- Container network isolated via Docker/Podman networking
+- Firewall rules prevent cross-zone access
+
+**Alternative Considered:**
+
+Binding to `127.0.0.1` would prevent container-to-container communication, breaking the service architecture where frontend → api → memvid.
+
+**Conclusion:**
+
+Binding to `0.0.0.0` is intentional and safe in this containerized deployment. The security boundary is enforced at the reverse proxy and firewall level, not at the bind address level.
+
+**Code Scanning Dismissal:**
+
+- Alert #2: https://github.com/schwichtgit/ai-resume/security/code-scanning/2
+- Alert #3: https://github.com/schwichtgit/ai-resume/security/code-scanning/3
+- Reason: `wont-fix` - Intentional design, safe in containerized deployment
+- Reviewed: 2026-02-06
+
 ### Volume Mounts
 
 | Container | Path | Mode | Purpose |
