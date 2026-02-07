@@ -4,12 +4,13 @@ import json
 import time
 from asyncio import CancelledError
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
+from typing import Any, AsyncIterator, cast
 
 import structlog
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
+from starlette.middleware.base import RequestResponseEndpoint
 from prometheus_fastapi_instrumentator import Instrumentator
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -125,7 +126,7 @@ app.add_middleware(
 
 # Trace ID middleware for request correlation
 @app.middleware("http")
-async def trace_id_middleware(request: Request, call_next):
+async def trace_id_middleware(request: Request, call_next: RequestResponseEndpoint) -> Response:
     """Add trace ID to every request for log correlation."""
     # Get trace ID from header or generate new one
     trace_id = request.headers.get("X-Trace-ID", generate_trace_id())
@@ -144,7 +145,7 @@ async def trace_id_middleware(request: Request, call_next):
 
 # Add rate limiter
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 # Add Prometheus metrics
 Instrumentator().instrument(app).expose(app)
@@ -172,6 +173,7 @@ async def health_check() -> HealthResponse:
         frame_count = None
 
     # Determine overall status
+    status: str = "healthy"
     if memvid_connected and frame_count and frame_count > 0:
         status = "healthy"
     elif memvid_connected:
@@ -180,7 +182,7 @@ async def health_check() -> HealthResponse:
         status = "degraded"
 
     return HealthResponse(
-        status=status,
+        status=cast(Any, status),
         memvid_connected=memvid_connected,
         memvid_frame_count=frame_count,
         active_sessions=session_store.count(),
@@ -195,7 +197,7 @@ async def health_check() -> HealthResponse:
 
 @app.post("/api/v1/chat")
 @limiter.limit(f"{settings.rate_limit_per_minute}/minute")
-async def chat(request: Request, chat_request: ChatRequest):
+async def chat(request: Request, chat_request: ChatRequest) -> Any:
     """
     Chat endpoint with optional streaming.
 
@@ -416,12 +418,12 @@ async def chat(request: Request, chat_request: ChatRequest):
 
 
 async def _stream_chat_response(
-    openrouter_client,
+    openrouter_client: Any,
     context: str,
     user_message: str,
-    history: list,
-    session,
-    session_store,
+    history: list[Any],
+    session: Any,
+    session_store: Any,
     chunks_retrieved: int,
 ) -> AsyncIterator[str]:
     """Generate streaming SSE response with proper cancellation handling."""

@@ -134,43 +134,43 @@ Requirements: 8+ years in revenue operations or sales engineering. Strong techni
 class TestDomainClassification:
     """Test domain classification with varying keyword densities."""
 
-    def test_culinary_domain_high_confidence(self):
+    def test_culinary_domain_high_confidence(self) -> None:
         result = classify_domain(JD_CULINARY_EXECUTIVE_CHEF)
         assert result["primary"] == "culinary"
         assert result["confident"] is True  # Should have clear keyword lead
         assert result["primary_score"] >= 5  # Culinary keywords present
 
-    def test_finance_domain_high_confidence(self):
+    def test_finance_domain_high_confidence(self) -> None:
         result = classify_domain(JD_FINANCE_SENIOR_QUANT_TRADER)
         assert result["primary"] == "finance_trading"
         assert result["confident"] is True
         assert result["primary_score"] >= 5
 
-    def test_life_sciences_domain_high_confidence(self):
+    def test_life_sciences_domain_high_confidence(self) -> None:
         result = classify_domain(JD_LIFE_SCIENCES_DIRECTOR_DRUG_DISCOVERY)
         assert result["primary"] == "life_sciences"
         assert result["confident"] is True
         assert result["primary_score"] >= 7
 
-    def test_healthcare_domain_high_confidence(self):
+    def test_healthcare_domain_high_confidence(self) -> None:
         result = classify_domain(JD_HEALTHCARE_CMO)
         assert result["primary"] == "healthcare"
         assert result["confident"] is True
         assert result["primary_score"] >= 4
 
-    def test_sales_domain_high_confidence(self):
+    def test_sales_domain_high_confidence(self) -> None:
         result = classify_domain(JD_SALES_VP_GLOBAL_SALES)
         assert result["primary"] == "sales_growth"
         assert result["confident"] is True
         assert result["primary_score"] >= 5
 
-    def test_technology_domain_high_confidence(self):
+    def test_technology_domain_high_confidence(self) -> None:
         result = classify_domain(JD_TECHNOLOGY_CTO)
         assert result["primary"] == "technology"
         assert result["confident"] is True
         assert result["primary_score"] >= 8
 
-    def test_cross_domain_tech_healthcare_secondary(self):
+    def test_cross_domain_tech_healthcare_secondary(self) -> None:
         """Tech role at a healthcare company should show both domains."""
         result = classify_domain(JD_CROSS_DOMAIN_TECH_HEALTHCARE)
         assert result["primary"] == "technology"
@@ -180,7 +180,7 @@ class TestDomainClassification:
         # May or may not be confident depending on keyword balance
         assert result["primary_score"] > result["secondary_score"]
 
-    def test_ambiguous_sales_tech_low_confidence(self):
+    def test_ambiguous_sales_tech_low_confidence(self) -> None:
         """RevOps role straddles sales and tech domains."""
         result = classify_domain(JD_AMBIGUOUS_SALES_TECH)
         # Should detect both domains with low confidence gap
@@ -198,34 +198,34 @@ class TestDomainClassification:
 class TestRoleLevelClassification:
     """Test role level detection within domains."""
 
-    def test_culinary_executive_chef_is_director(self):
+    def test_culinary_executive_chef_is_director(self) -> None:
         domain_result = classify_domain(JD_CULINARY_EXECUTIVE_CHEF)
         level = classify_role_level(JD_CULINARY_EXECUTIVE_CHEF, domain_result["primary"])
         assert level == "director"  # "Executive Chef" matches director pattern
 
-    def test_finance_senior_quant_is_ic_senior(self):
+    def test_finance_senior_quant_is_ic_senior(self) -> None:
         domain_result = classify_domain(JD_FINANCE_SENIOR_QUANT_TRADER)
         level = classify_role_level(JD_FINANCE_SENIOR_QUANT_TRADER, domain_result["primary"])
         assert level == "ic-senior"  # "Senior Quantitative Trader" matches pattern
 
-    def test_life_sciences_director_is_director(self):
+    def test_life_sciences_director_is_director(self) -> None:
         domain_result = classify_domain(JD_LIFE_SCIENCES_DIRECTOR_DRUG_DISCOVERY)
         level = classify_role_level(
             JD_LIFE_SCIENCES_DIRECTOR_DRUG_DISCOVERY, domain_result["primary"]
         )
         assert level == "director"  # "Director of Drug Discovery" matches pattern
 
-    def test_healthcare_cmo_is_c_suite(self):
+    def test_healthcare_cmo_is_c_suite(self) -> None:
         domain_result = classify_domain(JD_HEALTHCARE_CMO)
         level = classify_role_level(JD_HEALTHCARE_CMO, domain_result["primary"])
         assert level == "c-suite"  # "Chief Medical Officer" matches pattern
 
-    def test_sales_vp_is_vp(self):
+    def test_sales_vp_is_vp(self) -> None:
         domain_result = classify_domain(JD_SALES_VP_GLOBAL_SALES)
         level = classify_role_level(JD_SALES_VP_GLOBAL_SALES, domain_result["primary"])
         assert level == "vp"  # "VP of Global Sales" matches pattern
 
-    def test_technology_cto_is_c_suite(self):
+    def test_technology_cto_is_c_suite(self) -> None:
         domain_result = classify_domain(JD_TECHNOLOGY_CTO)
         level = classify_role_level(JD_TECHNOLOGY_CTO, domain_result["primary"])
         assert level == "c-suite"  # "Chief Technology Officer" matches CTO pattern
@@ -239,7 +239,7 @@ class TestRoleLevelClassification:
 class TestFullClassification:
     """Test complete classify_job_description() pipeline."""
 
-    def test_culinary_executive_chef_full(self):
+    def test_culinary_executive_chef_full(self) -> None:
         result = classify_job_description(JD_CULINARY_EXECUTIVE_CHEF)
         assert result["domain"] == "culinary"
         assert result["level"] == "director"
@@ -248,7 +248,7 @@ class TestFullClassification:
         assert "Menu innovation" in result["eval_criteria"]
         assert result["domain_confident"] is True
 
-    def test_finance_senior_quant_full(self):
+    def test_finance_senior_quant_full(self) -> None:
         result = classify_job_description(JD_FINANCE_SENIOR_QUANT_TRADER)
         assert result["domain"] == "finance_trading"
         assert result["level"] == "ic-senior"
@@ -256,7 +256,7 @@ class TestFullClassification:
         assert "quantitative talent specialist" in result["persona"]
         assert "Sharpe Ratio/Performance" in result["eval_criteria"]
 
-    def test_life_sciences_director_full(self):
+    def test_life_sciences_director_full(self) -> None:
         result = classify_job_description(JD_LIFE_SCIENCES_DIRECTOR_DRUG_DISCOVERY)
         assert result["domain"] == "life_sciences"
         assert result["level"] == "director"
@@ -264,7 +264,7 @@ class TestFullClassification:
         assert "biotech recruiter" in result["persona"]
         assert "Pipeline Strategy" in result["eval_criteria"]
 
-    def test_healthcare_cmo_full(self):
+    def test_healthcare_cmo_full(self) -> None:
         result = classify_job_description(JD_HEALTHCARE_CMO)
         assert result["domain"] == "healthcare"
         assert result["level"] == "c-suite"
@@ -272,7 +272,7 @@ class TestFullClassification:
         assert "healthcare executive recruiter" in result["persona"]
         assert "Clinical Governance" in result["eval_criteria"]
 
-    def test_sales_vp_full(self):
+    def test_sales_vp_full(self) -> None:
         result = classify_job_description(JD_SALES_VP_GLOBAL_SALES)
         assert result["domain"] == "sales_growth"
         assert result["level"] == "vp"
@@ -280,7 +280,7 @@ class TestFullClassification:
         assert "growth-focused recruiter" in result["persona"]
         assert "ARR Growth" in result["eval_criteria"]
 
-    def test_technology_cto_full(self):
+    def test_technology_cto_full(self) -> None:
         result = classify_job_description(JD_TECHNOLOGY_CTO)
         assert result["domain"] == "technology"
         assert result["level"] == "c-suite"
@@ -288,7 +288,7 @@ class TestFullClassification:
         assert "board-level executive recruiter" in result["persona"]
         assert "Org-wide technical strategy ownership" in result["eval_criteria"]
 
-    def test_cross_domain_reports_secondary(self):
+    def test_cross_domain_reports_secondary(self) -> None:
         """VP Eng at health tech should report both domains."""
         result = classify_job_description(JD_CROSS_DOMAIN_TECH_HEALTHCARE)
         assert result["domain"] == "technology"
@@ -296,7 +296,7 @@ class TestFullClassification:
         assert result["secondary_domain"] in ["healthcare", "life_sciences"]
         assert result["level"] == "vp"  # "VP of Engineering" matches tech VP pattern
 
-    def test_ambiguous_domain_flags_low_confidence(self):
+    def test_ambiguous_domain_flags_low_confidence(self) -> None:
         """RevOps role should flag ambiguous classification."""
         result = classify_job_description(JD_AMBIGUOUS_SALES_TECH)
         assert result["domain"] in ["technology", "sales_growth"]
@@ -312,22 +312,22 @@ class TestFullClassification:
 class TestTitleExtraction:
     """Test job title extraction from first line."""
 
-    def test_extract_simple_title(self):
+    def test_extract_simple_title(self) -> None:
         assert extract_jd_title(JD_CULINARY_EXECUTIVE_CHEF) == "Executive Chef"
 
-    def test_extract_multiword_title(self):
+    def test_extract_multiword_title(self) -> None:
         assert extract_jd_title(JD_FINANCE_SENIOR_QUANT_TRADER) == "Senior Quantitative Trader"
 
-    def test_extract_title_with_of(self):
+    def test_extract_title_with_of(self) -> None:
         assert (
             extract_jd_title(JD_LIFE_SCIENCES_DIRECTOR_DRUG_DISCOVERY)
             == "Director of Drug Discovery"
         )
 
-    def test_extract_c_suite_title(self):
+    def test_extract_c_suite_title(self) -> None:
         assert extract_jd_title(JD_HEALTHCARE_CMO) == "Chief Medical Officer"
 
-    def test_extract_vp_title(self):
+    def test_extract_vp_title(self) -> None:
         assert extract_jd_title(JD_SALES_VP_GLOBAL_SALES) == "VP of Global Sales"
 
 
@@ -339,21 +339,21 @@ class TestTitleExtraction:
 class TestEdgeCases:
     """Test edge cases, fallbacks, and error handling."""
 
-    def test_empty_jd_returns_fallback(self):
+    def test_empty_jd_returns_fallback(self) -> None:
         result = classify_job_description("")
         assert result["domain"] is None
         assert result["level"] is None
         assert result["jd_title"] == "Unknown Role"
         assert result["persona"].startswith("You are an experienced recruiter")
 
-    def test_generic_jd_no_domain_match(self):
+    def test_generic_jd_no_domain_match(self) -> None:
         """JD with insufficient keywords should use fallback."""
         generic_jd = "We need a Manager. Must have 5 years experience. Apply now."
         result = classify_job_description(generic_jd)
         assert result["domain"] is None
         assert result["persona"].startswith("You are an experienced recruiter")
 
-    def test_domain_match_but_no_level_match(self):
+    def test_domain_match_but_no_level_match(self) -> None:
         """JD with domain keywords but no title pattern should use fallback."""
         jd = "We need someone for our kitchen. Must know how to cook. No formal title."
         result = classify_job_description(jd)
@@ -362,7 +362,7 @@ class TestEdgeCases:
             assert result["level"] is None
             assert result["persona"].startswith("You are an experienced recruiter")
 
-    def test_word_boundary_prevents_false_positive(self):
+    def test_word_boundary_prevents_false_positive(self) -> None:
         """'AI' should not match 'training' or 'catering'."""
         jd_catering = "We are catering high-end events and need a waiting staff manager."
         result = classify_domain(jd_catering)
@@ -372,7 +372,7 @@ class TestEdgeCases:
             # If it does classify as tech, it should be from other keywords, not "AI"
             assert result["primary_score"] >= 3
 
-    def test_acronym_collision_resolved_by_context(self):
+    def test_acronym_collision_resolved_by_context(self) -> None:
         """CIO in tech context vs CIO in finance context."""
         tech_cio_jd = "Chief Information Officer needed. Must have software engineering background, cloud infrastructure expertise, and API design experience."
         finance_cio_jd = "Chief Investment Officer needed. Must have portfolio management experience, derivatives trading, and hedge fund background."
@@ -393,7 +393,7 @@ class TestEdgeCases:
 class TestConfidenceThresholds:
     """Test confidence scoring and thresholds."""
 
-    def test_minimum_keyword_threshold_enforced(self):
+    def test_minimum_keyword_threshold_enforced(self) -> None:
         """JD with < 3 keywords should not classify."""
         jd_minimal = "We need an engineer with API experience."  # Only 2 tech keywords
         result = classify_domain(jd_minimal)
@@ -401,7 +401,7 @@ class TestConfidenceThresholds:
         if result["primary"]:
             assert result["primary_score"] >= 3
 
-    def test_confident_when_gap_is_large(self):
+    def test_confident_when_gap_is_large(self) -> None:
         """Domain with high keyword count and no secondary should be confident."""
         result = classify_domain(JD_TECHNOLOGY_CTO)
         assert result["confident"] is True
@@ -410,7 +410,7 @@ class TestConfidenceThresholds:
         if result["secondary"]:
             assert result["primary_score"] - result["secondary_score"] >= 2
 
-    def test_not_confident_when_gap_is_small(self):
+    def test_not_confident_when_gap_is_small(self) -> None:
         """Domains with close scores should flag low confidence."""
         # RevOps JD has both sales and tech keywords in similar quantity
         result = classify_domain(JD_AMBIGUOUS_SALES_TECH)

@@ -9,6 +9,8 @@ V1 Strategy: Keyword Expansion
 - Debuggable (easy to inspect transformed queries)
 """
 
+from typing import Any
+
 import structlog
 
 logger = structlog.get_logger()
@@ -27,7 +29,7 @@ Keywords:"""
 
 async def transform_query_keywords(
     question: str,
-    openrouter_client,
+    openrouter_client: Any,
 ) -> str:
     """
     Transform user question into retrieval-optimized keywords.
@@ -103,7 +105,7 @@ async def transform_query_keywords(
 
 async def transform_query(
     question: str,
-    openrouter_client,
+    openrouter_client: Any,
     strategy: str = "keywords",
 ) -> str:
     """

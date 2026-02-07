@@ -1,6 +1,9 @@
 """Tests for OpenRouter LLM client."""
 
 import json
+from collections.abc import AsyncIterator, Callable
+from typing import Any
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -18,14 +21,14 @@ from ai_resume_api.openrouter_client import (
 class TestOpenRouterClient:
     """Tests for OpenRouterClient class."""
 
-    def test_init_default_values(self):
+    def test_init_default_values(self) -> None:
         """Test client initialization with defaults."""
         client = OpenRouterClient()
         assert client._model == "nvidia/nemotron-nano-9b-v2:free"
         assert client._max_tokens == 1024
         assert client._temperature == 0.7
 
-    def test_init_custom_values(self):
+    def test_init_custom_values(self) -> None:
         """Test client initialization with custom values."""
         client = OpenRouterClient(
             api_key="sk-test-key",
@@ -38,22 +41,22 @@ class TestOpenRouterClient:
         assert client._max_tokens == 2048
         assert client._temperature == 0.5
 
-    def test_is_configured_with_valid_key(self):
+    def test_is_configured_with_valid_key(self) -> None:
         """Test is_configured with valid API key."""
         client = OpenRouterClient(api_key="sk-or-v1-test123")
         assert client.is_configured is True
 
-    def test_is_configured_with_invalid_key(self):
+    def test_is_configured_with_invalid_key(self) -> None:
         """Test is_configured with invalid API key."""
         client = OpenRouterClient(api_key="invalid-key")
         assert client.is_configured is False
 
-    def test_is_configured_with_empty_key(self):
+    def test_is_configured_with_empty_key(self) -> None:
         """Test is_configured with empty API key."""
         client = OpenRouterClient(api_key="")
         assert client.is_configured is False
 
-    def test_build_messages(self):
+    def test_build_messages(self) -> None:
         """Test building messages for API request."""
         client = OpenRouterClient()
         messages = client._build_messages(
@@ -70,7 +73,7 @@ class TestOpenRouterClient:
         assert messages[-1]["role"] == "user"
         assert messages[-1]["content"] == "What skills do they have?"
 
-    def test_build_messages_no_history(self):
+    def test_build_messages_no_history(self) -> None:
         """Test building messages without history."""
         client = OpenRouterClient()
         messages = client._build_messages(
@@ -88,13 +91,13 @@ class TestOpenRouterClient:
 class TestLLMModels:
     """Tests for LLM data models."""
 
-    def test_llm_message(self):
+    def test_llm_message(self) -> None:
         """Test LLMMessage dataclass."""
         msg = LLMMessage(role="user", content="Hello")
         assert msg.role == "user"
         assert msg.content == "Hello"
 
-    def test_llm_response(self):
+    def test_llm_response(self) -> None:
         """Test LLMResponse dataclass."""
         response = LLMResponse(
             content="Response text",
@@ -105,7 +108,7 @@ class TestLLMModels:
         assert response.tokens_used == 50
         assert response.finish_reason == "stop"
 
-    def test_streaming_chunk(self):
+    def test_streaming_chunk(self) -> None:
         """Test StreamingChunk dataclass."""
         chunk = StreamingChunk(
             content="Hello",
@@ -119,18 +122,18 @@ class TestLLMModels:
 class TestOpenRouterErrors:
     """Tests for OpenRouter error classes."""
 
-    def test_base_error(self):
+    def test_base_error(self) -> None:
         """Test base OpenRouterError."""
         error = OpenRouterError("Test error")
         assert str(error) == "Test error"
 
-    def test_auth_error(self):
+    def test_auth_error(self) -> None:
         """Test OpenRouterAuthError."""
         error = OpenRouterAuthError("Invalid key")
         assert str(error) == "Invalid key"
         assert isinstance(error, OpenRouterError)
 
-    def test_rate_limit_error(self):
+    def test_rate_limit_error(self) -> None:
         """Test OpenRouterRateLimitError."""
         error = OpenRouterRateLimitError("Too many requests")
         assert str(error) == "Too many requests"
@@ -141,7 +144,7 @@ class TestOpenRouterClientAsync:
     """Async tests for OpenRouterClient."""
 
     @pytest.mark.asyncio
-    async def test_connect_and_close(self):
+    async def test_connect_and_close(self) -> None:
         """Test connect and close lifecycle."""
         client = OpenRouterClient(api_key="sk-test")
         await client.connect()
@@ -150,14 +153,14 @@ class TestOpenRouterClientAsync:
         assert client._client is None
 
     @pytest.mark.asyncio
-    async def test_context_manager(self):
+    async def test_context_manager(self) -> None:
         """Test async context manager."""
         async with OpenRouterClient(api_key="sk-test") as client:
             assert client._client is not None
         # Client should be closed after exiting context
 
     @pytest.mark.asyncio
-    async def test_chat_without_connection(self):
+    async def test_chat_without_connection(self) -> None:
         """Test that chat auto-connects."""
         client = OpenRouterClient(api_key="sk-test")
         # Mock the HTTP client to avoid actual API calls
@@ -184,7 +187,7 @@ class TestOpenRouterClientAsync:
 class TestOpenRouterHttpErrorHandling:
     """Tests for HTTP error handling."""
 
-    def test_handle_http_error_auth(self):
+    def test_handle_http_error_auth(self) -> None:
         """Test handling 401 authentication error."""
         import httpx
 
@@ -203,7 +206,7 @@ class TestOpenRouterHttpErrorHandling:
             client._handle_http_error(error)
         assert "Authentication failed" in str(exc_info.value)
 
-    def test_handle_http_error_rate_limit(self):
+    def test_handle_http_error_rate_limit(self) -> None:
         """Test handling 429 rate limit error."""
         import httpx
 
@@ -222,7 +225,7 @@ class TestOpenRouterHttpErrorHandling:
             client._handle_http_error(error)
         assert "Rate limit exceeded" in str(exc_info.value)
 
-    def test_handle_http_error_generic(self):
+    def test_handle_http_error_generic(self) -> None:
         """Test handling generic HTTP error."""
         import httpx
 
@@ -241,7 +244,7 @@ class TestOpenRouterHttpErrorHandling:
             client._handle_http_error(error)
         assert "API error (500)" in str(exc_info.value)
 
-    def test_handle_http_error_json_parse_failure(self):
+    def test_handle_http_error_json_parse_failure(self) -> None:
         """Test handling error when JSON parsing fails."""
         import httpx
 
@@ -264,7 +267,7 @@ class TestOpenRouterHttpErrorHandling:
 class TestOpenRouterUsage:
     """Tests for OpenRouterUsage dataclass."""
 
-    def test_usage_defaults(self):
+    def test_usage_defaults(self) -> None:
         """Test usage default values."""
         from ai_resume_api.openrouter_client import OpenRouterUsage
 
@@ -273,7 +276,7 @@ class TestOpenRouterUsage:
         assert usage.completion_tokens == 0
         assert usage.total_tokens == 0
 
-    def test_usage_with_values(self):
+    def test_usage_with_values(self) -> None:
         """Test usage with custom values."""
         from ai_resume_api.openrouter_client import OpenRouterUsage
 
@@ -287,7 +290,7 @@ class TestGlobalClientFunctions:
     """Tests for global client functions."""
 
     @pytest.mark.asyncio
-    async def test_get_openrouter_client_creates_singleton(self):
+    async def test_get_openrouter_client_creates_singleton(self) -> None:
         """Test that get_openrouter_client creates a singleton."""
         from ai_resume_api.openrouter_client import (
             close_openrouter_client,
@@ -308,7 +311,7 @@ class TestGlobalClientFunctions:
         assert ai_resume_api.openrouter_client._openrouter_client is None
 
     @pytest.mark.asyncio
-    async def test_close_openrouter_client_when_none(self):
+    async def test_close_openrouter_client_when_none(self) -> None:
         """Test closing when client is None."""
         import ai_resume_api.openrouter_client
 
@@ -324,7 +327,7 @@ class TestOpenRouterMockModes:
     """Tests for mock mode functionality."""
 
     @pytest.mark.asyncio
-    async def test_chat_with_mock_enabled(self, mock_settings):
+    async def test_chat_with_mock_enabled(self, mock_settings: Callable[..., Any]) -> None:
         """Test chat() with mock mode enabled."""
         # Configure mock mode before creating client
         mock_settings(mock_openrouter="true", openrouter_api_key="")
@@ -344,7 +347,9 @@ class TestOpenRouterMockModes:
         assert response.finish_reason == "stop"
 
     @pytest.mark.asyncio
-    async def test_chat_with_mock_disabled_no_api_key(self, mock_settings):
+    async def test_chat_with_mock_disabled_no_api_key(
+        self, mock_settings: Callable[..., Any]
+    ) -> None:
         """Test chat() raises error when mock disabled but no API key."""
         mock_settings(mock_openrouter="false", openrouter_api_key="")
         client = OpenRouterClient(api_key="")
@@ -359,7 +364,7 @@ class TestOpenRouterMockModes:
         assert "OPENROUTER_API_KEY" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_chat_stream_with_mock_enabled(self, mock_settings):
+    async def test_chat_stream_with_mock_enabled(self, mock_settings: Callable[..., Any]) -> None:
         """Test chat_stream() with mock mode enabled."""
         # Configure mock mode before creating client
         mock_settings(mock_openrouter="true", openrouter_api_key="")
@@ -383,7 +388,9 @@ class TestOpenRouterMockModes:
         assert chunks[-1].tokens_used > 0
 
     @pytest.mark.asyncio
-    async def test_chat_stream_with_mock_disabled_no_api_key(self, mock_settings):
+    async def test_chat_stream_with_mock_disabled_no_api_key(
+        self, mock_settings: Callable[..., Any]
+    ) -> None:
         """Test chat_stream() raises error when mock disabled but no API key."""
         mock_settings(mock_openrouter="false", openrouter_api_key="")
         client = OpenRouterClient(api_key="")
@@ -398,7 +405,7 @@ class TestOpenRouterMockModes:
         assert "MOCK_OPENROUTER=false" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_mock_chat_response_format(self):
+    async def test_mock_chat_response_format(self) -> None:
         """Test _mock_chat() generates proper responses."""
         client = OpenRouterClient(api_key="sk-test")
 
@@ -411,7 +418,7 @@ class TestOpenRouterMockModes:
         assert response.finish_reason == "stop"
 
     @pytest.mark.asyncio
-    async def test_mock_chat_stream_chunks(self):
+    async def test_mock_chat_stream_chunks(self) -> None:
         """Test _mock_chat_stream() generates proper chunks."""
         client = OpenRouterClient(api_key="sk-test")
 
@@ -433,7 +440,7 @@ class TestOpenRouterStreamingSuccess:
     """Tests for successful streaming scenarios."""
 
     @pytest.mark.asyncio
-    async def test_chat_stream_success_with_sse_parsing(self):
+    async def test_chat_stream_success_with_sse_parsing(self) -> None:
         """Test chat_stream() success with SSE parsing."""
         client = OpenRouterClient(api_key="sk-test-key")
 
@@ -457,7 +464,7 @@ class TestOpenRouterStreamingSuccess:
             ),
         ]
 
-        async def mock_aiter_lines():
+        async def mock_aiter_lines() -> AsyncIterator[str]:
             for line in mock_lines:
                 yield line
 
@@ -467,10 +474,10 @@ class TestOpenRouterStreamingSuccess:
 
         # Create proper async context manager
         class MockStreamContext:
-            async def __aenter__(self):
+            async def __aenter__(self) -> MagicMock:
                 return mock_response
 
-            async def __aexit__(self, *args):
+            async def __aexit__(self, *args: Any) -> None:
                 return None
 
         mock_client = AsyncMock()
@@ -493,7 +500,7 @@ class TestOpenRouterStreamingSuccess:
         assert chunks[2].tokens_used == 42
 
     @pytest.mark.asyncio
-    async def test_chat_stream_handles_done_event(self):
+    async def test_chat_stream_handles_done_event(self) -> None:
         """Test chat_stream() handles [DONE] event."""
         client = OpenRouterClient(api_key="sk-test-key")
 
@@ -507,7 +514,7 @@ class TestOpenRouterStreamingSuccess:
             "data: [DONE]",
         ]
 
-        async def mock_aiter_lines():
+        async def mock_aiter_lines() -> AsyncIterator[str]:
             for line in mock_lines:
                 yield line
 
@@ -517,10 +524,10 @@ class TestOpenRouterStreamingSuccess:
 
         # Create proper async context manager
         class MockStreamContext:
-            async def __aenter__(self):
+            async def __aenter__(self) -> MagicMock:
                 return mock_response
 
-            async def __aexit__(self, *args):
+            async def __aexit__(self, *args: Any) -> None:
                 return None
 
         mock_client = AsyncMock()
@@ -542,7 +549,7 @@ class TestOpenRouterStreamingSuccess:
         assert chunks[1].finish_reason == "stop"
 
     @pytest.mark.asyncio
-    async def test_chat_stream_handles_malformed_json(self):
+    async def test_chat_stream_handles_malformed_json(self) -> None:
         """Test chat_stream() handles malformed JSON chunks."""
         client = OpenRouterClient(api_key="sk-test-key")
 
@@ -563,7 +570,7 @@ class TestOpenRouterStreamingSuccess:
             "data: [DONE]",
         ]
 
-        async def mock_aiter_lines():
+        async def mock_aiter_lines() -> AsyncIterator[str]:
             for line in mock_lines:
                 yield line
 
@@ -573,10 +580,10 @@ class TestOpenRouterStreamingSuccess:
 
         # Create proper async context manager
         class MockStreamContext:
-            async def __aenter__(self):
+            async def __aenter__(self) -> MagicMock:
                 return mock_response
 
-            async def __aexit__(self, *args):
+            async def __aexit__(self, *args: Any) -> None:
                 return None
 
         mock_client = AsyncMock()
@@ -598,7 +605,7 @@ class TestOpenRouterStreamingSuccess:
         assert chunks[1].content == " content"
 
     @pytest.mark.asyncio
-    async def test_chat_stream_handles_http_errors(self):
+    async def test_chat_stream_handles_http_errors(self) -> None:
         """Test chat_stream() handles HTTP errors."""
         import httpx
 
@@ -616,10 +623,10 @@ class TestOpenRouterStreamingSuccess:
 
         # Create async context manager that raises on enter
         class MockStreamContext:
-            async def __aenter__(self):
+            async def __aenter__(self) -> MagicMock:
                 raise mock_http_error
 
-            async def __aexit__(self, *args):
+            async def __aexit__(self, *args: Any) -> None:
                 return None
 
         mock_client = AsyncMock()
@@ -641,7 +648,7 @@ class TestOpenRouterChatSuccess:
     """Tests for successful non-streaming chat."""
 
     @pytest.mark.asyncio
-    async def test_chat_success_response(self):
+    async def test_chat_success_response(self) -> None:
         """Test chat() with successful response."""
         client = OpenRouterClient(api_key="sk-test-key")
 

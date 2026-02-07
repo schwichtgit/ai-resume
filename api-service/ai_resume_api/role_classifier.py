@@ -6,6 +6,7 @@ Add new domains by extending CAREER_DOMAINS.
 """
 
 import re
+from typing import Any, cast
 
 import structlog
 
@@ -590,7 +591,8 @@ def classify_role_level(job_description: str, domain: str) -> str | None:
     Returns the level key (e.g., "c-suite", "vp") or None.
     Patterns are tested from most senior to least senior; first match wins.
     """
-    levels = CAREER_DOMAINS[domain]["levels"]
+    domain_config = cast(dict[str, Any], CAREER_DOMAINS[domain])
+    levels = cast(dict[str, Any], domain_config["levels"])
 
     for level_key, level_config in levels.items():
         for pattern in level_config["patterns"]:
@@ -666,7 +668,9 @@ def classify_job_description(job_description: str) -> dict:
             "eval_criteria": FALLBACK_CRITERIA,
         }
 
-    level_config = CAREER_DOMAINS[domain]["levels"][level]
+    domain_config = cast(dict[str, Any], CAREER_DOMAINS[domain])
+    levels_config = cast(dict[str, Any], domain_config["levels"])
+    level_config = cast(dict[str, Any], levels_config[level])
 
     logger.info(
         "role_classification",
@@ -685,6 +689,6 @@ def classify_job_description(job_description: str) -> dict:
         "domain_confident": domain_result["confident"],
         "level": level,
         "jd_title": jd_title,
-        "persona": level_config["persona"],
-        "eval_criteria": level_config["eval_criteria"],
+        "persona": str(level_config["persona"]),
+        "eval_criteria": list(level_config["eval_criteria"]),
     }

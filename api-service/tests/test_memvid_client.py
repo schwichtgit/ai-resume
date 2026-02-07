@@ -9,12 +9,12 @@ class TestMemvidClient:
     """Tests for MemvidClient class."""
 
     @pytest.fixture
-    def client(self):
+    def client(self) -> MemvidClient:
         """Create a memvid client for testing."""
         return MemvidClient(grpc_url="localhost:50051")
 
     @pytest.mark.asyncio
-    async def test_mock_search(self, client):
+    async def test_mock_search(self, client: MemvidClient) -> None:
         """Test mock search functionality."""
         response = await client._mock_search(
             query="Python experience",
@@ -33,7 +33,7 @@ class TestMemvidClient:
             assert hit.snippet
 
     @pytest.mark.asyncio
-    async def test_mock_search_query_relevance(self, client):
+    async def test_mock_search_query_relevance(self, client: MemvidClient) -> None:
         """Test that mock search boosts scores based on query."""
         # Search for something that matches tags
         response = await client._mock_search(
@@ -47,20 +47,20 @@ class TestMemvidClient:
         assert any("VP" in title or "leadership" in title.lower() for title in titles)
 
     @pytest.mark.asyncio
-    async def test_mock_search_top_k(self, client):
+    async def test_mock_search_top_k(self, client: MemvidClient) -> None:
         """Test that top_k limits results."""
         response = await client._mock_search(query="test", top_k=2, snippet_chars=200)
         assert len(response.hits) <= 2
 
     @pytest.mark.asyncio
-    async def test_mock_search_snippet_chars(self, client):
+    async def test_mock_search_snippet_chars(self, client: MemvidClient) -> None:
         """Test that snippets are truncated."""
         response = await client._mock_search(query="test", top_k=5, snippet_chars=50)
         for hit in response.hits:
             assert len(hit.snippet) <= 50
 
     @pytest.mark.asyncio
-    async def test_search_without_grpc(self, client):
+    async def test_search_without_grpc(self, client: MemvidClient) -> None:
         """Test search falls back to mock when gRPC not available."""
         # Without connecting, should use mock
         response = await client.search(query="Python", top_k=3)
@@ -69,7 +69,7 @@ class TestMemvidClient:
         assert len(response.hits) > 0
 
     @pytest.mark.asyncio
-    async def test_health_check_mock(self, client):
+    async def test_health_check_mock(self, client: MemvidClient) -> None:
         """Test health check returns mock data when not connected."""
         response = await client.health_check()
 
@@ -78,13 +78,13 @@ class TestMemvidClient:
         assert "mock" in response.memvid_file
 
     @pytest.mark.asyncio
-    async def test_is_healthy(self, client):
+    async def test_is_healthy(self, client: MemvidClient) -> None:
         """Test is_healthy method."""
         result = await client.is_healthy()
         assert result is True  # Mock always returns healthy
 
     @pytest.mark.asyncio
-    async def test_connect_and_close(self, client):
+    async def test_connect_and_close(self, client: MemvidClient) -> None:
         """Test connect and close lifecycle."""
         # Connect (will use mock mode if gRPC not available)
         await client.connect()
@@ -92,7 +92,7 @@ class TestMemvidClient:
         await client.close()
 
     @pytest.mark.asyncio
-    async def test_search_scores_sorted(self, client):
+    async def test_search_scores_sorted(self, client: MemvidClient) -> None:
         """Test that search results are sorted by score descending."""
         response = await client._mock_search(query="experience", top_k=5, snippet_chars=200)
 
@@ -103,14 +103,14 @@ class TestMemvidClient:
 class TestMemvidClientErrors:
     """Tests for memvid client error classes."""
 
-    def test_memvid_client_error(self):
+    def test_memvid_client_error(self) -> None:
         """Test base MemvidClientError."""
         from app.memvid_client import MemvidClientError
 
         error = MemvidClientError("Test error")
         assert str(error) == "Test error"
 
-    def test_memvid_connection_error(self):
+    def test_memvid_connection_error(self) -> None:
         """Test MemvidConnectionError."""
         from app.memvid_client import MemvidClientError, MemvidConnectionError
 
@@ -118,7 +118,7 @@ class TestMemvidClientErrors:
         assert str(error) == "Connection failed"
         assert isinstance(error, MemvidClientError)
 
-    def test_memvid_search_error(self):
+    def test_memvid_search_error(self) -> None:
         """Test MemvidSearchError."""
         from app.memvid_client import MemvidClientError, MemvidSearchError
 
@@ -131,7 +131,7 @@ class TestMemvidClientIsHealthy:
     """Tests for is_healthy method edge cases."""
 
     @pytest.mark.asyncio
-    async def test_is_healthy_returns_false_on_exception(self):
+    async def test_is_healthy_returns_false_on_exception(self) -> None:
         """Test is_healthy returns False when health_check raises."""
         from unittest.mock import AsyncMock, patch
 
@@ -148,7 +148,7 @@ class TestGlobalMemvidClientFunctions:
     """Tests for global memvid client functions."""
 
     @pytest.mark.asyncio
-    async def test_get_memvid_client_creates_singleton(self):
+    async def test_get_memvid_client_creates_singleton(self) -> None:
         """Test that get_memvid_client creates a singleton."""
         import app.memvid_client
         from app.memvid_client import close_memvid_client, get_memvid_client
@@ -165,7 +165,7 @@ class TestGlobalMemvidClientFunctions:
         assert app.memvid_client._memvid_client is None
 
     @pytest.mark.asyncio
-    async def test_close_memvid_client_when_none(self):
+    async def test_close_memvid_client_when_none(self) -> None:
         """Test closing when client is None."""
         import app.memvid_client
         from app.memvid_client import close_memvid_client
@@ -180,7 +180,7 @@ class TestMemvidClientClose:
     """Tests for client close behavior."""
 
     @pytest.mark.asyncio
-    async def test_close_clears_channel(self):
+    async def test_close_clears_channel(self) -> None:
         """Test that close clears internal state."""
         client = MemvidClient(grpc_url="localhost:50051")
         await client.connect()

@@ -38,6 +38,7 @@ lint = [
     "isort>=5.13.2",
     "ruff>=0.8.6",
     "mypy>=1.14.1",
+    "types-cachetools>=5.5.0",
 ]
 sbom = [
     "poetry>=2.2.1"
@@ -69,6 +70,32 @@ disallow_untyped_calls = true
 disallow_subclassing_any = true
 warn_unused_ignores = true
 strict_equality = true
+exclude = [
+    "ai_resume_api/proto/",
+    "app/",  # symlink to ai_resume_api, avoid scanning twice
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "ai_resume_api.proto.*",
+]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = [
+    "grpc.*",
+    "structlog.*",
+    "slowapi.*",
+    "prometheus_fastapi_instrumentator.*",
+    "google.protobuf.*",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "fixtures.*",
+]
+ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 100

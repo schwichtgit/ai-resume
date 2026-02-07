@@ -10,6 +10,7 @@ valid API key (sk-*) is configured.
 """
 
 import os
+from collections.abc import AsyncGenerator
 
 import pytest
 import pytest_asyncio
@@ -24,7 +25,7 @@ from fixtures.job_descriptions import STRONG_MATCH_JD, WEAK_MATCH_JD  # noqa: E4
 
 
 @pytest_asyncio.fixture
-async def client():
+async def client() -> AsyncGenerator[httpx.AsyncClient, None]:
     """Async httpx client wired to the ASGI app with lifespan handling."""
     from ai_resume_api.memvid_client import get_memvid_client, close_memvid_client
     from ai_resume_api.openrouter_client import get_openrouter_client, close_openrouter_client
@@ -54,7 +55,7 @@ async def client():
 
 
 @pytest.mark.asyncio
-async def test_health_endpoint(client: httpx.AsyncClient):
+async def test_health_endpoint(client: httpx.AsyncClient) -> None:
     """GET /health returns 200 with a status field."""
     response = await client.get("/health")
     assert response.status_code == 200
@@ -65,7 +66,7 @@ async def test_health_endpoint(client: httpx.AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_health_v1_endpoint(client: httpx.AsyncClient):
+async def test_health_v1_endpoint(client: httpx.AsyncClient) -> None:
     """GET /api/v1/health returns 200 with HealthResponse fields."""
     response = await client.get("/api/v1/health")
     assert response.status_code == 200
@@ -83,7 +84,7 @@ async def test_health_v1_endpoint(client: httpx.AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_profile_endpoint(client: httpx.AsyncClient):
+async def test_profile_endpoint(client: httpx.AsyncClient) -> None:
     """GET /api/v1/profile returns 200 with name, title, and skills."""
     response = await client.get("/api/v1/profile")
     assert response.status_code == 200
@@ -96,7 +97,7 @@ async def test_profile_endpoint(client: httpx.AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_suggested_questions_endpoint(client: httpx.AsyncClient):
+async def test_suggested_questions_endpoint(client: httpx.AsyncClient) -> None:
     """GET /api/v1/suggested-questions returns 200 with a questions list."""
     response = await client.get("/api/v1/suggested-questions")
     assert response.status_code == 200
@@ -117,7 +118,7 @@ async def test_suggested_questions_endpoint(client: httpx.AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_chat_non_streaming(client: httpx.AsyncClient):
+async def test_chat_non_streaming(client: httpx.AsyncClient) -> None:
     """POST /api/v1/chat (stream=false) returns 200 with response and session_id."""
     response = await client.post(
         "/api/v1/chat",
@@ -137,7 +138,7 @@ async def test_chat_non_streaming(client: httpx.AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_chat_streaming(client: httpx.AsyncClient):
+async def test_chat_streaming(client: httpx.AsyncClient) -> None:
     """POST /api/v1/chat (stream=true) returns SSE events."""
     response = await client.post(
         "/api/v1/chat",
@@ -156,7 +157,7 @@ async def test_chat_streaming(client: httpx.AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_assess_fit_endpoint(client: httpx.AsyncClient):
+async def test_assess_fit_endpoint(client: httpx.AsyncClient) -> None:
     """POST /api/v1/assess-fit returns 200 with verdict, key_matches, gaps."""
     response = await client.post(
         "/api/v1/assess-fit",
@@ -186,7 +187,7 @@ async def test_assess_fit_endpoint(client: httpx.AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_chat_guardrail_rejection(client: httpx.AsyncClient):
+async def test_chat_guardrail_rejection(client: httpx.AsyncClient) -> None:
     """Prompt injection attempt still returns 200 but may include a guardrail message."""
     response = await client.post(
         "/api/v1/chat",
@@ -209,7 +210,7 @@ async def test_chat_guardrail_rejection(client: httpx.AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_chat_session_continuity(client: httpx.AsyncClient):
+async def test_chat_session_continuity(client: httpx.AsyncClient) -> None:
     """Second chat request reusing session_id preserves the session."""
     # First request -- creates a new session
     r1 = await client.post(
@@ -239,7 +240,7 @@ async def test_chat_session_continuity(client: httpx.AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_trace_id_propagation(client: httpx.AsyncClient):
+async def test_trace_id_propagation(client: httpx.AsyncClient) -> None:
     """X-Trace-ID sent in request header appears in the response header."""
     custom_trace_id = "test-trace-abc-123"
     response = await client.get(
@@ -256,14 +257,14 @@ async def test_trace_id_propagation(client: httpx.AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_chat_empty_message_rejected(client: httpx.AsyncClient):
+async def test_chat_empty_message_rejected(client: httpx.AsyncClient) -> None:
     """POST /api/v1/chat with empty message returns 422 (validation error)."""
     response = await client.post("/api/v1/chat", json={"message": "", "stream": False})
     assert response.status_code == 422
 
 
 @pytest.mark.asyncio
-async def test_chat_missing_message_field(client: httpx.AsyncClient):
+async def test_chat_missing_message_field(client: httpx.AsyncClient) -> None:
     """POST /api/v1/chat without 'message' field returns 422."""
     response = await client.post("/api/v1/chat", json={"stream": False})
     assert response.status_code == 422
@@ -275,14 +276,14 @@ async def test_chat_missing_message_field(client: httpx.AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_fit_assessment_too_short_rejected(client: httpx.AsyncClient):
+async def test_fit_assessment_too_short_rejected(client: httpx.AsyncClient) -> None:
     """POST /api/v1/assess-fit with <50 char JD returns 422."""
     response = await client.post("/api/v1/assess-fit", json={"job_description": "Short JD"})
     assert response.status_code == 422
 
 
 @pytest.mark.asyncio
-async def test_fit_assessment_meaningless_input(client: httpx.AsyncClient):
+async def test_fit_assessment_meaningless_input(client: httpx.AsyncClient) -> None:
     """POST /api/v1/assess-fit with meaningless input still returns 200."""
     response = await client.post("/api/v1/assess-fit", json={"job_description": "x " * 30})
     assert response.status_code == 200
@@ -292,7 +293,7 @@ async def test_fit_assessment_meaningless_input(client: httpx.AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_fit_assessment_strong_match(client: httpx.AsyncClient):
+async def test_fit_assessment_strong_match(client: httpx.AsyncClient) -> None:
     """POST /api/v1/assess-fit with a strong-match JD returns structured assessment."""
     response = await client.post("/api/v1/assess-fit", json={"job_description": STRONG_MATCH_JD})
     assert response.status_code == 200
@@ -307,7 +308,7 @@ async def test_fit_assessment_strong_match(client: httpx.AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_fit_assessment_weak_match(client: httpx.AsyncClient):
+async def test_fit_assessment_weak_match(client: httpx.AsyncClient) -> None:
     """POST /api/v1/assess-fit with a weak-match JD returns gaps and recommendation."""
     response = await client.post("/api/v1/assess-fit", json={"job_description": WEAK_MATCH_JD})
     assert response.status_code == 200
@@ -325,7 +326,7 @@ async def test_fit_assessment_weak_match(client: httpx.AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_invalid_endpoint_returns_404(client: httpx.AsyncClient):
+async def test_invalid_endpoint_returns_404(client: httpx.AsyncClient) -> None:
     """GET /api/v1/nonexistent returns 404."""
     response = await client.get("/api/v1/nonexistent")
     assert response.status_code in (404, 405)

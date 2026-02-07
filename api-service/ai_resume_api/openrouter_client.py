@@ -215,6 +215,7 @@ Use the context above to answer the user's question. If the context doesn't cont
             "stream": False,
         }
 
+        assert self._client is not None
         try:
             response = await self._client.post("/chat/completions", json=payload)
             response.raise_for_status()
@@ -295,6 +296,7 @@ Use the context above to answer the user's question. If the context doesn't cont
 
         total_tokens = 0
 
+        assert self._client is not None
         try:
             async with self._client.stream(
                 "POST",

@@ -2,24 +2,24 @@
 
 from uuid import uuid4
 
-from app.models import Session
-from app.session_store import SessionStore, get_session_store, reset_session_store
+from ai_resume_api.models import Session
+from ai_resume_api.session_store import SessionStore, get_session_store, reset_session_store
 
 
 class TestSessionStore:
     """Tests for SessionStore class."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Reset session store before each test."""
         reset_session_store()
 
-    def test_create_store(self):
+    def test_create_store(self) -> None:
         """Test creating a session store with custom parameters."""
         store = SessionStore(ttl_seconds=60, max_sessions=10)
         assert store._ttl == 60
         assert store._max_sessions == 10
 
-    def test_set_and_get_session(self):
+    def test_set_and_get_session(self) -> None:
         """Test storing and retrieving a session."""
         store = SessionStore()
         session = Session()
@@ -29,13 +29,13 @@ class TestSessionStore:
         assert retrieved is not None
         assert retrieved.id == session.id
 
-    def test_get_nonexistent_session(self):
+    def test_get_nonexistent_session(self) -> None:
         """Test getting a session that doesn't exist."""
         store = SessionStore()
         result = store.get(uuid4())
         assert result is None
 
-    def test_get_or_create_new_session(self):
+    def test_get_or_create_new_session(self) -> None:
         """Test get_or_create creates new session when none exists."""
         store = SessionStore()
         session = store.get_or_create(None)
@@ -44,7 +44,7 @@ class TestSessionStore:
         assert session.id is not None
         assert store.count() == 1
 
-    def test_get_or_create_existing_session(self):
+    def test_get_or_create_existing_session(self) -> None:
         """Test get_or_create returns existing session."""
         store = SessionStore()
         session1 = store.get_or_create(None)
@@ -53,7 +53,7 @@ class TestSessionStore:
         assert session1.id == session2.id
         assert store.count() == 1
 
-    def test_get_or_create_missing_session_id(self):
+    def test_get_or_create_missing_session_id(self) -> None:
         """Test get_or_create creates new session when ID not found."""
         store = SessionStore()
         missing_id = uuid4()
@@ -63,7 +63,7 @@ class TestSessionStore:
         assert session.id != missing_id  # New session created
         assert store.count() == 1
 
-    def test_delete_session(self):
+    def test_delete_session(self) -> None:
         """Test deleting a session."""
         store = SessionStore()
         session = Session()
@@ -73,12 +73,12 @@ class TestSessionStore:
         assert store.get(session.id) is None
         assert store.count() == 0
 
-    def test_delete_nonexistent_session(self):
+    def test_delete_nonexistent_session(self) -> None:
         """Test deleting a session that doesn't exist."""
         store = SessionStore()
         assert store.delete(uuid4()) is False
 
-    def test_count(self):
+    def test_count(self) -> None:
         """Test counting sessions."""
         store = SessionStore()
         assert store.count() == 0
@@ -89,7 +89,7 @@ class TestSessionStore:
         store.get_or_create(None)
         assert store.count() == 2
 
-    def test_clear(self):
+    def test_clear(self) -> None:
         """Test clearing all sessions."""
         store = SessionStore()
         store.get_or_create(None)
@@ -99,7 +99,7 @@ class TestSessionStore:
         store.clear()
         assert store.count() == 0
 
-    def test_get_stats(self):
+    def test_get_stats(self) -> None:
         """Test getting store statistics."""
         store = SessionStore(ttl_seconds=120, max_sessions=50)
         store.get_or_create(None)
@@ -109,7 +109,7 @@ class TestSessionStore:
         assert stats["max_sessions"] == 50
         assert stats["ttl_seconds"] == 120
 
-    def test_cleanup_expired(self):
+    def test_cleanup_expired(self) -> None:
         """Test cleanup_expired method."""
         store = SessionStore()
         store.get_or_create(None)
@@ -122,17 +122,17 @@ class TestSessionStore:
 class TestGlobalSessionStore:
     """Tests for global session store functions."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Reset session store before each test."""
         reset_session_store()
 
-    def test_get_session_store(self):
+    def test_get_session_store(self) -> None:
         """Test getting global session store."""
         store1 = get_session_store()
         store2 = get_session_store()
         assert store1 is store2
 
-    def test_reset_session_store(self):
+    def test_reset_session_store(self) -> None:
         """Test resetting global session store."""
         store1 = get_session_store()
         store1.get_or_create(None)

@@ -54,7 +54,7 @@ llm_requests_total = Counter(
 llm_tokens_total = Counter(
     "llm_tokens_total",
     "Total tokens used in LLM calls",
-    ["model", "type"],  # type: prompt|completion|total
+    ["model", "type"],  # values: prompt, completion, total
 )
 
 # Latency histogram
@@ -105,7 +105,7 @@ class LLMRequestLog:
     history_messages: int
     timestamp: float = 0.0
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.timestamp == 0.0:
             self.timestamp = time.time()
 

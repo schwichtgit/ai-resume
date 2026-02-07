@@ -15,7 +15,7 @@ class TestTransformQueryKeywords:
     """Tests for transform_query_keywords function."""
 
     @pytest.mark.asyncio
-    async def test_returns_original_when_openrouter_not_configured(self):
+    async def test_returns_original_when_openrouter_not_configured(self) -> None:
         """Test query transformation skips when OpenRouter not configured."""
         mock_client = MagicMock()
         mock_client.is_configured = False
@@ -30,7 +30,7 @@ class TestTransformQueryKeywords:
         assert not hasattr(mock_client, "chat") or not mock_client.chat.called
 
     @pytest.mark.asyncio
-    async def test_short_query_passes_through_unchanged(self):
+    async def test_short_query_passes_through_unchanged(self) -> None:
         """Test short queries (<=3 words) pass through unchanged."""
         mock_client = MagicMock()
         mock_client.is_configured = True
@@ -51,7 +51,7 @@ class TestTransformQueryKeywords:
         assert not hasattr(mock_client, "chat") or not mock_client.chat.called
 
     @pytest.mark.asyncio
-    async def test_successful_keyword_extraction(self):
+    async def test_successful_keyword_extraction(self) -> None:
         """Test successful keyword extraction from LLM."""
         mock_client = MagicMock()
         mock_client.is_configured = True
@@ -74,7 +74,7 @@ class TestTransformQueryKeywords:
         mock_client.chat.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_keyword_deduplication_and_limiting(self):
+    async def test_keyword_deduplication_and_limiting(self) -> None:
         """Test keyword deduplication and 7-word limit."""
         mock_client = MagicMock()
         mock_client.is_configured = True
@@ -101,7 +101,7 @@ class TestTransformQueryKeywords:
         assert result == result.lower()
 
     @pytest.mark.asyncio
-    async def test_fallback_when_llm_returns_empty_keywords(self):
+    async def test_fallback_when_llm_returns_empty_keywords(self) -> None:
         """Test fallback to original query when LLM returns empty/invalid keywords."""
         mock_client = MagicMock()
         mock_client.is_configured = True
@@ -121,7 +121,7 @@ class TestTransformQueryKeywords:
         assert result == question
 
     @pytest.mark.asyncio
-    async def test_fallback_when_llm_call_fails(self):
+    async def test_fallback_when_llm_call_fails(self) -> None:
         """Test fallback to original query when LLM call raises exception."""
         mock_client = MagicMock()
         mock_client.is_configured = True
@@ -137,7 +137,7 @@ class TestTransformQueryKeywords:
         mock_client.chat.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_punctuation_removal(self):
+    async def test_punctuation_removal(self) -> None:
         """Test that punctuation is properly removed from keywords."""
         mock_client = MagicMock()
         mock_client.is_configured = True
@@ -163,7 +163,7 @@ class TestTransformQuery:
     """Tests for transform_query dispatcher function."""
 
     @pytest.mark.asyncio
-    async def test_passthrough_strategy(self):
+    async def test_passthrough_strategy(self) -> None:
         """Test passthrough strategy returns original query."""
         mock_client = MagicMock()
         mock_client.is_configured = True
@@ -176,7 +176,7 @@ class TestTransformQuery:
         assert not hasattr(mock_client, "chat") or not mock_client.chat.called
 
     @pytest.mark.asyncio
-    async def test_keywords_strategy(self):
+    async def test_keywords_strategy(self) -> None:
         """Test keywords strategy calls transform_query_keywords."""
         mock_client = MagicMock()
         mock_client.is_configured = True
@@ -199,7 +199,7 @@ class TestTransformQuery:
         mock_client.chat.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_unknown_strategy_fallback(self):
+    async def test_unknown_strategy_fallback(self) -> None:
         """Test unknown strategy falls back to passthrough."""
         mock_client = MagicMock()
         mock_client.is_configured = True
@@ -212,7 +212,7 @@ class TestTransformQuery:
         assert not hasattr(mock_client, "chat") or not mock_client.chat.called
 
     @pytest.mark.asyncio
-    async def test_default_strategy_is_keywords(self):
+    async def test_default_strategy_is_keywords(self) -> None:
         """Test that default strategy is keywords."""
         mock_client = MagicMock()
         mock_client.is_configured = True
@@ -238,7 +238,7 @@ class TestTransformQuery:
 class TestKeywordExtractionPrompt:
     """Tests for KEYWORD_EXTRACTION_PROMPT template."""
 
-    def test_prompt_template_formatting(self):
+    def test_prompt_template_formatting(self) -> None:
         """Test that prompt template can be formatted correctly."""
         question = "What is your experience with AI and ML?"
         prompt = KEYWORD_EXTRACTION_PROMPT.format(question=question)
