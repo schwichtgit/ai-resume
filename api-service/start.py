@@ -47,7 +47,7 @@ def can_bind_ipv6_dualstack(port: int) -> bool:
         return False
 
 
-def main():
+def main() -> None:
     """Start uvicorn with auto-detected or explicit bind address."""
     port = int(os.getenv("PORT", "3000"))
     bind_address = os.getenv("BIND_ADDRESS", "auto")
@@ -73,7 +73,7 @@ def main():
         print(f"Starting uvicorn with dual-stack socket [::]:{port}", file=sys.stderr)
         print("Note: Setting IPV6_V6ONLY=0 for dual-stack support", file=sys.stderr)
 
-        async def run_server():
+        async def run_server() -> None:
             # Create socket with proper options
             sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

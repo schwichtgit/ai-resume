@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     # OpenRouter configuration
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
-    llm_model: str = "nvidia/nemotron-nano-2407-instruct"
+    llm_model: str = "nvidia/nemotron-nano-9b-v2:free"
     llm_max_tokens: int = 1024
     llm_temperature: float = 0.7
 
@@ -156,7 +156,7 @@ Guidelines:
                 return None
 
             # Parse and return the profile
-            profile = json.loads(profile_json)
+            profile: dict = json.loads(profile_json)
             logger.info("Profile loaded successfully from memvid memory card")
             return profile
 
@@ -182,21 +182,23 @@ Guidelines:
 
         try:
             with open(profile_path) as f:
-                return json.load(f)
+                result: dict = json.load(f)
+                return result
         except (json.JSONDecodeError, IOError):
             return None
 
     def get_system_prompt_from_profile(self) -> str:
         """Get system prompt from profile with ground facts injection."""
         profile = self.load_profile()
-        system_prompt = profile.get("system_prompt") if profile else self.system_prompt
+        profile_prompt = profile.get("system_prompt") if profile else None
+        system_prompt: str = str(profile_prompt) if profile_prompt else self.system_prompt
 
         # Inject ground facts to prevent hallucination
         if profile:
             # Add ground facts preamble if not already present
             if "GROUND FACTS" not in system_prompt:
-                candidate_name = profile.get("name", "this candidate")
-                title = profile.get("title", "")
+                candidate_name = str(profile.get("name", "this candidate"))
+                title = str(profile.get("title", ""))
 
                 # Build ground facts list
                 facts = [f"This resume is about: {candidate_name}"]

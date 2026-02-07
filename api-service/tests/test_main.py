@@ -1,7 +1,10 @@
 """Tests for FastAPI main application."""
 
 import pytest
+from collections.abc import AsyncIterator, Generator
+from typing import Any
 from unittest.mock import AsyncMock, patch
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -57,7 +60,7 @@ MOCK_PROFILE = {
 
 
 @pytest.fixture
-def mock_memvid_ask():
+def mock_memvid_ask() -> Generator[AsyncMock, None, None]:
     """Mock memvid client ask method."""
     with patch("app.main.get_memvid_client") as mock_get_client:
         mock_client = AsyncMock()
@@ -86,7 +89,7 @@ def mock_memvid_ask():
 
 
 @pytest.fixture
-def mock_openrouter():
+def mock_openrouter() -> Generator[AsyncMock, None, None]:
     """Mock OpenRouter client."""
     from ai_resume_api.openrouter_client import LLMResponse
 
@@ -100,7 +103,7 @@ def mock_openrouter():
         )
 
         # Mock streaming
-        async def mock_chat_stream(*args, **kwargs):
+        async def mock_chat_stream(*args: Any, **kwargs: Any) -> AsyncIterator[Any]:
             chunks = ["This ", "is ", "a ", "test ", "response."]
             for i, chunk_text in enumerate(chunks):
                 chunk = LLMResponse(
@@ -116,7 +119,7 @@ def mock_openrouter():
 
 
 @pytest.fixture
-def mock_profile_loading():
+def mock_profile_loading() -> Generator[AsyncMock, None, None]:
     """Mock profile loading from memvid."""
     with patch("app.config.get_settings") as mock_get_settings:
         mock_settings = AsyncMock()
@@ -133,7 +136,9 @@ def mock_profile_loading():
 
 
 @pytest.fixture
-def client(mock_profile_loading, mock_memvid_ask, mock_openrouter):
+def client(
+    mock_profile_loading: Any, mock_memvid_ask: Any, mock_openrouter: Any
+) -> Generator[TestClient, None, None]:
     """Create test client with mocked dependencies."""
     reset_session_store()
     with TestClient(app) as client:
@@ -144,7 +149,7 @@ def client(mock_profile_loading, mock_memvid_ask, mock_openrouter):
 class TestHealthEndpoint:
     """Tests for health check endpoint."""
 
-    def test_health_check(self, client):
+    def test_health_check(self, client: TestClient) -> None:
         """Test basic health check."""
         response = client.get("/health")
         assert response.status_code == 200
@@ -155,7 +160,7 @@ class TestHealthEndpoint:
         assert "active_sessions" in data
         assert data["status"] in ["healthy", "degraded", "unhealthy"]
 
-    def test_health_check_v1(self, client):
+    def test_health_check_v1(self, client: TestClient) -> None:
         """Test v1 health endpoint."""
         response = client.get("/api/v1/health")
         assert response.status_code == 200
@@ -167,7 +172,7 @@ class TestHealthEndpoint:
 class TestSuggestedQuestionsEndpoint:
     """Tests for suggested questions endpoint."""
 
-    def test_get_suggested_questions(self, client):
+    def test_get_suggested_questions(self, client: TestClient) -> None:
         """Test getting suggested questions."""
         response = client.get("/api/v1/suggested-questions")
         assert response.status_code == 200
@@ -184,7 +189,7 @@ class TestSuggestedQuestionsEndpoint:
 class TestChatEndpoint:
     """Tests for chat endpoint."""
 
-    def test_chat_non_streaming(self, client):
+    def test_chat_non_streaming(self, client: TestClient) -> None:
         """Test non-streaming chat request."""
         response = client.post(
             "/api/v1/chat",
@@ -200,7 +205,7 @@ class TestChatEndpoint:
         assert "message" in data
         assert "chunks_retrieved" in data
 
-    def test_chat_creates_session(self, client):
+    def test_chat_creates_session(self, client: TestClient) -> None:
         """Test that chat creates a session."""
         response = client.post(
             "/api/v1/chat",
@@ -220,7 +225,7 @@ class TestChatEndpoint:
         assert response2.status_code == 200
         assert response2.json()["session_id"] == session_id
 
-    def test_chat_streaming(self, client):
+    def test_chat_streaming(self, client: TestClient) -> None:
         """Test streaming chat request."""
         response = client.post(
             "/api/v1/chat",
@@ -236,7 +241,7 @@ class TestChatEndpoint:
         content = response.text
         assert "data:" in content
 
-    def test_chat_validation_empty_message(self, client):
+    def test_chat_validation_empty_message(self, client: TestClient) -> None:
         """Test that empty message fails validation."""
         response = client.post(
             "/api/v1/chat",
@@ -248,7 +253,7 @@ class TestChatEndpoint:
 class TestMetricsEndpoint:
     """Tests for Prometheus metrics endpoint."""
 
-    def test_metrics_endpoint(self, client):
+    def test_metrics_endpoint(self, client: TestClient) -> None:
         """Test that metrics endpoint exists."""
         response = client.get("/metrics")
         assert response.status_code == 200
@@ -259,7 +264,7 @@ class TestMetricsEndpoint:
 class TestCORS:
     """Tests for CORS configuration."""
 
-    def test_cors_headers(self, client):
+    def test_cors_headers(self, client: TestClient) -> None:
         """Test that CORS headers are present."""
         response = client.options(
             "/api/v1/chat",
@@ -275,7 +280,7 @@ class TestCORS:
 class TestMockResponses:
     """Tests for mock response generation."""
 
-    def test_mock_response_with_context(self, client):
+    def test_mock_response_with_context(self, client: TestClient) -> None:
         """Test mock response includes context."""
         response = client.post(
             "/api/v1/chat",
@@ -286,7 +291,7 @@ class TestMockResponses:
         # Mock response should reference context
         assert "message" in data
 
-    def test_multiple_chat_requests(self, client):
+    def test_multiple_chat_requests(self, client: TestClient) -> None:
         """Test multiple chat requests in sequence."""
         # First request creates session
         r1 = client.post(
@@ -314,7 +319,7 @@ class TestMockResponses:
 class TestMockStreamingResponse:
     """Tests for mock streaming response generation."""
 
-    def test_mock_stream_contains_retrieval_event(self, client):
+    def test_mock_stream_contains_retrieval_event(self, client: TestClient) -> None:
         """Test that mock stream starts with retrieval event."""
         response = client.post(
             "/api/v1/chat",
@@ -325,7 +330,7 @@ class TestMockStreamingResponse:
         # Should have retrieval event
         assert '"type":"retrieval"' in content or '"type": "retrieval"' in content
 
-    def test_mock_stream_contains_done_event(self, client):
+    def test_mock_stream_contains_done_event(self, client: TestClient) -> None:
         """Test that mock stream ends with end event."""
         response = client.post(
             "/api/v1/chat",
@@ -336,7 +341,7 @@ class TestMockStreamingResponse:
         # Should have end event with [DONE]
         assert "event: end" in content and "[DONE]" in content
 
-    def test_mock_stream_contains_metadata(self, client):
+    def test_mock_stream_contains_metadata(self, client: TestClient) -> None:
         """Test that mock stream contains stats event."""
         response = client.post(
             "/api/v1/chat",
@@ -353,7 +358,7 @@ class TestMockStreamingResponse:
 class TestGenerateMockResponse:
     """Tests for _generate_mock_response function."""
 
-    def test_mock_response_empty_context(self, client, mock_memvid_ask):
+    def test_mock_response_empty_context(self, client: TestClient, mock_memvid_ask: Any) -> None:
         """Test mock response when context is empty."""
         # Override mock to return empty results
         mock_memvid_ask.ask.return_value = {
@@ -379,7 +384,7 @@ class TestGenerateMockResponse:
 class TestHealthDegraded:
     """Tests for degraded health status."""
 
-    def test_health_degraded_when_memvid_fails(self, client):
+    def test_health_degraded_when_memvid_fails(self, client: TestClient) -> None:
         """Test health returns degraded when memvid is unavailable."""
         from unittest.mock import patch
 
@@ -396,7 +401,7 @@ class TestHealthDegraded:
 class TestChatErrorHandling:
     """Tests for chat endpoint error handling."""
 
-    def test_chat_handles_memvid_search_failure(self):
+    def test_chat_handles_memvid_search_failure(self) -> None:
         """Test chat handles memvid search errors gracefully."""
         from ai_resume_api.memvid_client import MemvidSearchError
 
@@ -437,7 +442,7 @@ class TestChatErrorHandling:
 class TestLifespanErrorHandling:
     """Tests for lifespan startup error handling."""
 
-    def test_lifespan_continues_when_memvid_init_fails(self):
+    def test_lifespan_continues_when_memvid_init_fails(self) -> None:
         """Test that app starts even if memvid initialization fails."""
         from unittest.mock import AsyncMock, patch
 
@@ -469,7 +474,7 @@ class TestLifespanErrorHandling:
 
         reset_session_store()
 
-    def test_lifespan_continues_when_openrouter_init_fails(self):
+    def test_lifespan_continues_when_openrouter_init_fails(self) -> None:
         """Test that app starts even if OpenRouter initialization fails."""
         from unittest.mock import AsyncMock, patch
 
@@ -505,7 +510,7 @@ class TestLifespanErrorHandling:
 class TestChatEndpointEdgeCases:
     """Tests for chat endpoint edge cases."""
 
-    def test_chat_with_profile_loading_fallback(self):
+    def test_chat_with_profile_loading_fallback(self) -> None:
         """Test chat when memvid profile loading fails, falls back to profile.json."""
         from unittest.mock import AsyncMock, patch
         from ai_resume_api.openrouter_client import LLMResponse
@@ -561,7 +566,7 @@ class TestChatEndpointEdgeCases:
 
         reset_session_store()
 
-    def test_guardrail_blocking_with_streaming(self):
+    def test_guardrail_blocking_with_streaming(self) -> None:
         """Test that guardrail blocks unsafe input with streaming enabled."""
         from unittest.mock import AsyncMock, patch
 
@@ -606,7 +611,7 @@ class TestChatEndpointEdgeCases:
 
         reset_session_store()
 
-    def test_memvid_connection_error_returns_503(self):
+    def test_memvid_connection_error_returns_503(self) -> None:
         """Test that memvid connection errors return 503."""
         from ai_resume_api.memvid_client import MemvidConnectionError
 
@@ -644,7 +649,7 @@ class TestChatEndpointEdgeCases:
 
         reset_session_store()
 
-    def test_memvid_search_error_returns_502(self):
+    def test_memvid_search_error_returns_502(self) -> None:
         """Test that memvid search errors return 502."""
         from ai_resume_api.memvid_client import MemvidSearchError, reset_memvid_client
         from ai_resume_api.openrouter_client import reset_openrouter_client
@@ -683,7 +688,7 @@ class TestChatEndpointEdgeCases:
 
         reset_session_store()
 
-    def test_openrouter_auth_error_non_streaming(self):
+    def test_openrouter_auth_error_non_streaming(self) -> None:
         """Test OpenRouter auth error in non-streaming mode."""
         from ai_resume_api.openrouter_client import OpenRouterAuthError, reset_openrouter_client
         from ai_resume_api.memvid_client import reset_memvid_client
@@ -738,7 +743,7 @@ class TestChatEndpointEdgeCases:
 class TestStreamingErrorHandling:
     """Tests for streaming chat error handling."""
 
-    def test_streaming_with_openrouter_auth_error(self):
+    def test_streaming_with_openrouter_auth_error(self) -> None:
         """Test streaming chat handles OpenRouter auth errors."""
         from ai_resume_api.openrouter_client import OpenRouterAuthError, reset_openrouter_client
         from ai_resume_api.memvid_client import reset_memvid_client
@@ -776,7 +781,7 @@ class TestStreamingErrorHandling:
             mock_get_memvid.return_value = mock_memvid
 
             # OpenRouter raises auth error in streaming
-            async def mock_chat_stream_error(*args, **kwargs):
+            async def mock_chat_stream_error(*args: Any, **kwargs: Any) -> AsyncIterator[Any]:
                 raise OpenRouterAuthError("Invalid API key")
                 yield  # Make it a generator
 
@@ -796,7 +801,7 @@ class TestStreamingErrorHandling:
 
         reset_session_store()
 
-    def test_streaming_with_generic_openrouter_error(self):
+    def test_streaming_with_generic_openrouter_error(self) -> None:
         """Test streaming chat handles generic OpenRouter errors."""
         from ai_resume_api.openrouter_client import OpenRouterError, reset_openrouter_client
         from ai_resume_api.memvid_client import reset_memvid_client
@@ -834,7 +839,7 @@ class TestStreamingErrorHandling:
             mock_get_memvid.return_value = mock_memvid
 
             # OpenRouter raises generic error in streaming
-            async def mock_chat_stream_error(*args, **kwargs):
+            async def mock_chat_stream_error(*args: Any, **kwargs: Any) -> AsyncIterator[Any]:
                 raise OpenRouterError("Service unavailable")
                 yield  # Make it a generator
 
@@ -854,7 +859,7 @@ class TestStreamingErrorHandling:
 
         reset_session_store()
 
-    def test_streaming_with_client_cancellation(self):
+    def test_streaming_with_client_cancellation(self) -> None:
         """Test streaming handles CancelledError (client disconnects)."""
         from asyncio import CancelledError
 
@@ -891,7 +896,7 @@ class TestStreamingErrorHandling:
             mock_get_memvid.return_value = mock_memvid
 
             # OpenRouter raises CancelledError in streaming
-            async def mock_chat_stream_cancelled(*args, **kwargs):
+            async def mock_chat_stream_cancelled(*args: Any, **kwargs: Any) -> AsyncIterator[Any]:
                 raise CancelledError()
                 yield  # Unreachable but makes this an async generator
 
@@ -914,13 +919,13 @@ class TestStreamingErrorHandling:
 class TestMockResponseHelpers:
     """Tests for mock response helper functions."""
 
-    def test_mock_stream_response_generator(self):
+    def test_mock_stream_response_generator(self) -> None:
         """Test _mock_stream_response generates proper SSE events."""
         import asyncio
         from app.main import _mock_stream_response
 
-        async def run_test():
-            events = []
+        async def run_test() -> list[str]:
+            events: list[str] = []
             async for event in _mock_stream_response("Hello world test", chunks_retrieved=5):
                 events.append(event)
             return events
@@ -945,7 +950,7 @@ class TestMockResponseHelpers:
         # Last event should be end with [DONE]
         assert "[DONE]" in events[-1]
 
-    def test_generate_mock_response_with_context(self):
+    def test_generate_mock_response_with_context(self) -> None:
         """Test _generate_mock_response with context."""
         from app.main import _generate_mock_response
 
@@ -957,7 +962,7 @@ class TestMockResponseHelpers:
         assert len(response) > 0
         assert "context" in response.lower() or "resume" in response.lower()
 
-    def test_generate_mock_response_without_context(self):
+    def test_generate_mock_response_without_context(self) -> None:
         """Test _generate_mock_response without context."""
         from app.main import _generate_mock_response
 
@@ -970,7 +975,7 @@ class TestMockResponseHelpers:
 class TestProfileEndpointErrors:
     """Tests for profile endpoint error handling."""
 
-    def test_get_profile_returns_404_when_not_found(self):
+    def test_get_profile_returns_404_when_not_found(self) -> None:
         """Test get_profile returns 404 when profile data not found."""
         reset_session_store()
 
@@ -986,7 +991,7 @@ class TestProfileEndpointErrors:
 
         reset_session_store()
 
-    def test_get_profile_handles_parsing_errors(self):
+    def test_get_profile_handles_parsing_errors(self) -> None:
         """Test get_profile handles malformed profile data."""
         reset_session_store()
 
@@ -1013,7 +1018,7 @@ class TestProfileEndpointErrors:
 
         reset_session_store()
 
-    def test_suggested_questions_returns_404_when_not_found(self):
+    def test_suggested_questions_returns_404_when_not_found(self) -> None:
         """Test suggested_questions returns 404 when profile not found."""
         reset_session_store()
 
@@ -1033,7 +1038,7 @@ class TestProfileEndpointErrors:
 class TestAssessFitErrorHandling:
     """Tests for assess-fit endpoint error handling."""
 
-    def test_assess_fit_memvid_connection_error_503(self):
+    def test_assess_fit_memvid_connection_error_503(self) -> None:
         """Test assess_fit returns 503 on memvid connection error."""
         from ai_resume_api.memvid_client import MemvidConnectionError, reset_memvid_client
         from ai_resume_api.openrouter_client import reset_openrouter_client
@@ -1072,7 +1077,7 @@ class TestAssessFitErrorHandling:
 
         reset_session_store()
 
-    def test_assess_fit_memvid_search_error_502(self):
+    def test_assess_fit_memvid_search_error_502(self) -> None:
         """Test assess_fit returns 502 on memvid search error."""
         from ai_resume_api.memvid_client import MemvidSearchError, reset_memvid_client
         from ai_resume_api.openrouter_client import reset_openrouter_client
@@ -1111,7 +1116,7 @@ class TestAssessFitErrorHandling:
 
         reset_session_store()
 
-    def test_assess_fit_response_parsing_fallbacks(self):
+    def test_assess_fit_response_parsing_fallbacks(self) -> None:
         """Test assess_fit parsing fallbacks for malformed LLM responses."""
         from ai_resume_api.openrouter_client import LLMResponse
 
@@ -1171,7 +1176,7 @@ class TestAssessFitErrorHandling:
 
         reset_session_store()
 
-    def test_assess_fit_openrouter_auth_error(self):
+    def test_assess_fit_openrouter_auth_error(self) -> None:
         """Test assess_fit handles OpenRouter auth errors."""
         from ai_resume_api.openrouter_client import OpenRouterAuthError, reset_openrouter_client
         from ai_resume_api.memvid_client import reset_memvid_client
@@ -1221,7 +1226,7 @@ class TestAssessFitErrorHandling:
 
         reset_session_store()
 
-    def test_assess_fit_openrouter_generic_error(self):
+    def test_assess_fit_openrouter_generic_error(self) -> None:
         """Test assess_fit handles generic OpenRouter errors."""
         from ai_resume_api.openrouter_client import OpenRouterError, reset_openrouter_client
         from ai_resume_api.memvid_client import reset_memvid_client
@@ -1275,7 +1280,7 @@ class TestAssessFitErrorHandling:
 class TestAssessFitEndpoint:
     """Tests for fit assessment endpoint."""
 
-    def test_assess_fit_success(self, client):
+    def test_assess_fit_success(self, client: TestClient) -> None:
         """Test successful fit assessment."""
         from unittest.mock import AsyncMock, patch
         from ai_resume_api.openrouter_client import LLMResponse
@@ -1344,7 +1349,7 @@ RECOMMENDATION: Excellent fit for this VP Platform Engineering role. The candida
             assert isinstance(data["gaps"], list)
             assert len(data["recommendation"]) > 0
 
-    def test_assess_fit_validation_too_short(self, client):
+    def test_assess_fit_validation_too_short(self, client: TestClient) -> None:
         """Test that job description must be at least 50 characters."""
         response = client.post(
             "/api/v1/assess-fit",
@@ -1352,7 +1357,7 @@ RECOMMENDATION: Excellent fit for this VP Platform Engineering role. The candida
         )
         assert response.status_code == 422  # Validation error
 
-    def test_assess_fit_validation_missing_field(self, client):
+    def test_assess_fit_validation_missing_field(self, client: TestClient) -> None:
         """Test that job_description field is required."""
         response = client.post(
             "/api/v1/assess-fit",
@@ -1363,7 +1368,7 @@ RECOMMENDATION: Excellent fit for this VP Platform Engineering role. The candida
     # TODO: Add test for API key not configured once exception handling is implemented
     # def test_assess_fit_no_api_key(self, client):
 
-    def test_assess_fit_memvid_unavailable(self):
+    def test_assess_fit_memvid_unavailable(self) -> None:
         """Test handling when memvid is unavailable."""
         from ai_resume_api.memvid_client import MemvidConnectionError
 
@@ -1404,7 +1409,7 @@ RECOMMENDATION: Excellent fit for this VP Platform Engineering role. The candida
     # TODO: Add test for LLM timeout once exception handling is implemented
     # def test_assess_fit_llm_timeout(self, client):
 
-    def test_assess_fit_malformed_llm_response(self, client):
+    def test_assess_fit_malformed_llm_response(self, client: TestClient) -> None:
         """Test handling when LLM returns malformed response."""
         from unittest.mock import AsyncMock, patch
         from ai_resume_api.openrouter_client import LLMResponse
@@ -1450,7 +1455,7 @@ RECOMMENDATION: Excellent fit for this VP Platform Engineering role. The candida
             assert "gaps" in data
             assert "recommendation" in data
 
-    def test_assess_fit_empty_context(self, client):
+    def test_assess_fit_empty_context(self, client: TestClient) -> None:
         """Test fit assessment when memvid returns no context."""
         from ai_resume_api.openrouter_client import LLMResponse
 

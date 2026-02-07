@@ -1,5 +1,10 @@
 """Tests for memvid gRPC client - gRPC-specific functionality."""
 
+from collections.abc import Callable
+from typing import Any
+
+from ai_resume_api.config import Settings
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -10,21 +15,21 @@ from ai_resume_api.memvid_client import (
 )
 
 
-def create_mock_rpc_error(message: str):
+def create_mock_rpc_error(message: str) -> Exception:
     """Create a mock gRPC RpcError with a message."""
     import grpc
 
-    class MockRpcError(grpc.RpcError):
-        def __init__(self, msg):
+    class MockRpcError(grpc.RpcError):  # type: ignore[misc]
+        def __init__(self, msg: str) -> None:
             self._msg = msg
 
-        def __str__(self):
+        def __str__(self) -> str:
             return self._msg
 
     return MockRpcError(message)
 
 
-def require_proto():
+def require_proto() -> Any:
     """Helper to skip tests if proto not available and import it."""
     try:
         from ai_resume_api.proto.memvid.v1 import memvid_pb2
@@ -34,7 +39,7 @@ def require_proto():
         pytest.skip("gRPC proto not available")
 
 
-def patch_grpc_available(memvid_pb2_module):
+def patch_grpc_available(memvid_pb2_module: Any) -> Any:
     """Context manager to patch GRPC_AVAILABLE and memvid_pb2."""
     return patch.multiple(
         "ai_resume_api.memvid_client",
@@ -47,8 +52,9 @@ class TestMemvidClientGrpcConnection:
     """Tests for gRPC connection handling."""
 
     @pytest.mark.asyncio
-    async def test_connect_grpc_failure(self):
+    async def test_connect_grpc_failure(self, mock_settings: Callable[..., Settings]) -> None:
         """Test connection failure when gRPC is unavailable."""
+        mock_settings(mock_memvid_client="false")
         memvid_pb2 = require_proto()
         client = MemvidClient(grpc_url="invalid-host:99999")
 
@@ -63,7 +69,7 @@ class TestMemvidClientGrpcConnection:
                     assert "Failed to connect" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_connect_grpc_not_available(self):
+    async def test_connect_grpc_not_available(self) -> None:
         """Test connect when gRPC protobuf not available."""
         client = MemvidClient(grpc_url="localhost:50051")
 
@@ -74,7 +80,7 @@ class TestMemvidClientGrpcConnection:
             assert client._memvid_stub is None
 
     @pytest.mark.asyncio
-    async def test_close_with_active_channel(self):
+    async def test_close_with_active_channel(self) -> None:
         """Test closing client with active gRPC channel."""
         client = MemvidClient(grpc_url="localhost:50051")
 
@@ -96,7 +102,7 @@ class TestMemvidClientGrpcSearch:
     """Tests for gRPC search functionality."""
 
     @pytest.mark.asyncio
-    async def test_search_grpc_error(self, mock_settings):
+    async def test_search_grpc_error(self, mock_settings: Callable[..., Settings]) -> None:
         """Test search handles gRPC RPC errors."""
         memvid_pb2 = require_proto()
         mock_settings(mock_memvid_client="false")
@@ -114,7 +120,9 @@ class TestMemvidClientGrpcSearch:
                 assert "Search failed" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_search_without_connection_mock_disabled(self, mock_settings):
+    async def test_search_without_connection_mock_disabled(
+        self, mock_settings: Callable[..., Settings]
+    ) -> None:
         """Test search fails when mock disabled and not connected."""
         mock_settings(mock_memvid_client="false")
         client = MemvidClient(grpc_url="localhost:50051")
@@ -126,7 +134,7 @@ class TestMemvidClientGrpcSearch:
             assert "gRPC connection unavailable" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_search_tag_filtering(self):
+    async def test_search_tag_filtering(self) -> None:
         """Test client-side tag filtering."""
         client = MemvidClient(grpc_url="localhost:50051")
 
@@ -144,7 +152,7 @@ class TestMemvidClientGrpcSearch:
             assert "programming" in hit.tags
 
     @pytest.mark.asyncio
-    async def test_search_tag_filtering_no_matches(self):
+    async def test_search_tag_filtering_no_matches(self) -> None:
         """Test tag filtering when no hits match."""
         client = MemvidClient(grpc_url="localhost:50051")
 
@@ -160,7 +168,7 @@ class TestMemvidClientGrpcSearch:
         assert response.total_hits == 0
 
     @pytest.mark.asyncio
-    async def test_search_with_grpc_stub_connected(self):
+    async def test_search_with_grpc_stub_connected(self) -> None:
         """Test search with gRPC stub properly connected."""
         memvid_pb2 = require_proto()
 
@@ -195,7 +203,7 @@ class TestMemvidClientAsk:
     """Tests for Ask mode functionality."""
 
     @pytest.mark.asyncio
-    async def test_ask_mode_mapping(self):
+    async def test_ask_mode_mapping(self) -> None:
         """Test mode string mapping to proto enums."""
         memvid_pb2 = require_proto()
         client = MemvidClient(grpc_url="localhost:50051")
@@ -232,7 +240,7 @@ class TestMemvidClientAsk:
                 assert call_args.mode == memvid_pb2.ASK_MODE_LEX
 
     @pytest.mark.asyncio
-    async def test_ask_with_optional_params(self):
+    async def test_ask_with_optional_params(self) -> None:
         """Test ask with all optional parameters."""
         memvid_pb2 = require_proto()
         client = MemvidClient(grpc_url="localhost:50051")
@@ -290,7 +298,9 @@ class TestMemvidClientAsk:
                 assert "stats" in result
 
     @pytest.mark.asyncio
-    async def test_ask_without_connection_mock_disabled(self, mock_settings):
+    async def test_ask_without_connection_mock_disabled(
+        self, mock_settings: Callable[..., Settings]
+    ) -> None:
         """Test ask fails when mock disabled and not connected."""
         mock_settings(mock_memvid_client="false")
         client = MemvidClient(grpc_url="localhost:50051")
@@ -301,7 +311,7 @@ class TestMemvidClientAsk:
             assert "MOCK_MEMVID_CLIENT=false" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_ask_grpc_error(self, mock_settings):
+    async def test_ask_grpc_error(self, mock_settings: Callable[..., Settings]) -> None:
         """Test ask handles gRPC RPC errors."""
         memvid_pb2 = require_proto()
 
@@ -319,7 +329,7 @@ class TestMemvidClientAsk:
                 assert "Ask failed" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_mock_ask_mode_parameter(self):
+    async def test_mock_ask_mode_parameter(self) -> None:
         """Test that mock ask accepts mode parameter."""
         client = MemvidClient(grpc_url="localhost:50051")
 
@@ -342,7 +352,7 @@ class TestMemvidClientHealthCheck:
     """Tests for health check functionality."""
 
     @pytest.mark.asyncio
-    async def test_health_check_grpc_error(self):
+    async def test_health_check_grpc_error(self) -> None:
         """Test health check handles gRPC errors gracefully."""
         memvid_pb2 = require_proto()
 
@@ -362,7 +372,9 @@ class TestMemvidClientHealthCheck:
                 assert response.memvid_file == ""
 
     @pytest.mark.asyncio
-    async def test_health_check_without_connection_mock_disabled(self, mock_settings):
+    async def test_health_check_without_connection_mock_disabled(
+        self, mock_settings: Callable[..., Settings]
+    ) -> None:
         """Test health check fails when mock disabled and not connected."""
         mock_settings(mock_memvid_client="false")
         client = MemvidClient(grpc_url="localhost:50051")
@@ -373,7 +385,7 @@ class TestMemvidClientHealthCheck:
             assert "MOCK_MEMVID_CLIENT=false" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_health_check_status_mapping(self):
+    async def test_health_check_status_mapping(self) -> None:
         """Test health check status code mapping."""
         memvid_pb2 = require_proto()
         client = MemvidClient(grpc_url="localhost:50051")
@@ -405,7 +417,7 @@ class TestMemvidClientGetState:
     """Tests for GetState functionality."""
 
     @pytest.mark.asyncio
-    async def test_get_state_grpc_error(self):
+    async def test_get_state_grpc_error(self) -> None:
         """Test get_state handles gRPC errors."""
         memvid_pb2 = require_proto()
 
@@ -423,7 +435,7 @@ class TestMemvidClientGetState:
                 assert result is None
 
     @pytest.mark.asyncio
-    async def test_get_state_not_found(self):
+    async def test_get_state_not_found(self) -> None:
         """Test get_state when entity not found."""
         memvid_pb2 = require_proto()
         client = MemvidClient(grpc_url="localhost:50051")
@@ -441,7 +453,9 @@ class TestMemvidClientGetState:
                 assert result is None
 
     @pytest.mark.asyncio
-    async def test_get_state_without_connection_mock_disabled(self, mock_settings):
+    async def test_get_state_without_connection_mock_disabled(
+        self, mock_settings: Callable[..., Settings]
+    ) -> None:
         """Test get_state fails when mock disabled and not connected."""
         mock_settings(mock_memvid_client="false")
         client = MemvidClient(grpc_url="localhost:50051")
@@ -452,7 +466,7 @@ class TestMemvidClientGetState:
             assert "MOCK_MEMVID_CLIENT=false" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_get_state_with_slot(self):
+    async def test_get_state_with_slot(self) -> None:
         """Test get_state with specific slot parameter."""
         memvid_pb2 = require_proto()
         client = MemvidClient(grpc_url="localhost:50051")
@@ -480,7 +494,7 @@ class TestMemvidClientGetState:
                 assert call_args.slot == "data"
 
     @pytest.mark.asyncio
-    async def test_mock_get_state_profile(self):
+    async def test_mock_get_state_profile(self) -> None:
         """Test mock get_state returns profile data."""
         client = MemvidClient(grpc_url="localhost:50051")
 
@@ -500,7 +514,7 @@ class TestMemvidClientGetState:
         assert "experience" in profile_data
 
     @pytest.mark.asyncio
-    async def test_mock_get_state_non_profile(self):
+    async def test_mock_get_state_non_profile(self) -> None:
         """Test mock get_state returns None for non-profile entities."""
         client = MemvidClient(grpc_url="localhost:50051")
 
@@ -512,7 +526,7 @@ class TestMemvidClientMetrics:
     """Tests for metrics and observability."""
 
     @pytest.mark.asyncio
-    async def test_search_records_latency_metric(self):
+    async def test_search_records_latency_metric(self) -> None:
         """Test that search records latency metrics."""
         memvid_pb2 = require_proto()
 
@@ -541,7 +555,9 @@ class TestMemvidClientMetrics:
                     assert mock_histogram.observe.called
 
     @pytest.mark.asyncio
-    async def test_search_error_records_latency_metric(self, mock_settings):
+    async def test_search_error_records_latency_metric(
+        self, mock_settings: Callable[..., Settings]
+    ) -> None:
         """Test that failed search still records latency."""
         memvid_pb2 = require_proto()
 

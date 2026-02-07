@@ -110,10 +110,10 @@ jobs:
           uv run ruff format --check .
 
       - name: Type check with mypy
-        run: uv run mypy . --ignore-missing-imports || true
+        run: uv run mypy .
 
       - name: Test with pytest
-        run: uv run pytest -v --tb=short || true
+        run: uv run pytest -v --tb=short
 
   # Ingest: Python data pipeline
   ingest:

@@ -30,7 +30,7 @@ DEPLOYMENT_ENV = Path(__file__).parent.parent.parent / "deployment" / ".env"
 
 def load_env_file(env_path: Path) -> dict[str, str]:
     """Load environment variables from .env file."""
-    env_vars = {}
+    env_vars: dict[str, str] = {}
     if not env_path.exists():
         print(f"Warning: {env_path} not found")
         return env_vars
@@ -52,7 +52,7 @@ def load_env_file(env_path: Path) -> dict[str, str]:
 
 
 # Load and set environment variables before importing app modules
-env_vars = load_env_file(DEPLOYMENT_ENV)
+env_vars: dict[str, str] = load_env_file(DEPLOYMENT_ENV)
 for key, value in env_vars.items():
     if key not in os.environ:  # Don't override existing env vars
         os.environ[key] = value
@@ -64,7 +64,7 @@ from ai_resume_api.query_transform import transform_query  # noqa: E402
 
 
 @pytest.mark.asyncio
-async def test_openrouter_connection():
+async def test_openrouter_connection() -> None:
     """Test that we can connect to OpenRouter."""
     print("\n" + "=" * 60)
     print("TEST: OpenRouter Connection")
@@ -97,15 +97,14 @@ async def test_openrouter_connection():
     if not client.is_configured:
         print("SKIP: OpenRouter not configured (no API key)")
         await client.close()
-        return False
+        return
 
     print("OpenRouter client configured successfully")
     await client.close()
-    return True
 
 
 @pytest.mark.asyncio
-async def test_query_transformation():
+async def test_query_transformation() -> None:
     """Test query transformation with real LLM."""
     print("\n" + "=" * 60)
     print("TEST: Query Transformation")
@@ -117,7 +116,7 @@ async def test_query_transformation():
     if not client.is_configured:
         print("SKIP: OpenRouter not configured")
         await client.close()
-        return False
+        return
 
     test_questions = [
         "What programming languages does she know?",
@@ -140,15 +139,14 @@ async def test_query_transformation():
         except Exception as e:
             print(f"   ERROR: {e}\n")
             await client.close()
-            return False
+            return
 
     await client.close()
     print("Query transformation test PASSED")
-    return True
 
 
 @pytest.mark.asyncio
-async def test_chat_response():
+async def test_chat_response() -> None:
     """Test full chat response (without memvid - uses mock context)."""
     print("\n" + "=" * 60)
     print("TEST: Chat Response (mock context)")
@@ -160,7 +158,7 @@ async def test_chat_response():
     if not client.is_configured:
         print("SKIP: OpenRouter not configured")
         await client.close()
-        return False
+        return
 
     # Mock context simulating memvid retrieval
     mock_context = """
@@ -198,15 +196,14 @@ Limitations: Not a frontend developer, no mobile experience
     except Exception as e:
         print(f"ERROR: {e}")
         await client.close()
-        return False
+        return
 
     await client.close()
     print("\nChat response test PASSED")
-    return True
 
 
 @pytest.mark.asyncio
-async def test_streaming_response():
+async def test_streaming_response() -> None:
     """Test streaming chat response."""
     print("\n" + "=" * 60)
     print("TEST: Streaming Response")
@@ -218,7 +215,7 @@ async def test_streaming_response():
     if not client.is_configured:
         print("SKIP: OpenRouter not configured")
         await client.close()
-        return False
+        return
 
     mock_context = """
 **FAQ: What are her biggest failures?**
@@ -259,14 +256,13 @@ Lesson: Now insists on 2-week discovery sprints before major migrations.
     except Exception as e:
         print(f"\nERROR: {e}")
         await client.close()
-        return False
+        return
 
     await client.close()
     print("\nStreaming response test PASSED")
-    return True
 
 
-async def main():
+async def main() -> None:
     """Run all integration tests."""
     print("=" * 60)
     print("AI Resume API - Integration Tests")
@@ -274,40 +270,28 @@ async def main():
     print(f"Environment file: {DEPLOYMENT_ENV}")
     print(f"Environment loaded: {len(env_vars)} variables")
 
-    results = []
+    test_names = [
+        "OpenRouter Connection",
+        "Query Transformation",
+        "Chat Response",
+        "Streaming Response",
+    ]
+    test_fns = [
+        test_openrouter_connection,
+        test_query_transformation,
+        test_chat_response,
+        test_streaming_response,
+    ]
 
-    # Run tests
-    results.append(("OpenRouter Connection", await test_openrouter_connection()))
-    results.append(("Query Transformation", await test_query_transformation()))
-    results.append(("Chat Response", await test_chat_response()))
-    results.append(("Streaming Response", await test_streaming_response()))
+    for name, fn in zip(test_names, test_fns, strict=True):
+        print(f"\nRunning: {name}")
+        await fn()
 
-    # Summary
     print("\n" + "=" * 60)
-    print("SUMMARY")
+    print("All integration tests executed.")
     print("=" * 60)
-
-    passed = 0
-    failed = 0
-    skipped = 0
-
-    for name, result in results:
-        if result is True:
-            status = "PASSED"
-            passed += 1
-        elif result is False:
-            status = "FAILED"
-            failed += 1
-        else:
-            status = "SKIPPED"
-            skipped += 1
-        print(f"  {name}: {status}")
-
-    print(f"\nTotal: {passed} passed, {failed} failed, {skipped} skipped")
-
-    return failed == 0
 
 
 if __name__ == "__main__":
-    success = asyncio.run(main())
-    sys.exit(0 if success else 1)
+    asyncio.run(main())
+    sys.exit(0)

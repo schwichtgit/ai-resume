@@ -2,7 +2,7 @@
 
 import asyncio
 import time
-from typing import Any
+from typing import Any, cast
 
 import grpc
 import structlog
@@ -26,7 +26,9 @@ except ValueError:
     # Metric already registered (during test collection)
     from prometheus_client import REGISTRY
 
-    memvid_search_latency = REGISTRY._names_to_collectors.get("memvid_search_latency_seconds")
+    memvid_search_latency = cast(
+        Histogram, REGISTRY._names_to_collectors.get("memvid_search_latency_seconds")
+    )
 
 # Try to import generated protobuf code
 # If not available, we'll use a mock client
@@ -87,8 +89,8 @@ class MemvidClient:
 
         try:
             self._channel = grpc.aio.insecure_channel(self._grpc_url)
-            self._memvid_stub = memvid_pb2_grpc.MemvidServiceStub(self._channel)
-            self._health_stub = memvid_pb2_grpc.HealthStub(self._channel)
+            self._memvid_stub = memvid_pb2_grpc.MemvidServiceStub(self._channel)  # type: ignore[no-untyped-call]
+            self._health_stub = memvid_pb2_grpc.HealthStub(self._channel)  # type: ignore[no-untyped-call]
             logger.info("Connected to memvid service", url=self._grpc_url)
         except Exception as e:
             logger.error("Failed to connect to memvid service", error=str(e), url=self._grpc_url)
@@ -305,7 +307,7 @@ class MemvidClient:
             if adaptive is not None:
                 request_args["adaptive"] = adaptive
 
-            request = memvid_pb2.AskRequest(**request_args)
+            request = memvid_pb2.AskRequest(**request_args)  # type: ignore[arg-type]
             response = await self._memvid_stub.Ask(
                 request,
                 timeout=self._timeout,
@@ -393,8 +395,9 @@ class MemvidClient:
             )
 
             status_map = {0: "UNKNOWN", 1: "SERVING", 2: "NOT_SERVING"}
+            status_str = status_map.get(response.status, "UNKNOWN")
             return MemvidHealthResponse(
-                status=status_map.get(response.status, "UNKNOWN"),
+                status=cast(str, status_str),  # type: ignore[arg-type]
                 frame_count=response.frame_count,
                 memvid_file=response.memvid_file,
             )

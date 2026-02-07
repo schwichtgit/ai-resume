@@ -11,7 +11,7 @@ from app.config import Settings, get_settings
 class TestSettings:
     """Tests for Settings class."""
 
-    def test_default_values(self):
+    def test_default_values(self) -> None:
         """Test that default values are set correctly."""
         # Create settings with explicit defaults (ignoring env vars)
         settings = Settings(
@@ -31,7 +31,7 @@ class TestSettings:
         assert settings.log_level == "INFO"
         assert settings.environment == "development"
 
-    def test_is_development(self):
+    def test_is_development(self) -> None:
         """Test is_development property."""
         settings = Settings(environment="development")
         assert settings.is_development is True
@@ -39,23 +39,23 @@ class TestSettings:
         settings = Settings(environment="production")
         assert settings.is_development is False
 
-    def test_has_openrouter_key_valid(self):
+    def test_has_openrouter_key_valid(self) -> None:
         """Test has_openrouter_key with valid key."""
         settings = Settings(openrouter_api_key="sk-or-v1-test123")
         assert settings.has_openrouter_key is True
 
-    def test_has_openrouter_key_invalid(self):
+    def test_has_openrouter_key_invalid(self) -> None:
         """Test has_openrouter_key with invalid key."""
         settings = Settings(openrouter_api_key="invalid-key")
         assert settings.has_openrouter_key is False
 
-    def test_has_openrouter_key_empty(self):
+    def test_has_openrouter_key_empty(self) -> None:
         """Test has_openrouter_key with empty key."""
         settings = Settings(openrouter_api_key="")
         assert settings.has_openrouter_key is False
 
     @patch.dict(os.environ, {"OPENROUTER_API_KEY": "sk-or-v1-envtest"})
-    def test_load_from_env(self):
+    def test_load_from_env(self) -> None:
         """Test loading settings from environment variables."""
         # Clear the cache to force reload
         get_settings.cache_clear()
@@ -63,7 +63,7 @@ class TestSettings:
         assert settings.openrouter_api_key == "sk-or-v1-envtest"
         get_settings.cache_clear()
 
-    def test_get_settings_caching(self):
+    def test_get_settings_caching(self) -> None:
         """Test that get_settings returns cached instance."""
         get_settings.cache_clear()
         settings1 = get_settings()
@@ -72,12 +72,12 @@ class TestSettings:
         get_settings.cache_clear()
 
     @patch.dict(os.environ, {"MEMVID_GRPC_URL": "memvid-service:50051"})
-    def test_memvid_grpc_url_from_env(self):
+    def test_memvid_grpc_url_from_env(self) -> None:
         """Test memvid_grpc_url property with MEMVID_GRPC_URL env override."""
         settings = Settings()
         assert settings.memvid_grpc_url == "memvid-service:50051"
 
-    def test_memvid_grpc_url_from_host_port(self):
+    def test_memvid_grpc_url_from_host_port(self) -> None:
         """Test memvid_grpc_url constructed from host:port."""
         settings = Settings(
             memvid_grpc_host="memvid-server",
@@ -89,7 +89,7 @@ class TestSettings:
                 del os.environ["MEMVID_GRPC_URL"]
             assert settings.memvid_grpc_url == "memvid-server:9090"
 
-    def test_memvid_grpc_url_default(self):
+    def test_memvid_grpc_url_default(self) -> None:
         """Test memvid_grpc_url uses default localhost:50051."""
         settings = Settings()
         # Without env override, should use host:port from settings
@@ -99,7 +99,7 @@ class TestSettings:
             assert settings.memvid_grpc_url == "localhost:50051"
 
     @pytest.mark.asyncio
-    async def test_load_profile_from_memvid_success(self):
+    async def test_load_profile_from_memvid_success(self) -> None:
         """Test load_profile_from_memvid loads profile successfully."""
         from unittest.mock import AsyncMock, MagicMock, patch
         import json
@@ -135,7 +135,7 @@ class TestSettings:
         mock_client.get_state.assert_called_once_with("__profile__")
 
     @pytest.mark.asyncio
-    async def test_load_profile_from_memvid_not_found(self):
+    async def test_load_profile_from_memvid_not_found(self) -> None:
         """Test load_profile_from_memvid when profile not found."""
         from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -156,7 +156,7 @@ class TestSettings:
         mock_client.get_state.assert_called_once_with("__profile__")
 
     @pytest.mark.asyncio
-    async def test_load_profile_from_memvid_json_decode_error(self):
+    async def test_load_profile_from_memvid_json_decode_error(self) -> None:
         """Test load_profile_from_memvid handles JSON decode errors."""
         from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -180,7 +180,7 @@ class TestSettings:
         assert profile is None
 
     @pytest.mark.asyncio
-    async def test_load_profile_from_memvid_exception(self):
+    async def test_load_profile_from_memvid_exception(self) -> None:
         """Test load_profile_from_memvid handles exceptions gracefully."""
         from unittest.mock import AsyncMock, patch
 
@@ -196,7 +196,7 @@ class TestSettings:
         assert profile is None
 
     @pytest.mark.asyncio
-    async def test_load_profile_from_memvid_empty_data_slot(self):
+    async def test_load_profile_from_memvid_empty_data_slot(self) -> None:
         """Test load_profile_from_memvid when data slot is empty."""
         from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -219,7 +219,7 @@ class TestSettings:
 
         assert profile is None
 
-    def test_load_profile_returns_none_for_missing_file(self):
+    def test_load_profile_returns_none_for_missing_file(self) -> None:
         """Test load_profile returns None when profile.json doesn't exist."""
         settings = Settings(profile_json_path="/nonexistent/profile.json")
 
@@ -227,7 +227,7 @@ class TestSettings:
 
         assert profile is None
 
-    def test_load_profile_handles_invalid_json(self):
+    def test_load_profile_handles_invalid_json(self) -> None:
         """Test load_profile handles invalid JSON gracefully."""
         import tempfile
 
@@ -242,7 +242,7 @@ class TestSettings:
         finally:
             os.unlink(temp_path)
 
-    def test_get_system_prompt_from_profile_injects_ground_facts(self):
+    def test_get_system_prompt_from_profile_injects_ground_facts(self) -> None:
         """Test get_system_prompt_from_profile injects ground facts."""
         import tempfile
         import json
@@ -279,7 +279,7 @@ class TestSettings:
         finally:
             os.unlink(temp_path)
 
-    def test_get_system_prompt_from_profile_fallback(self):
+    def test_get_system_prompt_from_profile_fallback(self) -> None:
         """Test get_system_prompt_from_profile uses fallback when no profile."""
         settings = Settings(profile_json_path="/nonexistent/profile.json")
 
@@ -289,7 +289,7 @@ class TestSettings:
         assert system_prompt == settings.system_prompt
         assert "You are an AI assistant representing a job candidate" in system_prompt
 
-    def test_get_system_prompt_from_profile_with_existing_ground_facts(self):
+    def test_get_system_prompt_from_profile_with_existing_ground_facts(self) -> None:
         """Test get_system_prompt doesn't duplicate GROUND FACTS."""
         import tempfile
         import json

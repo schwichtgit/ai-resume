@@ -9,6 +9,7 @@ Test #5 (connection failure) uses a dead port and runs without the service.
 
 import json
 import socket
+from collections.abc import AsyncGenerator, Generator
 
 import pytest
 import pytest_asyncio
@@ -38,14 +39,14 @@ def _service_reachable(host: str = GRPC_HOST, port: int = GRPC_PORT) -> bool:
 
 
 @pytest.fixture()
-def require_memvid_service():
+def require_memvid_service() -> None:
     """Skip the test if the Rust memvid-service is not reachable."""
     if not _service_reachable():
         pytest.skip(f"memvid-service not running on {GRPC_URL}")
 
 
 @pytest.fixture()
-def grpc_env(monkeypatch):
+def grpc_env(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
     """Set MOCK_MEMVID_CLIENT=false so the client uses real gRPC."""
     monkeypatch.setenv("MOCK_MEMVID_CLIENT", "false")
     from ai_resume_api.config import get_settings
@@ -57,7 +58,9 @@ def grpc_env(monkeypatch):
 
 
 @pytest_asyncio.fixture()
-async def connected_client(grpc_env, require_memvid_service):
+async def connected_client(
+    grpc_env: None, require_memvid_service: None
+) -> AsyncGenerator[MemvidClient, None]:
     """Provide a MemvidClient that is connected to the live service."""
     client = MemvidClient(grpc_url=GRPC_URL)
     await client.connect()
@@ -72,7 +75,7 @@ async def connected_client(grpc_env, require_memvid_service):
 
 @pytest.mark.slow
 @pytest.mark.asyncio
-async def test_grpc_health_check(connected_client):
+async def test_grpc_health_check(connected_client: MemvidClient) -> None:
     """Health check returns a status field from the live service."""
     response = await connected_client.health_check()
 
@@ -85,7 +88,7 @@ async def test_grpc_health_check(connected_client):
 
 @pytest.mark.slow
 @pytest.mark.asyncio
-async def test_grpc_search(connected_client):
+async def test_grpc_search(connected_client: MemvidClient) -> None:
     """Search via gRPC returns hits with expected structure."""
     response = await connected_client.search(
         query="Python experience",
@@ -108,7 +111,7 @@ async def test_grpc_search(connected_client):
 
 @pytest.mark.slow
 @pytest.mark.asyncio
-async def test_grpc_get_state_profile(connected_client):
+async def test_grpc_get_state_profile(connected_client: MemvidClient) -> None:
     """GetState for __profile__ returns profile data with expected keys."""
     result = await connected_client.get_state(entity="__profile__")
 
@@ -126,7 +129,7 @@ async def test_grpc_get_state_profile(connected_client):
 
 @pytest.mark.slow
 @pytest.mark.asyncio
-async def test_grpc_ask(connected_client):
+async def test_grpc_ask(connected_client: MemvidClient) -> None:
     """Ask via gRPC returns an answer with evidence."""
     result = await connected_client.ask(
         question="What programming languages are you experienced with?",
@@ -159,7 +162,7 @@ async def test_grpc_ask(connected_client):
 
 
 @pytest.mark.asyncio
-async def test_grpc_connection_failure(grpc_env):
+async def test_grpc_connection_failure(grpc_env: None) -> None:
     """Dead port returns NOT_SERVING or raises MemvidConnectionError."""
     client = MemvidClient(grpc_url=f"{GRPC_HOST}:{DEAD_PORT}")
     await client.connect()

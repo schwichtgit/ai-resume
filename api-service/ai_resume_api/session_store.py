@@ -2,6 +2,7 @@
 
 import threading
 from datetime import datetime, timezone
+from typing import cast
 from uuid import UUID
 
 from cachetools import TTLCache
@@ -32,7 +33,8 @@ class SessionStore:
     def get(self, session_id: UUID) -> Session | None:
         """Get a session by ID, returning None if not found or expired."""
         with self._lock:
-            session = self._cache.get(session_id)
+            result = self._cache.get(session_id)
+            session = cast(Session, result) if result is not None else None
             if session:
                 # Update last activity timestamp
                 session.last_activity = datetime.now(timezone.utc)
