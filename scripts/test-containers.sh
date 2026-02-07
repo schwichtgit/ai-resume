@@ -17,8 +17,8 @@ log_fail() { echo -e "${RED}[FAIL]${NC} $1"; }
 
 cleanup() {
     echo "Cleaning up..."
-    podman stop test-memvid test-api 2>/dev/null || true
-    podman rm test-memvid test-api 2>/dev/null || true
+    podman stop test-memvid test-api test-frontend 2>/dev/null || true
+    podman rm test-memvid test-api test-frontend 2>/dev/null || true
     podman network rm test-net 2>/dev/null || true
 }
 
@@ -117,6 +117,52 @@ if echo "$RUST_LOGS" | grep -q "Processing search request"; then
     log_pass "Rust service processed gRPC search request"
 else
     log_fail "Rust service did not receive gRPC request"
+    FAILED=1
+fi
+
+# Start frontend container
+echo ""
+echo "Starting frontend container..."
+podman run -d --name test-frontend \
+    --network test-net \
+    -p 8081:8080 \
+    "${REGISTRY}/ai-resume-frontend:${VERSION}"
+
+sleep 3
+
+# Test 7: Frontend container running
+if podman ps --filter "name=test-frontend" --format "{{.Names}}" | grep -q test-frontend; then
+    log_pass "Frontend container running"
+else
+    log_fail "Frontend container not running"
+    podman logs test-frontend 2>&1 | tail -10
+    FAILED=1
+fi
+
+# Test 8: Frontend health endpoint
+FRONTEND_HEALTH=$(curl -s http://localhost:8081/health 2>/dev/null || echo "")
+if echo "$FRONTEND_HEALTH" | grep -qiE 'healthy|ok|200'; then
+    log_pass "Frontend health endpoint returns healthy"
+else
+    log_fail "Frontend health endpoint failed: $FRONTEND_HEALTH"
+    FAILED=1
+fi
+
+# Test 9: Frontend serves React SPA
+FRONTEND_INDEX=$(curl -s http://localhost:8081/ 2>/dev/null || echo "")
+if echo "$FRONTEND_INDEX" | grep -q 'id="root"'; then
+    log_pass "Frontend serves React SPA"
+else
+    log_fail "Frontend does not serve React SPA"
+    FAILED=1
+fi
+
+# Test 10: Frontend SPA routing
+FRONTEND_SPA=$(curl -s http://localhost:8081/some/random/path 2>/dev/null || echo "")
+if echo "$FRONTEND_SPA" | grep -q 'id="root"'; then
+    log_pass "Frontend SPA routing works (returns index.html for all routes)"
+else
+    log_fail "Frontend SPA routing broken"
     FAILED=1
 fi
 
