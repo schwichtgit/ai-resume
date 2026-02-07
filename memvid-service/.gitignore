@@ -1,6 +1,5 @@
 # Rust build artifacts
 target/
-Cargo.lock
 
 # Proto files (synced from project root at build time)
 # Authoritative source: proto/memvid/v1/memvid.proto
