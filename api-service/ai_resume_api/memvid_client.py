@@ -76,6 +76,11 @@ class MemvidClient:
 
     async def connect(self) -> None:
         """Establish connection to the memvid gRPC service."""
+        settings = get_settings()
+        if settings.mock_memvid_client:
+            logger.info("MOCK_MEMVID_CLIENT=true: Skipping gRPC connection")
+            return
+
         if not GRPC_AVAILABLE:
             logger.info("gRPC not available, using mock mode")
             return

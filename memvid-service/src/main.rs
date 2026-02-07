@@ -12,7 +12,7 @@
 
 use std::sync::Arc;
 use tonic::transport::Server;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 mod config;
@@ -168,10 +168,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
         match RealSearcher::new(&config.memvid_file_path).await {
             Ok(searcher) => {
-                info!(
-                    frame_count = searcher.frame_count(),
-                    "Real memvid searcher loaded successfully"
-                );
+                let fc = searcher.frame_count();
+                if fc == 0 {
+                    warn!(
+                        memvid_file = %config.memvid_file_path,
+                        "Memvid file loaded but contains 0 frames -- search results will be empty"
+                    );
+                }
+                info!(frame_count = fc, "Real memvid searcher loaded successfully");
                 Arc::new(searcher)
             }
             Err(e) => {

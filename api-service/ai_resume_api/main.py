@@ -172,8 +172,10 @@ async def health_check() -> HealthResponse:
         frame_count = None
 
     # Determine overall status
-    if memvid_connected:
+    if memvid_connected and frame_count and frame_count > 0:
         status = "healthy"
+    elif memvid_connected:
+        status = "degraded"  # Connected but no data (frame_count == 0)
     else:
         status = "degraded"
 
@@ -689,7 +691,16 @@ async def assess_fit(request: Request, assess_request: AssessFitRequest) -> Asse
                 "Memvid ask returned no results for fit assessment",
                 job_description_preview=assess_request.job_description[:100],
             )
-            # Continue with empty context - assessment will be limited
+            return AssessFitResponse(
+                verdict="Unable to assess - resume data unavailable",
+                key_matches=[],
+                gaps=[
+                    "Resume search returned no results. The search service may be loading or the data may be missing."
+                ],
+                recommendation="Please try again shortly. If the problem persists, the resume data may need to be reloaded.",
+                chunks_retrieved=0,
+                tokens_used=0,
+            )
 
     except MemvidConnectionError as e:
         logger.error("Memvid service unavailable for fit assessment", error=str(e))

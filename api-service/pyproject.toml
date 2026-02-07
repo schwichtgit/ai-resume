@@ -85,3 +85,6 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --cov=ai_resume_api --cov-report=term-missing"
+markers = [
+    "slow: marks tests that require external services (deselect with '-m \"not slow\"')",
+]
