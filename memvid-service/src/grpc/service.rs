@@ -138,11 +138,7 @@ impl MemvidService for MemvidGrpcService {
         };
 
         // Perform ask operation
-        let result = self
-            .searcher
-            .ask(ask_request)
-            .await
-            .map_err(Status::from)?;
+        let result = self.searcher.ask(ask_request).await.map_err(Status::from)?;
 
         // Convert to gRPC response
         let evidence: Vec<SearchHit> = result
