@@ -56,7 +56,7 @@ impl MemvidService for MemvidGrpcService {
             .searcher
             .search(&req.query, top_k, snippet_chars)
             .await
-            .map_err(|e| Status::from(e))?;
+            .map_err(Status::from)?;
 
         // Record metrics
         metrics::record_search_latency(result.took_ms as f64);
@@ -142,7 +142,7 @@ impl MemvidService for MemvidGrpcService {
             .searcher
             .ask(ask_request)
             .await
-            .map_err(|e| Status::from(e))?;
+            .map_err(Status::from)?;
 
         // Convert to gRPC response
         let evidence: Vec<SearchHit> = result
@@ -199,7 +199,7 @@ impl MemvidService for MemvidGrpcService {
             .searcher
             .get_state(&req.entity, slot)
             .await
-            .map_err(|e| Status::from(e))?;
+            .map_err(Status::from)?;
 
         // Convert to gRPC response
         let response = GetStateResponse {

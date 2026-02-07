@@ -294,8 +294,8 @@ impl Searcher for RealSearcher {
                 } else {
                     fragment
                         .uri
-                        .split('/')
-                        .last()
+                        .rsplit('/')
+                        .next()
                         .unwrap_or(&fragment.uri)
                         .to_string()
                 };
