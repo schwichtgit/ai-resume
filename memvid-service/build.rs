@@ -26,23 +26,21 @@ fn main() -> Result<()> {
         }
     };
 
-    let proto_dir = proto_dir_parent
-        .or(proto_dir_local)
-        .unwrap_or_else(|| {
-            panic!(
-                "proto directory not found. Checked:\n  {}\n  {}",
-                manifest_dir.parent().map(|p| p.join("proto").display().to_string()).unwrap_or_default(),
-                manifest_dir.join("proto").display()
-            )
-        });
+    let proto_dir = proto_dir_parent.or(proto_dir_local).unwrap_or_else(|| {
+        panic!(
+            "proto directory not found. Checked:\n  {}\n  {}",
+            manifest_dir
+                .parent()
+                .map(|p| p.join("proto").display().to_string())
+                .unwrap_or_default(),
+            manifest_dir.join("proto").display()
+        )
+    });
 
     let proto_file = proto_dir.join("memvid/v1/memvid.proto");
 
     if !proto_file.exists() {
-        panic!(
-            "Proto file not found at: {}",
-            proto_file.display()
-        );
+        panic!("Proto file not found at: {}", proto_file.display());
     }
 
     tonic_build::configure()

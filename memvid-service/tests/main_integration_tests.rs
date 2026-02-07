@@ -89,7 +89,7 @@ async fn test_config_loading_with_custom_ports() {
 async fn test_config_requires_memvid_file_without_mock() {
     let mut env = TestEnv::new();
     env.set_var("MOCK_MEMVID", "false");
-    env.set_var("MEMVID_FILE_PATH", "");  // Empty string should fail validation
+    env.set_var("MEMVID_FILE_PATH", ""); // Empty string should fail validation
 
     use ai_resume_memvid::config::Config;
 
@@ -100,7 +100,7 @@ async fn test_config_requires_memvid_file_without_mock() {
 #[tokio::test]
 async fn test_config_accepts_memvid_file_path() {
     let mut env = TestEnv::new();
-    env.remove_var("MOCK_MEMVID");  // Explicitly not in mock mode
+    env.remove_var("MOCK_MEMVID"); // Explicitly not in mock mode
     env.set_var("MEMVID_FILE_PATH", "/path/to/test.mv2");
 
     use ai_resume_memvid::config::Config;
@@ -203,8 +203,8 @@ async fn test_mock_searcher_profile_retrieval() {
 
 #[tokio::test]
 async fn test_grpc_service_creation_with_mock() {
+    use ai_resume_memvid::grpc::{HealthService, MemvidGrpcService};
     use ai_resume_memvid::memvid::{MockSearcher, Searcher};
-    use ai_resume_memvid::grpc::{MemvidGrpcService, HealthService};
     use std::sync::Arc;
 
     let searcher: Arc<dyn Searcher> = Arc::new(MockSearcher::new());
@@ -220,8 +220,8 @@ async fn test_server_startup_and_shutdown_simulation() {
     env.set_var("GRPC_PORT", "50051");
 
     use ai_resume_memvid::config::Config;
+    use ai_resume_memvid::grpc::{HealthService, MemvidGrpcService};
     use ai_resume_memvid::memvid::{MockSearcher, Searcher};
-    use ai_resume_memvid::grpc::{MemvidGrpcService, HealthService};
     use std::sync::Arc;
 
     let config = Config::from_env().expect("Config should load");
@@ -408,25 +408,23 @@ async fn test_healthcheck_with_unavailable_service() {
 
     let grpc_url = "http://127.0.0.1:65535";
 
-    let result = timeout(
-        Duration::from_secs(1),
-        async {
-            match tonic::transport::Channel::from_shared(grpc_url.to_string())
-                .unwrap()
-                .connect()
-                .await
-            {
-                Ok(ch) => {
-                    let mut client = HealthClient::new(ch);
-                    let request = tonic::Request::new(HealthCheckRequest {
-                        service: String::new(),
-                    });
-                    client.check(request).await.is_err()
-                }
-                Err(_) => true, // Connection failed as expected
+    let result = timeout(Duration::from_secs(1), async {
+        match tonic::transport::Channel::from_shared(grpc_url.to_string())
+            .unwrap()
+            .connect()
+            .await
+        {
+            Ok(ch) => {
+                let mut client = HealthClient::new(ch);
+                let request = tonic::Request::new(HealthCheckRequest {
+                    service: String::new(),
+                });
+                client.check(request).await.is_err()
             }
+            Err(_) => true, // Connection failed as expected
         }
-    ).await;
+    })
+    .await;
 
     // Either timeout or connection/check failed
     assert!(result.is_err() || result.unwrap());

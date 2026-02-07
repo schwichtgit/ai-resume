@@ -5,12 +5,10 @@ use tonic::{Request, Response, Status};
 use tracing::{info, instrument};
 
 use crate::generated::memvid::v1::{
-    health_check_response::Status as HealthStatus,
-    health_server::Health,
-    memvid_service_server::MemvidService,
-    AskMode as ProtoAskMode, AskRequest, AskResponse, AskStats, GetStateRequest,
-    GetStateResponse, HealthCheckRequest, HealthCheckResponse, SearchHit, SearchRequest,
-    SearchResponse,
+    health_check_response::Status as HealthStatus, health_server::Health,
+    memvid_service_server::MemvidService, AskMode as ProtoAskMode, AskRequest, AskResponse,
+    AskStats, GetStateRequest, GetStateResponse, HealthCheckRequest, HealthCheckResponse,
+    SearchHit, SearchRequest, SearchResponse,
 };
 use crate::memvid::{AskMode as SearcherAskMode, AskRequest as SearcherAskRequest, Searcher};
 use crate::metrics;
@@ -86,10 +84,7 @@ impl MemvidService for MemvidGrpcService {
     }
 
     #[instrument(skip(self, request), fields(question))]
-    async fn ask(
-        &self,
-        request: Request<AskRequest>,
-    ) -> Result<Response<AskResponse>, Status> {
+    async fn ask(&self, request: Request<AskRequest>) -> Result<Response<AskResponse>, Status> {
         let req = request.into_inner();
 
         // Record the question in span
@@ -275,10 +270,10 @@ mod tests {
 
         let request = Request::new(SearchRequest {
             query: "Python experience".to_string(),
-            top_k: 0,        // Should default to 5
-            snippet_chars: 0, // Should default to 200
+            top_k: 0,           // Should default to 5
+            snippet_chars: 0,   // Should default to 200
             min_relevance: 0.0, // No relevance filter
-            mode: 0,         // ASK_MODE_HYBRID (default)
+            mode: 0,            // ASK_MODE_HYBRID (default)
         });
 
         let response = service.search(request).await.unwrap();

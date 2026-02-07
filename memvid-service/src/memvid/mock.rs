@@ -4,7 +4,9 @@ use async_trait::async_trait;
 use std::time::Instant;
 use tracing::info;
 
-use super::searcher::{AskRequest, AskResponse, AskStats, SearchResponse, SearchResult, Searcher, StateResponse};
+use super::searcher::{
+    AskRequest, AskResponse, AskStats, SearchResponse, SearchResult, Searcher, StateResponse,
+};
 use crate::error::ServiceError;
 
 /// Mock searcher that returns hardcoded results for testing.
@@ -184,7 +186,9 @@ impl Searcher for MockSearcher {
 
         // Validate inputs
         if request.question.trim().is_empty() {
-            return Err(ServiceError::InvalidRequest("Question cannot be empty".into()));
+            return Err(ServiceError::InvalidRequest(
+                "Question cannot be empty".into(),
+            ));
         }
 
         let top_k = request.top_k.clamp(1, 20);
@@ -202,7 +206,10 @@ impl Searcher for MockSearcher {
             format!(
                 "Based on the resume, here's what I found about '{}': {}",
                 request.question,
-                evidence.first().map(|e| e.snippet.clone()).unwrap_or_default()
+                evidence
+                    .first()
+                    .map(|e| e.snippet.clone())
+                    .unwrap_or_default()
             )
         } else {
             // Context-only mode: concatenate evidence
@@ -347,7 +354,10 @@ mod tests {
     #[tokio::test]
     async fn test_get_state_with_specific_slot() {
         let searcher = MockSearcher::new();
-        let response = searcher.get_state("__profile__", Some("data")).await.unwrap();
+        let response = searcher
+            .get_state("__profile__", Some("data"))
+            .await
+            .unwrap();
 
         assert!(response.found);
         assert_eq!(response.slots.len(), 1);
@@ -367,7 +377,10 @@ mod tests {
     #[tokio::test]
     async fn test_get_state_invalid_slot() {
         let searcher = MockSearcher::new();
-        let response = searcher.get_state("__profile__", Some("invalid_slot")).await.unwrap();
+        let response = searcher
+            .get_state("__profile__", Some("invalid_slot"))
+            .await
+            .unwrap();
 
         assert!(response.found);
         assert!(response.slots.is_empty()); // Requested slot doesn't exist
