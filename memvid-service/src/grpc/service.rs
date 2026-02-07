@@ -5,12 +5,10 @@ use tonic::{Request, Response, Status};
 use tracing::{info, instrument};
 
 use crate::generated::memvid::v1::{
-    health_check_response::Status as HealthStatus,
-    health_server::Health,
-    memvid_service_server::MemvidService,
-    AskMode as ProtoAskMode, AskRequest, AskResponse, AskStats, GetStateRequest,
-    GetStateResponse, HealthCheckRequest, HealthCheckResponse, SearchHit, SearchRequest,
-    SearchResponse,
+    health_check_response::Status as HealthStatus, health_server::Health,
+    memvid_service_server::MemvidService, AskMode as ProtoAskMode, AskRequest, AskResponse,
+    AskStats, GetStateRequest, GetStateResponse, HealthCheckRequest, HealthCheckResponse,
+    SearchHit, SearchRequest, SearchResponse,
 };
 use crate::memvid::{AskMode as SearcherAskMode, AskRequest as SearcherAskRequest, Searcher};
 use crate::metrics;
@@ -58,7 +56,7 @@ impl MemvidService for MemvidGrpcService {
             .searcher
             .search(&req.query, top_k, snippet_chars)
             .await
-            .map_err(|e| Status::from(e))?;
+            .map_err(Status::from)?;
 
         // Record metrics
         metrics::record_search_latency(result.took_ms as f64);
@@ -86,10 +84,7 @@ impl MemvidService for MemvidGrpcService {
     }
 
     #[instrument(skip(self, request), fields(question))]
-    async fn ask(
-        &self,
-        request: Request<AskRequest>,
-    ) -> Result<Response<AskResponse>, Status> {
+    async fn ask(&self, request: Request<AskRequest>) -> Result<Response<AskResponse>, Status> {
         let req = request.into_inner();
 
         // Record the question in span
@@ -143,11 +138,7 @@ impl MemvidService for MemvidGrpcService {
         };
 
         // Perform ask operation
-        let result = self
-            .searcher
-            .ask(ask_request)
-            .await
-            .map_err(|e| Status::from(e))?;
+        let result = self.searcher.ask(ask_request).await.map_err(Status::from)?;
 
         // Convert to gRPC response
         let evidence: Vec<SearchHit> = result
@@ -204,7 +195,7 @@ impl MemvidService for MemvidGrpcService {
             .searcher
             .get_state(&req.entity, slot)
             .await
-            .map_err(|e| Status::from(e))?;
+            .map_err(Status::from)?;
 
         // Convert to gRPC response
         let response = GetStateResponse {
@@ -275,10 +266,10 @@ mod tests {
 
         let request = Request::new(SearchRequest {
             query: "Python experience".to_string(),
-            top_k: 0,        // Should default to 5
-            snippet_chars: 0, // Should default to 200
+            top_k: 0,           // Should default to 5
+            snippet_chars: 0,   // Should default to 200
             min_relevance: 0.0, // No relevance filter
-            mode: 0,         // ASK_MODE_HYBRID (default)
+            mode: 0,            // ASK_MODE_HYBRID (default)
         });
 
         let response = service.search(request).await.unwrap();

@@ -31,7 +31,9 @@ mod generated {
 }
 
 use config::Config;
-use generated::memvid::v1::{health_server::HealthServer, memvid_service_server::MemvidServiceServer};
+use generated::memvid::v1::{
+    health_server::HealthServer, memvid_service_server::MemvidServiceServer,
+};
 use grpc::{HealthService, MemvidGrpcService};
 use memvid::{MockSearcher, RealSearcher, Searcher};
 
@@ -63,8 +65,8 @@ async fn run_healthcheck() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         // Try both IPv6 and IPv4 for dual-stack support
         let urls = vec![
-            "http://[::1]:50051",      // IPv6 localhost
-            "http://127.0.0.1:50051",  // IPv4 localhost
+            "http://[::1]:50051",     // IPv6 localhost
+            "http://127.0.0.1:50051", // IPv4 localhost
         ];
 
         for grpc_url in urls {
@@ -125,7 +127,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Check if running in healthcheck mode
     let program_name = std::env::args()
         .next()
-        .and_then(|path| std::path::Path::new(&path).file_name().map(|n| n.to_string_lossy().to_string()))
+        .and_then(|path| {
+            std::path::Path::new(&path)
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+        })
         .unwrap_or_default();
 
     if program_name == "healthcheck" {
@@ -215,7 +221,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         // Explicit bind address provided
         // Add brackets if it's an IPv6 address without them
-        let bind_str = if config.bind_address.contains(':') && !config.bind_address.starts_with('[') {
+        let bind_str = if config.bind_address.contains(':') && !config.bind_address.starts_with('[')
+        {
             format!("[{}]:{}", config.bind_address, config.grpc_port)
         } else {
             format!("{}:{}", config.bind_address, config.grpc_port)

@@ -12,7 +12,10 @@ use tokio::sync::RwLock;
 use tracing::{error, info};
 
 use crate::error::ServiceError;
-use crate::memvid::searcher::{AskMode, AskRequest, AskResponse, AskStats, SearchResponse, SearchResult, Searcher, StateResponse};
+use crate::memvid::searcher::{
+    AskMode, AskRequest, AskResponse, AskStats, SearchResponse, SearchResult, Searcher,
+    StateResponse,
+};
 
 /// Real searcher that uses memvid-core to load and search .mv2 files.
 pub struct RealSearcher {
@@ -90,7 +93,6 @@ impl RealSearcher {
             frame_count,
         })
     }
-
 }
 
 #[async_trait]
@@ -126,8 +128,7 @@ impl Searcher for RealSearcher {
         let search_response = tokio::task::spawn_blocking({
             let memvid = Arc::clone(&self.memvid);
             move || {
-                let mut memvid = tokio::runtime::Handle::current()
-                    .block_on(memvid.write());
+                let mut memvid = tokio::runtime::Handle::current().block_on(memvid.write());
 
                 memvid.search(search_request)
             }
@@ -237,8 +238,16 @@ impl Searcher for RealSearcher {
             top_k: request.top_k as usize,
             snippet_chars: request.snippet_chars as usize,
             mode,
-            start: if request.start > 0 { Some(request.start) } else { None },
-            end: if request.end > 0 { Some(request.end) } else { None },
+            start: if request.start > 0 {
+                Some(request.start)
+            } else {
+                None
+            },
+            end: if request.end > 0 {
+                Some(request.end)
+            } else {
+                None
+            },
             context_only: !request.use_llm, // context_only = true means no LLM synthesis
             uri: request.uri.clone(),
             scope,
@@ -258,8 +267,7 @@ impl Searcher for RealSearcher {
         let ask_response = tokio::task::spawn_blocking({
             let memvid = Arc::clone(&self.memvid);
             move || {
-                let mut memvid = tokio::runtime::Handle::current()
-                    .block_on(memvid.write());
+                let mut memvid = tokio::runtime::Handle::current().block_on(memvid.write());
 
                 // Pass None for embedder - memvid will use built-in embeddings
                 memvid.ask(memvid_request, None::<&dyn memvid_core::VecEmbedder>)
@@ -286,8 +294,8 @@ impl Searcher for RealSearcher {
                 } else {
                     fragment
                         .uri
-                        .split('/')
-                        .last()
+                        .rsplit('/')
+                        .next()
                         .unwrap_or(&fragment.uri)
                         .to_string()
                 };
@@ -329,7 +337,7 @@ impl Searcher for RealSearcher {
                 candidates_retrieved: evidence_count,
                 results_returned: evidence_count,
                 retrieval_ms: took_ms,
-                reranking_ms: 0, // memvid-core doesn't expose this separately
+                reranking_ms: 0,      // memvid-core doesn't expose this separately
                 used_fallback: false, // memvid-core doesn't expose this
             },
         })
@@ -348,11 +356,11 @@ impl Searcher for RealSearcher {
             let entity = entity.to_string();
 
             move || -> Vec<(String, String)> {
-                let memvid = tokio::runtime::Handle::current()
-                    .block_on(memvid.read());
+                let memvid = tokio::runtime::Handle::current().block_on(memvid.read());
 
                 // Get all memory cards for this entity
-                memvid.get_entity_memories(&entity)
+                memvid
+                    .get_entity_memories(&entity)
                     .into_iter()
                     .map(|card| (card.slot.clone(), card.value.clone()))
                     .collect()
@@ -442,7 +450,9 @@ mod tests {
             return;
         }
 
-        let searcher = RealSearcher::new(mv2_path).await.expect("Should load valid .mv2 file");
+        let searcher = RealSearcher::new(mv2_path)
+            .await
+            .expect("Should load valid .mv2 file");
 
         assert!(searcher.is_ready());
         assert!(searcher.frame_count() > 0);
@@ -457,7 +467,9 @@ mod tests {
             return;
         }
 
-        let searcher = RealSearcher::new(mv2_path).await.expect("Should load .mv2 file");
+        let searcher = RealSearcher::new(mv2_path)
+            .await
+            .expect("Should load .mv2 file");
 
         let response = searcher
             .search("Python experience", 5, 200)
@@ -483,7 +495,9 @@ mod tests {
             return;
         }
 
-        let searcher = RealSearcher::new(mv2_path).await.expect("Should load .mv2 file");
+        let searcher = RealSearcher::new(mv2_path)
+            .await
+            .expect("Should load .mv2 file");
 
         let request = AskRequest {
             question: "What programming languages do you know?".to_string(),
@@ -516,7 +530,9 @@ mod tests {
             return;
         }
 
-        let searcher = RealSearcher::new(mv2_path).await.expect("Should load .mv2 file");
+        let searcher = RealSearcher::new(mv2_path)
+            .await
+            .expect("Should load .mv2 file");
 
         let request = AskRequest {
             question: "Python".to_string(),
@@ -548,7 +564,9 @@ mod tests {
             return;
         }
 
-        let searcher = RealSearcher::new(mv2_path).await.expect("Should load .mv2 file");
+        let searcher = RealSearcher::new(mv2_path)
+            .await
+            .expect("Should load .mv2 file");
 
         let request = AskRequest {
             question: "leadership experience".to_string(),
@@ -580,7 +598,9 @@ mod tests {
             return;
         }
 
-        let searcher = RealSearcher::new(mv2_path).await.expect("Should load .mv2 file");
+        let searcher = RealSearcher::new(mv2_path)
+            .await
+            .expect("Should load .mv2 file");
 
         let response = searcher
             .get_state("__profile__", None)
@@ -600,7 +620,9 @@ mod tests {
             return;
         }
 
-        let searcher = RealSearcher::new(mv2_path).await.expect("Should load .mv2 file");
+        let searcher = RealSearcher::new(mv2_path)
+            .await
+            .expect("Should load .mv2 file");
 
         let response = searcher
             .get_state("nonexistent_entity", None)
@@ -619,7 +641,9 @@ mod tests {
             return;
         }
 
-        let searcher = RealSearcher::new(mv2_path).await.expect("Should load .mv2 file");
+        let searcher = RealSearcher::new(mv2_path)
+            .await
+            .expect("Should load .mv2 file");
 
         let frame_count = searcher.frame_count();
         assert!(frame_count > 0, "Should have frames in the .mv2 file");
@@ -633,7 +657,9 @@ mod tests {
             return;
         }
 
-        let searcher = RealSearcher::new(mv2_path).await.expect("Should load .mv2 file");
+        let searcher = RealSearcher::new(mv2_path)
+            .await
+            .expect("Should load .mv2 file");
 
         let file_path = searcher.memvid_file();
         assert!(file_path.contains("resume.mv2"));
@@ -647,7 +673,9 @@ mod tests {
             return;
         }
 
-        let searcher = RealSearcher::new(mv2_path).await.expect("Should load .mv2 file");
+        let searcher = RealSearcher::new(mv2_path)
+            .await
+            .expect("Should load .mv2 file");
 
         assert!(searcher.is_ready());
     }
@@ -673,7 +701,9 @@ mod tests {
             return;
         }
 
-        let searcher = RealSearcher::new(mv2_path).await.expect("Should load .mv2 file");
+        let searcher = RealSearcher::new(mv2_path)
+            .await
+            .expect("Should load .mv2 file");
 
         // Test filtering by metadata tags
         let mut filters = std::collections::HashMap::new();
@@ -695,7 +725,10 @@ mod tests {
             adaptive: None,
         };
 
-        let response = searcher.ask(request).await.expect("Ask with filters should succeed");
+        let response = searcher
+            .ask(request)
+            .await
+            .expect("Ask with filters should succeed");
 
         // Verify filtered results
         assert!(!response.answer.is_empty());
@@ -718,7 +751,9 @@ mod tests {
             return;
         }
 
-        let searcher = RealSearcher::new(mv2_path).await.expect("Should load .mv2 file");
+        let searcher = RealSearcher::new(mv2_path)
+            .await
+            .expect("Should load .mv2 file");
 
         // Test multiple filter combinations
         let mut filters = std::collections::HashMap::new();
@@ -741,7 +776,10 @@ mod tests {
             adaptive: None,
         };
 
-        let response = searcher.ask(request).await.expect("Ask with multiple filters should succeed");
+        let response = searcher
+            .ask(request)
+            .await
+            .expect("Ask with multiple filters should succeed");
 
         assert!(!response.answer.is_empty());
         assert!(response.stats.retrieval_ms >= 0);

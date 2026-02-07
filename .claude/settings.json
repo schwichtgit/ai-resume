@@ -20,6 +20,10 @@
           {
             "type": "command",
             "command": ".claude/hooks/validate-bash.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/validate-pr.sh"
           }
         ]
       },

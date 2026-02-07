@@ -56,19 +56,21 @@ pub async fn start_metrics_server(port: u16, handle: PrometheusHandle) {
 
     // Auto-detect: Try dual-stack first, fall back to IPv4-only
     let bind_host = match format!("[::]:{}", port).parse::<std::net::SocketAddr>() {
-        Ok(addr) => {
-            match tokio::net::TcpListener::bind(addr).await {
-                Ok(listener) => {
-                    info!(port = port, bind = "::", "Starting metrics server (dual-stack)");
-                    axum::serve(listener, app)
-                        .await
-                        .expect("Metrics server failed");
-                    return;
-                }
-                Err(_) => "0.0.0.0"
+        Ok(addr) => match tokio::net::TcpListener::bind(addr).await {
+            Ok(listener) => {
+                info!(
+                    port = port,
+                    bind = "::",
+                    "Starting metrics server (dual-stack)"
+                );
+                axum::serve(listener, app)
+                    .await
+                    .expect("Metrics server failed");
+                return;
             }
-        }
-        Err(_) => "0.0.0.0"
+            Err(_) => "0.0.0.0",
+        },
+        Err(_) => "0.0.0.0",
     };
 
     let addr = format!("{}:{}", bind_host, port);
@@ -115,9 +117,7 @@ mod tests {
     #[tokio::test]
     async fn test_metrics_router_returns_metrics() {
         // Create a test handle
-        let handle = PrometheusBuilder::new()
-            .build_recorder()
-            .handle();
+        let handle = PrometheusBuilder::new().build_recorder().handle();
 
         let app = metrics_router(handle);
 
@@ -133,9 +133,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_metrics_endpoint_content_type() {
-        let handle = PrometheusBuilder::new()
-            .build_recorder()
-            .handle();
+        let handle = PrometheusBuilder::new().build_recorder().handle();
 
         let app = metrics_router(handle);
 
