@@ -4,7 +4,8 @@
 
 use async_trait::async_trait;
 use memvid_core::{
-    AclEnforcementMode, AdaptiveConfig, AskMode as MemvidAskMode, AskRequest as MemvidAskRequest, Memvid, SearchRequest,
+    AclEnforcementMode, AdaptiveConfig, AskMode as MemvidAskMode, AskRequest as MemvidAskRequest,
+    Memvid, SearchRequest,
 };
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

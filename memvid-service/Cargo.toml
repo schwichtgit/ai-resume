@@ -49,6 +49,8 @@ tonic-build = "0.12"
 hyper = "1.0"
 hyper-util = { version = "0.1", features = ["client-legacy", "http1", "tokio"] }
 http-body-util = "0.1"
+# Serialize env-mutating tests to prevent race conditions
+serial_test = "3"
 
 [features]
 default = []

@@ -175,10 +175,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         "Memvid file loaded but contains 0 frames -- search results will be empty"
                     );
                 }
-                info!(
-                    frame_count = fc,
-                    "Real memvid searcher loaded successfully"
-                );
+                info!(frame_count = fc, "Real memvid searcher loaded successfully");
                 Arc::new(searcher)
             }
             Err(e) => {

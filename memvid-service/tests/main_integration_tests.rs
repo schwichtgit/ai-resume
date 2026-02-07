@@ -8,6 +8,7 @@
 //!
 //! Note: These tests use MOCK_MEMVID=true to avoid requiring .mv2 files.
 
+use serial_test::serial;
 use std::time::Duration;
 use tokio::time::timeout;
 
@@ -48,6 +49,7 @@ impl Drop for TestEnv {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_config_loading_with_mock_memvid() {
     let mut env = TestEnv::new();
     env.set_var("MOCK_MEMVID", "true");
@@ -65,6 +67,7 @@ async fn test_config_loading_with_mock_memvid() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_config_loading_with_custom_ports() {
     let mut env = TestEnv::new();
 
@@ -86,6 +89,7 @@ async fn test_config_loading_with_custom_ports() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_config_requires_memvid_file_without_mock() {
     let mut env = TestEnv::new();
     env.set_var("MOCK_MEMVID", "false");
@@ -98,6 +102,7 @@ async fn test_config_requires_memvid_file_without_mock() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_config_accepts_memvid_file_path() {
     let mut env = TestEnv::new();
     env.remove_var("MOCK_MEMVID"); // Explicitly not in mock mode
@@ -111,6 +116,7 @@ async fn test_config_accepts_memvid_file_path() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_config_default_bind_address() {
     let mut env = TestEnv::new();
     env.set_var("MOCK_MEMVID", "true");
@@ -125,6 +131,7 @@ async fn test_config_default_bind_address() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_config_custom_bind_address() {
     let mut env = TestEnv::new();
     env.remove_var("BIND_ADDRESS");
@@ -140,6 +147,7 @@ async fn test_config_custom_bind_address() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_config_ipv6_bind_address() {
     let mut env = TestEnv::new();
     env.remove_var("BIND_ADDRESS");
@@ -214,6 +222,7 @@ async fn test_grpc_service_creation_with_mock() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_server_startup_and_shutdown_simulation() {
     let mut env = TestEnv::new();
     env.set_var("MOCK_MEMVID", "true");
@@ -235,6 +244,7 @@ async fn test_server_startup_and_shutdown_simulation() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_invalid_port_configuration() {
     let mut env = TestEnv::new();
     env.set_var("MOCK_MEMVID", "true");
@@ -248,6 +258,7 @@ async fn test_invalid_port_configuration() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_metrics_port_parsing() {
     let mut env = TestEnv::new();
     env.set_var("MOCK_MEMVID", "true");
@@ -261,6 +272,7 @@ async fn test_metrics_port_parsing() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_log_level_configuration() {
     let mut env = TestEnv::new();
     env.set_var("MOCK_MEMVID", "true");
@@ -274,6 +286,7 @@ async fn test_log_level_configuration() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_config_defaults_when_no_env_vars() {
     let mut env = TestEnv::new();
     env.set_var("MOCK_MEMVID", "true");
@@ -321,6 +334,7 @@ async fn test_socket_addr_parsing_ipv6_localhost() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_empty_string_memvid_path_with_mock() {
     let mut env = TestEnv::new();
     env.set_var("MOCK_MEMVID", "true");
@@ -335,6 +349,7 @@ async fn test_empty_string_memvid_path_with_mock() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_mock_memvid_case_insensitive_true() {
     let mut env = TestEnv::new();
     env.set_var("MOCK_MEMVID", "TRUE");
@@ -347,6 +362,7 @@ async fn test_mock_memvid_case_insensitive_true() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_mock_memvid_value_1() {
     let mut env = TestEnv::new();
     env.set_var("MOCK_MEMVID", "1");
@@ -359,6 +375,7 @@ async fn test_mock_memvid_value_1() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_mock_memvid_value_false() {
     let mut env = TestEnv::new();
     env.set_var("MOCK_MEMVID", "false");
@@ -372,6 +389,7 @@ async fn test_mock_memvid_value_false() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_config_debug_display() {
     let mut env = TestEnv::new();
     env.set_var("MOCK_MEMVID", "true");
@@ -387,6 +405,7 @@ async fn test_config_debug_display() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_config_clone() {
     let mut env = TestEnv::new();
     env.set_var("MOCK_MEMVID", "true");
@@ -431,6 +450,7 @@ async fn test_healthcheck_with_unavailable_service() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_concurrent_config_loading() {
     // Note: Environment variables are process-global, so concurrent modification
     // is inherently racy. This test verifies that concurrent Config::from_env()
