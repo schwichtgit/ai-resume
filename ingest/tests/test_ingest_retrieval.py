@@ -17,8 +17,8 @@ import pytest
 import memvid_sdk
 
 
-@pytest.mark.anyio
-async def test_profile_metadata_retrieval():
+@pytest.mark.asyncio
+async def test_profile_metadata_retrieval() -> bool:
     """Test that profile metadata can be retrieved after ingest."""
     print("\n🔍 Test: Profile Metadata Retrieval")
 
@@ -144,8 +144,8 @@ async def test_profile_metadata_retrieval():
             print(f"  🧹 Cleaned up: {output_file}")
 
 
-@pytest.mark.anyio
-async def test_experience_retrieval():
+@pytest.mark.asyncio
+async def test_experience_retrieval() -> bool:
     """Test that experience entries can be retrieved."""
     print("\n🔍 Test: Experience Entry Retrieval")
 
@@ -198,8 +198,8 @@ async def test_experience_retrieval():
             os.unlink(output_file)
 
 
-@pytest.mark.anyio
-async def test_fit_assessment_examples_retrieval():
+@pytest.mark.asyncio
+async def test_fit_assessment_examples_retrieval() -> bool:
     """Test that fit assessment examples can be retrieved."""
     print("\n🔍 Test: Fit Assessment Examples Retrieval")
 
@@ -241,7 +241,7 @@ async def test_fit_assessment_examples_retrieval():
             os.unlink(output_file)
 
 
-async def main():
+async def main() -> int:
     """Run all ingest-retrieval integration tests."""
     print("=" * 60)
     print("Ingest → Retrieval Integration Tests")

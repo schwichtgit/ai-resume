@@ -11,16 +11,18 @@ Usage:
 """
 
 import argparse
+from typing import Any
+
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
 
-def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
+def cosine_similarity(a: Any, b: Any) -> float:
     """Calculate cosine similarity between two vectors."""
-    return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+    return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
 
-def test_model(model_name: str) -> dict:
+def test_model(model_name: str) -> dict[str, Any]:
     """Test a single model on sample queries."""
     print(f"\n{'=' * 60}")
     print(f"Testing: {model_name}")
@@ -56,7 +58,7 @@ def test_model(model_name: str) -> dict:
     return {"model_name": model_name, "results": results, "avg_similarity": avg_similarity}
 
 
-def main():
+def main() -> None:
     """Main comparison script."""
     parser = argparse.ArgumentParser(
         description="Compare two embedding models for semantic similarity"

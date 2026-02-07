@@ -4,19 +4,24 @@ Test embedding similarity between queries and resume content.
 Validates that semantic search should find "AI" when querying "artificial intelligence".
 """
 
-from sentence_transformers import SentenceTransformer
+from typing import Any
+
 import numpy as np
+import numpy.typing as npt
+import pytest
+from sentence_transformers import SentenceTransformer
 
 # Use the same model as ingest
 MODEL = "all-mpnet-base-v2"
 
 
-def cosine_similarity(a, b):
+def cosine_similarity(a: npt.NDArray[np.floating[Any]], b: npt.NDArray[np.floating[Any]]) -> Any:
     """Calculate cosine similarity between two vectors."""
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
 
-def test_embeddings():
+@pytest.mark.slow
+def test_embeddings() -> None:
     """Test if model understands AI = Artificial Intelligence."""
     print(f"Loading model: {MODEL}")
     model = SentenceTransformer(MODEL)

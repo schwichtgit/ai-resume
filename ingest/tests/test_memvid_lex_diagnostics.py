@@ -22,7 +22,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 MV2_PATH = PROJECT_ROOT / "data/.memvid/resume.mv2"
 
 
-def test_index_status():
+def test_index_status() -> None:
     """Check if indexes are enabled/disabled in the .mv2 file."""
     print("=" * 70)
     print("MEMVID LEX INDEX DIAGNOSTICS")
@@ -162,5 +162,5 @@ def test_index_status():
 
 
 if __name__ == "__main__":
-    success = test_index_status()
-    sys.exit(0 if success else 1)
+    test_index_status()
+    sys.exit(0)

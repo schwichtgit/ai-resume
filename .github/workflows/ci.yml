@@ -132,15 +132,21 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "3.12"
 
       - name: Install dependencies
-        run: uv sync --extra lint
+        run: uv sync --extra test --extra lint
 
       - name: Lint with ruff
         run: |
           uv run ruff check .
           uv run ruff format --check .
+
+      - name: Type check with mypy
+        run: uv run mypy .
+
+      - name: Test with pytest
+        run: uv run pytest -v --tb=short -m "not slow"
 
   # Memvid Service: Rust/gRPC
   memvid-service:
@@ -346,7 +352,7 @@ jobs:
       - name: Lint Markdown
         run: |
           npm install -g markdownlint-cli
-          markdownlint '**/*.md' --ignore node_modules --ignore '**/node_modules/**' || true
+          markdownlint '**/*.md' --ignore node_modules --ignore '**/node_modules/**'
 
   # Release gate: final validation on main branch pushes
   release-gate:

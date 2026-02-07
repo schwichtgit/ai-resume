@@ -12,7 +12,7 @@ from pathlib import Path
 import memvid_sdk
 
 
-def test_sdk_info():
+def test_sdk_info() -> None:
     """Print SDK build information."""
     print("=== memvid-sdk Info ===")
     info = memvid_sdk.info()
@@ -21,7 +21,7 @@ def test_sdk_info():
     print()
 
 
-def test_create_and_query():
+def test_create_and_query() -> None:
     """Test creating a memory file, adding content, and querying it."""
     print("=== Create & Query Test ===")
 
@@ -102,7 +102,7 @@ def test_create_and_query():
     print("\nTest completed successfully!")
 
 
-def test_open_existing():
+def test_open_existing() -> None:
     """Test opening an existing .mv2 file (if one exists)."""
     print("\n=== Open Existing Test ===")
 
