@@ -15,10 +15,12 @@ import pytest
 import pytest_asyncio
 import httpx
 
+
 # Enable mock OpenRouter for chat/assess-fit tests
 os.environ.setdefault("MOCK_OPENROUTER", "true")
 
 from ai_resume_api.main import app  # noqa: E402
+from fixtures.job_descriptions import STRONG_MATCH_JD, WEAK_MATCH_JD  # noqa: E402
 
 
 @pytest_asyncio.fixture
@@ -246,3 +248,84 @@ async def test_trace_id_propagation(client: httpx.AsyncClient):
     )
     assert response.status_code == 200
     assert response.headers.get("x-trace-id") == custom_trace_id
+
+
+# ---------------------------------------------------------------------------
+# Chat input validation
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_chat_empty_message_rejected(client: httpx.AsyncClient):
+    """POST /api/v1/chat with empty message returns 422 (validation error)."""
+    response = await client.post("/api/v1/chat", json={"message": "", "stream": False})
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_chat_missing_message_field(client: httpx.AsyncClient):
+    """POST /api/v1/chat without 'message' field returns 422."""
+    response = await client.post("/api/v1/chat", json={"stream": False})
+    assert response.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Fit assessment validation and scenarios
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_fit_assessment_too_short_rejected(client: httpx.AsyncClient):
+    """POST /api/v1/assess-fit with <50 char JD returns 422."""
+    response = await client.post("/api/v1/assess-fit", json={"job_description": "Short JD"})
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_fit_assessment_meaningless_input(client: httpx.AsyncClient):
+    """POST /api/v1/assess-fit with meaningless input still returns 200."""
+    response = await client.post("/api/v1/assess-fit", json={"job_description": "x " * 30})
+    assert response.status_code == 200
+
+    data = response.json()
+    assert "verdict" in data
+
+
+@pytest.mark.asyncio
+async def test_fit_assessment_strong_match(client: httpx.AsyncClient):
+    """POST /api/v1/assess-fit with a strong-match JD returns structured assessment."""
+    response = await client.post("/api/v1/assess-fit", json={"job_description": STRONG_MATCH_JD})
+    assert response.status_code == 200
+
+    data = response.json()
+    assert "verdict" in data
+    assert "key_matches" in data
+    assert isinstance(data["key_matches"], list)
+    assert len(data["key_matches"]) > 0
+    assert "recommendation" in data
+    assert data.get("chunks_retrieved", 0) > 0
+
+
+@pytest.mark.asyncio
+async def test_fit_assessment_weak_match(client: httpx.AsyncClient):
+    """POST /api/v1/assess-fit with a weak-match JD returns gaps and recommendation."""
+    response = await client.post("/api/v1/assess-fit", json={"job_description": WEAK_MATCH_JD})
+    assert response.status_code == 200
+
+    data = response.json()
+    assert "verdict" in data
+    assert "gaps" in data
+    assert isinstance(data["gaps"], list)
+    assert "recommendation" in data
+
+
+# ---------------------------------------------------------------------------
+# Invalid endpoint
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_invalid_endpoint_returns_404(client: httpx.AsyncClient):
+    """GET /api/v1/nonexistent returns 404."""
+    response = await client.get("/api/v1/nonexistent")
+    assert response.status_code in (404, 405)

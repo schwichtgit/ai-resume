@@ -200,11 +200,32 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.92.0"
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: memvid-service
+
+      - name: Install protobuf compiler
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
       - name: Install dependencies
         run: cd api-service && uv sync --extra test
 
       - name: Run E2E API tests
         run: cd api-service && uv run pytest tests/test_e2e_api.py -v --tb=short
+
+      - name: Build memvid-service binary
+        run: cd memvid-service && cargo build --release
+
+      - name: Run full-stack integration tests
+        run: |
+          chmod +x scripts/test-e2e-integration.sh
+          ./scripts/test-e2e-integration.sh
 
   # Commit message standards (PRs only)
   commit-standards:
@@ -326,6 +347,41 @@ jobs:
         run: |
           npm install -g markdownlint-cli
           markdownlint '**/*.md' --ignore node_modules --ignore '**/node_modules/**' || true
+
+  # Release gate: final validation on main branch pushes
+  release-gate:
+    needs: [changes, frontend, api-service, memvid-service, e2e]
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.92.0"
+
+      - name: Install protobuf compiler
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Run E2E API tests
+        run: cd api-service && uv sync --extra test && uv run pytest tests/test_e2e_api.py -v --tb=short
+
+      - name: Release gate passed
+        run: echo "Release gate passed - all checks succeeded"
 
   # Summary job (always runs, reports overall status)
   summary:

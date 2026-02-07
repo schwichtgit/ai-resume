@@ -329,6 +329,224 @@ else
 fi
 
 # =============================================================================
+# Test 5: Suggested questions endpoint
+# =============================================================================
+
+run_test "Suggested questions endpoint returns non-empty questions array"
+
+questions_response=$(curl -sf http://localhost:$API_PORT/api/v1/suggested-questions 2>&1 || echo "CURL_FAILED")
+
+if echo "$questions_response" | grep -q "CURL_FAILED"; then
+    print_fail "Could not reach /api/v1/suggested-questions endpoint"
+    echo "  Response: $questions_response"
+else
+    questions_check=$(python3 -c "
+import sys, json
+try:
+    data = json.loads(sys.stdin.read())
+    questions = data.get('questions', [])
+    if isinstance(questions, list) and len(questions) > 0:
+        print('OK:count=' + str(len(questions)))
+    else:
+        print('FAIL:questions array empty or missing')
+except Exception as e:
+    print('FAIL:json_parse_error:' + str(e))
+" <<< "$questions_response" 2>/dev/null || echo "FAIL:python_error")
+
+    if echo "$questions_check" | grep -q "^OK:"; then
+        detail=$(echo "$questions_check" | sed 's/^OK://')
+        print_pass "Suggested questions returned ($detail)"
+    else
+        detail=$(echo "$questions_check" | sed 's/^FAIL://')
+        print_fail "Suggested questions check failed ($detail)"
+        echo "  Response (truncated): $(echo "$questions_response" | head -c 500)"
+    fi
+fi
+
+# =============================================================================
+# Test 6: Fit assessment with strong-match job description
+# =============================================================================
+
+run_test "Fit assessment returns verdict, key_matches, recommendation for strong-match JD"
+
+fit_strong_response=$(curl -sf -X POST http://localhost:$API_PORT/api/v1/assess-fit \
+    -H "Content-Type: application/json" \
+    -d '{"job_description":"VP of Platform Engineering: Lead cloud infrastructure, Kubernetes orchestration, CI/CD pipelines, and DevOps teams. Requires 10+ years of experience in distributed systems, microservices architecture, and team leadership."}' \
+    2>&1 || echo "CURL_FAILED")
+
+if echo "$fit_strong_response" | grep -q "CURL_FAILED"; then
+    print_fail "Could not reach /api/v1/assess-fit endpoint"
+    echo "  Response: $fit_strong_response"
+else
+    fit_strong_check=$(python3 -c "
+import sys, json
+try:
+    data = json.loads(sys.stdin.read())
+    errors = []
+    if 'verdict' not in data:
+        errors.append('missing verdict')
+    key_matches = data.get('key_matches', [])
+    if not isinstance(key_matches, list) or len(key_matches) == 0:
+        errors.append('key_matches empty or missing')
+    if 'recommendation' not in data:
+        errors.append('missing recommendation')
+    if errors:
+        print('FAIL:' + ','.join(errors))
+    else:
+        print('OK:verdict=' + str(data['verdict']) + ',key_matches=' + str(len(key_matches)))
+except Exception as e:
+    print('FAIL:json_parse_error:' + str(e))
+" <<< "$fit_strong_response" 2>/dev/null || echo "FAIL:python_error")
+
+    if echo "$fit_strong_check" | grep -q "^OK:"; then
+        detail=$(echo "$fit_strong_check" | sed 's/^OK://')
+        print_pass "Strong-match fit assessment valid ($detail)"
+    else
+        detail=$(echo "$fit_strong_check" | sed 's/^FAIL://')
+        print_fail "Strong-match fit assessment invalid ($detail)"
+        echo "  Response (truncated): $(echo "$fit_strong_response" | head -c 500)"
+    fi
+fi
+
+# =============================================================================
+# Test 7: Fit assessment with weak-match job description
+# =============================================================================
+
+run_test "Fit assessment returns verdict, gaps, recommendation for weak-match JD"
+
+fit_weak_response=$(curl -sf -X POST http://localhost:$API_PORT/api/v1/assess-fit \
+    -H "Content-Type: application/json" \
+    -d '{"job_description":"Executive Chef: Lead kitchen operations for a Michelin-starred restaurant. Requires 15+ years of culinary experience, expertise in French and Japanese cuisine, menu development, and food cost management."}' \
+    2>&1 || echo "CURL_FAILED")
+
+if echo "$fit_weak_response" | grep -q "CURL_FAILED"; then
+    print_fail "Could not reach /api/v1/assess-fit endpoint"
+    echo "  Response: $fit_weak_response"
+else
+    fit_weak_check=$(python3 -c "
+import sys, json
+try:
+    data = json.loads(sys.stdin.read())
+    errors = []
+    if 'verdict' not in data:
+        errors.append('missing verdict')
+    gaps = data.get('gaps', [])
+    if not isinstance(gaps, list):
+        errors.append('gaps is not a list')
+    if 'recommendation' not in data:
+        errors.append('missing recommendation')
+    if errors:
+        print('FAIL:' + ','.join(errors))
+    else:
+        print('OK:verdict=' + str(data['verdict']) + ',gaps=' + str(len(gaps)))
+except Exception as e:
+    print('FAIL:json_parse_error:' + str(e))
+" <<< "$fit_weak_response" 2>/dev/null || echo "FAIL:python_error")
+
+    if echo "$fit_weak_check" | grep -q "^OK:"; then
+        detail=$(echo "$fit_weak_check" | sed 's/^OK://')
+        print_pass "Weak-match fit assessment valid ($detail)"
+    else
+        detail=$(echo "$fit_weak_check" | sed 's/^FAIL://')
+        print_fail "Weak-match fit assessment invalid ($detail)"
+        echo "  Response (truncated): $(echo "$fit_weak_response" | head -c 500)"
+    fi
+fi
+
+# =============================================================================
+# Test 8: Chat with empty message returns 422
+# =============================================================================
+
+run_test "Chat with empty message returns 422 validation error"
+
+chat_empty_status=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:$API_PORT/api/v1/chat \
+    -H "Content-Type: application/json" \
+    -d '{"message":"","stream":false}' \
+    2>&1 || echo "000")
+
+if [ "$chat_empty_status" = "422" ]; then
+    print_pass "Empty message correctly rejected with HTTP 422"
+elif [ "$chat_empty_status" = "000" ]; then
+    print_fail "Could not reach /api/v1/chat endpoint"
+else
+    print_fail "Expected HTTP 422 for empty message, got $chat_empty_status"
+fi
+
+# =============================================================================
+# Test 9: Invalid endpoint returns 404
+# =============================================================================
+
+run_test "Invalid endpoint returns 404 or 405"
+
+invalid_status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$API_PORT/api/v1/nonexistent \
+    2>&1 || echo "000")
+
+if [ "$invalid_status" = "404" ] || [ "$invalid_status" = "405" ]; then
+    print_pass "Invalid endpoint correctly returned HTTP $invalid_status"
+elif [ "$invalid_status" = "000" ]; then
+    print_fail "Could not reach API server"
+else
+    print_fail "Expected HTTP 404 or 405 for invalid endpoint, got $invalid_status"
+fi
+
+# =============================================================================
+# Test 10: Session continuity
+# =============================================================================
+
+run_test "Session continuity - second request preserves session_id"
+
+# First chat request - extract session_id
+session_response_1=$(curl -sf -X POST http://localhost:$API_PORT/api/v1/chat \
+    -H "Content-Type: application/json" \
+    -d '{"message":"What is your name?","stream":false}' \
+    2>&1 || echo "CURL_FAILED")
+
+if echo "$session_response_1" | grep -q "CURL_FAILED"; then
+    print_fail "Could not reach /api/v1/chat endpoint for session test"
+    echo "  Response: $session_response_1"
+else
+    session_id=$(python3 -c "
+import sys, json
+try:
+    data = json.loads(sys.stdin.read())
+    print(data.get('session_id', ''))
+except:
+    print('')
+" <<< "$session_response_1" 2>/dev/null || echo "")
+
+    if [ -z "$session_id" ]; then
+        print_fail "First chat response missing session_id"
+        echo "  Response (truncated): $(echo "$session_response_1" | head -c 500)"
+    else
+        # Second chat request with same session_id
+        session_response_2=$(curl -sf -X POST http://localhost:$API_PORT/api/v1/chat \
+            -H "Content-Type: application/json" \
+            -d "{\"message\":\"What do you do?\",\"stream\":false,\"session_id\":\"$session_id\"}" \
+            2>&1 || echo "CURL_FAILED")
+
+        if echo "$session_response_2" | grep -q "CURL_FAILED"; then
+            print_fail "Second chat request failed"
+            echo "  Response: $session_response_2"
+        else
+            session_id_2=$(python3 -c "
+import sys, json
+try:
+    data = json.loads(sys.stdin.read())
+    print(data.get('session_id', ''))
+except:
+    print('')
+" <<< "$session_response_2" 2>/dev/null || echo "")
+
+            if [ "$session_id" = "$session_id_2" ]; then
+                print_pass "Session continuity confirmed (session_id=$session_id)"
+            else
+                print_fail "Session ID changed between requests (first=$session_id, second=$session_id_2)"
+            fi
+        fi
+    fi
+fi
+
+# =============================================================================
 # Summary
 # =============================================================================
 
