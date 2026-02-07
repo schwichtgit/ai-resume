@@ -36,7 +36,7 @@ from ingest import (
 # ============================================================================
 
 
-def test_build_profile_dict_complete():
+def test_build_profile_dict_complete() -> None:
     """Test building profile dict from complete frontmatter and sections."""
     frontmatter = {
         "name": "Jane Doe",
@@ -112,7 +112,7 @@ def test_build_profile_dict_complete():
     assert len(profile["fit_assessment_examples"]) == 1
 
 
-def test_build_profile_dict_minimal():
+def test_build_profile_dict_minimal() -> None:
     """Test building profile with minimal frontmatter."""
     frontmatter = {
         "name": "John Smith",
@@ -120,7 +120,7 @@ def test_build_profile_dict_minimal():
         "email": "john@test.com",
     }
 
-    sections = []
+    sections: list[dict[str, str]] = []
 
     profile = build_profile_dict(frontmatter, sections, verbose=False)
 
@@ -130,7 +130,7 @@ def test_build_profile_dict_minimal():
     assert len(profile["skills"]["strong"]) == 0
 
 
-def test_build_profile_dict_empty_sections():
+def test_build_profile_dict_empty_sections() -> None:
     """Test building profile with frontmatter but no body sections."""
     frontmatter = {
         "name": "Alice",
@@ -144,7 +144,7 @@ def test_build_profile_dict_empty_sections():
         "tags": [],
     }
 
-    sections = []
+    sections: list[dict[str, str]] = []
 
     profile = build_profile_dict(frontmatter, sections, verbose=False)
 
@@ -153,7 +153,7 @@ def test_build_profile_dict_empty_sections():
     assert len(profile["fit_assessment_examples"]) == 0
 
 
-def test_build_profile_dict_multiple_experiences():
+def test_build_profile_dict_multiple_experiences() -> None:
     """Test building profile with multiple experience entries."""
     frontmatter = {
         "name": "Bob",
@@ -198,7 +198,7 @@ def test_build_profile_dict_multiple_experiences():
 # ============================================================================
 
 
-def test_ingest_memory_basic():
+def test_ingest_memory_basic() -> None:
     """Test basic memory ingestion workflow."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create minimal test markdown
@@ -306,7 +306,7 @@ def test_ingest_memory_basic():
         mem.close()
 
 
-def test_ingest_memory_with_debug_mode():
+def test_ingest_memory_with_debug_mode() -> None:
     """Test ingestion with debug mode enabled."""
     with tempfile.TemporaryDirectory() as tmpdir:
         input_path = Path(tmpdir) / "test.md"
@@ -343,7 +343,7 @@ def test_ingest_memory_with_debug_mode():
         assert stats["frame_count"] >= 1
 
 
-def test_ingest_memory_overwrites_existing():
+def test_ingest_memory_overwrites_existing() -> None:
     """Test that ingestion overwrites existing .mv2 file."""
     with tempfile.TemporaryDirectory() as tmpdir:
         input_path = Path(tmpdir) / "test.md"
@@ -408,7 +408,7 @@ def test_ingest_memory_overwrites_existing():
         mem.close()
 
 
-def test_ingest_memory_empty_sections():
+def test_ingest_memory_empty_sections() -> None:
     """Test ingestion with document containing only frontmatter."""
     with tempfile.TemporaryDirectory() as tmpdir:
         input_path = Path(tmpdir) / "test.md"
@@ -437,7 +437,7 @@ def test_ingest_memory_empty_sections():
         assert stats["frame_count"] >= 1
 
 
-def test_ingest_memory_custom_embedding_model():
+def test_ingest_memory_custom_embedding_model() -> None:
     """Test ingestion with custom embedding model specification."""
     with tempfile.TemporaryDirectory() as tmpdir:
         input_path = Path(tmpdir) / "test.md"
@@ -476,7 +476,7 @@ def test_ingest_memory_custom_embedding_model():
 # ============================================================================
 
 
-def test_verify_valid_memory():
+def test_verify_valid_memory() -> None:
     """Test verification passes for valid memory file."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create valid test data
@@ -554,7 +554,7 @@ def test_verify_valid_memory():
         mem.close()
 
 
-def test_verify_insufficient_frames():
+def test_verify_insufficient_frames() -> None:
     """Test verification fails for memory with too few frames."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create minimal .mv2 with < 5 frames
@@ -583,7 +583,7 @@ def test_verify_insufficient_frames():
         assert result is False
 
 
-def test_verify_nonexistent_file():
+def test_verify_nonexistent_file() -> None:
     """Test verification handles nonexistent file gracefully."""
     nonexistent_path = Path("/tmp/nonexistent_file_12345.mv2")
 
@@ -597,7 +597,7 @@ def test_verify_nonexistent_file():
 # ============================================================================
 
 
-def test_ingest_invalid_input_path():
+def test_ingest_invalid_input_path() -> None:
     """Test ingestion handles invalid input path."""
     with tempfile.TemporaryDirectory() as tmpdir:
         input_path = Path(tmpdir) / "nonexistent.md"
@@ -608,7 +608,7 @@ def test_ingest_invalid_input_path():
             ingest_memory(input_path, output_path, verbose=False)
 
 
-def test_ingest_malformed_frontmatter():
+def test_ingest_malformed_frontmatter() -> None:
     """Test ingestion handles malformed YAML frontmatter gracefully."""
     with tempfile.TemporaryDirectory() as tmpdir:
         input_path = Path(tmpdir) / "test.md"
@@ -638,7 +638,7 @@ def test_ingest_malformed_frontmatter():
         assert output_path.exists()
 
 
-def test_ingest_directory_permission_error():
+def test_ingest_directory_permission_error() -> None:
     """Test ingestion handles directory permission issues."""
     # This test is platform-specific and may not work on all systems
     # Skip if running in environment without permission control
@@ -682,7 +682,7 @@ def test_ingest_directory_permission_error():
             os.chmod(readonly_dir, 0o755)
 
 
-def test_ingest_with_failures_section():
+def test_ingest_with_failures_section() -> None:
     """Test ingestion of Documented Failures & Lessons Learned section."""
     with tempfile.TemporaryDirectory() as tmpdir:
         input_path = Path(tmpdir) / "test.md"
@@ -733,7 +733,7 @@ def test_ingest_with_failures_section():
         mem.close()
 
 
-def test_ingest_verbose_output_comprehensive():
+def test_ingest_verbose_output_comprehensive() -> None:
     """Test verbose output during ingestion."""
     import sys
     from io import StringIO
@@ -791,7 +791,7 @@ def test_ingest_verbose_output_comprehensive():
         assert "Reading:" in output or "experience" in output.lower()
 
 
-def test_check_input_file_missing_default_path():
+def test_check_input_file_missing_default_path() -> None:
     """Test error messaging when default resume file is missing."""
     # Test with non-existent path
     fake_path = Path("/tmp/definitely_does_not_exist_12345.md")
@@ -800,7 +800,7 @@ def test_check_input_file_missing_default_path():
     assert result is False
 
 
-def test_check_input_file_exists():
+def test_check_input_file_exists() -> None:
     """Test check_input_file with existing file."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
         f.write("# Test")
@@ -813,7 +813,7 @@ def test_check_input_file_exists():
         temp_path.unlink()
 
 
-def test_ingest_debug_mode_all_sections():
+def test_ingest_debug_mode_all_sections() -> None:
     """Test debug output with comprehensive resume containing all section types."""
     import sys
     from io import StringIO
@@ -879,7 +879,7 @@ def test_ingest_debug_mode_all_sections():
         assert len(output) > 100  # Should have substantial output
 
 
-def test_verify_function_verbose_mode():
+def test_verify_function_verbose_mode() -> None:
     """Test verify() function with verbose output."""
     import sys
     from io import StringIO

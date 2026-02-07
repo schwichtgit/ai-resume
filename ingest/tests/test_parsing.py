@@ -39,7 +39,7 @@ from ingest import (
 # ============================================================================
 
 
-def test_parse_frontmatter_basic():
+def test_parse_frontmatter_basic() -> None:
     """Test parsing basic YAML frontmatter with simple key-value pairs."""
     content = textwrap.dedent("""
         ---
@@ -59,7 +59,7 @@ def test_parse_frontmatter_basic():
     assert "Body content here." in body
 
 
-def test_parse_frontmatter_with_list():
+def test_parse_frontmatter_with_list() -> None:
     """Test parsing frontmatter with list values."""
     content = textwrap.dedent("""
         ---
@@ -83,7 +83,7 @@ def test_parse_frontmatter_with_list():
     assert "devops" in frontmatter["tags"]
 
 
-def test_parse_frontmatter_with_multiline_string():
+def test_parse_frontmatter_with_multiline_string() -> None:
     """Test parsing frontmatter with multiline string (| syntax)."""
     content = textwrap.dedent("""
         ---
@@ -106,7 +106,7 @@ def test_parse_frontmatter_with_multiline_string():
     assert frontmatter["email"] == "alice@test.com"
 
 
-def test_parse_frontmatter_empty():
+def test_parse_frontmatter_empty() -> None:
     """Test parsing content with no frontmatter."""
     content = "No frontmatter here.\n\nJust body content."
 
@@ -116,7 +116,7 @@ def test_parse_frontmatter_empty():
     assert body == content
 
 
-def test_parse_frontmatter_empty_values():
+def test_parse_frontmatter_empty_values() -> None:
     """Test parsing frontmatter with empty list placeholders."""
     content = textwrap.dedent("""
         ---
@@ -134,7 +134,7 @@ def test_parse_frontmatter_empty_values():
     assert frontmatter["location"] == "Remote"
 
 
-def test_parse_frontmatter_quoted_strings():
+def test_parse_frontmatter_quoted_strings() -> None:
     """Test parsing frontmatter with quoted string values."""
     content = textwrap.dedent("""
         ---
@@ -161,7 +161,7 @@ def test_parse_frontmatter_quoted_strings():
 # ============================================================================
 
 
-def test_extract_sections_basic():
+def test_extract_sections_basic() -> None:
     """Test extracting basic sections from markdown."""
     content = textwrap.dedent("""
         ## Introduction
@@ -187,7 +187,7 @@ def test_extract_sections_basic():
     assert sections[2]["title"] == "Experience"
 
 
-def test_extract_sections_with_subsections():
+def test_extract_sections_with_subsections() -> None:
     """Test extracting sections that contain ### subsections."""
     content = textwrap.dedent("""
         ## Professional Experience
@@ -207,7 +207,7 @@ def test_extract_sections_with_subsections():
     assert "### TechCo" in sections[0]["content"]
 
 
-def test_extract_sections_empty_content():
+def test_extract_sections_empty_content() -> None:
     """Test extracting sections from empty or no-section content."""
     content = "Just some text without sections."
 
@@ -216,7 +216,7 @@ def test_extract_sections_empty_content():
     assert len(sections) == 0
 
 
-def test_extract_sections_single_section():
+def test_extract_sections_single_section() -> None:
     """Test extracting a single section."""
     content = textwrap.dedent("""
         ## Summary
@@ -231,7 +231,7 @@ def test_extract_sections_single_section():
     assert "overview" in sections[0]["content"]
 
 
-def test_extract_sections_whitespace_handling():
+def test_extract_sections_whitespace_handling() -> None:
     """Test that sections properly handle whitespace and blank lines."""
     content = textwrap.dedent("""
         ## Section One
@@ -257,7 +257,7 @@ def test_extract_sections_whitespace_handling():
 # ============================================================================
 
 
-def test_extract_experience_chunks_basic():
+def test_extract_experience_chunks_basic() -> None:
     """Test extracting experience chunks from Professional Experience section."""
     content = textwrap.dedent("""
         ### Acme Corporation
@@ -276,7 +276,7 @@ def test_extract_experience_chunks_basic():
     assert "Staff Engineer" in chunks[1]["content"]
 
 
-def test_parse_experience_entry_basic():
+def test_parse_experience_entry_basic() -> None:
     """Test parsing a basic experience entry."""
     content = textwrap.dedent("""
         **Role:** Software Engineer
@@ -294,7 +294,7 @@ def test_parse_experience_entry_basic():
     assert "kubernetes" in entry["tags"]
 
 
-def test_parse_experience_entry_with_highlights():
+def test_parse_experience_entry_with_highlights() -> None:
     """Test parsing experience entry with highlight bullets."""
     content = textwrap.dedent("""
         **Role:** Lead Engineer
@@ -312,7 +312,7 @@ def test_parse_experience_entry_with_highlights():
     assert "Led team" in entry["highlights"][1]
 
 
-def test_parse_experience_entry_with_ai_context():
+def test_parse_experience_entry_with_ai_context() -> None:
     """Test parsing experience entry with AI Context section."""
     content = textwrap.dedent("""
         **Role:** Principal Engineer
@@ -335,7 +335,7 @@ def test_parse_experience_entry_with_ai_context():
     assert "Communication" in entry["ai_context"]["lessons_learned"]
 
 
-def test_parse_experience_entry_minimal():
+def test_parse_experience_entry_minimal() -> None:
     """Test parsing experience entry with minimal fields."""
     content = "**Role:** Developer"
 
@@ -347,7 +347,7 @@ def test_parse_experience_entry_minimal():
     assert len(entry["tags"]) == 0
 
 
-def test_extract_experience_chunks_empty():
+def test_extract_experience_chunks_empty() -> None:
     """Test extracting experience chunks from empty content."""
     content = ""
 
@@ -361,7 +361,7 @@ def test_extract_experience_chunks_empty():
 # ============================================================================
 
 
-def test_parse_skills_section_complete():
+def test_parse_skills_section_complete() -> None:
     """Test parsing complete skills section with all categories."""
     content = textwrap.dedent("""
         ### Strong Skills
@@ -388,7 +388,7 @@ def test_parse_skills_section_complete():
     assert "Rust" in skills["gaps"]
 
 
-def test_parse_skills_section_strong_only():
+def test_parse_skills_section_strong_only() -> None:
     """Test parsing skills section with only strong skills."""
     content = textwrap.dedent("""
         ### Strong Skills
@@ -405,7 +405,7 @@ def test_parse_skills_section_strong_only():
     assert len(skills["gaps"]) == 0
 
 
-def test_parse_skills_section_empty():
+def test_parse_skills_section_empty() -> None:
     """Test parsing empty skills section."""
     content = ""
 
@@ -416,7 +416,7 @@ def test_parse_skills_section_empty():
     assert len(skills["gaps"]) == 0
 
 
-def test_parse_skills_section_mixed_format():
+def test_parse_skills_section_mixed_format() -> None:
     """Test parsing skills with various formatting."""
     content = textwrap.dedent("""
         ### Strong Skills
@@ -439,7 +439,7 @@ def test_parse_skills_section_mixed_format():
 # ============================================================================
 
 
-def test_extract_faq_chunks_basic():
+def test_extract_faq_chunks_basic() -> None:
     """Test extracting FAQ chunks."""
     content = textwrap.dedent("""
         ### What programming languages do you know?
@@ -464,7 +464,7 @@ def test_extract_faq_chunks_basic():
     assert "leadership style" in chunks[1]["title"]
 
 
-def test_extract_faq_chunks_no_keywords():
+def test_extract_faq_chunks_no_keywords() -> None:
     """Test extracting FAQ chunks without keywords."""
     content = textwrap.dedent("""
         ### What is your experience?
@@ -479,7 +479,7 @@ def test_extract_faq_chunks_no_keywords():
     assert len(chunks[0]["keywords"]) == 0
 
 
-def test_extract_faq_chunks_empty():
+def test_extract_faq_chunks_empty() -> None:
     """Test extracting FAQ chunks from empty content."""
     content = ""
 
@@ -488,7 +488,7 @@ def test_extract_faq_chunks_empty():
     assert len(chunks) == 0
 
 
-def test_extract_faq_chunks_single():
+def test_extract_faq_chunks_single() -> None:
     """Test extracting single FAQ chunk."""
     content = textwrap.dedent("""
         ### Can you work remotely?
@@ -510,7 +510,7 @@ def test_extract_faq_chunks_single():
 # ============================================================================
 
 
-def test_parse_fit_assessment_examples_complete():
+def test_parse_fit_assessment_examples_complete() -> None:
     """Test parsing complete fit assessment example."""
     content = textwrap.dedent("""
         ### Example 1: Strong Fit — VP of Engineering, AI Startup
@@ -541,7 +541,7 @@ def test_parse_fit_assessment_examples_complete():
     assert "Highly recommended" in examples[0]["recommendation"]
 
 
-def test_parse_fit_assessment_examples_weak_fit():
+def test_parse_fit_assessment_examples_weak_fit() -> None:
     """Test parsing weak fit assessment example."""
     content = textwrap.dedent("""
         ### Example 2: Weak Fit — Frontend Developer, E-commerce
@@ -569,7 +569,7 @@ def test_parse_fit_assessment_examples_weak_fit():
     assert "Limited frontend" in examples[0]["gaps"]
 
 
-def test_parse_fit_assessment_examples_multiple():
+def test_parse_fit_assessment_examples_multiple() -> None:
     """Test parsing multiple fit assessment examples."""
     content = textwrap.dedent("""
         ### Example 1: Strong Fit — Platform Engineer
@@ -610,7 +610,7 @@ def test_parse_fit_assessment_examples_multiple():
     assert examples[1]["fit_level"] == "weak_fit"
 
 
-def test_parse_fit_assessment_examples_empty():
+def test_parse_fit_assessment_examples_empty() -> None:
     """Test parsing empty fit assessment content."""
     content = ""
 
@@ -619,7 +619,7 @@ def test_parse_fit_assessment_examples_empty():
     assert len(examples) == 0
 
 
-def test_parse_fit_assessment_examples_multiline_jd():
+def test_parse_fit_assessment_examples_multiline_jd() -> None:
     """Test parsing fit assessment with multiline job description."""
     content = textwrap.dedent("""
         ### Example 1: Strong Fit — Senior Engineer
@@ -654,7 +654,7 @@ def test_parse_fit_assessment_examples_multiline_jd():
 # ============================================================================
 
 
-def test_extract_tags_from_content():
+def test_extract_tags_from_content() -> None:
     """Test extracting tags from content with Tags line."""
     content = textwrap.dedent("""
         Some content here.
@@ -673,7 +673,7 @@ def test_extract_tags_from_content():
     assert "devops" in tags
 
 
-def test_extract_keywords_from_content():
+def test_extract_keywords_from_content() -> None:
     """Test extracting keywords from content with Keywords line."""
     content = textwrap.dedent("""
         Article content.
@@ -690,7 +690,7 @@ def test_extract_keywords_from_content():
     assert "AI" in keywords
 
 
-def test_get_current_timestamp():
+def test_get_current_timestamp() -> None:
     """Test that timestamp function returns a valid Unix timestamp."""
     timestamp = get_current_timestamp()
 
@@ -705,7 +705,7 @@ def test_get_current_timestamp():
 # ============================================================================
 
 
-def test_extract_failure_chunks_single():
+def test_extract_failure_chunks_single() -> None:
     """Extract single failure story from markdown."""
     content = textwrap.dedent("""
         ### Failure 1: Database Migration Gone Wrong
@@ -726,7 +726,7 @@ def test_extract_failure_chunks_single():
     assert "Lesson" in chunks[0]["content"]
 
 
-def test_extract_failure_chunks_multiple():
+def test_extract_failure_chunks_multiple() -> None:
     """Extract multiple failure stories."""
     content = textwrap.dedent("""
         ### Failure 1: First Mistake
@@ -749,7 +749,7 @@ def test_extract_failure_chunks_multiple():
     assert "Problem B" in chunks[1]["content"]
 
 
-def test_extract_failure_chunks_empty():
+def test_extract_failure_chunks_empty() -> None:
     """Return empty list when no failure sections found."""
     content = "Just normal content without any failure headings."
     chunks = extract_failure_chunks(content)

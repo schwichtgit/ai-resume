@@ -35,7 +35,7 @@ DEPLOYMENT_ENV = PROJECT_ROOT / "deployment" / ".env"
 
 def load_env_file(env_path: Path) -> dict[str, str]:
     """Load environment variables from .env file."""
-    env_vars = {}
+    env_vars: dict[str, str] = {}
     if not env_path.exists():
         return env_vars
     with open(env_path) as f:
@@ -127,7 +127,7 @@ RETRIEVAL_TEST_CASES = [
 ]
 
 
-def test_memvid_retrieval():
+def test_memvid_retrieval() -> None:
     """Test that memvid retrieves expected content for each test case."""
     print("\n" + "=" * 70)
     print("TEST SUITE: Memvid Retrieval Accuracy")
@@ -200,7 +200,7 @@ def test_memvid_retrieval():
     assert failed == 0, f"{failed} retrieval test(s) failed"
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_query_transformation_improves_retrieval() -> tuple[int, int]:
     """Test that query transformation improves retrieval for ambiguous queries."""
     print("\n" + "=" * 70)
@@ -319,7 +319,7 @@ async def test_query_transformation_improves_retrieval() -> tuple[int, int]:
     return passed, failed
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_full_rag_pipeline() -> tuple[int, int]:
     """Test the complete RAG pipeline produces correct answers."""
     print("\n" + "=" * 70)
@@ -441,7 +441,7 @@ async def test_full_rag_pipeline() -> tuple[int, int]:
     return passed, failed
 
 
-async def main():
+async def main() -> bool:
     """Run all end-to-end tests."""
     print("=" * 70)
     print("AI Resume Agent - End-to-End Integration Tests")
@@ -456,7 +456,7 @@ async def main():
     total_failed = 0
 
     # Test 1: Memvid retrieval accuracy
-    p, f = test_memvid_retrieval()
+    p, f = test_memvid_retrieval()  # type: ignore[func-returns-value]
     total_passed += p
     total_failed += f
 

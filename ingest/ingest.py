@@ -20,6 +20,7 @@ import json
 import re
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import memvid_sdk
 from memvid_sdk.embeddings import HuggingFaceEmbeddings
@@ -47,9 +48,9 @@ def get_current_timestamp() -> int:
     return int(datetime.now().timestamp())
 
 
-def parse_frontmatter(content: str) -> tuple[dict, str]:
+def parse_frontmatter(content: str) -> tuple[dict[str, Any], str]:
     """Extract YAML frontmatter from markdown content."""
-    frontmatter = {}
+    frontmatter: dict[str, Any] = {}
     body = content
 
     # Check for YAML frontmatter (--- delimited)
@@ -60,10 +61,10 @@ def parse_frontmatter(content: str) -> tuple[dict, str]:
             body = parts[2].strip()
 
             # Simple YAML parsing for flat key-value pairs
-            current_key = None
-            current_list = []
+            current_key: str | None = None
+            current_list: list[str] = []
             in_multiline = False
-            multiline_content = []
+            multiline_content: list[str] = []
 
             for line in yaml_content.split("\n"):
                 # Check for key: value
@@ -87,6 +88,7 @@ def parse_frontmatter(content: str) -> tuple[dict, str]:
                 elif in_multiline:
                     if line and not line.startswith(" "):
                         # End of multiline
+                        assert current_key is not None
                         frontmatter[current_key] = "\n".join(multiline_content)
                         in_multiline = False
                         # Re-process this line
@@ -107,17 +109,17 @@ def parse_frontmatter(content: str) -> tuple[dict, str]:
             # Save final list if any
             if current_key and current_list:
                 frontmatter[current_key] = current_list
-            if in_multiline and multiline_content:
+            if in_multiline and multiline_content and current_key is not None:
                 frontmatter[current_key] = "\n".join(multiline_content)
 
     return frontmatter, body
 
 
-def extract_sections(content: str) -> list[dict]:
+def extract_sections(content: str) -> list[dict[str, str]]:
     """Extract sections from markdown, chunking by ## headings."""
-    sections = []
-    current_section = None
-    current_content = []
+    sections: list[dict[str, str]] = []
+    current_section: str | None = None
+    current_content: list[str] = []
 
     for line in content.split("\n"):
         # Check for ## heading (level 2)
@@ -151,11 +153,11 @@ def extract_sections(content: str) -> list[dict]:
     return sections
 
 
-def extract_experience_chunks(section_content: str) -> list[dict]:
+def extract_experience_chunks(section_content: str) -> list[dict[str, str]]:
     """Extract individual experience entries from the Experience section."""
-    chunks = []
-    current_chunk = None
-    current_content = []
+    chunks: list[dict[str, str]] = []
+    current_chunk: str | None = None
+    current_content: list[str] = []
 
     for line in section_content.split("\n"):
         # Check for ### heading (company/role)
@@ -210,16 +212,16 @@ def extract_keywords_from_content(content: str) -> list[str]:
     return keywords
 
 
-def extract_faq_chunks(section_content: str) -> list[dict]:
+def extract_faq_chunks(section_content: str) -> list[dict[str, Any]]:
     """
     Extract individual FAQ entries from the FAQ section.
 
     Each ### heading becomes a separate chunk for optimal retrieval.
     This ensures suggested questions can retrieve their matching FAQ answers.
     """
-    chunks = []
-    current_question = None
-    current_content = []
+    chunks: list[dict[str, Any]] = []
+    current_question: str | None = None
+    current_content: list[str] = []
 
     for line in section_content.split("\n"):
         # Check for ### heading (FAQ question)
@@ -256,11 +258,11 @@ def extract_faq_chunks(section_content: str) -> list[dict]:
     return chunks
 
 
-def extract_failure_chunks(section_content: str) -> list[dict]:
+def extract_failure_chunks(section_content: str) -> list[dict[str, str]]:
     """Extract individual failure stories."""
-    chunks = []
-    current_chunk = None
-    current_content = []
+    chunks: list[dict[str, str]] = []
+    current_chunk: str | None = None
+    current_content: list[str] = []
 
     for line in section_content.split("\n"):
         # Check for ### Failure heading
@@ -291,22 +293,25 @@ def extract_failure_chunks(section_content: str) -> list[dict]:
     return chunks
 
 
-def parse_experience_entry(content: str) -> dict:
+def parse_experience_entry(content: str) -> dict[str, Any]:
     """Parse a single experience entry from markdown."""
     lines = content.split("\n")
 
     # Extract structured fields
-    entry = {
+    tags: list[str] = []
+    highlights: list[str] = []
+    ai_context: dict[str, str] = {}
+    entry: dict[str, Any] = {
         "role": "",
         "period": "",
         "location": "",
-        "tags": [],
-        "highlights": [],
-        "ai_context": {},
+        "tags": tags,
+        "highlights": highlights,
+        "ai_context": ai_context,
     }
 
-    current_section = None
-    current_content = []
+    current_section: str | None = None
+    current_content: list[str] = []
 
     for line in lines:
         # Extract **Field:** value patterns
@@ -362,9 +367,9 @@ def parse_experience_entry(content: str) -> dict:
     return entry
 
 
-def parse_skills_section(content: str) -> dict:
+def parse_skills_section(content: str) -> dict[str, list[str]]:
     """Parse the Skills Assessment section."""
-    skills = {"strong": [], "moderate": [], "gaps": []}
+    skills: dict[str, list[str]] = {"strong": [], "moderate": [], "gaps": []}
 
     current_category = None
 
@@ -389,7 +394,7 @@ def parse_skills_section(content: str) -> dict:
     return skills
 
 
-def parse_fit_assessment_examples(content: str) -> list[dict]:
+def parse_fit_assessment_examples(content: str) -> list[dict[str, str]]:
     """Parse fit assessment examples from the Fit Assessment Examples section.
 
     Expected format:
@@ -481,10 +486,10 @@ def parse_fit_assessment_examples(content: str) -> list[dict]:
 
 
 def build_profile_dict(
-    frontmatter: dict,
-    sections: list[dict],
+    frontmatter: dict[str, Any],
+    sections: list[dict[str, str]],
     verbose: bool = True,
-) -> dict:
+) -> dict[str, Any]:
     """
     Build profile dictionary from frontmatter and sections.
 
@@ -548,7 +553,7 @@ def ingest_memory(
     verbose: bool = True,
     debug: bool = False,
     embedding_model: str = EMBEDDING_MODEL,
-) -> dict:
+) -> dict[str, Any]:
     """
     Ingest master resume markdown into memvid memory.
 
@@ -691,8 +696,9 @@ def ingest_memory(
             faq_chunks = extract_faq_chunks(content)
             for chunk in faq_chunks:
                 # Combine global tags with extracted keywords
-                keywords = chunk.get("keywords", [])
-                tags = list(set(global_tags + keywords + ["faq", "question-answer"]))
+                raw_keywords: str | list[str] = chunk.get("keywords", [])
+                chunk_keywords = raw_keywords if isinstance(raw_keywords, list) else []
+                tags = list(set(global_tags + chunk_keywords + ["faq", "question-answer"]))
 
                 documents.append(
                     {
@@ -702,7 +708,7 @@ def ingest_memory(
                         "tags": tags,
                         "metadata": {
                             "section": "faq",
-                            "keywords": ",".join(keywords[:10]) if keywords else "",
+                            "keywords": ",".join(chunk_keywords[:10]) if chunk_keywords else "",
                         },
                         "timestamp": get_current_timestamp(),
                     }
@@ -711,7 +717,7 @@ def ingest_memory(
                     print(f"  Prepared: FAQ: {chunk['title']}")
                     if debug:
                         print(f"    Tags: {tags}")
-                        print(f"    Keywords: {keywords}")
+                        print(f"    Keywords: {chunk_keywords}")
                         print("    Metadata: section=faq")
                         print(
                             f"    Text: {chunk['content'][:200]}..."
@@ -913,7 +919,7 @@ def ingest_memory(
         print(f"  Inserted {len(frame_ids)} frames with embeddings")
 
     # Get stats before closing
-    stats = mem.stats()
+    stats: dict[str, Any] = mem.stats()
 
     # Close saves automatically
     mem.close()
@@ -1069,7 +1075,7 @@ def check_input_file(input_path: Path, verbose: bool = True) -> bool:
     return False
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Ingest master resume into memvid memory")
     parser.add_argument(
         "--input",

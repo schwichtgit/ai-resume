@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 
-def test_cosine_similarity():
+def test_cosine_similarity() -> None:
     """Test cosine similarity calculation."""
     from compare_models import cosine_similarity
 
@@ -26,7 +26,7 @@ def test_cosine_similarity():
 
 
 @pytest.mark.slow
-def test_test_model_returns_results():
+def test_test_model_returns_results() -> None:
     """
     Test that test_model() returns expected structure.
 
@@ -60,7 +60,9 @@ def test_test_model_returns_results():
 
 
 @pytest.mark.slow
-def test_main_runs_without_errors(monkeypatch, capsys):
+def test_main_runs_without_errors(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     """
     Test that main() can be called without crashing.
 
