@@ -179,6 +179,33 @@ jobs:
       - name: Test
         run: cargo test
 
+  # E2E Integration Tests: API + gRPC
+  e2e:
+    needs: [changes, api-service, memvid-service]
+    if: >-
+      always() &&
+      needs.changes.result == 'success' &&
+      (needs.changes.outputs.api-service == 'true' || needs.changes.outputs.memvid-service == 'true') &&
+      needs.api-service.result != 'failure' &&
+      needs.memvid-service.result != 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: cd api-service && uv sync --extra test
+
+      - name: Run E2E API tests
+        run: cd api-service && uv run pytest tests/test_e2e_api.py -v --tb=short
+
   # Commit message standards (PRs only)
   commit-standards:
     if: github.event_name == 'pull_request'
@@ -309,6 +336,7 @@ jobs:
         api-service,
         ingest,
         memvid-service,
+        e2e,
         docs,
         commit-standards,
       ]
@@ -322,6 +350,7 @@ jobs:
           echo "API Service: ${{ needs.api-service.result || 'skipped' }}"
           echo "Ingest: ${{ needs.ingest.result || 'skipped' }}"
           echo "Memvid Service: ${{ needs.memvid-service.result || 'skipped' }}"
+          echo "E2E: ${{ needs.e2e.result || 'skipped' }}"
           echo "Docs: ${{ needs.docs.result || 'skipped' }}"
           echo "Commit Standards: ${{ needs.commit-standards.result || 'skipped' }}"
 
@@ -330,6 +359,7 @@ jobs:
              [[ "${{ needs.api-service.result }}" == "failure" ]] || \
              [[ "${{ needs.ingest.result }}" == "failure" ]] || \
              [[ "${{ needs.memvid-service.result }}" == "failure" ]] || \
+             [[ "${{ needs.e2e.result }}" == "failure" ]] || \
              [[ "${{ needs.commit-standards.result }}" == "failure" ]]; then
             echo "One or more jobs failed!"
             exit 1

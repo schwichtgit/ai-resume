@@ -823,11 +823,21 @@ def ingest_memory(
 
         elif title == "Summary":
             tags = list(set(global_tags + ["summary", "overview"]))
+            # Prepend a Keywords line so tantivy can match on terms like
+            # "candidate", "qualifications", "strengths".  Words like
+            # "summary" and "overview" are stop-words in tantivy's default
+            # analyzer and get dropped during indexing, so we add
+            # non-stop-word synonyms that recruiters commonly search for.
+            keywords_line = (
+                "**Keywords:** candidate, qualifications, strengths, "
+                "weaknesses, career-summary, background, profile-overview"
+            )
+            summary_text = f"{keywords_line}\n\n{content}"
             documents.append(
                 {
                     "title": "Professional Summary",
                     "label": "Professional Summary",
-                    "text": content,
+                    "text": summary_text,
                     "tags": tags,
                     "metadata": {
                         "section": "summary",
@@ -961,7 +971,9 @@ def verify(output_path: Path = DEFAULT_OUTPUT, verbose: bool = True) -> bool:
         # General semantic queries
         ("Python Go Rust programming", 0.3, ["faq", "question-answer"]),
         ("leadership team building", 0.3, ["team-leadership"]),
-        ("professional summary overview", 0.3, ["summary", "overview"]),
+        # Note: "summary" and "overview" are stop-words in tantivy and get
+        # dropped during indexing.  Use content terms that tantivy indexes.
+        ("strengths weaknesses profile-overview", 0.3, ["summary", "overview"]),
     ]
 
     # Negative queries (expect <1 relevant hit or low scores)

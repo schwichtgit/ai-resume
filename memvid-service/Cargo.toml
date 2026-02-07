@@ -13,7 +13,7 @@ tower = "0.4"
 tower-http = { version = "0.5", features = ["trace", "cors"] }
 
 # Memvid SDK
-memvid-core = { version = "2.0.135", features = ["lex"] }
+memvid-core = { version = "2.0.136", features = ["lex"] }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }

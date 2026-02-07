@@ -4,7 +4,7 @@
 
 use async_trait::async_trait;
 use memvid_core::{
-    AdaptiveConfig, AskMode as MemvidAskMode, AskRequest as MemvidAskRequest, Memvid, SearchRequest,
+    AclEnforcementMode, AdaptiveConfig, AskMode as MemvidAskMode, AskRequest as MemvidAskRequest, Memvid, SearchRequest,
 };
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -122,6 +122,8 @@ impl Searcher for RealSearcher {
             as_of_frame: None,
             as_of_ts: None,
             no_sketch: false,
+            acl_context: None,
+            acl_enforcement_mode: AclEnforcementMode::Audit,
         };
 
         // Perform the search (blocking operation)
@@ -261,6 +263,8 @@ impl Searcher for RealSearcher {
                     None
                 }
             }),
+            acl_context: None,
+            acl_enforcement_mode: AclEnforcementMode::Audit,
         };
 
         // Perform the ask operation (blocking)

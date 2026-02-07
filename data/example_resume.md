@@ -180,27 +180,27 @@ Jane believes talking about failures demonstrates self-awareness and growth:
 
 **Failure 1: The Over-Engineered Platform (2023)**
 
-*What happened:* Built an internal developer platform so architecturally elegant that only Jane could maintain it. When she moved to another project, the team needed 6 months to either understand it or rewrite it. They chose rewrite.
+_What happened:_ Built an internal developer platform so architecturally elegant that only Jane could maintain it. When she moved to another project, the team needed 6 months to either understand it or rewrite it. They chose rewrite.
 
-*Root cause:* Prioritized clever solutions over maintainable ones. No documentation. Assumed she would always be available.
+_Root cause:_ Prioritized clever solutions over maintainable ones. No documentation. Assumed she would always be available.
 
-*What changed:* Now asks "can a new team member maintain this in 6 months?" Writes documentation as she builds. Favors boring technology over clever solutions.
+_What changed:_ Now asks "can a new team member maintain this in 6 months?" Writes documentation as she builds. Favors boring technology over clever solutions.
 
 **Failure 2: The Migration That Took 2x Longer (2021)**
 
-*What happened:* Estimated a Kubernetes migration would take 3 months. Took 6 months and required an emergency budget increase.
+_What happened:_ Estimated a Kubernetes migration would take 3 months. Took 6 months and required an emergency budget increase.
 
-*Root cause:* Underestimated legacy system complexity. Did not account for tribal knowledge. Skipped discovery phase to move fast.
+_Root cause:_ Underestimated legacy system complexity. Did not account for tribal knowledge. Skipped discovery phase to move fast.
 
-*What changed:* Now insists on 2-week discovery sprints before major migrations. Builds in 50% buffer for legacy systems. Documents assumptions explicitly.
+_What changed:_ Now insists on 2-week discovery sprints before major migrations. Builds in 50% buffer for legacy systems. Documents assumptions explicitly.
 
 **Failure 3: The Hire That Did Not Work Out (2020)**
 
-*What happened:* Hired a senior engineer based on impressive technical interview. Within 3 months, team morale dropped significantly. The engineer was brilliant individually but dismissive of others' ideas.
+_What happened:_ Hired a senior engineer based on impressive technical interview. Within 3 months, team morale dropped significantly. The engineer was brilliant individually but dismissive of others' ideas.
 
-*Root cause:* Over-indexed on technical skills, under-indexed on collaboration. Did not check team fit signals.
+_Root cause:_ Over-indexed on technical skills, under-indexed on collaboration. Did not check team fit signals.
 
-*What changed:* Added team interaction interviews. Asks references specifically about collaboration. Watches for how candidates talk about former colleagues.
+_What changed:_ Added team interaction interviews. Asks references specifically about collaboration. Watches for how candidates talk about former colleagues.
 
 ---
 
@@ -405,6 +405,38 @@ Full-stack engineer at early-stage B2B SaaS startup. Transitioned from IC to tec
 
 ---
 
+## Skills Assessment
+
+### Strong Skills
+
+- **Python:** Primary language for data pipelines, ML tooling, and automation (10+ years)
+- **Go:** Microservices, Kubernetes operators, and CLI tools in production (5+ years)
+- **Kubernetes:** Multi-cluster management across AWS and GCP, operator development, service mesh (6+ years)
+- **AWS:** Production infrastructure including EKS, RDS, S3, Lambda, and Step Functions (10+ years)
+- **Platform Engineering:** Self-service developer platforms with golden paths and guardrails
+- **Security and Compliance:** FedRAMP Moderate, SOC 2 Type II, PCI-DSS certification experience
+- **Team Building:** Scaled teams through hypergrowth with less than 10% attrition
+- **CI/CD:** GitOps with ArgoCD, automated security scanning, 50x deployment speed improvements
+- **MLOps:** End-to-end model lifecycle from training to serving at 10M inferences/day
+
+### Moderate Skills
+
+- **GCP:** Production use of GKE, BigQuery, and Cloud Run (4 years, secondary to AWS)
+- **Terraform:** Multi-cloud IaC for AWS, GCP, and Azure infrastructure
+- **Rust:** Actively learning for systems programming and performance-critical services
+- **Observability:** Prometheus, Grafana, ELK stack, and OpenTelemetry instrumentation
+- **Azure:** Limited production experience with AKS (2 years)
+
+### Gaps
+
+- **Frontend Development:** Limited React and Vue experience, not a primary skill
+- **Mobile Development:** No production iOS or Android experience
+- **Low-Level Systems Programming:** Has not written C or C++ professionally in 10+ years
+- **Offensive Security:** Defense-focused background, no penetration testing or vulnerability research
+- **Computer Vision:** Limited experience with CV workloads in ML infrastructure work
+
+---
+
 ## Leadership & Management
 
 **Keywords:** leadership, management, team-building, hiring, mentorship, communication
@@ -444,6 +476,7 @@ These are pre-analyzed job descriptions demonstrating strong fit and weak fit sc
 **Job Description:**
 
 Series B AI infrastructure startup (40 people, $25M ARR) building MLOps platform for enterprise customers. Seeking VP of Platform Engineering to:
+
 - Build and scale platform engineering team (currently 6 engineers → target 15)
 - Own production ML infrastructure (Kubernetes, model serving, vector databases)
 - Establish golden paths for deployment, security, and observability
@@ -451,6 +484,7 @@ Series B AI infrastructure startup (40 people, $25M ARR) building MLOps platform
 - Partner with CTO on technical platform roadmap
 
 Required:
+
 - 10+ years software engineering, 5+ years leadership
 - Production ML/AI infrastructure experience
 - Kubernetes and cloud-native architecture expertise
@@ -458,6 +492,7 @@ Required:
 - Startup scaling experience (Series A/B preferred)
 
 **Assessment:**
+
 - **Verdict:** ⭐⭐⭐⭐⭐ Strong fit (98% match)
 - **Key Matches:**
   - Platform engineering expertise: Built self-service platforms with 50x deployment speed improvements at Acme Corp
@@ -477,6 +512,7 @@ Required:
 **Job Description:**
 
 Series C consumer social networking app (2M MAU, $80M ARR) seeking Director of Mobile Engineering to:
+
 - Lead 25-person mobile engineering team (iOS, Android, React Native)
 - Drive consumer-facing feature development with weekly release cycles
 - Own mobile app performance and user engagement metrics
@@ -484,6 +520,7 @@ Series C consumer social networking app (2M MAU, $80M ARR) seeking Director of M
 - Collaborate with Product and Design on mobile-first roadmap
 
 Required:
+
 - 8+ years mobile development (iOS and/or Android native)
 - 3+ years engineering leadership
 - Consumer product experience with MAU/retention optimization
@@ -491,6 +528,7 @@ Required:
 - Fast-paced consumer tech culture
 
 **Assessment:**
+
 - **Verdict:** ⭐ Weak fit (15% match)
 - **Key Matches:**
   - Engineering leadership: Has led technical teams successfully
