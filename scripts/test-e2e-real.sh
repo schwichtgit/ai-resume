@@ -428,6 +428,104 @@ else
 fi
 
 # =============================================================================
+# Phase 4: Semantic Coverage (verify all resume sections are searchable)
+# =============================================================================
+
+print_header "Phase 4: Semantic Coverage"
+echo "Verifying that all major sections of example_resume.md are retrievable"
+echo ""
+
+# Helper: test that a search query retrieves chunks from the real .mv2
+# Usage: test_coverage "description" "query" [expected_keyword_in_retrieval]
+test_coverage() {
+    local desc="$1"
+    local query="$2"
+    local expected_keyword="${3:-}"
+
+    run_test "Coverage: $desc"
+
+    local response
+    response=$(curl -sf -X POST "$BASE_URL/chat" \
+        -H "Content-Type: application/json" \
+        -d "{\"message\":\"$query\",\"stream\":false}" \
+        2>&1 || echo "CURL_FAILED")
+
+    if echo "$response" | grep -q "CURL_FAILED"; then
+        print_fail "Could not reach /api/v1/chat"
+        return
+    fi
+
+    local check
+    check=$(python3 -c "
+import sys, json
+try:
+    data = json.loads(sys.stdin.read())
+    chunks = data.get('chunks_retrieved', 0)
+    msg_len = len(data.get('message', ''))
+    if chunks > 0 and msg_len > 0:
+        print('OK:chunks=' + str(chunks))
+    else:
+        print('FAIL:chunks=' + str(chunks) + ',msg_len=' + str(msg_len))
+except Exception as e:
+    print('FAIL:' + str(e))
+" <<< "$response" 2>/dev/null || echo "FAIL:python_error")
+
+    if echo "$check" | grep -q "^OK:"; then
+        local detail
+        detail=$(echo "$check" | sed 's/^OK://')
+        print_pass "$desc ($detail)"
+    else
+        local detail
+        detail=$(echo "$check" | sed 's/^FAIL://')
+        print_fail "$desc ($detail)"
+    fi
+}
+
+# --- FAQ coverage (5 suggested questions from the resume) ---
+test_coverage "FAQ: Security track record" \
+    "What is her security track record?"
+
+test_coverage "FAQ: Programming languages" \
+    "What programming languages does she know?"
+
+test_coverage "FAQ: AI/ML experience" \
+    "Tell me about her AI and ML experience"
+
+test_coverage "FAQ: Biggest failures" \
+    "What are her biggest failures?"
+
+test_coverage "FAQ: Startup fit" \
+    "Would she be good for an early-stage startup?"
+
+# --- Experience coverage (one query per company) ---
+test_coverage "Experience: Acme Corp" \
+    "Tell me about her work at Acme Corp and platform engineering"
+
+test_coverage "Experience: DataFlow Inc" \
+    "What did she do at DataFlow with data infrastructure?"
+
+test_coverage "Experience: TechStart Labs" \
+    "Tell me about her early career at TechStart Labs"
+
+# --- Skills coverage ---
+test_coverage "Skills: Kubernetes and cloud" \
+    "What is her Kubernetes and cloud infrastructure experience?"
+
+test_coverage "Skills: Leadership and team building" \
+    "How has she built and led engineering teams?"
+
+# --- Fit assessment coverage ---
+test_coverage "Fit: Strong match scenario" \
+    "Would she be a good fit for a VP of Platform role at an AI startup?"
+
+test_coverage "Fit: Weak match scenario" \
+    "Would she be a good fit for a mobile engineering director role?"
+
+# --- Gaps coverage (honest limitations) ---
+test_coverage "Gaps: Frontend and mobile limitations" \
+    "What are her technical limitations and skill gaps?"
+
+# =============================================================================
 # Summary
 # =============================================================================
 
