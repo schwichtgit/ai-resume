@@ -193,8 +193,8 @@ jobs:
       - name: Test
         run: cargo test
 
-  # E2E Integration Tests: API + gRPC
-  e2e:
+  # Cross-Service Integration Tests: API + gRPC (mock backends)
+  cross-service:
     needs: [changes, api-service, memvid-service]
     if: >-
       always() &&
@@ -230,16 +230,74 @@ jobs:
       - name: Install dependencies
         run: cd api-service && uv sync --extra test
 
-      - name: Run E2E API tests
+      - name: Run API endpoint tests (mocked backends)
         run: cd api-service && uv run pytest tests/test_e2e_api.py -v --tb=short
 
       - name: Build memvid-service binary
         run: cd memvid-service && cargo build --release
 
-      - name: Run full-stack integration tests
+      - name: Run cross-service gRPC integration (mock search)
         run: |
           chmod +x scripts/test-e2e-integration.sh
           ./scripts/test-e2e-integration.sh
+
+  # True E2E: Real ingest -> real memvid search -> real API (mock LLM only)
+  e2e-real:
+    needs: [changes, api-service, memvid-service, ingest]
+    if: >-
+      always() &&
+      needs.changes.result == 'success' &&
+      (needs.changes.outputs.api-service == 'true' || needs.changes.outputs.memvid-service == 'true' || needs.changes.outputs.ingest == 'true') &&
+      needs.api-service.result != 'failure' &&
+      needs.memvid-service.result != 'failure' &&
+      needs.ingest.result != 'failure'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.92.0"
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: memvid-service
+
+      - name: Install protobuf compiler
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface/hub
+          key: huggingface-models-v1
+
+      - name: Install ingest dependencies
+        run: cd ingest && uv sync --extra test
+
+      - name: Install api-service dependencies
+        run: cd api-service && uv sync --extra test
+
+      - name: Build memvid-service
+        run: cd memvid-service && cargo build --release
+
+      - name: Run true E2E tests
+        env:
+          HF_HUB_DOWNLOAD_TIMEOUT: "120"
+        run: |
+          chmod +x scripts/test-e2e-real.sh
+          ./scripts/test-e2e-real.sh
 
   # Commit message standards (PRs only)
   commit-standards:
@@ -364,7 +422,7 @@ jobs:
 
   # Release gate: final validation on main branch pushes
   release-gate:
-    needs: [changes, frontend, api-service, memvid-service, e2e]
+    needs: [changes, frontend, api-service, memvid-service, cross-service]
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     steps:
@@ -391,7 +449,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: Run E2E API tests
+      - name: Run API endpoint tests (mocked backends)
         run: cd api-service && uv sync --extra test && uv run pytest tests/test_e2e_api.py -v --tb=short
 
       - name: Release gate passed
@@ -406,7 +464,8 @@ jobs:
         api-service,
         ingest,
         memvid-service,
-        e2e,
+        cross-service,
+        e2e-real,
         docs,
         commit-standards,
       ]
@@ -420,7 +479,8 @@ jobs:
           echo "API Service: ${{ needs.api-service.result || 'skipped' }}"
           echo "Ingest: ${{ needs.ingest.result || 'skipped' }}"
           echo "Memvid Service: ${{ needs.memvid-service.result || 'skipped' }}"
-          echo "E2E: ${{ needs.e2e.result || 'skipped' }}"
+          echo "Cross-Service: ${{ needs.cross-service.result || 'skipped' }}"
+          echo "E2E Real: ${{ needs.e2e-real.result || 'skipped' }}"
           echo "Docs: ${{ needs.docs.result || 'skipped' }}"
           echo "Commit Standards: ${{ needs.commit-standards.result || 'skipped' }}"
 
@@ -429,7 +489,7 @@ jobs:
              [[ "${{ needs.api-service.result }}" == "failure" ]] || \
              [[ "${{ needs.ingest.result }}" == "failure" ]] || \
              [[ "${{ needs.memvid-service.result }}" == "failure" ]] || \
-             [[ "${{ needs.e2e.result }}" == "failure" ]] || \
+             [[ "${{ needs.cross-service.result }}" == "failure" ]] || \
              [[ "${{ needs.commit-standards.result }}" == "failure" ]]; then
             echo "One or more jobs failed!"
             exit 1

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# E2E Integration Test Script (Category C)
+# Cross-Service Integration Tests (mock backends)
 # Tests the full request path: HTTP -> Python API -> gRPC -> Rust memvid-service
 # Both services run with mock backends (no real LLM or .mv2 file needed)
 
@@ -97,7 +97,7 @@ cleanup() {
 
 trap cleanup EXIT
 
-print_header "E2E Integration Tests (Category C)"
+print_header "Cross-Service Integration Tests (mock backends)"
 echo "Full request path: HTTP -> Python API -> gRPC -> Rust memvid-service"
 echo "Project root: $PROJECT_ROOT"
 echo ""
