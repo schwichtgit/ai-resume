@@ -156,7 +156,8 @@ jobs:
           HF_HUB_DOWNLOAD_TIMEOUT: '120'
         run: uv run pytest -v --tb=short -m "not slow" --cov=ingest --cov-report=term-missing --cov-fail-under=85
 
-  # Memvid Service: Rust/gRPC
+  # Memvid Service: Rust/gRPC (unit tests + library coverage, excludes real.rs)
+  # real.rs coverage is handled by the memvid-integration job below
   memvid-service:
     needs: changes
     if: ${{ needs.changes.outputs.memvid-service == 'true' }}
@@ -198,6 +199,76 @@ jobs:
 
       - name: Coverage
         run: cargo tarpaulin --out xml --skip-clean --exclude-files 'src/main.rs' --exclude-files 'src/memvid/real.rs' --fail-under 85
+
+  # Memvid Integration: real.rs coverage with actual .mv2 file
+  # Runs ingest to produce a .mv2, then cargo tarpaulin on integration tests
+  memvid-integration:
+    needs: [changes, memvid-service]
+    if: >-
+      always() &&
+      needs.changes.result == 'success' &&
+      (needs.changes.outputs.memvid-service == 'true' || needs.changes.outputs.ingest == 'true') &&
+      needs.memvid-service.result != 'failure'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '1.92.0'
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: memvid-service
+
+      - name: Install protobuf compiler
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface/hub
+          key: huggingface-models-v1
+
+      - name: Install ingest dependencies
+        run: cd ingest && uv sync
+
+      - name: Ingest example resume to .mv2
+        env:
+          HF_HUB_DOWNLOAD_TIMEOUT: '120'
+        run: |
+          cd ingest
+          uv run python ingest.py \
+            --input ../data/example_resume.md \
+            --output /tmp/test_resume.mv2 \
+            --verify \
+            --quiet
+
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
+
+      - name: Integration tests with coverage
+        env:
+          TEST_MV2_PATH: /tmp/test_resume.mv2
+        working-directory: memvid-service
+        run: |
+          cargo tarpaulin \
+            --out xml \
+            --skip-clean \
+            --test integration_real \
+            --exclude-files 'src/main.rs' \
+            --fail-under 50
 
   # Cross-Service Integration Tests: API + gRPC (mock backends)
   cross-service:
@@ -508,6 +579,7 @@ jobs:
         api-service,
         ingest,
         memvid-service,
+        memvid-integration,
         cross-service,
         e2e-real,
         docs,
@@ -523,6 +595,7 @@ jobs:
           echo "API Service: ${{ needs.api-service.result || 'skipped' }}"
           echo "Ingest: ${{ needs.ingest.result || 'skipped' }}"
           echo "Memvid Service: ${{ needs.memvid-service.result || 'skipped' }}"
+          echo "Memvid Integration: ${{ needs.memvid-integration.result || 'skipped' }}"
           echo "Cross-Service: ${{ needs.cross-service.result || 'skipped' }}"
           echo "E2E Real: ${{ needs.e2e-real.result || 'skipped' }}"
           echo "Docs: ${{ needs.docs.result || 'skipped' }}"
@@ -532,7 +605,8 @@ jobs:
           echo "Coverage thresholds enforced per-service:"
           echo "  Frontend: 10% (vitest thresholds, ramping to 85%)"
           echo "  Ingest: 85% (pytest --cov-fail-under)"
-          echo "  Memvid: 85% (cargo tarpaulin --fail-under, soft gate)"
+          echo "  Memvid (unit): 85% (cargo tarpaulin --fail-under, excludes real.rs)"
+          echo "  Memvid (integration): 50% (cargo tarpaulin on real.rs, soft gate)"
 
           # Fail if any required job failed (includes coverage threshold enforcement)
           if [[ "${{ needs.frontend.result }}" == "failure" ]] || \
