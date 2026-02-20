@@ -273,6 +273,7 @@ echo "Starting api-service (MOCK_MEMVID_CLIENT=false, MOCK_OPENROUTER=true) on p
     OPENROUTER_API_KEY="" \
     MEMVID_GRPC_HOST=localhost \
     MEMVID_GRPC_PORT=$GRPC_PORT \
+    RATE_LIMIT_PER_MINUTE=1000 \
         uvicorn ai_resume_api.main:app --host 0.0.0.0 --port "$API_PORT" > "$API_LOG" 2>&1
 ) &
 API_PID=$!
@@ -630,8 +631,10 @@ if [ $TESTS_FAILED -eq 0 ]; then
     exit 0
 else
     echo -e "\n${RED}Some tests failed${NC}\n"
-    echo "Diagnostic logs:"
-    echo "  memvid-service: $MEMVID_LOG"
-    echo "  api-service:    $API_LOG"
+    echo "=== memvid-service log (last 50 lines) ==="
+    tail -50 "$MEMVID_LOG" 2>/dev/null || echo "(no log)"
+    echo ""
+    echo "=== api-service log (last 50 lines) ==="
+    tail -50 "$API_LOG" 2>/dev/null || echo "(no log)"
     exit 1
 fi
