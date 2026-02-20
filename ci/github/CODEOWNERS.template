@@ -1,0 +1,14 @@
+# CODEOWNERS -- Replace @OWNER with your GitHub username or team.
+
+# Quality gate infrastructure
+.claude/                    @OWNER
+.github/                    @OWNER
+scripts/hooks/              @OWNER
+ci/                         @OWNER
+.specify/memory/            @OWNER
+
+# Security-critical files
+*.pem                       @OWNER
+*.key                       @OWNER
+.env*                       @OWNER
+**/security*                @OWNER
