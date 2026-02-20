@@ -60,6 +60,81 @@ run_test() {
     print_test "$1"
 }
 
+# Wait for API health endpoint to return healthy before running tests
+# Usage: wait_for_health URL [timeout_seconds]
+wait_for_health() {
+    local url="$1"
+    local timeout="${2:-60}"
+    local start
+    start=$(date +%s)
+    printf "Waiting for %s to become healthy..." "$url"
+    while true; do
+        local elapsed=$(( $(date +%s) - start ))
+        if [ "$elapsed" -ge "$timeout" ]; then
+            printf " TIMEOUT after %ds\n" "$timeout"
+            return 1
+        fi
+        if curl -sf --max-time 5 "$url" > /dev/null 2>&1; then
+            printf " ready (%ds)\n" "$elapsed"
+            return 0
+        fi
+        sleep 2
+    done
+}
+
+# Curl wrapper that retries ONLY on HTTP 429 (rate limit).
+# All other errors (connection refused, timeouts, 4xx, 5xx) fail immediately.
+# Usage: curl_with_429_retry [curl args...]
+# Output: response body on stdout; exits non-zero on failure
+curl_with_429_retry() {
+    local max_retries=3
+    local attempt=0
+    local tmpfile
+    tmpfile=$(mktemp)
+    local header_file
+    header_file=$(mktemp)
+
+    while [ "$attempt" -lt "$max_retries" ]; do
+        local http_code
+        # Use -s (no -f) so curl doesn't exit non-zero on 4xx/5xx -- we handle codes ourselves
+        http_code=$(curl -s --max-time 30 -w '%{http_code}' -o "$tmpfile" -D "$header_file" "$@" 2>/dev/null) || {
+            # curl itself failed (connection refused, DNS error, timeout, etc.)
+            rm -f "$tmpfile" "$header_file"
+            echo "CURL_FAILED:connection_error" >&2
+            return 1
+        }
+
+        if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
+            cat "$tmpfile"
+            rm -f "$tmpfile" "$header_file"
+            return 0
+        elif [ "$http_code" = "429" ]; then
+            attempt=$((attempt + 1))
+            if [ "$attempt" -ge "$max_retries" ]; then
+                rm -f "$tmpfile" "$header_file"
+                echo "CURL_FAILED:429_after_${max_retries}_retries" >&2
+                return 1
+            fi
+            # Read Retry-After from response headers (default 2s)
+            local retry_after
+            retry_after=$(grep -i '^retry-after:' "$header_file" 2>/dev/null | awk '{print $2}' | tr -d '\r' || echo "2")
+            if [ -z "$retry_after" ] || ! [[ "$retry_after" =~ ^[0-9]+$ ]]; then
+                retry_after=2
+            fi
+            echo "  Rate limited (429), retry $attempt/$max_retries after ${retry_after}s..." >&2
+            sleep "$retry_after"
+        else
+            # Any other non-2xx: fail immediately
+            rm -f "$tmpfile" "$header_file"
+            echo "CURL_FAILED:http_$http_code" >&2
+            return 1
+        fi
+    done
+
+    rm -f "$tmpfile" "$header_file"
+    return 1
+}
+
 # Wait for a TCP port to become available
 wait_for_port() {
     local host="$1"
@@ -220,22 +295,31 @@ echo "  memvid-service PID=$MEMVID_PID (port $GRPC_PORT, file=$MV2_OUTPUT)"
 echo "  api-service     PID=$API_PID (port $API_PORT)"
 echo ""
 
+BASE_URL="http://localhost:$API_PORT/api/v1"
+
+# Health gate: poll until API reports healthy before running any tests
+if ! wait_for_health "$BASE_URL/health" 60; then
+    echo -e "${RED}FATAL: API never became healthy. Log:${NC}"
+    cat "$API_LOG"
+    exit 1
+fi
+echo ""
+
 # =============================================================================
 # Phase 3: Semantic quality assertions
 # =============================================================================
 
 print_header "Phase 3: Semantic Quality Assertions"
 
-BASE_URL="http://localhost:$API_PORT/api/v1"
-
 # --- Test 1: Profile name matches example_resume.md ---
 run_test "Profile name is 'Jane Chen' (from example_resume.md, not mock data)"
 
-profile_response=$(curl -sf "$BASE_URL/profile" 2>&1 || echo "CURL_FAILED")
-
-if echo "$profile_response" | grep -q "CURL_FAILED"; then
+profile_response=$(curl -sf --max-time 30 "$BASE_URL/profile") || {
     print_fail "Could not reach /api/v1/profile"
-else
+    profile_response=""
+}
+
+if [ -n "$profile_response" ]; then
     profile_name=$(python3 -c "
 import sys, json
 try:
@@ -256,7 +340,7 @@ fi
 # --- Test 2: Profile title matches ---
 run_test "Profile title is 'VP of Platform Engineering'"
 
-if echo "$profile_response" | grep -q "CURL_FAILED"; then
+if [ -z "$profile_response" ]; then
     print_fail "Could not reach /api/v1/profile (reusing previous failure)"
 else
     profile_title=$(python3 -c "
@@ -278,32 +362,35 @@ fi
 # --- Test 3: Health shows memvid_connected=true with real search ---
 run_test "Health endpoint reports memvid_connected=true (real .mv2)"
 
-health_response=$(curl -sf "$BASE_URL/health" 2>&1 || echo "CURL_FAILED")
-
-if echo "$health_response" | grep -q "CURL_FAILED"; then
+health_response=$(curl -sf --max-time 30 "$BASE_URL/health") || {
     print_fail "Could not reach /api/v1/health"
-elif echo "$health_response" | grep -q '"memvid_connected":true'; then
-    if echo "$health_response" | grep -q '"status":"healthy"'; then
-        print_pass "Health: status=healthy, memvid_connected=true (real .mv2)"
+    health_response=""
+}
+
+if [ -n "$health_response" ]; then
+    if echo "$health_response" | grep -q '"memvid_connected":true'; then
+        if echo "$health_response" | grep -q '"status":"healthy"'; then
+            print_pass "Health: status=healthy, memvid_connected=true (real .mv2)"
+        else
+            print_fail "memvid_connected=true but status not healthy"
+        fi
     else
-        print_fail "memvid_connected=true but status not healthy"
+        print_fail "memvid_connected not true"
+        echo "  Response: $health_response"
     fi
-else
-    print_fail "memvid_connected not true"
-    echo "  Response: $health_response"
 fi
 
 # --- Test 4: Search returns real content about Python ---
 run_test "Chat about 'Python' returns content from real resume (not mock)"
 
-chat_response=$(curl -sf -X POST "$BASE_URL/chat" \
+chat_response=$(curl_with_429_retry -X POST "$BASE_URL/chat" \
     -H "Content-Type: application/json" \
-    -d '{"message":"What programming languages does this person know?","stream":false}' \
-    2>&1 || echo "CURL_FAILED")
-
-if echo "$chat_response" | grep -q "CURL_FAILED"; then
+    -d '{"message":"What programming languages does this person know?","stream":false}') || {
     print_fail "Could not reach /api/v1/chat"
-else
+    chat_response=""
+}
+
+if [ -n "$chat_response" ]; then
     # Check that response has content and chunks were retrieved
     chat_check=$(python3 -c "
 import sys, json
@@ -333,18 +420,24 @@ fi
 # --- Test 5: Suggested questions match example_resume.md ---
 run_test "Suggested questions include questions from example_resume.md"
 
-questions_response=$(curl -sf "$BASE_URL/suggested-questions" 2>&1 || echo "CURL_FAILED")
-
-if echo "$questions_response" | grep -q "CURL_FAILED"; then
+questions_response=$(curl -sf --max-time 30 "$BASE_URL/suggested-questions") || {
     print_fail "Could not reach /api/v1/suggested-questions"
-else
+    questions_response=""
+}
+
+if [ -n "$questions_response" ]; then
     questions_check=$(python3 -c "
 import sys, json
 try:
     data = json.loads(sys.stdin.read())
     questions = data.get('questions', [])
+    # Questions are dicts with 'question' and 'category' fields
+    def get_text(q):
+        if isinstance(q, dict):
+            return q.get('question', '')
+        return str(q)
     # example_resume.md has suggested_questions including 'programming languages'
-    has_lang = any('programming' in q.lower() or 'languages' in q.lower() for q in questions)
+    has_lang = any('programming' in get_text(q).lower() or 'languages' in get_text(q).lower() for q in questions)
     if isinstance(questions, list) and len(questions) > 0 and has_lang:
         print('OK:count=' + str(len(questions)) + ',has_programming_q=true')
     elif isinstance(questions, list) and len(questions) > 0:
@@ -367,14 +460,14 @@ fi
 # --- Test 6: Fit assessment uses real search context ---
 run_test "Fit assessment retrieves real resume context for evaluation"
 
-fit_response=$(curl -sf -X POST "$BASE_URL/assess-fit" \
+fit_response=$(curl_with_429_retry -X POST "$BASE_URL/assess-fit" \
     -H "Content-Type: application/json" \
-    -d '{"job_description":"VP of Platform Engineering: Lead cloud infrastructure, Kubernetes orchestration, CI/CD pipelines. 10+ years distributed systems."}' \
-    2>&1 || echo "CURL_FAILED")
-
-if echo "$fit_response" | grep -q "CURL_FAILED"; then
+    -d '{"job_description":"VP of Platform Engineering: Lead cloud infrastructure, Kubernetes orchestration, CI/CD pipelines. 10+ years distributed systems."}') || {
     print_fail "Could not reach /api/v1/assess-fit"
-else
+    fit_response=""
+}
+
+if [ -n "$fit_response" ]; then
     fit_check=$(python3 -c "
 import sys, json
 try:
@@ -445,15 +538,12 @@ test_coverage() {
     run_test "Coverage: $desc"
 
     local response
-    response=$(curl -sf -X POST "$BASE_URL/chat" \
+    response=$(curl_with_429_retry -X POST "$BASE_URL/chat" \
         -H "Content-Type: application/json" \
-        -d "{\"message\":\"$query\",\"stream\":false}" \
-        2>&1 || echo "CURL_FAILED")
-
-    if echo "$response" | grep -q "CURL_FAILED"; then
+        -d "{\"message\":\"$query\",\"stream\":false}") || {
         print_fail "Could not reach /api/v1/chat"
         return
-    fi
+    }
 
     local check
     check=$(python3 -c "
