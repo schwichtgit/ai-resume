@@ -1,0 +1,167 @@
+#!/bin/bash
+# Commit-msg hook: Validate commit message format
+# Enforces conventional commits and blocks certain patterns
+
+set -euo pipefail
+
+COMMIT_MSG_FILE="$1"
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+# Extract just the first line (subject)
+SUBJECT=$(echo "$COMMIT_MSG" | head -n1)
+
+echo "Validating commit message..."
+
+# Check for empty commit message
+if [[ -z "$SUBJECT" ]]; then
+    echo "ERROR: Commit message cannot be empty"
+    exit 1
+fi
+
+# Check subject line length (max 72 characters recommended)
+if [[ ${#SUBJECT} -gt 72 ]]; then
+    echo "WARNING: Subject line is ${#SUBJECT} characters (recommended max: 72)"
+fi
+
+# --- Emoji Detection (using python3 for reliable Unicode handling) ---
+if python3 -c "
+import sys, re
+
+msg = sys.stdin.read()
+
+# Comprehensive emoji Unicode ranges
+emoji_pattern = re.compile(
+    '['
+    '\U0001F300-\U0001F6FF'   # Misc Symbols, Emoticons, Transport, Maps
+    '\U0001F900-\U0001F9FF'   # Supplemental Symbols and Pictographs
+    '\U0001FA00-\U0001FA6F'   # Chess Symbols, Extended-A
+    '\U0001FA70-\U0001FAFF'   # Symbols and Pictographs Extended-A
+    '\U00002600-\U000026FF'   # Misc Symbols (sun, cloud, etc.)
+    '\U00002700-\U000027BF'   # Dingbats
+    '\U0000FE00-\U0000FE0F'   # Variation Selectors
+    '\U0001F000-\U0001F02F'   # Mahjong, Domino Tiles
+    '\U0000200D'              # Zero Width Joiner
+    '\U00002B50'              # Star
+    '\U000023E9-\U000023F3'   # Media control symbols
+    '\U0000231A-\U0000231B'   # Watch, Hourglass
+    '\U000025AA-\U000025AB'   # Small squares
+    '\U000025FB-\U000025FE'   # Medium squares
+    '\U00002934-\U00002935'   # Arrows
+    '\U00003030'              # Wavy dash
+    '\U0000303D'              # Part alternation mark
+    '\U00003297'              # Circled Ideograph Congratulation
+    '\U00003299'              # Circled Ideograph Secret
+    ']+',
+    flags=re.UNICODE,
+)
+
+match = emoji_pattern.search(msg)
+if match:
+    sys.exit(0)  # emoji found
+else:
+    sys.exit(1)  # no emoji
+" <<< "$COMMIT_MSG"; then
+    echo "ERROR: Commit message contains emoji. Please remove them."
+    exit 1
+fi
+
+# --- Anti-AI-isms Detection ---
+# Detect common AI-generated phrases (case-insensitive)
+# Note: "Claude" is checked separately below to allow "Claude Code" as a product name
+AI_PATTERN='(\bI have\b|\bI'\''ve\b|\bmy changes\b|\bI updated\b|\bI fixed\b|\bI added\b|\bI refactored\b|as an ai\bcertainly\b|\bI'\''d be happy to\b|\brefined\b|\bpolished\b|\benhanced\b|\bbeautified\b|\bimproved efficiency\b|\bseamless\b|\brobust\b|\banthropic\b|\bgpt\b|\bopenai\b|\bcopilot\b|\bpowerful\b|\belegant\b|\bstreamlined\b)'
+
+if echo "$COMMIT_MSG" | grep -iqE "$AI_PATTERN"; then
+    # Find the specific match to report it
+    MATCHED=$(echo "$COMMIT_MSG" | grep -ioE "$AI_PATTERN" | head -n1)
+    echo "ERROR: Commit message contains AI-ism: '$MATCHED'"
+    echo "       Please rewrite using direct, imperative language."
+    echo "       Detected patterns include: self-references (I have, I fixed, etc.),"
+    echo "       fluff phrases (Certainly, Seamless, Robust, etc.),"
+    echo "       AI branding (Anthropic, GPT, Copilot, etc.),"
+    echo "       and marketing adjectives (powerful, elegant, streamlined)."
+    exit 1
+fi
+
+# Special check for "Claude": block standalone usage but allow "Claude Code" (product name)
+# Strip "Claude Code" phrases and "claude" in conventional commit scopes e.g. (claude), (claude_code)
+STRIPPED_MSG=$(echo "$COMMIT_MSG" | sed 's/[Cc][Ll][Aa][Uu][Dd][Ee] [Cc][Oo][Dd][Ee]//g' | sed 's/([Cc][Ll][Aa][Uu][Dd][Ee][^)]*)//g')
+if echo "$STRIPPED_MSG" | grep -qi "Claude"; then
+    echo "ERROR: Commit message contains AI-ism: 'Claude'"
+    echo "       Note: 'Claude Code' is allowed as a product name reference,"
+    echo "       but standalone 'Claude' as attribution is not permitted."
+    echo "       Please rewrite using direct, imperative language."
+    exit 1
+fi
+
+# Conventional commit pattern
+# Format: type(scope): description
+# Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
+CONVENTIONAL_PATTERN="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+"
+
+if ! echo "$SUBJECT" | grep -qE "$CONVENTIONAL_PATTERN"; then
+    echo "ERROR: Commit message does not follow conventional commits format"
+    echo ""
+    echo "Expected format: type(scope): description"
+    echo ""
+    echo "Valid types:"
+    echo "  feat     - A new feature"
+    echo "  fix      - A bug fix"
+    echo "  docs     - Documentation only changes"
+    echo "  style    - Formatting, missing semicolons, etc."
+    echo "  refactor - Code change that neither fixes a bug nor adds a feature"
+    echo "  perf     - Performance improvement"
+    echo "  test     - Adding or updating tests"
+    echo "  build    - Build system or external dependency changes"
+    echo "  ci       - CI configuration changes"
+    echo "  chore    - Other changes that don't modify src or test files"
+    echo "  revert   - Reverts a previous commit"
+    echo ""
+    echo "Examples:"
+    echo "  feat(api): add user authentication endpoint"
+    echo "  fix(frontend): resolve button alignment issue"
+    echo "  docs: update README with new instructions"
+    echo ""
+    exit 1
+fi
+
+# Block certain patterns in commit messages
+BLOCKED_PATTERNS=(
+    "WIP"
+    "wip"
+    "work in progress"
+    "DO NOT MERGE"
+    "DO NOT COMMIT"
+    "FIXME"
+    "TODO"
+    "XXX"
+    "temp"
+    "temporary"
+    "debug"
+)
+
+for pattern in "${BLOCKED_PATTERNS[@]}"; do
+    if echo "$COMMIT_MSG" | grep -qi "$pattern"; then
+        echo "WARNING: Commit message contains '$pattern'"
+        echo "         Consider removing this before pushing to main"
+    fi
+done
+
+# Check for Co-Authored-By (warn as per CLAUDE.md)
+if echo "$COMMIT_MSG" | grep -qi "Co-Authored-By"; then
+    echo "NOTE: Commit contains Co-Authored-By trailer"
+    echo "      Per CLAUDE.md, this is not required for this repository"
+fi
+
+# Validate body format if present
+BODY=$(echo "$COMMIT_MSG" | tail -n +3)
+if [[ -n "$BODY" ]]; then
+    # Check for line length in body (max 100 characters recommended)
+    while IFS= read -r line; do
+        if [[ ${#line} -gt 100 ]] && [[ ! "$line" =~ ^http ]]; then
+            echo "WARNING: Body line exceeds 100 characters"
+        fi
+    done <<< "$BODY"
+fi
+
+echo "Commit message validation passed!"
+exit 0

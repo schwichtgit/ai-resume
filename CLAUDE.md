@@ -29,7 +29,7 @@ This project uses the [specforge](https://github.com/schwichtgit/claude-project-
 
 - **Implementation gate:** Do not implement features until `/specforge analyze` scores >= 80
 - **Skip-if-current:** If an artifact already exists and is current, skip its phase
-- **Session bootstrap:** At the start of each coding session, read: constitution, plan, `claude-progress.txt`, `feature_list.json`
+- **Session bootstrap:** At the start of each coding session, read: constitution, plan, `feature_list.json`
 - **Feature tracking:** `feature_list.json` is the single source of truth for feature status
 - **Brownfield awareness:** 90 features have `verified: false` (existing code, not yet validated). 34 features are greenfield (no `verified` field)
 
@@ -103,7 +103,6 @@ python api-service/main.py
 
 # For deployment tasks
 source deployment/.venv/bin/activate
-python deployment/deploy.py
 ```
 
 Each venv is **isolated** with its own dependencies. Do not run Python scripts without activating the appropriate environment.
@@ -115,7 +114,7 @@ Each venv is **isolated** with its own dependencies. Do not run Python scripts w
 **Single-File Portability:** ALL content comes from a single `.mv2` file generated from markdown:
 
 ```
-data/master_resume.md (YAML + Markdown)
+data/<your_resume>.md (YAML + Markdown)
     ↓ python ingest.py
 data/.memvid/resume.mv2 (Vector DB + Profile JSON)
     ↓ gRPC + REST API
@@ -124,7 +123,7 @@ Frontend Components (Dynamic Rendering)
 
 **Data Flow:**
 
-1. **Source**: `data/master_resume.md` - YAML frontmatter + markdown sections
+1. **Source**: A resume markdown file (e.g., `data/example_resume.md`) - YAML frontmatter + markdown sections
 2. **Ingest**: `python ingest.py` - Parses, chunks, embeds, stores in .mv2
 3. **Storage**: `.mv2` file contains:
    - Vector embeddings for semantic search
@@ -167,7 +166,21 @@ Frontend Components (Dynamic Rendering)
 - Dynamic loading from profile API
 - Experience entries with ai_context (situation, approach, technical work, lessons learned)
 - Skills categorization (strong/moderate/gaps)
-- All data from `data/master_resume.md` → API
+- All data from resume markdown → API
+
+### API Endpoints
+
+| Method | Path                                 | Description                                           |
+| ------ | ------------------------------------ | ----------------------------------------------------- |
+| GET    | `/health`                            | Health check (root-level alias)                       |
+| GET    | `/api/v1/health`                     | Health check with dependency status                   |
+| POST   | `/api/v1/chat`                       | AI chat with semantic search (supports SSE streaming) |
+| GET    | `/api/v1/profile`                    | Profile metadata from memvid                          |
+| GET    | `/api/v1/suggested-questions`        | Suggested chat questions from profile                 |
+| POST   | `/api/v1/assess-fit`                 | Real-time job fit assessment via AI                   |
+| POST   | `/api/v1/session/{session_id}/clear` | Clear conversation history for a session              |
+| DELETE | `/api/v1/sessions/{session_id}`      | Delete a chat session                                 |
+| GET    | `/metrics`                           | Prometheus metrics (infrastructure)                   |
 
 ### Styling System
 
@@ -203,7 +216,7 @@ Frontend Components (Dynamic Rendering)
 
 To add new experience, skills, or fit assessment examples:
 
-1. Edit `data/master_resume.md` (or create your own resume markdown file)
+1. Edit your resume markdown file (see `data/example_resume.md` for the template)
 2. Update the relevant section:
    - **Professional Experience**: Add `### Company Name` sections with role, period, highlights, AI Context
    - **Skills Assessment**: Update skills lists under `### Strong Skills`, `### Moderate Skills`, `### Gaps`
@@ -246,30 +259,18 @@ Quality is enforced by Claude Code hooks configured in `.claude/settings.json`:
 
 ### Building Multi-Architecture Containers
 
-The project includes a Dockerfile and build script for creating OCI containers that work on both amd64 and arm64 (aarch64) architectures.
+Each service has its own Dockerfile (`frontend/Dockerfile`, `api-service/Dockerfile`, `memvid-service/Dockerfile`). The build script creates all container images:
 
-**Build multi-arch image:**
+**Build all containers:**
 
 ```bash
-./build-container.sh [tag]
+scripts/build-all.sh [tag]
 ```
 
-This creates a manifest with both amd64 and arm64 images. The script uses Podman's multi-architecture build support.
-
-**Manual build commands:**
+**Deploy with compose:**
 
 ```bash
-# Create manifest
-podman manifest create localhost/frank-resume:latest
-
-# Build for amd64
-podman build --platform linux/amd64 --manifest localhost/frank-resume:latest .
-
-# Build for arm64
-podman build --platform linux/arm64 --manifest localhost/frank-resume:latest .
-
-# Inspect manifest
-podman manifest inspect localhost/frank-resume:latest
+cd deployment && podman compose up -d
 ```
 
 ### Running the Container
@@ -293,10 +294,13 @@ The application expects to be served at `frank-resume.schwichtenberg.us` when de
 
 ### Container Architecture
 
-- **Base image**: nginx-unprivileged:1.25-alpine (runs as non-root user)
-- **Build stage**: node:18-alpine for npm build
-- **Runtime**: Minimal nginx serving static files
-- **Port**: 8080 (unprivileged)
+- **Frontend base**: alpine:3.23 with OpenResty (runs as nginx user)
+- **Frontend build stage**: node:24-bookworm-slim for npm build
+- **API base**: python:3.12-slim-bookworm
+- **Memvid base**: debian:trixie-slim (runs as memvid user)
+- **Frontend port**: 8080 (unprivileged)
+- **API port**: 3000
+- **Memvid port**: 50051 (gRPC)
 - **Health check**: GET /health endpoint
 
 ### Nginx Configuration
@@ -380,6 +384,16 @@ gh api --method PATCH repos/schwichtgit/ai-resume/code-scanning/alerts/1 \
 - Alert types and remediation: `.claude/skills/gh-code-scanning/reference/alert-types.md`
 - Fix example: `.claude/skills/gh-code-scanning/examples/fix-example.md`
 - Dismiss example: `.claude/skills/gh-code-scanning/examples/dismiss-example.md`
+
+## Git Hooks Distribution
+
+- `.githooks/` is tracked in git and contains all project git hooks (`pre-commit`, `commit-msg`)
+- `scripts/install-hooks.sh` sets `git config core.hooksPath .githooks` (no manual file copying needed)
+- To install hooks after cloning: `./scripts/install-hooks.sh`
+- To skip hooks temporarily: `git commit --no-verify`
+- To uninstall: `git config --unset core.hooksPath`
+- Pre-commit ESLint: don't use `--max-warnings 0` (shadcn/ui warnings are expected)
+- Pre-commit path fix: strip `frontend/` prefix before passing to ESLint when cd'd into frontend/
 
 ## Git Commit Guidelines
 
