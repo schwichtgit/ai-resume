@@ -279,7 +279,12 @@ jobs:
             --skip-clean \
             --test integration_real \
             --exclude-files 'src/main.rs' \
-            --fail-under 50
+            --exclude-files 'src/memvid/mock.rs' \
+            --exclude-files 'src/grpc/*' \
+            --exclude-files 'src/config.rs' \
+            --exclude-files 'src/error.rs' \
+            --exclude-files 'src/metrics.rs' \
+            --fail-under 80
 
   # Cross-Service Integration Tests: API + gRPC (mock backends)
   cross-service:
