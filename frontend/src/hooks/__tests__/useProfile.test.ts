@@ -11,6 +11,7 @@ import * as apiClient from '@/lib/api-client';
 // Mock the api-client module
 vi.mock('@/lib/api-client', () => ({
   getProfile: vi.fn(),
+  checkHealth: vi.fn(),
 }));
 
 describe('useProfile', () => {
@@ -63,8 +64,10 @@ describe('useProfile', () => {
     document.title = '';
 
     // Clear existing meta tags
-    const metaTags = document.querySelectorAll('meta[name="description"], meta[property^="og:"], meta[name^="twitter:"]');
-    metaTags.forEach(tag => tag.remove());
+    const metaTags = document.querySelectorAll(
+      'meta[name="description"], meta[property^="og:"], meta[name^="twitter:"]',
+    );
+    metaTags.forEach((tag) => tag.remove());
 
     // Add fresh meta tags
     const metaDescription = document.createElement('meta');
@@ -93,6 +96,12 @@ describe('useProfile', () => {
     document.head.appendChild(twitterDescription);
 
     vi.clearAllMocks();
+
+    // Default: health check returns healthy
+    vi.mocked(apiClient.checkHealth).mockResolvedValue({
+      status: 'healthy',
+      memvid_connected: true,
+    });
   });
 
   afterEach(() => {
@@ -133,7 +142,7 @@ describe('useProfile', () => {
   it('should derive initials correctly from name', async () => {
     const testCases = [
       { name: 'Jane Chen', expected: 'JC' },
-      { name: 'John Smith III', expected: 'JI' },  // First and LAST name
+      { name: 'John Smith III', expected: 'JI' }, // First and LAST name
       { name: 'Alice', expected: 'A' },
       { name: 'Mary-Jane Watson', expected: 'MW' },
       { name: '', expected: '' },
@@ -167,7 +176,9 @@ describe('useProfile', () => {
       tags: [],
     };
 
-    vi.mocked(apiClient.getProfile).mockResolvedValueOnce(minimalProfile as apiClient.ProfileResponse);
+    vi.mocked(apiClient.getProfile).mockResolvedValueOnce(
+      minimalProfile as apiClient.ProfileResponse,
+    );
 
     const { result } = renderHook(() => useProfile());
 
@@ -177,7 +188,11 @@ describe('useProfile', () => {
 
     expect(result.current.profile).toBeDefined();
     expect(result.current.profile?.experience).toEqual([]);
-    expect(result.current.profile?.skills).toEqual({ strong: [], moderate: [], gaps: [] });
+    expect(result.current.profile?.skills).toEqual({
+      strong: [],
+      moderate: [],
+      gaps: [],
+    });
     expect(result.current.profile?.fit_assessment_examples).toEqual([]);
   });
 
@@ -215,9 +230,15 @@ describe('useProfile', () => {
     renderHook(() => useProfile());
 
     await waitFor(() => {
-      const metaDescription = document.querySelector('meta[name="description"]');
-      expect(metaDescription?.getAttribute('content')).toContain('VP of Engineering');
-      expect(metaDescription?.getAttribute('content')).toContain('ai, infrastructure, platform-engineering');
+      const metaDescription = document.querySelector(
+        'meta[name="description"]',
+      );
+      expect(metaDescription?.getAttribute('content')).toContain(
+        'VP of Engineering',
+      );
+      expect(metaDescription?.getAttribute('content')).toContain(
+        'ai, infrastructure, platform-engineering',
+      );
     });
   });
 
@@ -228,11 +249,15 @@ describe('useProfile', () => {
 
     await waitFor(() => {
       const ogTitle = document.querySelector('meta[property="og:title"]');
-      const ogDescription = document.querySelector('meta[property="og:description"]');
+      const ogDescription = document.querySelector(
+        'meta[property="og:description"]',
+      );
 
-      expect(ogTitle?.getAttribute('content')).toBe('Jane Chen — VP of Engineering');
+      expect(ogTitle?.getAttribute('content')).toBe(
+        'Jane Chen — VP of Engineering',
+      );
       expect(ogDescription?.getAttribute('content')).toBe(
-        'Ask AI about my experience. Get honest, detailed answers about fit for your role.'
+        'Ask AI about my experience. Get honest, detailed answers about fit for your role.',
       );
     });
   });
@@ -244,11 +269,15 @@ describe('useProfile', () => {
 
     await waitFor(() => {
       const twitterTitle = document.querySelector('meta[name="twitter:title"]');
-      const twitterDescription = document.querySelector('meta[name="twitter:description"]');
+      const twitterDescription = document.querySelector(
+        'meta[name="twitter:description"]',
+      );
 
-      expect(twitterTitle?.getAttribute('content')).toBe('Jane Chen — VP of Engineering');
+      expect(twitterTitle?.getAttribute('content')).toBe(
+        'Jane Chen — VP of Engineering',
+      );
       expect(twitterDescription?.getAttribute('content')).toBe(
-        'AI-queryable professional portfolio. Ask questions, get honest answers.'
+        'AI-queryable professional portfolio. Ask questions, get honest answers.',
       );
     });
   });
@@ -257,7 +286,9 @@ describe('useProfile', () => {
     const originalTitle = 'Original Title';
     document.title = originalTitle;
 
-    vi.mocked(apiClient.getProfile).mockRejectedValueOnce(new Error('API Error'));
+    vi.mocked(apiClient.getProfile).mockRejectedValueOnce(
+      new Error('API Error'),
+    );
 
     renderHook(() => useProfile());
 
@@ -279,5 +310,70 @@ describe('useProfile', () => {
     rerender();
 
     expect(apiClient.getProfile).toHaveBeenCalledTimes(1);
+  });
+
+  describe('serviceStatus', () => {
+    it('should start with checking status', () => {
+      vi.mocked(apiClient.getProfile).mockResolvedValueOnce(mockProfileData);
+
+      const { result } = renderHook(() => useProfile());
+
+      expect(result.current.serviceStatus).toBe('checking');
+    });
+
+    it('should set healthy when health check succeeds with memvid connected', async () => {
+      vi.mocked(apiClient.getProfile).mockResolvedValueOnce(mockProfileData);
+      vi.mocked(apiClient.checkHealth).mockResolvedValueOnce({
+        status: 'healthy',
+        memvid_connected: true,
+      });
+
+      const { result } = renderHook(() => useProfile());
+
+      await waitFor(() => {
+        expect(result.current.serviceStatus).toBe('healthy');
+      });
+    });
+
+    it('should set degraded when memvid is not connected', async () => {
+      vi.mocked(apiClient.getProfile).mockResolvedValueOnce(mockProfileData);
+      vi.mocked(apiClient.checkHealth).mockResolvedValueOnce({
+        status: 'healthy',
+        memvid_connected: false,
+      });
+
+      const { result } = renderHook(() => useProfile());
+
+      await waitFor(() => {
+        expect(result.current.serviceStatus).toBe('degraded');
+      });
+    });
+
+    it('should set degraded when status is not healthy', async () => {
+      vi.mocked(apiClient.getProfile).mockResolvedValueOnce(mockProfileData);
+      vi.mocked(apiClient.checkHealth).mockResolvedValueOnce({
+        status: 'degraded',
+        memvid_connected: true,
+      });
+
+      const { result } = renderHook(() => useProfile());
+
+      await waitFor(() => {
+        expect(result.current.serviceStatus).toBe('degraded');
+      });
+    });
+
+    it('should set unavailable when health check fails', async () => {
+      vi.mocked(apiClient.getProfile).mockResolvedValueOnce(mockProfileData);
+      vi.mocked(apiClient.checkHealth).mockRejectedValueOnce(
+        new Error('Network error'),
+      );
+
+      const { result } = renderHook(() => useProfile());
+
+      await waitFor(() => {
+        expect(result.current.serviceStatus).toBe('unavailable');
+      });
+    });
   });
 });

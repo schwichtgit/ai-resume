@@ -238,6 +238,56 @@ class TestClearConversation:
         assert response.status_code == 404
 
 
+class TestDeleteSession:
+    """Tests for session delete endpoint."""
+
+    def test_delete_session_returns_204(self, client: TestClient) -> None:
+        """Verify DELETE /api/v1/sessions/{session_id} returns 204 for existing session."""
+        # Create a session by sending a chat message
+        r = client.post(
+            "/api/v1/chat",
+            json={"message": "Hello", "stream": False},
+        )
+        assert r.status_code == 200
+        session_id = r.json()["session_id"]
+
+        # Delete the session
+        response = client.delete(f"/api/v1/sessions/{session_id}")
+        assert response.status_code == 204
+
+    def test_delete_session_not_found(self, client: TestClient) -> None:
+        """Verify DELETE on non-existent session returns 404."""
+        response = client.delete("/api/v1/sessions/00000000-0000-0000-0000-000000000000")
+        assert response.status_code == 404
+
+    def test_delete_session_invalid_id(self, client: TestClient) -> None:
+        """Verify DELETE with invalid session ID returns 404."""
+        response = client.delete("/api/v1/sessions/not-a-uuid")
+        assert response.status_code == 404
+
+    def test_session_not_accessible_after_delete(self, client: TestClient) -> None:
+        """Verify that a deleted session is no longer accessible."""
+        # Create a session
+        r = client.post(
+            "/api/v1/chat",
+            json={"message": "Hello", "stream": False},
+        )
+        assert r.status_code == 200
+        session_id = r.json()["session_id"]
+
+        # Delete it
+        response = client.delete(f"/api/v1/sessions/{session_id}")
+        assert response.status_code == 204
+
+        # Attempting to clear the deleted session should return 404
+        response = client.post(f"/api/v1/session/{session_id}/clear")
+        assert response.status_code == 404
+
+        # Attempting to delete again should also return 404
+        response = client.delete(f"/api/v1/sessions/{session_id}")
+        assert response.status_code == 404
+
+
 class TestChatEndpoint:
     """Tests for chat endpoint."""
 
@@ -1410,8 +1460,8 @@ RECOMMENDATION: Excellent fit for this VP Platform Engineering role. The candida
         assert response.status_code == 422  # Validation error
 
     def test_assess_fit_validation_too_long(self, client: TestClient) -> None:
-        """Verify 422 validation error when JD exceeds 5000 chars."""
-        long_jd = "A" * 5001
+        """Verify 422 validation error when JD exceeds 15000 chars."""
+        long_jd = "A" * 15001
         response = client.post(
             "/api/v1/assess-fit",
             json={"job_description": long_jd},
@@ -1420,7 +1470,7 @@ RECOMMENDATION: Excellent fit for this VP Platform Engineering role. The candida
         detail = response.json()
         # Pydantic should report max_length violation
         assert any(
-            "5000" in str(err) or "max" in str(err).lower() for err in detail.get("detail", [])
+            "15000" in str(err) or "max" in str(err).lower() for err in detail.get("detail", [])
         )
 
     def test_assess_fit_validation_missing_field(self, client: TestClient) -> None:
