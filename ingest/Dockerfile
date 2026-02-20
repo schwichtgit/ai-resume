@@ -29,24 +29,23 @@ WORKDIR /app
 # Copy the lean production venv from Stage 1
 COPY --from=builder /app/.venv /app/.venv
 
-# Copy application source (includes committed proto stubs with correct imports)
-COPY ai_resume_api/ ./ai_resume_api/
-COPY healthcheck /healthcheck
-COPY start.py /start.py
+# Pre-cache the HuggingFace embedding model in the image layer.
+# BAAI/bge-small-en-v1.5 is the model used by ingest.py for semantic search.
+# Downloading at build time avoids network access at runtime.
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-small-en-v1.5')"
 
-# Ensure scripts are executable, create non-root user, and patch system
+# Copy application source
+COPY ingest.py ./ingest.py
+
+# Patch system and create non-root user
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
-    chmod +x /healthcheck /start.py && \
     useradd -r -u 1000 -s /bin/false appuser
-
-# Expose the API port
-EXPOSE 3000
 
 # Run as non-root user
 USER appuser
 
-# Launch the service using the venv python
-CMD ["python", "/start.py"]
+# One-shot service: run ingest pipeline then exit
+CMD ["python", "ingest.py"]
