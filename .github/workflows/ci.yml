@@ -197,8 +197,7 @@ jobs:
         run: cargo install cargo-tarpaulin
 
       - name: Coverage
-        run: cargo tarpaulin --out xml --skip-clean --fail-under 85
-        continue-on-error: true
+        run: cargo tarpaulin --out xml --skip-clean --exclude-files src/main.rs --fail-under 60
 
   # Cross-Service Integration Tests: API + gRPC (mock backends)
   cross-service:
