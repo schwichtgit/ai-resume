@@ -23,7 +23,7 @@ This project uses the [specforge](https://github.com/schwichtgit/claude-project-
 | 2     | `/specforge plan`         | `.specify/specs/plan.md`          | Complete (Approved)     |
 | 3     | `/specforge features`     | `feature_list.json`               | Complete (124 features) |
 | 4     | `/specforge analyze`      | Score report                      | Complete (87.4/100)     |
-| 5     | `/specforge setup`        | Setup checklist                   | Pending                 |
+| 5     | `/specforge setup`        | Setup checklist                   | Complete                |
 
 ### Implementation Rules
 
