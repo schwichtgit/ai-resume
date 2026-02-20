@@ -255,6 +255,17 @@ jobs:
             --verify \
             --quiet
 
+      - name: Setup Node.js (for memvid-cli)
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # Workaround: memvid Bug C (#196) -- remove when upstream fix ships
+      # Disable by setting repository variable REBUILD_TIME_INDEX=false
+      - name: Rebuild .mv2 time index (Bug C workaround)
+        if: ${{ vars.REBUILD_TIME_INDEX != 'false' }}
+        run: npx -y memvid-cli doctor --rebuild-time-index /tmp/test_resume.mv2
+
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin
 
@@ -366,12 +377,18 @@ jobs:
       - name: Install api-service dependencies
         run: cd api-service && uv sync --extra test
 
+      - name: Setup Node.js (for memvid-cli)
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
       - name: Build memvid-service
         run: cd memvid-service && cargo build --release
 
       - name: Run true E2E tests
         env:
           HF_HUB_DOWNLOAD_TIMEOUT: '120'
+          REBUILD_TIME_INDEX: ${{ vars.REBUILD_TIME_INDEX || 'true' }}
         run: |
           chmod +x scripts/test-e2e-real.sh
           ./scripts/test-e2e-real.sh
