@@ -104,7 +104,7 @@ elif [ -f "frontend/Dockerfile" ]; then
         --annotation "org.opencontainers.image.version=${VERSION}" \
         --annotation "org.opencontainers.image.created=${BUILD_DATE}" \
         --annotation "org.opencontainers.image.revision=${GIT_REVISION}" \
-        --annotation "org.opencontainers.image.licenses=UNLICENSED" \
+        --annotation "org.opencontainers.image.licenses=PolyForm-Noncommercial-1.0.0 OR LicenseRef-Commercial" \
         --annotation "org.opencontainers.image.vendor=schwichtgit" \
         --annotation "org.opencontainers.image.authors=https://github.com/schwichtgit" \
         -f frontend/Dockerfile \
@@ -132,7 +132,7 @@ if [ -f "memvid-service/Dockerfile" ]; then
         --annotation "org.opencontainers.image.version=${VERSION}" \
         --annotation "org.opencontainers.image.created=${BUILD_DATE}" \
         --annotation "org.opencontainers.image.revision=${GIT_REVISION}" \
-        --annotation "org.opencontainers.image.licenses=UNLICENSED" \
+        --annotation "org.opencontainers.image.licenses=PolyForm-Noncommercial-1.0.0 OR LicenseRef-Commercial" \
         --annotation "org.opencontainers.image.vendor=schwichtgit" \
         --annotation "org.opencontainers.image.authors=https://github.com/schwichtgit" \
         -f memvid-service/Dockerfile \
@@ -160,7 +160,7 @@ if [ -f "api-service/Dockerfile" ]; then
         --annotation "org.opencontainers.image.version=${VERSION}" \
         --annotation "org.opencontainers.image.created=${BUILD_DATE}" \
         --annotation "org.opencontainers.image.revision=${GIT_REVISION}" \
-        --annotation "org.opencontainers.image.licenses=UNLICENSED" \
+        --annotation "org.opencontainers.image.licenses=PolyForm-Noncommercial-1.0.0 OR LicenseRef-Commercial" \
         --annotation "org.opencontainers.image.vendor=schwichtgit" \
         --annotation "org.opencontainers.image.authors=https://github.com/schwichtgit" \
         -f api-service/Dockerfile \
@@ -188,7 +188,7 @@ if [ -f "ingest/Dockerfile" ]; then
         --annotation "org.opencontainers.image.version=${VERSION}" \
         --annotation "org.opencontainers.image.created=${BUILD_DATE}" \
         --annotation "org.opencontainers.image.revision=${GIT_REVISION}" \
-        --annotation "org.opencontainers.image.licenses=UNLICENSED" \
+        --annotation "org.opencontainers.image.licenses=PolyForm-Noncommercial-1.0.0 OR LicenseRef-Commercial" \
         --annotation "org.opencontainers.image.vendor=schwichtgit" \
         --annotation "org.opencontainers.image.authors=https://github.com/schwichtgit" \
         -f ingest/Dockerfile \
