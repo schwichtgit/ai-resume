@@ -11,11 +11,11 @@ semantics, the antipattern, and the fix.
 
 Claude Code command hooks communicate intent through three exit code classes:
 
-| Exit Code | Meaning             | Stdout Handling                         | Stderr Handling                   | Tool Execution |
-|-----------|---------------------|-----------------------------------------|-----------------------------------|----------------|
-| **0**     | Success (allow)     | Parsed as JSON feedback; shown in verbose mode | Ignored                          | Proceeds       |
-| **2**     | Block (deny)        | Ignored (JSON not parsed)               | Fed back to Claude as error context | **Blocked**    |
-| **Other** | Error (unexpected)  | Ignored                                 | Shown in verbose mode             | **Proceeds**   |
+| Exit Code | Meaning            | Stdout Handling                                | Stderr Handling                     | Tool Execution |
+| --------- | ------------------ | ---------------------------------------------- | ----------------------------------- | -------------- |
+| **0**     | Success (allow)    | Parsed as JSON feedback; shown in verbose mode | Ignored                             | Proceeds       |
+| **2**     | Block (deny)       | Ignored (JSON not parsed)                      | Fed back to Claude as error context | **Blocked**    |
+| **Other** | Error (unexpected) | Ignored                                        | Shown in verbose mode               | **Proceeds**   |
 
 ### Per-Event Exit 2 Behavior
 
@@ -146,6 +146,7 @@ exit 0
 ```
 
 Changes:
+
 - `echo "..."` becomes `echo "..." >&2` (stderr, so Claude sees it)
 - `exit 1` becomes `exit 2` (block signal, tool does not execute)
 
@@ -183,6 +184,7 @@ and tool input modification:
 ```
 
 Valid `permissionDecision` values:
+
 - `"allow"` -- bypasses the permission system entirely
 - `"deny"` -- prevents the tool call (equivalent to exit 2)
 - `"ask"` -- escalates to the user for confirmation

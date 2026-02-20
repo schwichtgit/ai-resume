@@ -1,10 +1,10 @@
-# GitHub Code Scanning Alert Management
-
 ---
 name: gh-code-scanning
 disable-model-invocation: true
 user-invocable: true
 ---
+
+# GitHub Code Scanning Alert Management
 
 This skill provides a structured workflow for managing GitHub Code Scanning security alerts using the GitHub CLI (`gh`).
 
@@ -40,21 +40,23 @@ ALERT_COUNT=$(gh api repos/$REPO/code-scanning/alerts --jq '[.[] | select(.state
 **Workflow:**
 
 1. Fetch all open alerts:
+
 ```bash
 gh api repos/schwichtgit/ai-resume/code-scanning/alerts \
   --jq '.[] | select(.state == "open") | {number, rule: .rule.id, severity: .rule.severity, location: .most_recent_instance.location.path}'
 ```
 
-2. Format output as a table showing:
+1. Format output as a table showing:
    - Alert number
    - Rule ID (e.g., "py/clear-text-logging-sensitive-data")
    - Severity (error, warning, note)
    - File location
 
-3. Include summary count and next steps suggestion
+2. Include summary count and next steps suggestion
 
 **Example Output:**
-```
+
+```text
 Open Code Scanning Alerts (3)
 
 #1  py/clear-text-logging-sensitive-data  error    api-service/main.py
@@ -72,23 +74,25 @@ Use /gh-code-scanning fix <N> to start fixing an alert
 **Workflow:**
 
 1. Fetch full alert details:
+
 ```bash
 gh api repos/schwichtgit/ai-resume/code-scanning/alerts/$ARGUMENTS
 ```
 
-2. Extract and display:
+1. Extract and display:
    - Rule ID and description
    - Severity and security severity level
    - Affected file and line numbers
    - Code snippet from most_recent_instance
    - Recommendation from rule.help
 
-3. Provide suggested next actions:
+2. Provide suggested next actions:
    - Fix the issue if it's a valid security concern
    - Dismiss if it's a false positive or won't-fix
 
 **Example Output:**
-```
+
+```text
 Alert #1: Clear-text logging of sensitive information
 
 Rule: py/clear-text-logging-sensitive-data
@@ -122,23 +126,25 @@ Next steps:
 1. Get alert details (same as detail command)
 
 2. Read the affected file:
+
 ```bash
 # Extract file path from alert JSON
 FILE_PATH=$(gh api repos/schwichtgit/ai-resume/code-scanning/alerts/$ARGUMENTS --jq '.most_recent_instance.location.path')
 ```
 
-3. Use Read tool to view file content with context around the issue
+1. Use Read tool to view file content with context around the issue
 
-4. Analyze the vulnerability and propose a fix based on:
+2. Analyze the vulnerability and propose a fix based on:
    - Alert rule description
    - Best practices for the vulnerability type
    - Existing code patterns in the file
 
-5. Ask user to confirm the proposed fix
+3. Ask user to confirm the proposed fix
 
-6. If confirmed, apply the fix using Edit tool
+4. If confirmed, apply the fix using Edit tool
 
-7. Commit the change:
+5. Commit the change:
+
 ```bash
 git add $FILE_PATH
 git commit -m "fix: Resolve code scanning alert #$ARGUMENTS - $(rule_id)
@@ -148,15 +154,17 @@ Address $(rule_description) in $(file_path).
 Security improvement: $(brief_explanation)"
 ```
 
-8. Push changes and wait for code scanning rescan
+1. Push changes and wait for code scanning rescan
 
-9. Provide instructions for verification:
-```
+2. Provide instructions for verification:
+
+```text
 Fix committed. Wait 5-10 minutes for code scanning to rescan, then:
 /gh-code-scanning verify $ARGUMENTS
 ```
 
 **Important Notes:**
+
 - Always show the proposed change before applying
 - Include security context in commit message
 - Link to alert in commit message when possible
@@ -167,6 +175,7 @@ Fix committed. Wait 5-10 minutes for code scanning to rescan, then:
 **Usage:** `/gh-code-scanning dismiss <alert-number> <reason>`
 
 **Valid Reasons:**
+
 - `false-positive` - Alert is not a real issue
 - `wont-fix` - Valid issue but won't be fixed
 - `used-in-tests` - Only used in test code
@@ -176,13 +185,15 @@ Fix committed. Wait 5-10 minutes for code scanning to rescan, then:
 1. Validate the reason is one of the accepted values
 
 2. Get alert details to show user what they're dismissing:
+
 ```bash
 gh api repos/schwichtgit/ai-resume/code-scanning/alerts/$ARGUMENTS
 ```
 
-3. Display alert summary and ask for confirmation
+1. Display alert summary and ask for confirmation
 
-4. If confirmed, dismiss the alert:
+2. If confirmed, dismiss the alert:
+
 ```bash
 gh api --method PATCH repos/schwichtgit/ai-resume/code-scanning/alerts/$ARGUMENTS \
   -f state='dismissed' \
@@ -190,19 +201,21 @@ gh api --method PATCH repos/schwichtgit/ai-resume/code-scanning/alerts/$ARGUMENT
   -f dismissed_comment='$COMMENT'
 ```
 
-5. Document the dismissal:
+1. Document the dismissal:
    - Add entry to docs/SECURITY.md under "Dismissed Alerts"
    - Include alert number, rule ID, reason, and rationale
    - Commit documentation update
 
-6. Confirm dismissal:
-```
+2. Confirm dismissal:
+
+```text
 Alert #$ARGUMENTS dismissed as $REASON
 
 Documentation updated in docs/SECURITY.md
 ```
 
 **Example:**
+
 ```bash
 /gh-code-scanning dismiss 2 wont-fix
 
@@ -222,26 +235,29 @@ Documentation updated in docs/SECURITY.md
 **Workflow:**
 
 1. Fetch current state of the alert:
+
 ```bash
 gh api repos/schwichtgit/ai-resume/code-scanning/alerts/$ARGUMENTS
 ```
 
-2. Check alert state:
+1. Check alert state:
    - If `state == "fixed"` or `state == "closed"`: Success! Alert resolved.
    - If `state == "open"`: Still open, check if recent commits addressed it
    - If `state == "dismissed"`: Show dismissal info
 
-3. For open alerts, check recent scans:
+2. For open alerts, check recent scans:
+
 ```bash
 # Get most recent analysis
 gh api repos/schwichtgit/ai-resume/code-scanning/analyses \
   --jq '.[0] | {commit_sha, created_at, results_count}'
 ```
 
-4. Provide status and next steps:
+1. Provide status and next steps:
 
 **If fixed:**
-```
+
+```text
 ✓ Alert #$ARGUMENTS has been resolved!
 
 State: fixed
@@ -252,7 +268,8 @@ The code scanning system confirmed the vulnerability has been addressed.
 ```
 
 **If still open:**
-```
+
+```text
 Alert #$ARGUMENTS is still open
 
 Last scan: <timestamp> (<commit_sha>)
@@ -287,6 +304,7 @@ Next steps:
 ### Common Alert Types
 
 See `reference/alert-types.md` for detailed information on:
+
 - Clear-text logging of sensitive information
 - Insecure randomness
 - Binding socket to all network interfaces
@@ -306,6 +324,7 @@ If an alert appears to be a false positive:
 ### "gh: command not found"
 
 Install GitHub CLI:
+
 ```bash
 # macOS
 brew install gh
@@ -318,6 +337,7 @@ sudo apt install gh
 ```
 
 Then authenticate:
+
 ```bash
 gh auth login
 ```
@@ -325,10 +345,12 @@ gh auth login
 ### "Resource not accessible by integration"
 
 Ensure you have the required permissions:
+
 - `security_events: write` for dismissing alerts
 - `security_events: read` for viewing alerts
 
 Check authentication status:
+
 ```bash
 gh auth status
 ```
@@ -336,6 +358,7 @@ gh auth status
 ### Alert not updating after fix
 
 Code scanning can take 5-10 minutes to rescan after a push. Wait and retry:
+
 ```bash
 # Check when last scan ran
 gh api repos/schwichtgit/ai-resume/code-scanning/analyses --jq '.[0].created_at'
@@ -366,6 +389,7 @@ gh api --method PATCH repos/schwichtgit/ai-resume/code-scanning/alerts/1 \
 ## Examples
 
 See the `examples/` directory for detailed walkthroughs:
+
 - `fix-example.md` - Complete workflow for fixing a clear-text logging alert
 - `dismiss-example.md` - Dismissing a won't-fix alert with documentation
 
@@ -378,6 +402,7 @@ See the `examples/` directory for detailed walkthroughs:
 ## Allowed Tools
 
 This skill uses the following tools:
+
 - `Bash(gh *)` - GitHub CLI commands for API access
 - `Bash(git *)` - Git commands for commits and branch operations
 - `Read` - Reading source files to analyze vulnerabilities
@@ -390,7 +415,7 @@ This skill uses the following tools:
 
 This skill is **user-invocable only**. It will not be automatically invoked. Always call it explicitly:
 
-```
+```text
 /gh-code-scanning list
 /gh-code-scanning detail 1
 /gh-code-scanning fix 1

@@ -20,11 +20,11 @@ The ingest service runs once to build the `.mv2` vector database file from
 
 All service images build and run on both **amd64** and **arm64** architectures.
 
-| Service          | amd64 | arm64 | Notes                                      |
-| ---------------- | ----- | ----- | ------------------------------------------ |
-| frontend         | Yes   | Yes   | Alpine + OpenResty available on both arches |
-| api-service      | Yes   | Yes   | Python slim-bookworm multi-arch base       |
-| memvid-service   | Yes   | Yes   | Rust cross-compiles via `--platform` flag   |
+| Service        | amd64 | arm64 | Notes                                       |
+| -------------- | ----- | ----- | ------------------------------------------- |
+| frontend       | Yes   | Yes   | Alpine + OpenResty available on both arches |
+| api-service    | Yes   | Yes   | Python slim-bookworm multi-arch base        |
+| memvid-service | Yes   | Yes   | Rust cross-compiles via `--platform` flag   |
 
 The memvid-service Dockerfile uses `ARG TARGETARCH` for platform-aware builds.
 The frontend and api-service use base images that natively support both architectures.
@@ -120,7 +120,7 @@ sudo mkdir -p /opt/ai-resume/data/.memvid
 sudo cp resume.mv2 /opt/ai-resume/data/.memvid/
 ```
 
-2. Configure environment:
+1. Configure environment:
 
 ```bash
 cd deployment/
@@ -128,7 +128,7 @@ cp .env.example .env
 # Edit .env -- at minimum set OPENROUTER_API_KEY
 ```
 
-3. Create the network:
+1. Create the network:
 
 ```bash
 podman network create yellow-net \
@@ -136,14 +136,14 @@ podman network create yellow-net \
   --gateway 192.168.100.1
 ```
 
-4. Start the stack:
+1. Start the stack:
 
 ```bash
 cd deployment/
 podman compose up -d
 ```
 
-5. Verify all services are healthy:
+1. Verify all services are healthy:
 
 ```bash
 podman compose ps

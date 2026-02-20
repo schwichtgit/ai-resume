@@ -140,7 +140,7 @@ Jane's programming skills span infrastructure and data engineering:
 
 ---
 
-### Tell me about her AI/ML experience.
+### Tell me about her AI/ML experience
 
 **Keywords:** AI, ML, machine learning, MLOps, model serving, inference, LLM, GPT, training, deployment
 
@@ -178,7 +178,7 @@ Jane has been building AI/ML infrastructure since 2019:
 
 Jane believes talking about failures demonstrates self-awareness and growth:
 
-**Failure 1: The Over-Engineered Platform (2023)**
+#### Failure 1: The Over-Engineered Platform (2023)
 
 _What happened:_ Built an internal developer platform so architecturally elegant that only Jane could maintain it. When she moved to another project, the team needed 6 months to either understand it or rewrite it. They chose rewrite.
 
@@ -186,7 +186,7 @@ _Root cause:_ Prioritized clever solutions over maintainable ones. No documentat
 
 _What changed:_ Now asks "can a new team member maintain this in 6 months?" Writes documentation as she builds. Favors boring technology over clever solutions.
 
-**Failure 2: The Migration That Took 2x Longer (2021)**
+#### Failure 2: The Migration That Took 2x Longer (2021)
 
 _What happened:_ Estimated a Kubernetes migration would take 3 months. Took 6 months and required an emergency budget increase.
 
@@ -194,7 +194,7 @@ _Root cause:_ Underestimated legacy system complexity. Did not account for triba
 
 _What changed:_ Now insists on 2-week discovery sprints before major migrations. Builds in 50% buffer for legacy systems. Documents assumptions explicitly.
 
-**Failure 3: The Hire That Did Not Work Out (2020)**
+#### Failure 3: The Hire That Did Not Work Out (2020)
 
 _What happened:_ Hired a senior engineer based on impressive technical interview. Within 3 months, team morale dropped significantly. The engineer was brilliant individually but dismissive of others' ideas.
 
@@ -271,7 +271,7 @@ Built and led platform engineering team supporting 200+ developers across 5 prod
 
 ---
 
-### DataFlow Inc.
+### DataFlow Inc
 
 **Role:** Director of Infrastructure
 **Period:** March 2018 - December 2021 (3.8 years)

@@ -176,6 +176,7 @@ Prioritized list of tasks to complete the hybrid Rust + Python AI Resume agent.
   - [x] Streaming SSE responses working
 
 **Build Scripts:**
+
 - [x] Updated `scripts/build-all.sh`:
   - [x] Multi-arch manifest builds (amd64 + arm64)
   - [x] `--no-cache` flag for clean rebuilds
@@ -254,7 +255,7 @@ Based on analysis from `docs/streamchat.pdf` (Perplexity AI recommendations).
 
 ### SSE Format Specification ✅
 
-```
+```text
 data: {token}\n\n                          # Token chunks
 event: stats\ndata: {json}\n\n            # Final stats
 event: end\ndata: [DONE]\n\n              # Stream completion
@@ -338,16 +339,19 @@ event: error\ndata: {message}\n\n         # Errors
 ### Naming Convention (Final)
 
 **Directories:** Function-based
+
 - `frontend/` - React SPA
 - `api-service/` - FastAPI REST/gRPC orchestration
 - `memvid-service/` - Rust gRPC semantic search
 
 **Containers:** Descriptive
+
 - `ai-resume-api` - Python FastAPI service
 - `ai-resume-memvid` - Rust memvid gRPC service
 - `ai-resume-frontend` - nginx + React SPA
 
 **Python Package:** Fully-qualified
+
 - `ai_resume_api` - Distributable package (not generic "app")
 
 **Status:** Complete - Refactored January 20, 2026
@@ -525,7 +529,7 @@ The implementation exceeded the original plan. Key achievements:
 ### Phase 4 Summary
 
 | Task | Effort | Priority | Status |
-|------|--------|----------|--------|
+| ---- | ------ | -------- | ------ |
 | 4.1 Backend Profile API | 2-3h | 🔴 CRITICAL | ✅ COMPLETE |
 | 4.2 Frontend Profile Hook | 3-4h | 🔴 CRITICAL | ✅ COMPLETE |
 | 4.3 Component Refactoring | 2-3h | 🔴 CRITICAL | ✅ COMPLETE |
@@ -783,7 +787,7 @@ The implementation exceeded the original plan. Key achievements:
 ### Why This Matters
 
 | Current State | Ontology-Based |
-|--------------|----------------|
+| ------------- | -------------- |
 | Find text containing "Python" | Query "5+ years Python experience" via metadata |
 | Context from entire job description | Link specific skills to specific projects |
 | Anti-patterns mixed with achievements | Structured "Limitations" frame for honest answers |
@@ -928,31 +932,26 @@ class CandidateOntology(BaseModel):
 
 ---
 
-
-
-
-
-
-
-
-
-
 ---
 
 ## Enhancement: Profile Image & Pronouns (Post-MVP)
 
 ### TODO: Add profile image field to resume schema
+
 **Status**: Pending
 **Related**: OG/Twitter link previews
 **Priority**: Medium
 
 **Problem**:
+
 - OG image currently hardcoded as `/ai-resume.png`
 - Different resumes should specify their own preview image
 - Image should come from profile data (memvid), not hardcoded
 
 **Implementation**:
+
 1. Extend resume YAML schema with `image` field:
+
    ```yaml
    ---
    name: Jane Chen
@@ -975,6 +974,7 @@ class CandidateOntology(BaseModel):
    - `seo-handler.lua` - Add image to Lua substitutions
 
 **Files to Modify**:
+
 - `data/example_resume.md` - Add optional `image` field
 - `ingest/ingest.py` - Extract image from frontmatter
 - `api-service/ai_resume_api/models.py` - Add image to ProfileResponse
@@ -988,16 +988,20 @@ class CandidateOntology(BaseModel):
 ---
 
 ### TODO: Add pronouns field to resume schema
+
 **Status**: Pending
 **Related**: Guardrails UX improvements
 **Priority**: Low
 
 **Problem**:
+
 - Guardrails currently use pronoun-neutral language ("their", "they")
 - Better UX with correct pronouns (she/her, he/him, they/them, etc.)
 
 **Implementation**:
+
 1. Add `pronouns` field to resume YAML:
+
    ```yaml
    pronouns: she/her  # or: he/him, they/them, etc.
    ```
@@ -1026,12 +1030,14 @@ class CandidateOntology(BaseModel):
 ### Background
 
 Current implementation uses `memvid find` which:
+
 - Returns chunks based solely on embedding distance
 - Cannot distinguish "AI" (artificial intelligence) from "AI" (Adobe Illustrator)
 - Struggles with acronym expansion queries
 - No metadata or temporal filtering capabilities
 
 Ask mode adds a cross-encoder re-ranking layer that:
+
 - Re-scores initial retrieval candidates based on query-document interaction
 - Provides evidence-based relevance (not just embedding distance)
 - Supports metadata filtering (section, company, role)
@@ -1235,6 +1241,7 @@ Ask mode adds a cross-encoder re-ranking layer that:
   - [x] 96% code coverage on role_classifier.py
 
 **Results:**
+
 - Better fit assessments for non-tech roles
 - Prevents 5-star ratings for cross-domain mismatches (culinary vs tech)
 - Handles ambiguous roles (VP Eng at healthcare company)
@@ -1278,7 +1285,7 @@ Ask mode adds a cross-encoder re-ranking layer that:
 ### Estimated Timeline
 
 | Task | Effort | Priority |
-|------|--------|----------|
+| ---- | ------ | -------- |
 | 11.1 Proto Updates | 2h | 🔴 CRITICAL |
 | 11.2 Rust Service (using memvid SDK Ask) | 4h | 🔴 CRITICAL |
 | 11.3 Python Client | 2h | 🔴 CRITICAL |
@@ -1302,12 +1309,14 @@ Ask mode adds a cross-encoder re-ranking layer that:
 **Goal:** Move from flat text embeddings to structured knowledge graph extraction.
 
 **Benefits:**
+
 - Precision queries: "Find someone with 5+ years of Python" (via metadata filtering)
 - Relationship mapping: Link specific projects to exact skills used
 - Prevent context poisoning: Skills from one role don't bleed into another
 - Enable complex queries: "Which companies used distributed systems?"
 
 **Approach:**
+
 1. Define Pydantic ontology schema (Job, Skill, Project, Achievement entities)
 2. Use LLM-based structured extraction (`instructor` library)
 3. Store ontological entities as Memvid frames with rich metadata
@@ -1320,14 +1329,17 @@ Ask mode adds a cross-encoder re-ranking layer that:
 ### 12.2: Advanced Memvid Features
 
 **Adaptive Retrieval:**
+
 - Implement `AdaptiveConfig` for dynamic retrieval strategies
 - Auto-tune retrieval_k based on query complexity
 
 **Pagination:**
+
 - Use `cursor` parameter for large result sets
 - Implement infinite scroll for evidence display
 
 **Time-Travel Queries:**
+
 - Use `as_of_frame` and `as_of_ts` for historical views
 - Show candidate evolution over time
 
@@ -1338,6 +1350,7 @@ Ask mode adds a cross-encoder re-ranking layer that:
 **Goal:** Fine-tune cross-encoder for resume-specific re-ranking.
 
 **Approach:**
+
 - Collect resume Q&A pairs as training data
 - Fine-tune `cross-encoder/ms-marco-MiniLM-L-6-v2` on domain data
 - Replace memvid's built-in cross-encoder with custom model

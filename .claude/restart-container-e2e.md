@@ -6,6 +6,7 @@ Phase 7 greenfield implementation is COMPLETE. All 34 greenfield features implem
 across 12 batches. All 124/124 features in `feature_list.json` now have `passes: true`.
 
 **Quality gates verified:**
+
 - Frontend: 40 tests pass, lint clean, TS clean
 - API service: 434 tests pass (5 xfailed), 91% coverage, ruff clean
 - Ingest: 90 tests pass, 92% coverage
@@ -41,7 +42,7 @@ podman build -t localhost/ai-resume-frontend:latest -f frontend/Dockerfile front
 podman build -t localhost/ai-resume-ingest:latest -f ingest/Dockerfile ingest/
 ```
 
-2. **Save tarballs for production deployment:**
+1. **Save tarballs for production deployment:**
 
 ```bash
 mkdir -p dist/
@@ -52,6 +53,7 @@ podman save localhost/ai-resume-ingest:latest -o dist/ai-resume-ingest.tar
 ```
 
 For multi-arch production tarballs (slow, cross-compiles):
+
 ```bash
 ./scripts/build-all.sh latest
 # Then save manifests:
@@ -59,7 +61,7 @@ podman save --multi-image-archive localhost/ai-resume-memvid:latest -o dist/ai-r
 # etc.
 ```
 
-3. **Start the compose stack:**
+1. **Start the compose stack:**
 
 ```bash
 cd deployment/
@@ -67,11 +69,12 @@ podman-compose up -d
 ```
 
 Wait for healthchecks:
+
 ```bash
 podman-compose ps  # Check health status
 ```
 
-4. **Test E2E through container stack:**
+1. **Test E2E through container stack:**
 
 ```bash
 # Health checks
@@ -88,7 +91,7 @@ curl -X POST http://localhost:8080/api/v1/chat \
   -d '{"message": "What experience does the candidate have?", "session_id": null}'
 ```
 
-5. **Cleanup after testing:**
+1. **Cleanup after testing:**
 
 ```bash
 cd deployment/
@@ -116,6 +119,7 @@ podman-compose down
 ### After E2E Testing
 
 If containers work:
+
 1. Build multi-arch images for production: `./scripts/build-all.sh v1.0.0`
 2. Save production tarballs
 3. Commit all Phase 7 work with a single squashed commit

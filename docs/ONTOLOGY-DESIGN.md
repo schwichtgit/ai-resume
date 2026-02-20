@@ -9,7 +9,7 @@ Full graph RAG is deferred to Phase 10+. Current phase implements entity type an
 ### Entity Types
 
 | Type | Description | Example |
-|------|-------------|---------|
+| ---- | ----------- | ------- |
 | Person | Candidate or referenced individual | Frank Schwichtenberg |
 | Company | Employer or organization | Acme Corp |
 | Role | Job title or position | Senior Engineer |
@@ -20,7 +20,7 @@ Full graph RAG is deferred to Phase 10+. Current phase implements entity type an
 ### Relationship Types
 
 | Relationship | From | To | Example |
-|-------------|------|-----|---------|
+| ------------ | ---- | -- | ------- |
 | WORKED_AT | Person | Company | Frank -> Acme Corp |
 | HELD_ROLE | Person | Role | Frank -> Senior Engineer |
 | USED_SKILL | Role/Project | Skill | Resume AI -> Python |
@@ -29,7 +29,7 @@ Full graph RAG is deferred to Phase 10+. Current phase implements entity type an
 
 ### Data Flow
 
-```
+```text
 master_resume.md
     |
     v

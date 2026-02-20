@@ -162,7 +162,7 @@ Add an optional `verified` boolean property to `feature-list-schema.json`:
 
 ### Brownfield Feature Lifecycle
 
-```
+```text
 CATALOGED ───[run testing_steps]───> VERIFIED/PASSING
   (passes:false, verified:false)       (passes:true, verified:true)
        |                                      |
@@ -834,7 +834,7 @@ Single commit: `chore: archive legacy process docs superseded by specforge`
 
 Contents of `docs/archive/README.md`:
 
-```
+```text
 Pre-specforge process documents. Retained for historical reference.
 Superseded by .specify/ artifacts as of YYYY-MM-DD.
 ```

@@ -16,7 +16,8 @@ This example demonstrates the complete workflow for fixing GitHub Code Scanning 
 ```
 
 **Output:**
-```
+
+```text
 Open Code Scanning Alerts (4)
 
 #1  py/clear-text-logging-sensitive-data  error    api-service/main.py
@@ -34,7 +35,8 @@ Use /gh-code-scanning detail <N> to see full details
 ```
 
 **Output:**
-```
+
+```text
 Alert #1: Clear-text logging of sensitive information
 
 Rule: py/clear-text-logging-sensitive-data
@@ -80,7 +82,7 @@ async def log_requests(request: Request, call_next):
     return response
 ```
 
-2. The skill proposes a fix:
+1. The skill proposes a fix:
 
 ```python
 # AFTER (secure)
@@ -111,9 +113,9 @@ async def log_requests(request: Request, call_next):
     return response
 ```
 
-3. User confirms the fix
+1. User confirms the fix
 
-4. The skill applies the changes and commits:
+2. The skill applies the changes and commits:
 
 ```bash
 git add api-service/main.py
@@ -128,9 +130,9 @@ now filters sensitive headers before logging requests.
 Resolves: Code Scanning Alert #1"
 ```
 
-5. Push and wait for rescan:
+1. Push and wait for rescan:
 
-```
+```text
 Fix committed: abc1234
 
 Changes:
@@ -151,7 +153,8 @@ After waiting for code scanning rescan:
 ```
 
 **Output:**
-```
+
+```text
 ✓ Alert #1 has been resolved!
 
 State: fixed
@@ -172,6 +175,7 @@ The code scanning system confirmed the vulnerability has been addressed.
 ## Related Alerts
 
 This pattern can be applied to other logging vulnerabilities:
+
 - Logging passwords in authentication flows
 - Logging API responses that may contain PII
 - Logging database query results with sensitive data
@@ -210,7 +214,7 @@ def test_redact_sensitive_headers():
 
 If this fix was part of a pull request:
 
-```
+```text
 Pull Request: #42
 Title: Fix code scanning alert: Clear-text logging of sensitive data
 Branch: fix/code-scanning-alert-1

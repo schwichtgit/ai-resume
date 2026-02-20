@@ -424,13 +424,13 @@ The ingest pipeline splits the master document into chunks for memvid indexing:
 
 ### Chunk Size Guidelines
 
-| Section Type         | Target Size   | Rationale               |
-| -------------------- | ------------- | ----------------------- |
-| FAQ Entry            | 150-300 words | Focused, complete answer |
-| Experience (per role)| 200-400 words | Full context for one job |
-| Skills (per topic)   | 100-200 words | Focused topic cluster   |
-| Failure (each)       | 150-250 words | Complete story arc      |
-| Summary              | 200-300 words | Overview, not details   |
+| Section Type          | Target Size   | Rationale                |
+| --------------------- | ------------- | ------------------------ |
+| FAQ Entry             | 150-300 words | Focused, complete answer |
+| Experience (per role) | 200-400 words | Full context for one job |
+| Skills (per topic)    | 100-200 words | Focused topic cluster    |
+| Failure (each)        | 150-250 words | Complete story arc       |
+| Summary               | 200-300 words | Overview, not details    |
 
 **Why these sizes?**
 
@@ -536,8 +536,8 @@ Before ingesting a master document, verify:
 
 ## Version History
 
-| Version | Date     | Changes                               |
-| ------- | -------- | ------------------------------------- |
+| Version | Date     | Changes                                |
+| ------- | -------- | -------------------------------------- |
 | 1.0     | Jan 2026 | Initial POR based on retrieval testing |
 
 ---

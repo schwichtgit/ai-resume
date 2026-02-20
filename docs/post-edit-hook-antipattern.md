@@ -97,7 +97,7 @@ Each iteration wastes context window on the system reminder and the re-read. For
 The Claude Code repository (`anthropics/claude-code`) has multiple open issues documenting this behavior:
 
 | Issue | Reactions | Summary |
-|-------|-----------|---------|
+| ----- | --------- | ------- |
 | [#3513](https://github.com/anthropics/claude-code/issues/3513) | 150+ | "File modified since read, either by user or by a linter" -- the canonical report. Users identify PostToolUse formatters as the root cause. |
 | [#10882](https://github.com/anthropics/claude-code/issues/10882) | -- | Documents the infinite Edit/format loop specifically in VSCode with prettier-on-save. Same root cause with PostToolUse hooks. |
 | [#10011](https://github.com/anthropics/claude-code/issues/10011) | -- | Reports that PostToolUse hook changes may be silently overwritten by subsequent Edit calls, or cause cascading mismatches. |
@@ -109,7 +109,7 @@ The common thread: formatters that run between Edit calls break the exact-match 
 ## Severity by File Type
 
 | File Type | Impact | Explanation |
-|-----------|--------|-------------|
+| --------- | ------ | ----------- |
 | JSON | **HIGH** | Prettier aggressively collapses/expands arrays and objects based on print width. Nearly every multi-line JSON edit triggers a mismatch. |
 | TSX/TS | **HIGH** | Prettier wraps imports, adds trailing commas, reformats JSX. Most edits to component files trigger reformatting. |
 | Python | **MEDIUM** | ruff reorders imports and adjusts line length. Edits to import blocks and long expressions are affected. |
@@ -204,6 +204,7 @@ Move auto-formatting from PostToolUse to a Stop hook. Format only git-changed fi
 ```
 
 Key changes:
+
 - `PostToolUse` array is emptied -- no more per-edit formatting
 - `format-changed.sh` is added to the Stop hook chain *before* `verify-quality.sh`
 - The post-edit.sh script remains in the repository but is no longer wired into settings.json

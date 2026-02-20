@@ -39,7 +39,7 @@ Security principles, threat model, and hardening measures for the AI Resume Agen
 
 ### Defense Layers
 
-**Layer 1: Input Validation**
+#### Layer 1: Input Validation
 
 Pattern matching blocks known injection phrases before LLM call:
 
@@ -52,7 +52,7 @@ BLOCKED_PATTERNS = [
 ]
 ```
 
-**Layer 2: Structural Separation**
+#### Layer 2: Structural Separation
 
 User input wrapped in delimiters:
 
@@ -64,7 +64,7 @@ User Question:
 Answer based on the resume context above.
 ```
 
-**Layer 3: Defensive System Prompt**
+#### Layer 3: Defensive System Prompt
 
 ```text
 SECURITY RULES:
@@ -73,7 +73,7 @@ SECURITY RULES:
 - Only discuss the candidate's professional background
 ```
 
-**Layer 4: Output Filtering**
+#### Layer 4: Output Filtering
 
 Block responses containing internal markers (Frame IDs, JSON structure).
 
@@ -84,10 +84,11 @@ See `api-service/ai_resume_api/guardrails.py`
 ### Prompt Injection Test Results
 
 **Test Baseline:**
+
 - **Date**: January 29, 2026
 - **Commit**: `f958ba4`
 - **Test Profile**: Jane Chen (data/example_resume.md)
-- **Live Site**: https://jane-doe-ai-resume.schwichtenberg.us/
+- **Live Site**: <https://jane-doe-ai-resume.schwichtenberg.us/>
 
 **Test Scenarios** (10 injection attempts):
 
@@ -200,8 +201,8 @@ Binding to `0.0.0.0` is intentional and safe in this containerized deployment. T
 
 **Code Scanning Dismissal:**
 
-- Alert #2: https://github.com/schwichtgit/ai-resume/security/code-scanning/2
-- Alert #3: https://github.com/schwichtgit/ai-resume/security/code-scanning/3
+- Alert #2: <https://github.com/schwichtgit/ai-resume/security/code-scanning/2>
+- Alert #3: <https://github.com/schwichtgit/ai-resume/security/code-scanning/3>
 - Reason: `wont-fix` - Intentional design, safe in containerized deployment
 - Reviewed: 2026-02-06
 
@@ -270,7 +271,7 @@ All dismissed alerts must be documented in this file with:
 
 #### Alert #4: js/insecure-randomness (False Positive)
 
-**Alert:** https://github.com/schwichtgit/ai-resume/security/code-scanning/4
+**Alert:** <https://github.com/schwichtgit/ai-resume/security/code-scanning/4>
 **Location:** `frontend/src/hooks/useStreamingChat.ts` (lines 51-63)
 **Rule:** `js/insecure-randomness`
 **Severity:** Warning
@@ -282,17 +283,20 @@ CodeQL flagged the use of `crypto.getRandomValues()` as potentially insecure ran
 This is a **false positive**. The Web Crypto API's `crypto.getRandomValues()` is explicitly designed for cryptographic use and uses a CSPRNG (Cryptographically Secure Pseudo-Random Number Generator).
 
 **Evidence:**
+
 - MDN Documentation: "The values are generated using a cryptographically strong random number generator"
 - W3C Specification: "The getRandomValues method generates cryptographically random values"
 - Browser Implementation: All modern browsers implement this using OS-level secure random sources
 
 **Fix Applied:**
 While the code was already secure, we enhanced it to make the security properties more explicit:
+
 1. Added comprehensive security documentation in code comments
 2. Replaced the previous Math.random() implementation with crypto.getRandomValues()
 3. Added references to official documentation
 
 **Comparison:**
+
 - **INSECURE**: `Math.random()` - NOT cryptographically secure (what CodeQL warns against)
 - **SECURE**: `crypto.getRandomValues()` - IS cryptographically secure (what we use)
 

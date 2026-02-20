@@ -16,7 +16,8 @@ This example demonstrates how to properly dismiss a code scanning alert when the
 ```
 
 **Output:**
-```
+
+```text
 Alert #2: Binding socket to all network interfaces
 
 Rule: py/bind-socket-all-network-interfaces
@@ -60,6 +61,7 @@ Review why the code binds to `0.0.0.0`:
 Check that proper security measures are in place:
 
 1. **Docker Network Configuration:**
+
 ```yaml
 # docker-compose.yml shows isolated network
 networks:
@@ -68,20 +70,23 @@ networks:
     internal: false  # Allows outbound, but Traefik controls inbound
 ```
 
-2. **Firewall Rules:**
+1. **Firewall Rules:**
+
 ```bash
 # Only Traefik exposed on host
 # Containers are not directly accessible from internet
 iptables -L -n | grep 8000  # No direct rule for container port
 ```
 
-3. **Reverse Proxy Configuration:**
+1. **Reverse Proxy Configuration:**
+
 ```yaml
 # Traefik handles TLS, authentication, rate limiting
 # Only Traefik listens on 80/443
 ```
 
-4. **Container Isolation:**
+1. **Container Isolation:**
+
 ```dockerfile
 # Container runs as non-root user
 USER 101
@@ -101,7 +106,8 @@ USER 101
 **Workflow:**
 
 1. Skill shows alert summary and asks for confirmation:
-```
+
+```text
 You are about to dismiss:
 
 Alert #2: Binding socket to all network interfaces
@@ -114,15 +120,17 @@ Reason: wont-fix
 This will mark the alert as dismissed in GitHub. Continue? (yes/no)
 ```
 
-2. User confirms: `yes`
+1. User confirms: `yes`
 
-3. Skill prompts for detailed comment:
-```
+2. Skill prompts for detailed comment:
+
+```text
 Please provide a detailed rationale for dismissing this alert:
 ```
 
-4. User provides comment:
-```
+1. User provides comment:
+
+```text
 Binding to 0.0.0.0 is required for Docker container networking. The service
 runs behind a Traefik reverse proxy and is not directly exposed to the internet.
 
@@ -135,7 +143,8 @@ Security controls in place:
 The apparent vulnerability is mitigated by the network architecture.
 ```
 
-5. Skill dismisses the alert:
+1. Skill dismisses the alert:
+
 ```bash
 gh api --method PATCH repos/schwichtgit/ai-resume/code-scanning/alerts/2 \
   -f state='dismissed' \
@@ -143,13 +152,13 @@ gh api --method PATCH repos/schwichtgit/ai-resume/code-scanning/alerts/2 \
   -f dismissed_comment='Binding to 0.0.0.0 is required for Docker container networking...'
 ```
 
-6. Skill updates documentation:
+1. Skill updates documentation:
 
 ## Step 5: Document the Dismissal
 
 The skill automatically updates `docs/SECURITY.md`:
 
-```markdown
+````markdown
 ## Dismissed Code Scanning Alerts
 
 ### Alert #2: Binding socket to all network interfaces (wont-fix)
@@ -172,9 +181,11 @@ forward requests to the container.
 - Container runs as non-root user (uid 101) for additional isolation
 
 **Network Architecture:**
-```
+```text
+
 Internet → Traefik (443) → Docker Network → Container (8000)
           (TLS, Auth)       (Isolated)      (Non-root)
+
 ```
 
 **Alternatives Considered:**
@@ -184,9 +195,10 @@ Internet → Traefik (443) → Docker Network → Container (8000)
 
 **Conclusion:** Binding to all interfaces is safe in this containerized
 architecture due to multiple layers of network isolation and access control.
-```
+````
 
-7. Skill commits the documentation:
+1. Skill commits the documentation:
+
 ```bash
 git add docs/SECURITY.md
 git commit -m "docs: Document dismissal of code scanning alert #2
@@ -205,7 +217,8 @@ protected by reverse proxy, container isolation, and firewall rules."
 ```
 
 **Output:**
-```
+
+```text
 Alert #2 has been dismissed
 
 State: dismissed
@@ -230,18 +243,21 @@ Security controls documented in docs/SECURITY.md
 
 ## When to Dismiss vs. Fix
 
-### Dismiss (wont-fix) when:
+### Dismiss (wont-fix) when
+
 - The pattern is necessary for architecture
 - Multiple security controls mitigate the risk
 - Fixing would break required functionality
 - The context makes the pattern safe
 
-### Dismiss (false-positive) when:
+### Dismiss (false-positive) when
+
 - The alert is triggered by test code or examples
 - Static analysis misunderstood the code
 - The flagged code doesn't actually have the vulnerability
 
-### Fix when:
+### Fix when
+
 - The vulnerability is real and exploitable
 - There's a better pattern available
 - The risk isn't adequately mitigated
@@ -281,7 +297,7 @@ Even dismissed alerts should be periodically reviewed:
 
 ## Commit History
 
-```
+```text
 abc1234 docs: Document dismissal of code scanning alert #2
 def5678 docs: Document dismissal of code scanning alert #3
 ```

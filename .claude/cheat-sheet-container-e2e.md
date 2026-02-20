@@ -14,7 +14,7 @@ Quick-reference for building, running, and testing the full containerized stack 
 
 ## Architecture
 
-```
+```text
 Host browser
   |
   v  http://localhost:8080
@@ -74,6 +74,7 @@ bash scripts/build-all.sh latest
 ```
 
 This builds (multi-arch amd64+arm64):
+
 - `localhost/ai-resume-frontend:latest` (node builder -> OpenResty Alpine)
 - `localhost/ai-resume-memvid:latest` (rust builder -> debian-slim)
 - `localhost/ai-resume-api:latest` (uv builder -> python-slim)
@@ -119,6 +120,7 @@ curl -s http://localhost:8080/api/v1/health | python3 -m json.tool
 ```
 
 Expected API health response:
+
 ```json
 {
   "status": "healthy",
@@ -227,7 +229,7 @@ podman-compose down
 
 ## Startup Order (compose depends_on)
 
-```
+```text
 ai-resume-memvid  (starts first, healthcheck must pass)
        |
        v

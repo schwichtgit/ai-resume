@@ -246,7 +246,7 @@ ai-resume/
 
 ### API Design
 
-**External API (REST + SSE)**
+#### External API (REST + SSE)
 
 | Endpoint                      | Method | Purpose                                                    |
 | ----------------------------- | ------ | ---------------------------------------------------------- |
@@ -261,7 +261,7 @@ ai-resume/
 - **Streaming Protocol:** Server-Sent Events (SSE) for chat. Events typed as `retrieval | token | metadata | error | done` via `ChatStreamEvent` model.
 - **Request Correlation:** `X-Trace-ID` header injected by middleware; propagated through structlog context for log correlation.
 
-**Internal API (gRPC)**
+#### Internal API (gRPC)
 
 | RPC        | Service       | Purpose                                                 |
 | ---------- | ------------- | ------------------------------------------------------- |
@@ -273,7 +273,7 @@ ai-resume/
 - **Proto Package:** `memvid.v1` (canonical definition in `proto/memvid/v1/memvid.proto`)
 - **Search Modes:** `ASK_MODE_HYBRID` (default), `ASK_MODE_SEM`, `ASK_MODE_LEX`
 
-**Error Format**
+#### Error Format
 
 Errors return JSON with `detail` field (FastAPI `HTTPException` pattern):
 

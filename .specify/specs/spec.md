@@ -410,7 +410,7 @@ AI-powered interactive resume agent enabling recruiters to query a candidate's e
 
 - **Given** skills listed as markdown bullet points (`- skill_name`)
   **When** `parse_skills_section()` is called
-  **Then** each bullet is extracted as a separate skill string with leading `- ` stripped
+  **Then** each bullet is extracted as a separate skill string with leading `-` stripped
 
 **Error Handling:**
 

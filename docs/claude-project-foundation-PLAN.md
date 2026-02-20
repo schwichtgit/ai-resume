@@ -53,7 +53,7 @@ GitHub is first-class (fully implemented CI workflows, recommended repo settings
 
 ## Repo Structure
 
-```
+```text
 claude-project-foundation/
 ├── .specify/
 │   ├── memory/
@@ -573,7 +573,7 @@ Standalone commit message validation workflow. Same logic as commit-standards jo
 
 ### Task 5.3: Write ci/github/CODEOWNERS.template
 
-```
+```text
 # Quality gate infrastructure
 .claude/                    @OWNER
 .github/                    @OWNER
@@ -673,7 +673,7 @@ Manual verification: use initializer prompt for first session, verify it creates
 
 ## Dependency Graph
 
-```
+```text
 Phase 1 (Repo Setup + Principles)
   |
   +--> Phase 2 (Quality Gate Scripts)

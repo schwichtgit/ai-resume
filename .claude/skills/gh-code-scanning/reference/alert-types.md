@@ -14,6 +14,7 @@ This reference guide covers the most common code scanning alerts and provides re
 Logging sensitive data in clear text can expose credentials, tokens, personal information, or other confidential data to unauthorized users who have access to log files.
 
 **Common Triggers:**
+
 ```python
 # Logging request headers (may contain auth tokens)
 logger.info(f"Request: {request.headers}")
@@ -31,6 +32,7 @@ logger.info(f"Config: {os.environ}")
 **Remediation:**
 
 1. **Redaction Function:**
+
 ```python
 SENSITIVE_FIELDS = {
     "authorization", "cookie", "password", "token",
@@ -51,7 +53,8 @@ def redact_sensitive(data: dict) -> dict:
 logger.info(f"Request: {redact_sensitive(dict(request.headers))}")
 ```
 
-2. **Structured Logging with Filters:**
+1. **Structured Logging with Filters:**
+
 ```python
 import logging
 
@@ -73,7 +76,8 @@ logger = logging.getLogger(__name__)
 logger.addFilter(SensitiveDataFilter())
 ```
 
-3. **Avoid Logging Sensitive Data Entirely:**
+1. **Avoid Logging Sensitive Data Entirely:**
+
 ```python
 # Instead of logging everything
 logger.info(f"User {user.id} logged in")  # Log ID only
@@ -83,6 +87,7 @@ logger.info(f"Auth header present: {bool(request.headers.get('authorization'))}"
 ```
 
 **Best Practices:**
+
 - Never log passwords, tokens, API keys, or PII
 - Use structured logging with field-level control
 - Implement automatic redaction at the logging layer
@@ -101,6 +106,7 @@ logger.info(f"Auth header present: {bool(request.headers.get('authorization'))}"
 Using non-cryptographically secure random number generators (like `random.random()` or `random.randint()`) for security-sensitive operations can make the system predictable and vulnerable to attacks.
 
 **Common Triggers:**
+
 ```python
 import random
 
@@ -119,6 +125,7 @@ csrf_token = str(random.random())
 
 **Why It's Insecure:**
 Python's `random` module uses the Mersenne Twister PRNG, which is:
+
 - Predictable if attacker observes several outputs
 - Not suitable for cryptographic purposes
 - Can be seeded and reproduced
@@ -126,6 +133,7 @@ Python's `random` module uses the Mersenne Twister PRNG, which is:
 **Remediation:**
 
 1. **Use `secrets` Module (Python 3.6+):**
+
 ```python
 import secrets
 import string
@@ -147,7 +155,8 @@ api_key = ''.join(secrets.choice(alphabet) for _ in range(32))
 csrf_token = secrets.token_urlsafe(32)
 ```
 
-2. **Use `os.urandom()` for Bytes:**
+1. **Use `os.urandom()` for Bytes:**
+
 ```python
 import os
 import base64
@@ -159,7 +168,8 @@ random_bytes = os.urandom(32)
 token = base64.urlsafe_b64encode(random_bytes).decode('utf-8')
 ```
 
-3. **Use `uuid.uuid4()` for UUIDs:**
+1. **Use `uuid.uuid4()` for UUIDs:**
+
 ```python
 import uuid
 
@@ -169,6 +179,7 @@ session_id = str(unique_id)
 ```
 
 **When `random` is OK:**
+
 ```python
 import random
 
@@ -186,7 +197,8 @@ dice_roll = random.randint(1, 6)
 ```
 
 **Decision Tree:**
-```
+
+```text
 Is this for security purposes?
 ├─ Yes → Use `secrets` or `os.urandom()`
 │   ├─ Tokens, keys, passwords
@@ -200,6 +212,7 @@ Is this for security purposes?
 ```
 
 **Best Practices:**
+
 - Always use `secrets` for tokens, keys, and security-sensitive values
 - Use `os.urandom()` when you need random bytes
 - Reserve `random` module for non-security purposes only
@@ -217,6 +230,7 @@ Is this for security purposes?
 Binding a socket to `0.0.0.0` (all network interfaces) can expose the service to unintended networks and attackers. This is particularly risky in cloud environments with multiple network interfaces.
 
 **Common Triggers:**
+
 ```python
 # Flask
 app.run(host='0.0.0.0', port=5000)
@@ -232,6 +246,7 @@ sock.bind(('0.0.0.0', 8080))
 ```
 
 **Security Risks:**
+
 1. **Exposure to Multiple Networks:**
    - Service listens on public, private, and VPN interfaces
    - Attacker on any connected network can reach the service
@@ -246,13 +261,15 @@ sock.bind(('0.0.0.0', 8080))
 **Remediation:**
 
 1. **Bind to Localhost Only (Development):**
+
 ```python
 # Development: only accessible from the same machine
 uvicorn.run(app, host='127.0.0.1', port=8000)
 app.run(host='127.0.0.1', port=5000)
 ```
 
-2. **Bind to Specific Private IP (Production):**
+1. **Bind to Specific Private IP (Production):**
+
 ```python
 import os
 
@@ -262,7 +279,8 @@ BIND_HOST = os.getenv('BIND_HOST', '127.0.0.1')
 uvicorn.run(app, host=BIND_HOST, port=8000)
 ```
 
-3. **Use Reverse Proxy Architecture:**
+1. **Use Reverse Proxy Architecture:**
+
 ```python
 # Application binds to localhost
 uvicorn.run(app, host='127.0.0.1', port=8000)
@@ -277,7 +295,8 @@ uvicorn.run(app, host='127.0.0.1', port=8000)
 # }
 ```
 
-4. **Container-Specific Configuration:**
+1. **Container-Specific Configuration:**
+
 ```python
 # For Docker containers, may need 0.0.0.0 but with network isolation
 import os
@@ -308,6 +327,7 @@ uvicorn.run(app, host=BIND_HOST, port=8000)
    - Documented in security architecture
 
 **Dismissal Template:**
+
 ```markdown
 Alert dismissed as wont-fix.
 
@@ -324,6 +344,7 @@ Architecture: Internet → Traefik (TLS) → Docker Network → Container
 ```
 
 **Best Practices:**
+
 - Default to `127.0.0.1` for development
 - Use specific IPs for production deployment
 - Document network architecture when using `0.0.0.0`
@@ -342,6 +363,7 @@ Architecture: Internet → Traefik (TLS) → Docker Network → Container
 Constructing SQL queries by concatenating user input can allow attackers to inject malicious SQL code and access, modify, or delete data.
 
 **Common Triggers:**
+
 ```python
 # Direct string concatenation
 cursor.execute(f"SELECT * FROM users WHERE username = '{username}'")
@@ -357,6 +379,7 @@ cursor.execute(query)
 **Remediation:**
 
 1. **Use Parameterized Queries:**
+
 ```python
 # Correct: parameterized query
 cursor.execute(
@@ -371,7 +394,8 @@ cursor.execute(
 )
 ```
 
-2. **Use ORM (SQLAlchemy, Django ORM):**
+1. **Use ORM (SQLAlchemy, Django ORM):**
+
 ```python
 # SQLAlchemy
 from sqlalchemy import select
@@ -383,7 +407,8 @@ result = session.execute(stmt)
 User.objects.filter(username=username)
 ```
 
-3. **Validate Input:**
+1. **Validate Input:**
+
 ```python
 from pydantic import BaseModel, validator
 
@@ -398,6 +423,7 @@ class UserQuery(BaseModel):
 ```
 
 **Best Practices:**
+
 - Always use parameterized queries or ORMs
 - Never concatenate user input into SQL strings
 - Validate and sanitize all inputs
@@ -433,6 +459,7 @@ class UserQuery(BaseModel):
 ### Testing Fixes
 
 Always test security fixes:
+
 ```python
 # Test that fix doesn't break functionality
 def test_user_lookup_after_fix():
@@ -454,6 +481,7 @@ def test_special_characters_handled():
 ### Documentation
 
 Document all security decisions:
+
 ```markdown
 ## Security Decision: Alert #5 Dismissed
 
