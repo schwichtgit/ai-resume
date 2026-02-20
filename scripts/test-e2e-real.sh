@@ -243,7 +243,7 @@ if [ "$REBUILD_TIME_INDEX" = "true" ]; then
     if command -v memvid >/dev/null 2>&1; then
         memvid doctor --rebuild-time-index "$MV2_OUTPUT"
     elif command -v npx >/dev/null 2>&1; then
-        npx -y memvid-cli@2.0.137 doctor --rebuild-time-index "$MV2_OUTPUT"
+        npx -y memvid-cli@2.0.153 doctor --rebuild-time-index "$MV2_OUTPUT"
     else
         echo -e "${RED}ERROR: Neither memvid nor npx found. Install memvid-cli or Node.js${NC}"
         exit 1
