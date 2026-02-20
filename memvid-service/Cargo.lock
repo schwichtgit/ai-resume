@@ -95,9 +95,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.101"
+version = "1.0.102"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f0e0fee31ef5ed1ba1316088939cea399010ed7731dba877ed44aeb407a75ea"
+checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
 name = "arc-swap"
@@ -1499,9 +1499,9 @@ dependencies = [
 
 [[package]]
 name = "memvid-core"
-version = "2.0.136"
+version = "2.0.137"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7210872f3fb4fb0239b59d06c3e7c5bfa783b6fd26df6759f2bc518e32c3c5a"
+checksum = "51235be22fa984da5f069fd06972339616eb5ce83ee3661fb52fff355719c70e"
 dependencies = [
  "atomic-write-file",
  "base64",
