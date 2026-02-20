@@ -1,0 +1,11 @@
+# Generated/working files
+claude-project-foundation-PLAN.md
+.claude/PLAN.md
+.claude/mind.*
+
+# License (formatting is legally significant)
+LICENSE
+
+# Git hooks (no extension -- Prettier cannot determine parser)
+scripts/hooks/pre-commit
+scripts/hooks/commit-msg

@@ -11,6 +11,59 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
+    /* Light mode - clean, professional palette */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 10%;
+
+    --card: 0 0% 98%;
+    --card-foreground: 240 10% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 10%;
+
+    /* Warm accent - premium feel (darker for light backgrounds) */
+    --primary: 45 30% 40%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 5% 93%;
+    --secondary-foreground: 240 6% 20%;
+
+    --muted: 240 5% 93%;
+    --muted-foreground: 240 4% 46%;
+
+    /* Teal accent for interactive elements */
+    --accent: 173 58% 34%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 6% 85%;
+    --input: 240 6% 85%;
+    --ring: 173 58% 34%;
+
+    --radius: 0.75rem;
+
+    /* Custom tokens for this design */
+    --surface-elevated: 240 5% 96%;
+    --text-subtle: 240 4% 55%;
+    --text-highlight: 45 80% 35%;
+    --success: 158 64% 40%;
+    --success-muted: 158 30% 90%;
+    --warning: 38 92% 50%;
+    --warning-muted: 38 50% 90%;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 6% 20%;
+    --sidebar-primary: 173 58% 34%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 5% 93%;
+    --sidebar-accent-foreground: 240 6% 20%;
+    --sidebar-border: 240 6% 85%;
+    --sidebar-ring: 173 58% 34%;
+  }
+
+  .dark {
     /* Deep, sophisticated dark palette inspired by lucis.life */
     --background: 240 10% 4%;
     --foreground: 60 9% 98%;
@@ -41,8 +94,6 @@ All colors MUST be HSL.
     --border: 240 6% 18%;
     --input: 240 6% 15%;
     --ring: 173 58% 39%;
-
-    --radius: 0.75rem;
 
     /* Custom tokens for this design */
     --surface-elevated: 240 8% 10%;
@@ -80,55 +131,76 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground antialiased transition-colors duration-200;
     font-family: var(--font-sans);
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-serif);
   }
 
-  code, pre {
+  code,
+  pre {
     font-family: var(--font-mono);
   }
 }
 
 /* Custom animations */
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slide-up {
-  from { 
-    opacity: 0; 
-    transform: translateY(20px); 
+  from {
+    opacity: 0;
+    transform: translateY(20px);
   }
-  to { 
-    opacity: 1; 
-    transform: translateY(0); 
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
 @keyframes slide-down {
-  from { 
-    opacity: 0; 
-    transform: translateY(-10px); 
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
   }
-  to { 
-    opacity: 1; 
-    transform: translateY(0); 
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
 @keyframes typing-cursor {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
 }
 
 @keyframes pulse-soft {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .animate-fade-in {
@@ -152,13 +224,25 @@ All colors MUST be HSL.
 }
 
 /* Staggered animations */
-.stagger-1 { animation-delay: 0.1s; }
-.stagger-2 { animation-delay: 0.2s; }
-.stagger-3 { animation-delay: 0.3s; }
-.stagger-4 { animation-delay: 0.4s; }
+.stagger-1 {
+  animation-delay: 0.1s;
+}
+.stagger-2 {
+  animation-delay: 0.2s;
+}
+.stagger-3 {
+  animation-delay: 0.3s;
+}
+.stagger-4 {
+  animation-delay: 0.4s;
+}
 
 /* Gradient text utility */
 .text-gradient {
   @apply bg-clip-text text-transparent;
-  background-image: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+  background-image: linear-gradient(
+    135deg,
+    hsl(var(--primary)) 0%,
+    hsl(var(--accent)) 100%
+  );
 }

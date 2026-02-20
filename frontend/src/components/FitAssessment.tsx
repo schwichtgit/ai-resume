@@ -1,22 +1,37 @@
-import { useState } from "react";
-import { FileText, Check, AlertTriangle, Loader2, Sparkles } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useProfile } from "@/hooks/useProfile";
-import { assessFit, type AssessFitResponse } from "@/lib/api-client";
+import { useState } from 'react';
+import {
+  FileText,
+  Check,
+  AlertTriangle,
+  Loader2,
+  Sparkles,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useProfile } from '@/hooks/useProfile';
+import { assessFit, type AssessFitResponse } from '@/lib/api-client';
 
-type TabType = "example1" | "example2" | "custom";
+type TabType = 'example1' | 'example2' | 'custom';
 
 const FitAssessment = () => {
   const { profile, loading: profileLoading } = useProfile();
-  const [activeTab, setActiveTab] = useState<TabType>("example1");
-  const [customJD, setCustomJD] = useState("");
+  const examples = profile?.fit_assessment_examples || [];
+  const example1 = examples[0];
+  const example2 = examples[1];
+  const hasExamples = !!(example1 || example2);
+
+  const [activeTab, setActiveTab] = useState<TabType>(
+    hasExamples ? 'example1' : 'custom',
+  );
+  const [customJD, setCustomJD] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
-  const [customResult, setCustomResult] = useState<AssessFitResponse | null>(null);
+  const [customResult, setCustomResult] = useState<AssessFitResponse | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
 
   const handleAnalyzeCustom = async () => {
     if (!customJD.trim() || customJD.trim().length < 50) {
-      setError("Please enter a job description (at least 50 characters)");
+      setError('Please enter a job description (at least 50 characters)');
       return;
     }
 
@@ -28,15 +43,11 @@ const FitAssessment = () => {
       const result = await assessFit(customJD);
       setCustomResult(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to assess fit");
+      setError(err instanceof Error ? err.message : 'Failed to assess fit');
     } finally {
       setAnalyzing(false);
     }
   };
-
-  const examples = profile?.fit_assessment_examples || [];
-  const example1 = examples[0];
-  const example2 = examples[1];
 
   // Show loading state if profile is still loading
   if (profileLoading) {
@@ -44,71 +55,83 @@ const FitAssessment = () => {
       <section id="fit-assessment" className="py-24 px-6 bg-secondary/30">
         <div className="max-w-4xl mx-auto text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
-          <p className="text-muted-foreground mt-4">Loading fit assessment examples...</p>
-        </div>
-      </section>
-    );
-  }
-
-  // Show message if no examples available
-  if (!example1 && !example2) {
-    return (
-      <section id="fit-assessment" className="py-24 px-6 bg-secondary/30">
-        <div className="max-w-4xl mx-auto text-center">
-          <p className="text-muted-foreground">No fit assessment examples available</p>
+          <p className="text-muted-foreground mt-4">
+            Loading fit assessment...
+          </p>
         </div>
       </section>
     );
   }
 
   return (
-    <section id="fit-assessment" className="py-24 px-6 bg-secondary/30">
+    <section
+      id="fit-assessment"
+      className="py-12 sm:py-24 px-4 sm:px-6 bg-secondary/30"
+    >
       <div className="max-w-4xl mx-auto">
         {/* Section header */}
-        <div className="text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-serif text-foreground mb-4">
+        <div className="text-center mb-8 sm:mb-12">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif text-foreground mb-4">
             Honest Fit Assessment
           </h2>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            See pre-analyzed examples or paste your job description for a real-time AI assessment.
+          <p className="text-muted-foreground text-base sm:text-lg max-w-2xl mx-auto">
+            {hasExamples
+              ? 'See pre-analyzed examples or paste your job description for a real-time AI assessment.'
+              : 'Paste your job description for a real-time AI assessment.'}
           </p>
         </div>
 
         {/* Tab buttons */}
-        <div className="flex justify-center gap-4 mb-8 flex-wrap">
+        <div
+          className="flex justify-center gap-2 sm:gap-4 mb-6 sm:mb-8 flex-wrap"
+          role="tablist"
+          aria-label="Fit assessment examples"
+        >
           {example1 && (
             <button
-              onClick={() => setActiveTab("example1")}
+              role="tab"
+              aria-selected={activeTab === 'example1'}
+              aria-controls="tabpanel-example1"
+              id="tab-example1"
+              onClick={() => setActiveTab('example1')}
               className={cn(
-                "px-6 py-3 rounded-xl font-medium transition-all border",
-                activeTab === "example1"
-                  ? "bg-success-muted text-success border-success/30"
-                  : "bg-card text-muted-foreground border-border hover:border-muted-foreground"
+                'px-4 sm:px-6 py-3 min-h-[44px] rounded-xl font-medium transition-all border text-sm sm:text-base',
+                activeTab === 'example1'
+                  ? 'bg-success-muted text-success border-success/30'
+                  : 'bg-card text-muted-foreground border-border hover:border-muted-foreground',
               )}
             >
-              {example1.fit_level === "strong_fit" ? "Strong Fit" : "Example 1"}
+              {example1.fit_level === 'strong_fit' ? 'Strong Fit' : 'Example 1'}
             </button>
           )}
           {example2 && (
             <button
-              onClick={() => setActiveTab("example2")}
+              role="tab"
+              aria-selected={activeTab === 'example2'}
+              aria-controls="tabpanel-example2"
+              id="tab-example2"
+              onClick={() => setActiveTab('example2')}
               className={cn(
-                "px-6 py-3 rounded-xl font-medium transition-all border",
-                activeTab === "example2"
-                  ? "bg-warning-muted text-warning border-warning/30"
-                  : "bg-card text-muted-foreground border-border hover:border-muted-foreground"
+                'px-4 sm:px-6 py-3 min-h-[44px] rounded-xl font-medium transition-all border text-sm sm:text-base',
+                activeTab === 'example2'
+                  ? 'bg-warning-muted text-warning border-warning/30'
+                  : 'bg-card text-muted-foreground border-border hover:border-muted-foreground',
               )}
             >
-              {example2.fit_level === "weak_fit" ? "Weak Fit" : "Example 2"}
+              {example2.fit_level === 'weak_fit' ? 'Weak Fit' : 'Example 2'}
             </button>
           )}
           <button
-            onClick={() => setActiveTab("custom")}
+            role="tab"
+            aria-selected={activeTab === 'custom'}
+            aria-controls="tabpanel-custom"
+            id="tab-custom"
+            onClick={() => setActiveTab('custom')}
             className={cn(
-              "px-6 py-3 rounded-xl font-medium transition-all border flex items-center gap-2",
-              activeTab === "custom"
-                ? "bg-accent-muted text-accent border-accent/30"
-                : "bg-card text-muted-foreground border-border hover:border-muted-foreground"
+              'px-4 sm:px-6 py-3 min-h-[44px] rounded-xl font-medium transition-all border flex items-center gap-2 text-sm sm:text-base',
+              activeTab === 'custom'
+                ? 'bg-accent-muted text-accent border-accent/30'
+                : 'bg-card text-muted-foreground border-border hover:border-muted-foreground',
             )}
           >
             <Sparkles className="w-4 h-4" />
@@ -119,8 +142,13 @@ const FitAssessment = () => {
         {/* Main interface */}
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
           {/* Example 1 Tab */}
-          {activeTab === "example1" && example1 && (
-            <div className="p-6">
+          {activeTab === 'example1' && example1 && (
+            <div
+              className="p-4 sm:p-6"
+              role="tabpanel"
+              id="tabpanel-example1"
+              aria-labelledby="tab-example1"
+            >
               {/* Job Description */}
               <div className="mb-6">
                 <div className="flex items-center gap-3 mb-4">
@@ -141,12 +169,12 @@ const FitAssessment = () => {
               {/* Assessment */}
               <div className="animate-slide-up">
                 {/* Verdict */}
-                <div className="flex items-center gap-4 mb-6 p-4 rounded-xl border bg-success-muted border-success/20">
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center bg-success/20">
-                    <Check className="w-6 h-6 text-success" />
+                <div className="flex items-center gap-3 sm:gap-4 mb-6 p-3 sm:p-4 rounded-xl border bg-success-muted border-success/20">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex-shrink-0 flex items-center justify-center bg-success/20">
+                    <Check className="w-5 h-5 sm:w-6 sm:h-6 text-success" />
                   </div>
-                  <div>
-                    <h3 className="text-xl font-serif text-success">
+                  <div className="min-w-0">
+                    <h3 className="text-lg sm:text-xl font-serif text-success break-words">
                       {example1.verdict}
                     </h3>
                   </div>
@@ -198,8 +226,13 @@ const FitAssessment = () => {
           )}
 
           {/* Example 2 Tab */}
-          {activeTab === "example2" && example2 && (
-            <div className="p-6">
+          {activeTab === 'example2' && example2 && (
+            <div
+              className="p-4 sm:p-6"
+              role="tabpanel"
+              id="tabpanel-example2"
+              aria-labelledby="tab-example2"
+            >
               {/* Job Description */}
               <div className="mb-6">
                 <div className="flex items-center gap-3 mb-4">
@@ -220,12 +253,12 @@ const FitAssessment = () => {
               {/* Assessment */}
               <div className="animate-slide-up">
                 {/* Verdict */}
-                <div className="flex items-center gap-4 mb-6 p-4 rounded-xl border bg-warning-muted border-warning/20">
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center bg-warning/20">
-                    <AlertTriangle className="w-6 h-6 text-warning" />
+                <div className="flex items-center gap-3 sm:gap-4 mb-6 p-3 sm:p-4 rounded-xl border bg-warning-muted border-warning/20">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex-shrink-0 flex items-center justify-center bg-warning/20">
+                    <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-warning" />
                   </div>
-                  <div>
-                    <h3 className="text-xl font-serif text-warning">
+                  <div className="min-w-0">
+                    <h3 className="text-lg sm:text-xl font-serif text-warning break-words">
                       {example2.verdict}
                     </h3>
                   </div>
@@ -274,8 +307,13 @@ const FitAssessment = () => {
           )}
 
           {/* Custom JD Tab */}
-          {activeTab === "custom" && (
-            <div className="p-6">
+          {activeTab === 'custom' && (
+            <div
+              className="p-4 sm:p-6"
+              role="tabpanel"
+              id="tabpanel-custom"
+              aria-labelledby="tab-custom"
+            >
               {/* Input section */}
               <div className="mb-6">
                 <div className="flex items-center gap-3 mb-4">
@@ -298,7 +336,7 @@ const FitAssessment = () => {
                 <button
                   onClick={handleAnalyzeCustom}
                   disabled={analyzing || !customJD.trim()}
-                  className="mt-4 px-6 py-3 bg-accent text-accent-foreground rounded-xl font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="mt-4 px-6 py-3 min-h-[44px] bg-accent text-accent-foreground rounded-xl font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {analyzing ? (
                     <>
@@ -318,16 +356,17 @@ const FitAssessment = () => {
               {customResult && !analyzing && (
                 <div className="animate-slide-up">
                   {/* Verdict */}
-                  <div className="flex items-center gap-4 mb-6 p-4 rounded-xl border bg-accent-muted border-accent/20">
-                    <div className="w-12 h-12 rounded-full flex items-center justify-center bg-accent/20">
-                      <Sparkles className="w-6 h-6 text-accent" />
+                  <div className="flex items-center gap-3 sm:gap-4 mb-6 p-3 sm:p-4 rounded-xl border bg-accent-muted border-accent/20">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex-shrink-0 flex items-center justify-center bg-accent/20">
+                      <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
                     </div>
-                    <div>
-                      <h3 className="text-xl font-serif text-accent">
+                    <div className="min-w-0">
+                      <h3 className="text-lg sm:text-xl font-serif text-accent break-words">
                         {customResult.verdict}
                       </h3>
-                      <p className="text-muted-foreground text-sm mt-1">
-                        {customResult.chunks_retrieved} context chunks • {customResult.tokens_used} tokens
+                      <p className="text-muted-foreground text-xs sm:text-sm mt-1">
+                        {customResult.chunks_retrieved} context chunks •{' '}
+                        {customResult.tokens_used} tokens
                       </p>
                     </div>
                   </div>
@@ -363,7 +402,9 @@ const FitAssessment = () => {
                         className="p-4 bg-secondary rounded-xl border border-border"
                       >
                         <div className="flex items-start gap-3">
-                          <span className="text-muted-foreground mt-0.5">○</span>
+                          <span className="text-muted-foreground mt-0.5">
+                            ○
+                          </span>
                           <p className="text-muted-foreground text-sm leading-relaxed">
                             {gap}
                           </p>
@@ -388,10 +429,11 @@ const FitAssessment = () => {
         </div>
 
         {/* Bottom insight */}
-        <div className="mt-8 text-center">
-          <div className="inline-block p-6 bg-card rounded-2xl border border-border max-w-2xl">
+        <div className="mt-6 sm:mt-8 text-center">
+          <div className="inline-block p-4 sm:p-6 bg-card rounded-2xl border border-border max-w-2xl">
             <p className="text-muted-foreground leading-relaxed">
-              This signals something completely different than "please consider my resume."
+              This signals something completely different than "please consider
+              my resume."
               <br />
               <br />
               <span className="text-foreground font-medium">

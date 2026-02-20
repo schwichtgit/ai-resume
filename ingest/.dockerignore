@@ -1,0 +1,7 @@
+# Deny by default
+*
+
+# Allow only files needed by the Dockerfile
+!ingest.py
+!pyproject.toml
+!uv.lock

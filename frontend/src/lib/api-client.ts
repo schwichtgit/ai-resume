@@ -88,6 +88,14 @@ export interface FitAssessmentExample {
 }
 
 /**
+ * Optional UI configuration from resume data
+ */
+export interface UIConfig {
+  theme?: string;
+  sections?: string[];
+}
+
+/**
  * Profile response from /api/v1/profile
  */
 export interface ProfileResponse {
@@ -102,6 +110,7 @@ export interface ProfileResponse {
   experience: Experience[];
   skills: Skills;
   fit_assessment_examples: FitAssessmentExample[];
+  config?: UIConfig;
 }
 
 /**
@@ -139,10 +148,23 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
-    public code?: string
+    public code?: string,
   ) {
     super(message);
     this.name = 'ApiError';
+  }
+}
+
+/**
+ * Error thrown when the API returns 429 Too Many Requests
+ */
+export class RateLimitError extends ApiError {
+  retryAfter: number; // seconds
+
+  constructor(retryAfter: number) {
+    super('Rate limited', 429);
+    this.name = 'RateLimitError';
+    this.retryAfter = retryAfter;
   }
 }
 
@@ -153,10 +175,7 @@ export async function checkHealth(): Promise<HealthResponse> {
   const response = await fetch(`${API_BASE_URL}/health`);
 
   if (!response.ok) {
-    throw new ApiError(
-      'Health check failed',
-      response.status
-    );
+    throw new ApiError('Health check failed', response.status);
   }
 
   return response.json();
@@ -191,12 +210,14 @@ interface ApiExperience {
 function transformExperience(apiExp: ApiExperience): Experience {
   return {
     ...apiExp,
-    aiContext: apiExp.ai_context ? {
-      situation: apiExp.ai_context.situation || "",
-      approach: apiExp.ai_context.approach || "",
-      technicalWork: apiExp.ai_context.technical_work || "",
-      lessonsLearned: apiExp.ai_context.lessons_learned || "",
-    } : undefined
+    aiContext: apiExp.ai_context
+      ? {
+          situation: apiExp.ai_context.situation || '',
+          approach: apiExp.ai_context.approach || '',
+          technicalWork: apiExp.ai_context.technical_work || '',
+          lessonsLearned: apiExp.ai_context.lessons_learned || '',
+        }
+      : undefined,
   };
 }
 
@@ -207,10 +228,7 @@ export async function getProfile(): Promise<ProfileResponse> {
   const response = await fetch(`${API_BASE_URL}/profile`);
 
   if (!response.ok) {
-    throw new ApiError(
-      'Failed to get profile',
-      response.status
-    );
+    throw new ApiError('Failed to get profile', response.status);
   }
 
   const data = await response.json();
@@ -230,10 +248,7 @@ export async function getSuggestedQuestions(): Promise<string[]> {
   const response = await fetch(`${API_BASE_URL}/suggested-questions`);
 
   if (!response.ok) {
-    throw new ApiError(
-      'Failed to get suggested questions',
-      response.status
-    );
+    throw new ApiError('Failed to get suggested questions', response.status);
   }
 
   const data: SuggestedQuestionsResponse = await response.json();
@@ -268,13 +283,13 @@ export async function streamChat(
   onToken: (token: string) => void,
   onStats?: (stats: StreamStats) => void,
   onError?: (error: string) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/chat`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Accept': 'text/event-stream',
+      Accept: 'text/event-stream',
     },
     body: JSON.stringify({
       ...request,
@@ -283,12 +298,31 @@ export async function streamChat(
     signal,
   });
 
+  if (response.status === 429) {
+    const retryAfter = parseInt(
+      response.headers.get('Retry-After') || '60',
+      10,
+    );
+    throw new RateLimitError(retryAfter);
+  }
+
   if (!response.ok) {
     let errorMessage = `Chat request failed: ${response.status}`;
 
     try {
       const errorBody = await response.json();
-      errorMessage = errorBody.detail || errorBody.message || errorMessage;
+      const detail = errorBody.detail;
+      if (typeof detail === 'string') {
+        errorMessage = detail;
+      } else if (Array.isArray(detail)) {
+        errorMessage =
+          detail
+            .map((e) => e.msg)
+            .filter(Boolean)
+            .join('; ') || errorMessage;
+      } else {
+        errorMessage = errorBody.message || errorMessage;
+      }
     } catch {
       // Ignore JSON parse errors
     }
@@ -388,12 +422,31 @@ export async function chat(request: ChatRequest): Promise<string> {
     }),
   });
 
+  if (response.status === 429) {
+    const retryAfter = parseInt(
+      response.headers.get('Retry-After') || '60',
+      10,
+    );
+    throw new RateLimitError(retryAfter);
+  }
+
   if (!response.ok) {
     let errorMessage = `Chat request failed: ${response.status}`;
 
     try {
       const errorBody = await response.json();
-      errorMessage = errorBody.detail || errorBody.message || errorMessage;
+      const detail = errorBody.detail;
+      if (typeof detail === 'string') {
+        errorMessage = detail;
+      } else if (Array.isArray(detail)) {
+        errorMessage =
+          detail
+            .map((e) => e.msg)
+            .filter(Boolean)
+            .join('; ') || errorMessage;
+      } else {
+        errorMessage = errorBody.message || errorMessage;
+      }
     } catch {
       // Ignore JSON parse errors
     }
@@ -406,9 +459,34 @@ export async function chat(request: ChatRequest): Promise<string> {
 }
 
 /**
+ * Delete a session entirely.
+ * Returns true on success (204), throws ApiError on failure.
+ */
+export async function deleteSession(sessionId: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}`, {
+    method: 'DELETE',
+  });
+
+  if (response.status === 204) {
+    return;
+  }
+
+  if (response.status === 404) {
+    throw new ApiError('Session not found', 404);
+  }
+
+  throw new ApiError(
+    `Failed to delete session: ${response.status}`,
+    response.status,
+  );
+}
+
+/**
  * Assess fit for a job description using AI
  */
-export async function assessFit(jobDescription: string): Promise<AssessFitResponse> {
+export async function assessFit(
+  jobDescription: string,
+): Promise<AssessFitResponse> {
   const response = await fetch(`${API_BASE_URL}/assess-fit`, {
     method: 'POST',
     headers: {
@@ -424,7 +502,18 @@ export async function assessFit(jobDescription: string): Promise<AssessFitRespon
 
     try {
       const errorBody = await response.json();
-      errorMessage = errorBody.detail || errorBody.message || errorMessage;
+      const detail = errorBody.detail;
+      if (typeof detail === 'string') {
+        errorMessage = detail;
+      } else if (Array.isArray(detail)) {
+        errorMessage =
+          detail
+            .map((e) => e.msg)
+            .filter(Boolean)
+            .join('; ') || errorMessage;
+      } else {
+        errorMessage = errorBody.message || errorMessage;
+      }
     } catch {
       // Ignore JSON parse errors
     }

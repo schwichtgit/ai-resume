@@ -12,8 +12,8 @@
 
 networks:
   yellow-net:
-    external: true  # podman network create yellow-net ...
-  podman:          # default bridge; created automatically if omitted, but declared for clarity
+    external: true # podman network create yellow-net ...
+  podman: # default bridge; created automatically if omitted, but declared for clarity
     external: true # or remove this section and just use 'podman' by name below
 
 services:
@@ -25,7 +25,7 @@ services:
       yellow-net:
         ipv4_address: 192.168.100.12
     ports:
-      - "50051:50051"
+      - '50051:50051'
     environment:
       - MEMVID_FILE_PATH=/data/.memvid/${MEMVID_FILENAME:-resume.mv2}
       - GRPC_PORT=50051
@@ -41,9 +41,13 @@ services:
       - /run:size=64M,mode=1777
     security_opt:
       - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 200M
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "/healthcheck"]
+      test: ['CMD', '/healthcheck']
       interval: 45s
       timeout: 10s
       retries: 3
@@ -57,7 +61,7 @@ services:
       yellow-net:
         ipv4_address: 192.168.100.11
     ports:
-      - "3000:3000"
+      - '3000:3000'
     depends_on:
       ai-resume-memvid:
         condition: service_healthy
@@ -80,9 +84,13 @@ services:
       - /run:size=64M,mode=1777
     security_opt:
       - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 200M
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "/healthcheck"]
+      test: ['CMD', '/healthcheck']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -97,7 +105,7 @@ services:
         ipv4_address: 192.168.100.10
       podman: {}
     ports:
-      - "8080:8080"
+      - '8080:8080'
     depends_on:
       ai-resume-api:
         condition: service_healthy
@@ -113,9 +121,13 @@ services:
       - /tmp:size=64M,mode=1777
     security_opt:
       - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 200M
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8080/health']
       interval: 30s
       timeout: 10s
       retries: 3

@@ -1,0 +1,45 @@
+version: 2
+updates:
+  # npm
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    groups:
+      minor-and-patch:
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  # Python (uncomment to enable)
+  # - package-ecosystem: "pip"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #   groups:
+  #     minor-and-patch:
+  #       update-types:
+  #         - "minor"
+  #         - "patch"
+
+  # Rust (uncomment to enable)
+  # - package-ecosystem: "cargo"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #   groups:
+  #     minor-and-patch:
+  #       update-types:
+  #         - "minor"
+  #         - "patch"
+
+  # GitHub Actions
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    groups:
+      minor-and-patch:
+        update-types:
+          - 'minor'
+          - 'patch'

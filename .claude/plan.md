@@ -42,8 +42,9 @@ Before implementing the release gate, three PRs must be resolved to ensure `feat
 - `test_empty_string_memvid_path_with_mock` (PR #21 failure)
 
 **Fix options:**
+
 | Option | Approach | Trade-off |
-|--------|----------|-----------|
+| ------ | -------- | --------- |
 | (a) `--test-threads=1` in CI | Add to CI workflow cargo test command | Simple but slows all tests |
 | (b) Refactor `Config::from_env()` | Accept `HashMap` instead of reading `std::env` directly | Clean but larger refactor |
 | (c) `serial_test` crate | Add `#[serial]` attribute to env-mutating tests | Targeted, minimal change |
@@ -102,7 +103,7 @@ The release gate implementation (Phases 1-7 below) builds on this foundation.
 
 ## Pipeline Architecture
 
-```
+```text
 scripts/release-gate.sh [VERSION] [--skip-build] [--skip-ingest]
   |
   +-- Phase 1: Container Build + Tar Export
@@ -138,7 +139,7 @@ scripts/release-gate.sh [VERSION] [--skip-build] [--skip-ingest]
 
 **New file:** `scripts/export-containers.sh`
 
-```
+```text
 For each image (frontend, api, memvid):
   podman save -> deployment/<image>-<version>.tar
   Verify tar file exists and size > threshold
@@ -154,7 +155,7 @@ For each image (frontend, api, memvid):
 
 **New file:** `scripts/test-ingest.sh`
 
-```
+```bash
 source ingest/.venv/bin/activate
 python ingest/ingest.py \
   --input data/example_resume.md \
@@ -242,7 +243,7 @@ Tests against `localhost:3000` (API) and `localhost:8080` (frontend):
 
 **Output format:**
 
-```
+```text
 ============================================
   RELEASE GATE SUMMARY (v0.3.0)
 ============================================
@@ -297,7 +298,7 @@ Tests against `localhost:3000` (API) and `localhost:8080` (frontend):
 
 ## Implementation Order
 
-```
+```text
 Step 1: Fix test-containers.sh bug (line 102)
 Step 2: Create fixtures/job_descriptions.py        \
 Step 3: Expand test_e2e_api.py (+7 tests)           > parallel

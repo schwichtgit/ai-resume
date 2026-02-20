@@ -4,6 +4,11 @@ set -euo pipefail
 # Cross-Service Integration Tests (mock backends)
 # Tests the full request path: HTTP -> Python API -> gRPC -> Rust memvid-service
 # Both services run with mock backends (no real LLM or .mv2 file needed)
+#
+# E2E Reliability Protocol:
+#   - Health-gate before running tests (poll with timeout)
+#   - Retry only on HTTP 429 (rate limit), respect Retry-After
+#   - Fail immediately on all other errors (connection refused, timeouts, 5xx)
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
@@ -55,6 +60,77 @@ print_fail() {
 run_test() {
     TESTS_RUN=$((TESTS_RUN + 1))
     print_test "$1"
+}
+
+# Wait for HTTP health endpoint to return 2xx before running tests
+# Usage: wait_for_health URL [timeout_seconds]
+wait_for_health() {
+    local url="$1"
+    local timeout="${2:-60}"
+    local start
+    start=$(date +%s)
+    printf "Waiting for %s to become healthy..." "$url"
+    while true; do
+        local elapsed=$(( $(date +%s) - start ))
+        if [ "$elapsed" -ge "$timeout" ]; then
+            printf " TIMEOUT after %ds\n" "$timeout"
+            return 1
+        fi
+        if curl -L --max-redirs 3 -sf --max-time 5 "$url" > /dev/null 2>&1; then
+            printf " ready (%ds)\n" "$elapsed"
+            return 0
+        fi
+        sleep 2
+    done
+}
+
+# Curl wrapper that retries ONLY on HTTP 429 (rate limit).
+# All other errors (connection refused, timeouts, 4xx, 5xx) fail immediately.
+# Usage: curl_with_429_retry [curl args...]
+# Output: response body on stdout; exits non-zero on failure
+curl_with_429_retry() {
+    local max_retries=3
+    local attempt=0
+    local tmpfile
+    tmpfile=$(mktemp)
+    local header_file
+    header_file=$(mktemp)
+
+    while [ "$attempt" -lt "$max_retries" ]; do
+        local http_code
+        http_code=$(curl -L --max-redirs 3 -s --max-time 30 -w '%{http_code}' -o "$tmpfile" -D "$header_file" "$@" 2>/dev/null) || {
+            rm -f "$tmpfile" "$header_file"
+            echo "CURL_FAILED:connection_error" >&2
+            return 1
+        }
+
+        if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
+            cat "$tmpfile"
+            rm -f "$tmpfile" "$header_file"
+            return 0
+        elif [ "$http_code" = "429" ]; then
+            attempt=$((attempt + 1))
+            if [ "$attempt" -ge "$max_retries" ]; then
+                rm -f "$tmpfile" "$header_file"
+                echo "CURL_FAILED:429_after_${max_retries}_retries" >&2
+                return 1
+            fi
+            local retry_after
+            retry_after=$(grep -i '^retry-after:' "$header_file" 2>/dev/null | awk '{print $2}' | tr -d '\r' || echo "2")
+            if [ -z "$retry_after" ] || ! [[ "$retry_after" =~ ^[0-9]+$ ]]; then
+                retry_after=2
+            fi
+            echo "  Rate limited (429), retry $attempt/$max_retries after ${retry_after}s..." >&2
+            sleep "$retry_after"
+        else
+            rm -f "$tmpfile" "$header_file"
+            echo "CURL_FAILED:http_$http_code" >&2
+            return 1
+        fi
+    done
+
+    rm -f "$tmpfile" "$header_file"
+    return 1
 }
 
 # Wait for a TCP port to become available
@@ -191,13 +267,23 @@ echo "  memvid-service PID=$MEMVID_PID (port $GRPC_PORT)"
 echo "  api-service     PID=$API_PID (port $API_PORT)"
 echo ""
 
+BASE_URL="http://localhost:$API_PORT"
+
+# Health gate: poll until API reports healthy before running any tests
+if ! wait_for_health "$BASE_URL/api/v1/health" 60; then
+    echo -e "${RED}FATAL: API never became healthy. Log:${NC}"
+    cat "$API_LOG"
+    exit 1
+fi
+echo ""
+
 # =============================================================================
 # Test 1: Health connectivity - memvid_connected=true
 # =============================================================================
 
 run_test "Health endpoint reports memvid_connected=true"
 
-health_response=$(curl -sf http://localhost:$API_PORT/api/v1/health 2>&1 || echo "CURL_FAILED")
+health_response=$(curl -L --max-redirs 3 -sf --max-time 30 "$BASE_URL/api/v1/health") || health_response="CURL_FAILED"
 
 if echo "$health_response" | grep -q "CURL_FAILED"; then
     print_fail "Could not reach /api/v1/health endpoint"
@@ -221,10 +307,9 @@ fi
 
 run_test "Chat endpoint returns response with memvid search context (stream=false)"
 
-chat_response=$(curl -sf -X POST http://localhost:$API_PORT/api/v1/chat \
+chat_response=$(curl_with_429_retry -X POST "$BASE_URL/api/v1/chat" \
     -H "Content-Type: application/json" \
-    -d '{"message":"What programming languages does this person know?","stream":false}' \
-    2>&1 || echo "CURL_FAILED")
+    -d '{"message":"What programming languages does this person know?","stream":false}') || chat_response="CURL_FAILED"
 
 if echo "$chat_response" | grep -q "CURL_FAILED"; then
     print_fail "Could not reach /api/v1/chat endpoint"
@@ -254,7 +339,7 @@ fi
 
 run_test "Profile endpoint returns data from memvid (name, title, skills present)"
 
-profile_response=$(curl -sf http://localhost:$API_PORT/api/v1/profile 2>&1 || echo "CURL_FAILED")
+profile_response=$(curl -L --max-redirs 3 -sf --max-time 30 "$BASE_URL/api/v1/profile") || profile_response="CURL_FAILED"
 
 if echo "$profile_response" | grep -q "CURL_FAILED"; then
     print_fail "Could not reach /api/v1/profile endpoint"
@@ -299,12 +384,17 @@ run_test "Streaming chat returns SSE event format (data: lines)"
 
 # Use curl with a timeout to capture the SSE stream
 # Write raw stream to a temp file for inspection
+# Note: SSE streams terminate via --max-time; curl exit code 28 (timeout) is expected
 SSE_OUTPUT="/tmp/e2e-sse-output.txt"
-curl -sf -N -X POST http://localhost:$API_PORT/api/v1/chat \
+curl -L --max-redirs 3 -sf -N -X POST "$BASE_URL/api/v1/chat" \
     -H "Content-Type: application/json" \
     -d '{"message":"Tell me about this person","stream":true}' \
     --max-time 30 \
-    > "$SSE_OUTPUT" 2>&1 || true
+    > "$SSE_OUTPUT" 2>/dev/null || {
+    # curl returns non-zero on timeout (28) which is expected for SSE streams
+    # Only fail if the output file is empty (no data received at all)
+    true
+}
 
 if [ ! -s "$SSE_OUTPUT" ]; then
     print_fail "Streaming response was empty"
@@ -334,7 +424,7 @@ fi
 
 run_test "Suggested questions endpoint returns non-empty questions array"
 
-questions_response=$(curl -sf http://localhost:$API_PORT/api/v1/suggested-questions 2>&1 || echo "CURL_FAILED")
+questions_response=$(curl -L --max-redirs 3 -sf --max-time 30 "$BASE_URL/api/v1/suggested-questions") || questions_response="CURL_FAILED"
 
 if echo "$questions_response" | grep -q "CURL_FAILED"; then
     print_fail "Could not reach /api/v1/suggested-questions endpoint"
@@ -369,10 +459,9 @@ fi
 
 run_test "Fit assessment returns verdict, key_matches, recommendation for strong-match JD"
 
-fit_strong_response=$(curl -sf -X POST http://localhost:$API_PORT/api/v1/assess-fit \
+fit_strong_response=$(curl_with_429_retry -X POST "$BASE_URL/api/v1/assess-fit" \
     -H "Content-Type: application/json" \
-    -d '{"job_description":"VP of Platform Engineering: Lead cloud infrastructure, Kubernetes orchestration, CI/CD pipelines, and DevOps teams. Requires 10+ years of experience in distributed systems, microservices architecture, and team leadership."}' \
-    2>&1 || echo "CURL_FAILED")
+    -d '{"job_description":"VP of Platform Engineering: Lead cloud infrastructure, Kubernetes orchestration, CI/CD pipelines, and DevOps teams. Requires 10+ years of experience in distributed systems, microservices architecture, and team leadership."}') || fit_strong_response="CURL_FAILED"
 
 if echo "$fit_strong_response" | grep -q "CURL_FAILED"; then
     print_fail "Could not reach /api/v1/assess-fit endpoint"
@@ -414,10 +503,9 @@ fi
 
 run_test "Fit assessment returns verdict, gaps, recommendation for weak-match JD"
 
-fit_weak_response=$(curl -sf -X POST http://localhost:$API_PORT/api/v1/assess-fit \
+fit_weak_response=$(curl_with_429_retry -X POST "$BASE_URL/api/v1/assess-fit" \
     -H "Content-Type: application/json" \
-    -d '{"job_description":"Executive Chef: Lead kitchen operations for a Michelin-starred restaurant. Requires 15+ years of culinary experience, expertise in French and Japanese cuisine, menu development, and food cost management."}' \
-    2>&1 || echo "CURL_FAILED")
+    -d '{"job_description":"Executive Chef: Lead kitchen operations for a Michelin-starred restaurant. Requires 15+ years of culinary experience, expertise in French and Japanese cuisine, menu development, and food cost management."}') || fit_weak_response="CURL_FAILED"
 
 if echo "$fit_weak_response" | grep -q "CURL_FAILED"; then
     print_fail "Could not reach /api/v1/assess-fit endpoint"
@@ -459,10 +547,9 @@ fi
 
 run_test "Chat with empty message returns 422 validation error"
 
-chat_empty_status=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:$API_PORT/api/v1/chat \
+chat_empty_status=$(curl -L --max-redirs 3 -s --max-time 30 -o /dev/null -w "%{http_code}" -X POST "$BASE_URL/api/v1/chat" \
     -H "Content-Type: application/json" \
-    -d '{"message":"","stream":false}' \
-    2>&1 || echo "000")
+    -d '{"message":"","stream":false}' 2>/dev/null) || chat_empty_status="000"
 
 if [ "$chat_empty_status" = "422" ]; then
     print_pass "Empty message correctly rejected with HTTP 422"
@@ -478,8 +565,7 @@ fi
 
 run_test "Invalid endpoint returns 404 or 405"
 
-invalid_status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$API_PORT/api/v1/nonexistent \
-    2>&1 || echo "000")
+invalid_status=$(curl -L --max-redirs 3 -s --max-time 30 -o /dev/null -w "%{http_code}" "$BASE_URL/api/v1/nonexistent" 2>/dev/null) || invalid_status="000"
 
 if [ "$invalid_status" = "404" ] || [ "$invalid_status" = "405" ]; then
     print_pass "Invalid endpoint correctly returned HTTP $invalid_status"
@@ -496,10 +582,9 @@ fi
 run_test "Session continuity - second request preserves session_id"
 
 # First chat request - extract session_id
-session_response_1=$(curl -sf -X POST http://localhost:$API_PORT/api/v1/chat \
+session_response_1=$(curl_with_429_retry -X POST "$BASE_URL/api/v1/chat" \
     -H "Content-Type: application/json" \
-    -d '{"message":"What is your name?","stream":false}' \
-    2>&1 || echo "CURL_FAILED")
+    -d '{"message":"What is your name?","stream":false}') || session_response_1="CURL_FAILED"
 
 if echo "$session_response_1" | grep -q "CURL_FAILED"; then
     print_fail "Could not reach /api/v1/chat endpoint for session test"
@@ -519,10 +604,9 @@ except:
         echo "  Response (truncated): $(echo "$session_response_1" | head -c 500)"
     else
         # Second chat request with same session_id
-        session_response_2=$(curl -sf -X POST http://localhost:$API_PORT/api/v1/chat \
+        session_response_2=$(curl_with_429_retry -X POST "$BASE_URL/api/v1/chat" \
             -H "Content-Type: application/json" \
-            -d "{\"message\":\"What do you do?\",\"stream\":false,\"session_id\":\"$session_id\"}" \
-            2>&1 || echo "CURL_FAILED")
+            -d "{\"message\":\"What do you do?\",\"stream\":false,\"session_id\":\"$session_id\"}") || session_response_2="CURL_FAILED"
 
         if echo "$session_response_2" | grep -q "CURL_FAILED"; then
             print_fail "Second chat request failed"

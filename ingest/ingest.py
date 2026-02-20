@@ -258,6 +258,68 @@ def extract_faq_chunks(section_content: str) -> list[dict[str, Any]]:
     return chunks
 
 
+def extract_entity_types(text: str) -> list[str]:
+    """Extract entity type annotations from chunk text.
+
+    Stub implementation for Phase 7. Tags chunks with broad entity categories
+    based on content patterns. Full entity extraction deferred to Phase 10+.
+    """
+    entities = []
+
+    # Company detection: capitalized multi-word names near role indicators
+    if any(kw in text.lower() for kw in ["company", "corp", "inc", "llc", "gmbh", "ltd"]):
+        entities.append("Company")
+
+    # Role detection
+    if any(
+        kw in text.lower()
+        for kw in [
+            "engineer",
+            "developer",
+            "manager",
+            "director",
+            "lead",
+            "architect",
+            "vp",
+            "cto",
+            "ceo",
+        ]
+    ):
+        entities.append("Role")
+
+    # Skill detection (case-sensitive for technology names)
+    if any(
+        kw in text
+        for kw in [
+            "Python",
+            "JavaScript",
+            "TypeScript",
+            "Rust",
+            "Go",
+            "Java",
+            "Kubernetes",
+            "Docker",
+            "AWS",
+            "GCP",
+            "Azure",
+        ]
+    ):
+        entities.append("Skill")
+
+    # Achievement detection (metrics/numbers)
+    if re.search(r"\d+%|\d+x|reduced|increased|improved|grew|scaled", text.lower()):
+        entities.append("Achievement")
+
+    # Project detection
+    if any(
+        kw in text.lower()
+        for kw in ["project", "platform", "system", "framework", "pipeline", "service"]
+    ):
+        entities.append("Project")
+
+    return entities
+
+
 def extract_failure_chunks(section_content: str) -> list[dict[str, str]]:
     """Extract individual failure stories."""
     chunks: list[dict[str, str]] = []
@@ -907,6 +969,13 @@ def ingest_memory(
 
     if verbose:
         print(f"  Inserted profile memory card: {profile_card_result}")
+
+    # Post-process: add entity type annotations to each document (Phase 7 stub)
+    for doc in documents:
+        entity_types = extract_entity_types(doc["text"])
+        doc["metadata"]["entity_types"] = ",".join(entity_types) if entity_types else ""
+        if verbose and debug and entity_types:
+            print(f"  Entity types for '{doc['title']}': {entity_types}")
 
     # Batch insert all other documents with embeddings
     if verbose:

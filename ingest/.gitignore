@@ -1,12 +1,16 @@
 # UV virtual environment
 .venv/
-uv.lock
+# uv.lock tracked for reproducible CI builds
 
 # Python artifacts
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+.Python
+*.egg-info/
+dist/
+build/
 
 # Testing
 .pytest_cache/
@@ -14,13 +18,29 @@ __pycache__/
 coverage.json
 *.py,cover
 htmlcov/
+.hypothesis/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Linting
+.ruff_cache/
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
 
 # OS
 .DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
 
 # Temporary training outputs (final .mv2 files go to data/.memvid/)
 *.mv2

@@ -1,0 +1,56 @@
+version: 2
+updates:
+  # npm (frontend)
+  - package-ecosystem: 'npm'
+    directory: '/frontend'
+    schedule:
+      interval: 'weekly'
+    groups:
+      minor-and-patch:
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  # Python (api-service)
+  - package-ecosystem: 'pip'
+    directory: '/api-service'
+    schedule:
+      interval: 'weekly'
+    groups:
+      minor-and-patch:
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  # Python (ingest)
+  - package-ecosystem: 'pip'
+    directory: '/ingest'
+    schedule:
+      interval: 'weekly'
+    groups:
+      minor-and-patch:
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  # Rust (memvid-service)
+  - package-ecosystem: 'cargo'
+    directory: '/memvid-service'
+    schedule:
+      interval: 'weekly'
+    groups:
+      minor-and-patch:
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  # GitHub Actions
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    groups:
+      minor-and-patch:
+        update-types:
+          - 'minor'
+          - 'patch'

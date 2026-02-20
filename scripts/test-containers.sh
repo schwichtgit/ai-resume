@@ -1,6 +1,11 @@
 #!/bin/bash
 # Quick smoke test for ai-resume containers
 # Tests that containers start and can communicate via gRPC
+#
+# E2E Reliability Protocol:
+#   - Health-gate before running tests (poll with timeout)
+#   - Retry only on HTTP 429 (rate limit), respect Retry-After
+#   - Fail immediately on all other errors (connection refused, timeouts, 5xx)
 
 set -euo pipefail
 
@@ -14,6 +19,77 @@ NC='\033[0m'
 
 log_pass() { echo -e "${GREEN}[PASS]${NC} $1"; }
 log_fail() { echo -e "${RED}[FAIL]${NC} $1"; }
+
+# Wait for HTTP health endpoint to return 2xx before running tests
+# Usage: wait_for_health URL [timeout_seconds]
+wait_for_health() {
+    local url="$1"
+    local timeout="${2:-60}"
+    local start
+    start=$(date +%s)
+    printf "Waiting for %s to become healthy..." "$url"
+    while true; do
+        local elapsed=$(( $(date +%s) - start ))
+        if [ "$elapsed" -ge "$timeout" ]; then
+            printf " TIMEOUT after %ds\n" "$timeout"
+            return 1
+        fi
+        if curl -L --max-redirs 3 -sf --max-time 5 "$url" > /dev/null 2>&1; then
+            printf " ready (%ds)\n" "$elapsed"
+            return 0
+        fi
+        sleep 2
+    done
+}
+
+# Curl wrapper that retries ONLY on HTTP 429 (rate limit).
+# All other errors (connection refused, timeouts, 4xx, 5xx) fail immediately.
+# Usage: curl_with_429_retry [curl args...]
+# Output: response body on stdout; exits non-zero on failure
+curl_with_429_retry() {
+    local max_retries=3
+    local attempt=0
+    local tmpfile
+    tmpfile=$(mktemp)
+    local header_file
+    header_file=$(mktemp)
+
+    while [ "$attempt" -lt "$max_retries" ]; do
+        local http_code
+        http_code=$(curl -L --max-redirs 3 -s --max-time 30 -w '%{http_code}' -o "$tmpfile" -D "$header_file" "$@" 2>/dev/null) || {
+            rm -f "$tmpfile" "$header_file"
+            echo "CURL_FAILED:connection_error" >&2
+            return 1
+        }
+
+        if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
+            cat "$tmpfile"
+            rm -f "$tmpfile" "$header_file"
+            return 0
+        elif [ "$http_code" = "429" ]; then
+            attempt=$((attempt + 1))
+            if [ "$attempt" -ge "$max_retries" ]; then
+                rm -f "$tmpfile" "$header_file"
+                echo "CURL_FAILED:429_after_${max_retries}_retries" >&2
+                return 1
+            fi
+            local retry_after
+            retry_after=$(grep -i '^retry-after:' "$header_file" 2>/dev/null | awk '{print $2}' | tr -d '\r' || echo "2")
+            if [ -z "$retry_after" ] || ! [[ "$retry_after" =~ ^[0-9]+$ ]]; then
+                retry_after=2
+            fi
+            echo "  Rate limited (429), retry $attempt/$max_retries after ${retry_after}s..." >&2
+            sleep "$retry_after"
+        else
+            rm -f "$tmpfile" "$header_file"
+            echo "CURL_FAILED:http_$http_code" >&2
+            return 1
+        fi
+    done
+
+    rm -f "$tmpfile" "$header_file"
+    return 1
+}
 
 cleanup() {
     echo "Cleaning up..."
@@ -40,8 +116,6 @@ podman run -d --name test-memvid \
     -e RUST_LOG=info \
     "${REGISTRY}/ai-resume-memvid:${VERSION}"
 
-sleep 3
-
 # Start Python API service
 echo "Starting Python API service..."
 podman run -d --name test-api \
@@ -53,7 +127,12 @@ podman run -d --name test-api \
     -e MOCK_OPENROUTER=true \
     "${REGISTRY}/ai-resume-api:${VERSION}"
 
-sleep 4
+# Health-gate: wait for API to be healthy before running tests
+if ! wait_for_health "http://localhost:3001/health" 60; then
+    echo -e "${RED}FATAL: API never became healthy${NC}"
+    podman logs test-api 2>&1 | tail -20
+    exit 1
+fi
 
 # Run tests
 echo ""
@@ -84,34 +163,55 @@ else
 fi
 
 # Test 3: Health endpoint
-HEALTH=$(curl -s http://localhost:3001/health 2>/dev/null || echo "")
-if echo "$HEALTH" | grep -q '"status":"healthy"'; then
-    log_pass "Health endpoint returns healthy"
-else
-    log_fail "Health endpoint failed: $HEALTH"
+HEALTH=$(curl -L --max-redirs 3 -sf --max-time 30 "http://localhost:3001/health") || {
+    log_fail "Health endpoint unreachable"
     FAILED=1
+    HEALTH=""
+}
+if [ -n "$HEALTH" ]; then
+    if echo "$HEALTH" | grep -q '"status":"healthy"'; then
+        log_pass "Health endpoint returns healthy"
+    else
+        log_fail "Health endpoint failed: $HEALTH"
+        FAILED=1
+    fi
 fi
 
 # Test 4: gRPC connection
-if echo "$HEALTH" | grep -q '"memvid_connected":true'; then
+if [ -n "$HEALTH" ] && echo "$HEALTH" | grep -q '"memvid_connected":true'; then
     log_pass "gRPC connection to Rust service"
 else
     log_fail "gRPC connection failed"
     FAILED=1
 fi
 
-# Test 5: Chat endpoint
-CHAT=$(curl -s -X POST http://localhost:3001/api/v1/chat \
+# Test 5: Chat endpoint (rate-limited, use 429 retry)
+CHAT=$(curl_with_429_retry -X POST "http://localhost:3001/api/v1/chat" \
     -H "Content-Type: application/json" \
-    -d '{"message":"test","stream":false}' 2>/dev/null || echo "")
-if echo "$CHAT" | grep -q '"session_id"'; then
+    -d '{"message":"test","stream":false}') || {
+    log_fail "Chat endpoint unreachable"
+    CHAT=""
+}
+if [ -n "$CHAT" ] && echo "$CHAT" | grep -q '"session_id"'; then
     log_pass "Chat endpoint returns response"
-else
+elif [ -n "$CHAT" ]; then
     log_fail "Chat endpoint failed: $CHAT"
     FAILED=1
 fi
 
-# Test 6: Check Rust received gRPC request
+# Test 6: Profile endpoint
+PROFILE=$(curl -L --max-redirs 3 -sf --max-time 30 "http://localhost:3001/api/v1/profile") || {
+    log_fail "Profile endpoint unreachable"
+    PROFILE=""
+}
+if [ -n "$PROFILE" ] && echo "$PROFILE" | grep -q '"name"'; then
+    log_pass "Profile endpoint returns profile data"
+elif [ -n "$PROFILE" ]; then
+    log_fail "Profile endpoint failed: $PROFILE"
+    FAILED=1
+fi
+
+# Test 7: Check Rust received gRPC request
 RUST_LOGS=$(podman logs test-memvid 2>&1)
 if echo "$RUST_LOGS" | grep -q "Processing search request"; then
     log_pass "Rust service processed gRPC search request"
@@ -128,9 +228,14 @@ podman run -d --name test-frontend \
     -p 8081:8080 \
     "${REGISTRY}/ai-resume-frontend:${VERSION}"
 
-sleep 3
+# Health-gate: wait for frontend to be healthy before testing it
+if ! wait_for_health "http://localhost:8081/health" 60; then
+    echo -e "${RED}FATAL: Frontend never became healthy${NC}"
+    podman logs test-frontend 2>&1 | tail -20
+    FAILED=1
+fi
 
-# Test 7: Frontend container running
+# Test 8: Frontend container running
 if podman ps --filter "name=test-frontend" --format "{{.Names}}" | grep -q test-frontend; then
     log_pass "Frontend container running"
 else
@@ -139,29 +244,38 @@ else
     FAILED=1
 fi
 
-# Test 8: Frontend health endpoint
-FRONTEND_HEALTH=$(curl -s http://localhost:8081/health 2>/dev/null || echo "")
-if echo "$FRONTEND_HEALTH" | grep -qiE 'healthy|ok|200'; then
+# Test 9: Frontend health endpoint
+FRONTEND_HEALTH=$(curl -L --max-redirs 3 -sf --max-time 30 "http://localhost:8081/health") || {
+    log_fail "Frontend health endpoint unreachable"
+    FRONTEND_HEALTH=""
+}
+if [ -n "$FRONTEND_HEALTH" ] && echo "$FRONTEND_HEALTH" | grep -qiE 'healthy|ok|200'; then
     log_pass "Frontend health endpoint returns healthy"
-else
+elif [ -n "$FRONTEND_HEALTH" ]; then
     log_fail "Frontend health endpoint failed: $FRONTEND_HEALTH"
     FAILED=1
 fi
 
-# Test 9: Frontend serves React SPA
-FRONTEND_INDEX=$(curl -s http://localhost:8081/ 2>/dev/null || echo "")
-if echo "$FRONTEND_INDEX" | grep -q 'id="root"'; then
+# Test 10: Frontend serves React SPA
+FRONTEND_INDEX=$(curl -L --max-redirs 3 -sf --max-time 30 "http://localhost:8081/") || {
+    log_fail "Frontend index unreachable"
+    FRONTEND_INDEX=""
+}
+if [ -n "$FRONTEND_INDEX" ] && echo "$FRONTEND_INDEX" | grep -q 'id="root"'; then
     log_pass "Frontend serves React SPA"
-else
+elif [ -n "$FRONTEND_INDEX" ]; then
     log_fail "Frontend does not serve React SPA"
     FAILED=1
 fi
 
-# Test 10: Frontend SPA routing
-FRONTEND_SPA=$(curl -s http://localhost:8081/some/random/path 2>/dev/null || echo "")
-if echo "$FRONTEND_SPA" | grep -q 'id="root"'; then
+# Test 11: Frontend SPA routing
+FRONTEND_SPA=$(curl -L --max-redirs 3 -sf --max-time 30 "http://localhost:8081/some/random/path") || {
+    log_fail "Frontend SPA routing unreachable"
+    FRONTEND_SPA=""
+}
+if [ -n "$FRONTEND_SPA" ] && echo "$FRONTEND_SPA" | grep -q 'id="root"'; then
     log_pass "Frontend SPA routing works (returns index.html for all routes)"
-else
+elif [ -n "$FRONTEND_SPA" ]; then
     log_fail "Frontend SPA routing broken"
     FAILED=1
 fi

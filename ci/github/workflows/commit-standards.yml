@@ -1,0 +1,65 @@
+name: Commit Standards
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate commit messages
+        run: |
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+
+          ERRORS=0
+          while IFS= read -r sha; do
+            MSG=$(git log --format='%s' -n 1 "$sha")
+
+            # Skip merge commits (e.g. from branch updates, Dependabot)
+            if echo "$MSG" | grep -qE '^Merge '; then
+              continue
+            fi
+
+            # Conventional commit format
+            if ! echo "$MSG" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+'; then
+              echo "FAIL [$sha]: Not conventional commit: $MSG"
+              ERRORS=$((ERRORS + 1))
+            fi
+
+            # Subject length
+            if [ ${#MSG} -gt 72 ]; then
+              echo "WARN [$sha]: Subject > 72 chars: $MSG"
+            fi
+
+            # Emoji
+            if echo "$MSG" | python3 -c "
+          import sys, re
+          text = sys.stdin.read()
+          if re.search('[\U0001F300-\U0001F9FF\U00002600-\U000027BF]+', text, re.UNICODE):
+              sys.exit(0)
+          sys.exit(1)
+          " 2>/dev/null; then
+              echo "FAIL [$sha]: Emoji detected: $MSG"
+              ERRORS=$((ERRORS + 1))
+            fi
+
+            # AI-isms
+            if echo "$MSG" | grep -qiE '\b(I have|I'\''ve|I updated|I fixed|Certainly|seamless|robust|powerful|elegant)\b'; then
+              echo "FAIL [$sha]: AI-ism detected: $MSG"
+              ERRORS=$((ERRORS + 1))
+            fi
+
+          done < <(git rev-list "$BASE".."$HEAD")
+
+          if [ $ERRORS -gt 0 ]; then
+            exit 1
+          fi
+          echo "All commits pass standards check."

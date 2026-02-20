@@ -171,12 +171,14 @@ Use the context above to answer the user's question. If the context doesn't cont
         context: str,
         user_message: str,
         history: list[dict[str, str]] | None = None,
+        max_tokens: int | None = None,
     ) -> LLMResponse:
         """Send a chat completion request (non-streaming).
 
         Args:
             system_prompt: System instructions for the model.
             context: Retrieved context from memvid.
+            max_tokens: Override default max tokens for this call.
             user_message: Current user message.
             history: Previous conversation history.
 
@@ -210,7 +212,7 @@ Use the context above to answer the user's question. If the context doesn't cont
         payload = {
             "model": self._model,
             "messages": messages,
-            "max_tokens": self._max_tokens,
+            "max_tokens": max_tokens or self._max_tokens,
             "temperature": self._temperature,
             "stream": False,
         }

@@ -141,7 +141,7 @@ class AssessFitRequest(BaseModel):
     """Request for real-time fit assessment."""
 
     job_description: str = Field(
-        ..., description="Job description to assess fit against", min_length=50
+        ..., description="Job description to assess fit against", min_length=50, max_length=15000
     )
 
 
@@ -154,6 +154,13 @@ class AssessFitResponse(BaseModel):
     recommendation: str = Field(..., description="Final recommendation")
     chunks_retrieved: int = Field(..., description="Number of context chunks used")
     tokens_used: int = Field(..., description="Tokens used in LLM call")
+
+
+class UIConfig(BaseModel):
+    """Optional UI configuration from resume data."""
+
+    theme: str | None = None  # "dark" | "light" | "system"
+    sections: list[str] | None = None  # e.g. ["hero", "experience", "fit-assessment"]
 
 
 class ProfileResponse(BaseModel):
@@ -172,6 +179,7 @@ class ProfileResponse(BaseModel):
     fit_assessment_examples: list[FitAssessmentExample] = Field(
         default_factory=list, description="Pre-analyzed fit assessment examples"
     )
+    config: UIConfig | None = Field(default=None, description="Optional UI configuration")
 
 
 # =============================================================================

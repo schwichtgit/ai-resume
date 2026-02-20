@@ -6,7 +6,7 @@
 
 AI-Resume is a containerized web application that acts as your digital professional proxy. It provides a "30-second scan" layout for speed, backed by a semantic AI agent that recruiters can "interview" in real-time. Using natural language, they can query specific experience (e.g., "How has she handled MLOps at scale?") and receive a synthesized, evidence-based summary derived from your personal semantic knowledge base.
 
-https://github.com/user-attachments/assets/0b183e42-db28-4ac0-ad22-8cd66d68308c
+<https://github.com/user-attachments/assets/0b183e42-db28-4ac0-ad22-8cd66d68308c>
 
 > _A recruiter asks about AI experience, tests job fit with a real job description, and explores leadership style — all without scheduling a call._
 
@@ -38,7 +38,7 @@ Suggested things to try:
 
 ## How It Works
 
-```
+```text
 master_resume.md        Python ingest         .mv2 file          Rust gRPC        Python API       React SPA
 (your resume)     ───►  (chunk + embed)  ───► (vector DB)   ───► (search)    ───►  (LLM + SSE) ───► (chat UI)
                                                                   <5ms              streaming        responsive

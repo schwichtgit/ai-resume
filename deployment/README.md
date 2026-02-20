@@ -110,22 +110,26 @@ server {
 ## Deployment
 
 **Start all services:**
+
 ```bash
 cd deployment
 podman-compose up -d
 ```
 
 **Verify container IPs:**
+
 ```bash
 podman network inspect yellow-net | grep -A2 '"Name"'
 ```
 
 Expected:
+
 - ai-resume-frontend: 192.168.100.10
 - ai-resume-api: 192.168.100.11
 - ai-resume-memvid: 192.168.100.12
 
 **Test endpoints (requires route to yellow-net):**
+
 ```bash
 # Frontend health
 curl http://192.168.100.10:8080/health
@@ -142,11 +146,13 @@ curl -X POST http://192.168.100.10:8080/api/v1/chat \
 ## Production Deployment (Edge Server)
 
 1. **Build locally:**
+
    ```bash
    ./scripts/build-all.sh latest
    ```
 
 2. **Save and transfer images:**
+
    ```bash
    podman save localhost/ai-resume-frontend:latest -o frontend.tar
    podman save localhost/ai-resume-api:latest -o api.tar
@@ -158,6 +164,7 @@ curl -X POST http://192.168.100.10:8080/api/v1/chat \
    ```
 
 3. **On edge server:**
+
    ```bash
    # Create network (one-time)
    podman network create yellow-net --subnet 192.168.100.0/24
@@ -178,6 +185,7 @@ curl -X POST http://192.168.100.10:8080/api/v1/chat \
 ## Troubleshooting
 
 **Host nginx can't reach frontend:**
+
 ```bash
 # Check routing
 ip route | grep 192.168.100
@@ -187,6 +195,7 @@ sudo ip route add 192.168.100.0/24 dev podman1
 ```
 
 **Containers not getting static IPs:**
+
 ```bash
 # Verify network is external
 podman network ls | grep yellow-net
@@ -196,6 +205,7 @@ grep -A2 "yellow-net:" compose.yaml
 ```
 
 **ai-resume-api can't reach ai-resume-memvid:**
+
 ```bash
 # Test connectivity
 podman exec ai-resume-api ping 192.168.100.12
@@ -203,6 +213,7 @@ podman exec ai-resume-api nc -zv 192.168.100.12 50051
 ```
 
 **Memvid service failing to load .mv2:**
+
 ```bash
 # Check volume mount and permissions
 podman inspect ai-resume-memvid | jq '.[0].Mounts'

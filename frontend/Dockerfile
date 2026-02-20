@@ -67,4 +67,4 @@ USER nginx
 EXPOSE 8080
 
 STOPSIGNAL SIGTERM
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["nginx", "-c", "/etc/nginx/nginx.conf", "-g", "daemon off;"]

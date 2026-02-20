@@ -84,5 +84,18 @@ def test_embeddings() -> None:
     print(f"Above threshold: {'✅ YES' if sim >= 0.4 else '❌ NO'}")
 
 
+@pytest.mark.slow
+def test_embedding_dimensions_384() -> None:
+    """Verify that the ingest embedding model produces 384-dimensional vectors."""
+    from memvid_sdk.embeddings import HuggingFaceEmbeddings
+
+    embedder = HuggingFaceEmbeddings(model="BAAI/bge-small-en-v1.5")
+    assert embedder.dimension == 384
+
+    vectors = embedder.embed_documents(["test sentence for dimension check"])
+    assert len(vectors) == 1
+    assert len(vectors[0]) == 384
+
+
 if __name__ == "__main__":
     test_embeddings()

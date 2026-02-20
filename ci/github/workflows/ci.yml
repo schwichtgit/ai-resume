@@ -1,0 +1,201 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Path filtering for monorepo support
+  # Customize the filters below to match your project structure.
+  # ---------------------------------------------------------------------------
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      nodejs: ${{ steps.filter.outputs.nodejs }}
+      # python: ${{ steps.filter.outputs.python }}
+      # rust: ${{ steps.filter.outputs.rust }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            nodejs:
+              - '**/*.ts'
+              - '**/*.tsx'
+              - '**/*.js'
+              - '**/*.jsx'
+              - 'package.json'
+              - 'package-lock.json'
+            # python:
+            #   - '**/*.py'
+            #   - 'pyproject.toml'
+            #   - 'requirements*.txt'
+            # rust:
+            #   - '**/*.rs'
+            #   - 'Cargo.toml'
+            #   - 'Cargo.lock'
+
+  # ---------------------------------------------------------------------------
+  # Node.js
+  # ---------------------------------------------------------------------------
+  nodejs:
+    needs: changes
+    if: needs.changes.outputs.nodejs == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx eslint . --quiet
+        name: Lint
+      - run: npx prettier --check .
+        name: Format check
+      - run: npx tsc --noEmit
+        name: Type check
+      - run: npm test
+        name: Test
+      - run: npm run build --if-present
+        name: Build
+
+  # ---------------------------------------------------------------------------
+  # Python (uncomment to enable)
+  # ---------------------------------------------------------------------------
+  # python:
+  #   needs: changes
+  #   if: needs.changes.outputs.python == 'true'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: astral-sh/setup-uv@v4
+  #     - uses: actions/setup-python@v5
+  #       with:
+  #         python-version: '3.12'
+  #     - run: uv sync
+  #     - run: ruff check .
+  #       name: Lint
+  #     - run: ruff format --check .
+  #       name: Format check
+  #     - run: mypy .
+  #       name: Type check
+  #     - run: pytest --cov --cov-report=term-missing
+  #       name: Test
+
+  # ---------------------------------------------------------------------------
+  # Rust (uncomment to enable)
+  # ---------------------------------------------------------------------------
+  # rust:
+  #   needs: changes
+  #   if: needs.changes.outputs.rust == 'true'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: dtolnay/rust-toolchain@stable
+  #       with:
+  #         components: clippy, rustfmt
+  #     - uses: Swatinem/rust-cache@v2
+  #     - run: cargo fmt --check
+  #       name: Format check
+  #     - run: cargo clippy -- -D warnings
+  #       name: Lint
+  #     - run: cargo build
+  #       name: Build
+  #     - run: cargo test
+  #       name: Test
+
+  # ---------------------------------------------------------------------------
+  # Commit standards (PR only)
+  # ---------------------------------------------------------------------------
+  commit-standards:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate commits
+        run: |
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+
+          ERRORS=0
+          while IFS= read -r sha; do
+            MSG=$(git log --format='%s' -n 1 "$sha")
+
+            # Skip merge commits (e.g. from branch updates, Dependabot)
+            if echo "$MSG" | grep -qE '^Merge '; then
+              continue
+            fi
+
+            # Conventional commit format
+            if ! echo "$MSG" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+'; then
+              echo "FAIL [$sha]: Not conventional commit format: $MSG"
+              ERRORS=$((ERRORS + 1))
+            fi
+
+            # Subject length
+            if [ ${#MSG} -gt 72 ]; then
+              echo "WARN [$sha]: Subject exceeds 72 chars: $MSG"
+            fi
+
+            # Emoji
+            if echo "$MSG" | python3 -c "
+          import sys, re
+          text = sys.stdin.read()
+          pattern = re.compile('[\U0001F300-\U0001F9FF\U00002600-\U000027BF]+', re.UNICODE)
+          sys.exit(0 if pattern.search(text) else 1)
+          " 2>/dev/null; then
+              echo "FAIL [$sha]: Emoji in commit message: $MSG"
+              ERRORS=$((ERRORS + 1))
+            fi
+
+            # AI-isms
+            if echo "$MSG" | grep -qiE '\b(I have|I'\''ve|I updated|I fixed|Certainly|seamless|robust|powerful|elegant)\b'; then
+              echo "FAIL [$sha]: AI-ism detected: $MSG"
+              ERRORS=$((ERRORS + 1))
+            fi
+
+          done < <(git rev-list "$BASE".."$HEAD")
+
+          if [ $ERRORS -gt 0 ]; then
+            echo ""
+            echo "Commit standards check failed: $ERRORS error(s)."
+            exit 1
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Summary (ONLY job required in branch protection)
+  # ---------------------------------------------------------------------------
+  summary:
+    if: always()
+    needs: [nodejs, commit-standards]
+    # Add other jobs to needs as you enable them: python, rust
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check results
+        run: |
+          echo "Node.js:  ${{ needs.nodejs.result }}"
+          echo "Commits:  ${{ needs.commit-standards.result }}"
+
+          if [[ "${{ needs.nodejs.result }}" == "failure" ]]; then
+            echo "Node.js checks failed."
+            exit 1
+          fi
+
+          if [[ "${{ needs.commit-standards.result }}" == "failure" ]]; then
+            echo "Commit standards check failed."
+            exit 1
+          fi
+
+          echo "All checks passed."

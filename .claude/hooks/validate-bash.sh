@@ -76,17 +76,17 @@ DANGEROUS_PATTERNS=(
 # Check for dangerous patterns
 for pattern in "${DANGEROUS_PATTERNS[@]}"; do
     if echo "$COMMAND" | grep -qE "$pattern"; then
-        echo "BLOCKED: Command matches dangerous pattern: $pattern"
-        echo "Command: $COMMAND"
-        exit 1
+        echo "BLOCKED: Command matches dangerous pattern: $pattern" >&2
+        echo "Command: $COMMAND" >&2
+        exit 2
     fi
 done
 
 # Check for main/master force push specifically
 if echo "$COMMAND" | grep -qE "git push.*(--force|-f).*main|git push.*(--force|-f).*master"; then
-    echo "BLOCKED: Force push to main/master is not allowed"
-    echo "Command: $COMMAND"
-    exit 1
+    echo "BLOCKED: Force push to main/master is not allowed" >&2
+    echo "Command: $COMMAND" >&2
+    exit 2
 fi
 
 # All checks passed

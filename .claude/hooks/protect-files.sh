@@ -90,12 +90,12 @@ for pattern in "${PROTECTED_PATTERNS[@]}"; do
         # For env files and credentials, block completely
         case "$FILENAME" in
             .env*|*credentials*|*secret*|*password*|id_rsa*|id_ed25519*|*.pem|*.key)
-                echo "BLOCKED: This file type is protected and cannot be modified"
-                exit 1
+                echo "BLOCKED: This file type is protected and cannot be modified" >&2
+                exit 2
                 ;;
             *lock*)
-                echo "BLOCKED: Lock files should not be manually modified"
-                exit 1
+                echo "BLOCKED: Lock files should not be manually modified" >&2
+                exit 2
                 ;;
         esac
     fi
@@ -112,8 +112,8 @@ SENSITIVE_DIRS=(
 
 for dir in "${SENSITIVE_DIRS[@]}"; do
     if [[ "$FILE_PATH" == *"/$dir/"* ]] || [[ "$FILE_PATH" == *"$dir/"* ]]; then
-        echo "BLOCKED: Files in $dir directory are protected"
-        exit 1
+        echo "BLOCKED: Files in $dir directory are protected" >&2
+        exit 2
     fi
 done
 

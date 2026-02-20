@@ -4,7 +4,7 @@
 
 # UV virtual environment
 .venv/
-uv.lock
+# uv.lock tracked for reproducible CI builds
 
 # Python artifacts
 __pycache__/
@@ -20,6 +20,7 @@ build/
 .pytest_cache/
 htmlcov/
 .coverage
+coverage.json
 *.cover
 .hypothesis/
 
@@ -27,6 +28,9 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# Linting
+.ruff_cache/
 
 # IDE
 .vscode/

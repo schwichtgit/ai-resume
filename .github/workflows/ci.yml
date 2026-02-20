@@ -12,8 +12,8 @@ permissions:
   pull-requests: read
 
 env:
-  NODE_VERSION: "22"
-  PYTHON_VERSION: "3.11"
+  NODE_VERSION: '22'
+  PYTHON_VERSION: '3.11'
 
 jobs:
   # Detect which services changed
@@ -64,7 +64,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
+          cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
@@ -76,8 +76,8 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
-      - name: Test
-        run: npm test -- --run
+      - name: Test with coverage
+        run: npm test -- --run --coverage
 
       - name: Build
         run: npm run build
@@ -132,7 +132,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: '3.12'
 
       - name: Install dependencies
         run: uv sync --extra test --extra lint
@@ -151,12 +151,13 @@ jobs:
           path: ~/.cache/huggingface/hub
           key: huggingface-models-v1
 
-      - name: Test with pytest
+      - name: Test with coverage
         env:
-          HF_HUB_DOWNLOAD_TIMEOUT: "120"
-        run: uv run pytest -v --tb=short -m "not slow"
+          HF_HUB_DOWNLOAD_TIMEOUT: '120'
+        run: uv run pytest -v --tb=short -m "not slow" --cov=ingest --cov-report=term-missing --cov-fail-under=85
 
-  # Memvid Service: Rust/gRPC
+  # Memvid Service: Rust/gRPC (unit tests + library coverage, excludes real.rs)
+  # real.rs coverage is handled by the memvid-integration job below
   memvid-service:
     needs: changes
     if: ${{ needs.changes.outputs.memvid-service == 'true' }}
@@ -170,7 +171,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.92.0"
+          toolchain: '1.92.0'
           components: clippy, rustfmt
 
       - name: Cache cargo
@@ -192,6 +193,87 @@ jobs:
 
       - name: Test
         run: cargo test
+
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
+
+      - name: Coverage
+        run: cargo tarpaulin --config tarpaulin-unit.toml
+
+  # Memvid Integration: real.rs coverage with actual .mv2 file
+  # Runs ingest to produce a .mv2, then cargo tarpaulin on integration tests
+  memvid-integration:
+    needs: [changes, memvid-service]
+    if: >-
+      always() &&
+      needs.changes.result == 'success' &&
+      (needs.changes.outputs.memvid-service == 'true' || needs.changes.outputs.ingest == 'true') &&
+      needs.memvid-service.result != 'failure'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '1.92.0'
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: memvid-service
+
+      - name: Install protobuf compiler
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface/hub
+          key: huggingface-models-v1
+
+      - name: Install ingest dependencies
+        run: cd ingest && uv sync
+
+      - name: Ingest example resume to .mv2
+        env:
+          HF_HUB_DOWNLOAD_TIMEOUT: '120'
+        run: |
+          cd ingest
+          uv run python ingest.py \
+            --input ../data/example_resume.md \
+            --output /tmp/test_resume.mv2 \
+            --verify \
+            --quiet
+
+      - name: Setup Node.js (for memvid-cli)
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # Workaround: memvid Bug C (#196) -- remove when upstream fix ships
+      # Disable by setting repository variable REBUILD_TIME_INDEX=false
+      - name: Rebuild .mv2 time index (Bug C workaround)
+        if: ${{ vars.REBUILD_TIME_INDEX != 'false' }}
+        run: npx -y memvid-cli@2.0.153 doctor --rebuild-time-index /tmp/test_resume.mv2
+
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
+
+      - name: Integration tests with coverage
+        env:
+          TEST_MV2_PATH: /tmp/test_resume.mv2
+        working-directory: memvid-service
+        run: cargo tarpaulin --config tarpaulin-integration.toml
 
   # Cross-Service Integration Tests: API + gRPC (mock backends)
   cross-service:
@@ -217,7 +299,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.92.0"
+          toolchain: '1.92.0'
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
@@ -262,12 +344,12 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: '3.12'
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.92.0"
+          toolchain: '1.92.0'
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
@@ -289,12 +371,18 @@ jobs:
       - name: Install api-service dependencies
         run: cd api-service && uv sync --extra test
 
+      - name: Setup Node.js (for memvid-cli)
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
       - name: Build memvid-service
         run: cd memvid-service && cargo build --release
 
       - name: Run true E2E tests
         env:
-          HF_HUB_DOWNLOAD_TIMEOUT: "120"
+          HF_HUB_DOWNLOAD_TIMEOUT: '120'
+          REBUILD_TIME_INDEX: ${{ vars.REBUILD_TIME_INDEX || 'true' }}
         run: |
           chmod +x scripts/test-e2e-real.sh
           ./scripts/test-e2e-real.sh
@@ -434,12 +522,12 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: '3.12'
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.92.0"
+          toolchain: '1.92.0'
 
       - name: Install protobuf compiler
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
@@ -452,8 +540,46 @@ jobs:
       - name: Run API endpoint tests (mocked backends)
         run: cd api-service && uv sync --extra test && uv run pytest tests/test_e2e_api.py -v --tb=short
 
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Install ingest dependencies
+        run: cd ingest && uv sync --extra test
+
+      - name: Outcome tests -- Factual Accuracy
+        run: cd api-service && uv run pytest tests/test_outcome_factual.py -v --tb=short
+
+      - name: Outcome tests -- Negative Testing
+        run: cd api-service && uv run pytest tests/test_outcome_negative.py -v --tb=short
+
+      - name: Outcome tests -- Honesty & Gaps
+        run: cd api-service && uv run pytest tests/test_outcome_honesty.py -v --tb=short
+
+      - name: Outcome tests -- Security Guardrails
+        run: cd api-service && uv run pytest tests/test_outcome_security.py -v --tb=short
+
+      - name: Outcome tests -- Injection Scenarios
+        run: cd api-service && uv run pytest tests/test_injection_scenarios.py -v --tb=short
+
+      - name: Outcome tests -- Stream Leakage
+        run: cd api-service && uv run pytest tests/test_stream_leakage.py -v --tb=short
+
+      - name: Outcome tests -- E2E Quality
+        run: cd api-service && uv run pytest tests/test_e2e_quality.py -v --tb=short -m e2e
+
+      - name: Outcome tests -- Data Coverage (ingest)
+        env:
+          HF_HUB_DOWNLOAD_TIMEOUT: '120'
+        run: cd ingest && uv run pytest tests/test_outcome_data_coverage.py -v --tb=short -m slow
+
+      - name: Outcome tests -- Portability
+        run: bash scripts/test-outcome-portability.sh
+
+      - name: Outcome tests -- Container Config
+        run: bash scripts/test-outcome-containers.sh
+
       - name: Release gate passed
-        run: echo "Release gate passed - all checks succeeded"
+        run: echo "Release gate passed - all blocking outcome gates succeeded"
 
   # Summary job (always runs, reports overall status)
   summary:
@@ -464,6 +590,7 @@ jobs:
         api-service,
         ingest,
         memvid-service,
+        memvid-integration,
         cross-service,
         e2e-real,
         docs,
@@ -479,20 +606,30 @@ jobs:
           echo "API Service: ${{ needs.api-service.result || 'skipped' }}"
           echo "Ingest: ${{ needs.ingest.result || 'skipped' }}"
           echo "Memvid Service: ${{ needs.memvid-service.result || 'skipped' }}"
+          echo "Memvid Integration: ${{ needs.memvid-integration.result || 'skipped' }}"
           echo "Cross-Service: ${{ needs.cross-service.result || 'skipped' }}"
           echo "E2E Real: ${{ needs.e2e-real.result || 'skipped' }}"
           echo "Docs: ${{ needs.docs.result || 'skipped' }}"
           echo "Commit Standards: ${{ needs.commit-standards.result || 'skipped' }}"
+          echo ""
+          echo "=== Coverage Gate ==="
+          echo "Coverage thresholds enforced per-service:"
+          echo "  Frontend: 10% (vitest thresholds, ramping to 85%)"
+          echo "  Ingest: 85% (pytest --cov-fail-under)"
+          echo "  Memvid (unit): 85% (cargo tarpaulin --fail-under, excludes real.rs)"
+          echo "  Memvid (integration): 50% (cargo tarpaulin on real.rs, soft gate)"
 
-          # Fail if any required job failed
+          # Fail if any required job failed (includes coverage threshold enforcement)
           if [[ "${{ needs.frontend.result }}" == "failure" ]] || \
              [[ "${{ needs.api-service.result }}" == "failure" ]] || \
              [[ "${{ needs.ingest.result }}" == "failure" ]] || \
              [[ "${{ needs.memvid-service.result }}" == "failure" ]] || \
              [[ "${{ needs.cross-service.result }}" == "failure" ]] || \
              [[ "${{ needs.commit-standards.result }}" == "failure" ]]; then
+            echo ""
             echo "One or more jobs failed!"
             exit 1
           fi
 
-          echo "All checks passed!"
+          echo ""
+          echo "All checks passed (including coverage gates)!"

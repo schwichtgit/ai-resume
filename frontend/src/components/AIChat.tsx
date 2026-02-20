@@ -1,9 +1,16 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { X, Send, Sparkles, AlertCircle, RefreshCw, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useStreamingChat } from "@/hooks/useStreamingChat";
-import { getSuggestedQuestions, checkHealth } from "@/lib/api-client";
-import { useProfileContext } from "@/context/ProfileContext";
+import { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  X,
+  Send,
+  Sparkles,
+  AlertCircle,
+  RefreshCw,
+  Loader2,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useStreamingChat } from '@/hooks/useStreamingChat';
+import { getSuggestedQuestions, checkHealth } from '@/lib/api-client';
+import { useProfileContext } from '@/hooks/useProfileContext';
 
 interface AIChatProps {
   isOpen: boolean;
@@ -12,10 +19,13 @@ interface AIChatProps {
 
 const AIChat = ({ isOpen, onClose }: AIChatProps) => {
   const { profile } = useProfileContext();
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState('');
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
-  const [isBackendHealthy, setIsBackendHealthy] = useState<boolean | null>(null);
+  const [backendStatus, setBackendStatus] = useState<
+    'checking' | 'healthy' | 'degraded' | 'unavailable'
+  >('checking');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [countdown, setCountdown] = useState(0);
 
   const {
     messages,
@@ -24,20 +34,39 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
     isLoading,
     error,
     stats,
+    rateLimitedUntil,
+    isRateLimited,
     sendMessage,
     cancelStream,
     clearMessages,
     retry,
   } = useStreamingChat({
     onError: (err) => {
-      console.error("Chat error:", err);
+      console.error('Chat error:', err);
     },
   });
 
   // Scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingContent]);
+
+  // Rate limit countdown timer
+  useEffect(() => {
+    if (!rateLimitedUntil) return;
+
+    const update = () => {
+      const remaining = Math.max(
+        0,
+        Math.ceil((rateLimitedUntil - Date.now()) / 1000),
+      );
+      setCountdown(remaining);
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [rateLimitedUntil]);
 
   // Check backend health and load suggested questions on open
   useEffect(() => {
@@ -46,10 +75,19 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
     // Check health
     checkHealth()
       .then((health) => {
-        setIsBackendHealthy(health.status === "healthy");
+        if (health.status === 'healthy' && health.memvid_connected) {
+          setBackendStatus('healthy');
+        } else if (
+          health.status === 'healthy' ||
+          health.status === 'degraded'
+        ) {
+          setBackendStatus('degraded');
+        } else {
+          setBackendStatus('unavailable');
+        }
       })
       .catch(() => {
-        setIsBackendHealthy(false);
+        setBackendStatus('unavailable');
       });
 
     // Load suggested questions
@@ -66,11 +104,11 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
 
   const handleSubmit = useCallback(
     (question: string) => {
-      if (!question.trim() || isStreaming || isLoading) return;
-      setInput("");
+      if (!question.trim() || isStreaming || isLoading || isRateLimited) return;
+      setInput('');
       sendMessage(question);
     },
-    [isStreaming, isLoading, sendMessage]
+    [isStreaming, isLoading, isRateLimited, sendMessage],
   );
 
   const handleFormSubmit = useCallback(
@@ -78,7 +116,7 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
       e.preventDefault();
       handleSubmit(input);
     },
-    [handleSubmit, input]
+    [handleSubmit, input],
   );
 
   if (!isOpen) return null;
@@ -86,28 +124,33 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
   const isWaiting = isLoading || isStreaming;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-2xl h-[80vh] bg-card border border-border rounded-2xl flex flex-col overflow-hidden shadow-2xl animate-slide-up">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-background/80 backdrop-blur-sm animate-fade-in">
+      <div className="w-full sm:max-w-2xl h-[100dvh] sm:h-[80vh] bg-card border-0 sm:border sm:border-border rounded-t-2xl sm:rounded-2xl flex flex-col overflow-hidden shadow-2xl animate-slide-up">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center text-accent-foreground font-serif font-bold">
-              {profile?.initials || "AI"}
+              {profile?.initials || 'AI'}
             </div>
             <div>
               <p className="text-foreground font-medium">
-                Ask AI About {profile?.name?.split(" ")[0] || "Me"}
+                Ask AI About {profile?.name?.split(' ')[0] || 'Me'}
               </p>
               <p className="text-xs text-muted-foreground flex items-center gap-1">
-                {isBackendHealthy === null ? (
+                {backendStatus === 'checking' ? (
                   <>
                     <Loader2 className="w-2 h-2 animate-spin" />
                     Connecting...
                   </>
-                ) : isBackendHealthy ? (
+                ) : backendStatus === 'healthy' ? (
                   <>
                     <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
                     Ready to answer your questions
+                  </>
+                ) : backendStatus === 'degraded' ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-warning animate-pulse" />
+                    Limited functionality (semantic search unavailable)
                   </>
                 ) : (
                   <>
@@ -122,15 +165,17 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
             {messages.length > 0 && (
               <button
                 onClick={clearMessages}
-                className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-secondary text-sm"
+                className="min-w-[44px] min-h-[44px] p-2 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-secondary text-sm flex items-center justify-center"
                 title="Clear conversation"
+                aria-label="Clear conversation"
               >
                 <RefreshCw className="w-4 h-4" />
               </button>
             )}
             <button
               onClick={onClose}
-              className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-secondary"
+              className="min-w-[44px] min-h-[44px] p-2 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-secondary flex items-center justify-center"
+              aria-label="Close chat"
             >
               <X className="w-5 h-5" />
             </button>
@@ -138,12 +183,18 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div
+          className="flex-1 overflow-y-auto p-4 space-y-4"
+          role="log"
+          aria-label="Chat messages"
+        >
           {/* Backend unavailable warning */}
-          {isBackendHealthy === false && (
+          {backendStatus === 'unavailable' && (
             <div className="flex items-center gap-2 p-3 bg-destructive/10 text-destructive rounded-lg text-sm">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <span>Backend service is unavailable. Please try again later.</span>
+              <span>
+                Backend service is unavailable. Please try again later.
+              </span>
             </div>
           )}
 
@@ -155,15 +206,17 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
                 What would you like to know?
               </h3>
               <p className="text-muted-foreground text-sm mb-6 max-w-md">
-                Ask specific questions about Frank's experience, skills, or fit for your role. Get honest, detailed answers.
+                Ask specific questions about{' '}
+                {profile?.name?.split(' ')[0] ?? 'the candidate'}'s experience,
+                skills, or fit for your role. Get honest, detailed answers.
               </p>
               <div className="w-full max-w-md space-y-2">
                 {suggestedQuestions.map((q, i) => (
                   <button
                     key={i}
                     onClick={() => handleSubmit(q)}
-                    disabled={isBackendHealthy === false}
-                    className="w-full text-left p-3 bg-secondary rounded-xl text-sm text-foreground hover:bg-muted transition-colors border border-transparent hover:border-accent/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={backendStatus === 'unavailable'}
+                    className="w-full text-left p-3 min-h-[44px] bg-secondary rounded-xl text-sm text-foreground hover:bg-muted transition-colors border border-transparent hover:border-accent/30 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     "{q}"
                   </button>
@@ -177,26 +230,28 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
             <div
               key={i}
               className={cn(
-                "flex",
-                msg.role === "user" ? "justify-end" : "justify-start"
+                'flex',
+                msg.role === 'user' ? 'justify-end' : 'justify-start',
               )}
             >
               <div
                 className={cn(
-                  "max-w-[85%] rounded-2xl px-4 py-3",
-                  msg.role === "user"
-                    ? "bg-accent text-accent-foreground rounded-br-md"
-                    : "bg-secondary text-foreground rounded-bl-md"
+                  'max-w-[85%] rounded-2xl px-4 py-3',
+                  msg.role === 'user'
+                    ? 'bg-accent text-accent-foreground rounded-br-md'
+                    : 'bg-secondary text-foreground rounded-bl-md',
                 )}
               >
-                <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                  {msg.content}
+                </p>
               </div>
             </div>
           ))}
 
           {/* Streaming response */}
           {(isLoading || streamingContent) && (
-            <div className="flex justify-start">
+            <div className="flex justify-start" aria-live="polite">
               <div className="max-w-[85%] bg-secondary text-foreground rounded-2xl rounded-bl-md px-4 py-3">
                 {isLoading && !streamingContent ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -235,7 +290,9 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
                 <span>{stats.chunks_retrieved} sources used</span>
               )}
               {stats.elapsed_seconds && (
-                <span className="ml-2">({stats.elapsed_seconds.toFixed(1)}s)</span>
+                <span className="ml-2">
+                  ({stats.elapsed_seconds.toFixed(1)}s)
+                </span>
               )}
             </div>
           )}
@@ -244,30 +301,49 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
         </div>
 
         {/* Input */}
-        <div className="p-4 border-t border-border">
-          <form onSubmit={handleFormSubmit} className="flex gap-3">
+        <div className="p-3 sm:p-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-4 border-t border-border">
+          {countdown > 0 && (
+            <div className="px-4 py-2 mb-2 text-sm text-warning bg-warning/10 rounded-md text-center">
+              Rate limited. Try again in {countdown} seconds
+            </div>
+          )}
+          <form onSubmit={handleFormSubmit} className="flex gap-2 sm:gap-3">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={isWaiting ? "Waiting for response..." : "Ask a follow-up question..."}
-              disabled={isWaiting || isBackendHealthy === false}
-              className="flex-1 bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground border border-border focus:border-accent focus:outline-none transition-colors disabled:opacity-50"
+              placeholder={
+                isWaiting
+                  ? 'Waiting for response...'
+                  : 'Ask a follow-up question...'
+              }
+              disabled={
+                isWaiting || isRateLimited || backendStatus === 'unavailable'
+              }
+              aria-label="Chat message input"
+              className="flex-1 min-h-[44px] bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground border border-border focus:border-accent focus:outline-none transition-colors disabled:opacity-50"
             />
             {isStreaming ? (
               <button
                 type="button"
                 onClick={cancelStream}
-                className="px-4 py-3 bg-destructive text-destructive-foreground rounded-xl font-medium hover:opacity-90 transition-opacity"
+                className="min-w-[44px] min-h-[44px] px-4 py-3 bg-destructive text-destructive-foreground rounded-xl font-medium hover:opacity-90 transition-opacity"
                 title="Cancel"
+                aria-label="Cancel streaming response"
               >
                 <X className="w-5 h-5" />
               </button>
             ) : (
               <button
                 type="submit"
-                disabled={!input.trim() || isWaiting || isBackendHealthy === false}
-                className="px-4 py-3 bg-accent text-accent-foreground rounded-xl font-medium disabled:opacity-50 hover:opacity-90 transition-opacity"
+                disabled={
+                  !input.trim() ||
+                  isWaiting ||
+                  isRateLimited ||
+                  backendStatus === 'unavailable'
+                }
+                aria-label="Send message"
+                className="min-w-[44px] min-h-[44px] px-4 py-3 bg-accent text-accent-foreground rounded-xl font-medium disabled:opacity-50 hover:opacity-90 transition-opacity"
               >
                 <Send className="w-5 h-5" />
               </button>

@@ -46,6 +46,7 @@ from ai_resume_api.models import (
     Skills,
     SuggestedQuestion,
     SuggestedQuestionsResponse,
+    UIConfig,
 )
 from ai_resume_api.openrouter_client import (
     OpenRouterAuthError,
@@ -147,6 +148,22 @@ async def trace_id_middleware(request: Request, call_next: RequestResponseEndpoi
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
+
+# Rate limit headers middleware
+@app.middleware("http")
+async def rate_limit_headers_middleware(
+    request: Request, call_next: RequestResponseEndpoint
+) -> Response:
+    """Add X-RateLimit headers to rate-limited endpoints."""
+    response = await call_next(request)
+    # Add headers for non-exempt API endpoints
+    path = request.url.path
+    if path.startswith("/api/v1/") and path not in ("/api/v1/health", "/health"):
+        limit = get_settings().rate_limit_per_minute
+        response.headers["X-RateLimit-Limit"] = str(limit)
+    return response
+
+
 # Add Prometheus metrics
 Instrumentator().instrument(app).expose(app)
 
@@ -158,6 +175,7 @@ Instrumentator().instrument(app).expose(app)
 
 @app.get("/health", response_model=HealthResponse)
 @app.get("/api/v1/health", response_model=HealthResponse)
+@limiter.exempt
 async def health_check() -> HealthResponse:
     """Check the health of the API and its dependencies."""
     session_store = get_session_store()
@@ -196,7 +214,7 @@ async def health_check() -> HealthResponse:
 
 
 @app.post("/api/v1/chat")
-@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+@limiter.limit(lambda: f"{get_settings().rate_limit_per_minute}/minute")
 async def chat(request: Request, chat_request: ChatRequest) -> Any:
     """
     Chat endpoint with optional streaming.
@@ -578,6 +596,52 @@ def _generate_mock_response(message: str, context: str) -> str:
 # =============================================================================
 
 
+@app.post("/api/v1/session/{session_id}/clear")
+async def clear_session(session_id: str) -> dict[str, str]:
+    """Clear conversation history for a session.
+
+    Returns 200 on success, 404 if session not found.
+    """
+    from uuid import UUID
+
+    try:
+        sid = UUID(session_id)
+    except ValueError as err:
+        raise HTTPException(status_code=404, detail="Session not found") from err
+
+    session_store = get_session_store()
+    session = session_store.get(sid)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    session.messages.clear()
+    session_store.set(sid, session)
+    logger.info("Session history cleared", session_id=session_id)
+    return {"status": "cleared"}
+
+
+@app.delete("/api/v1/sessions/{session_id}", status_code=204)
+async def delete_session(session_id: str) -> Response:
+    """Delete a session entirely.
+
+    Returns 204 on success, 404 if session not found.
+    """
+    from uuid import UUID
+
+    try:
+        sid = UUID(session_id)
+    except ValueError as err:
+        raise HTTPException(status_code=404, detail="Session not found") from err
+
+    session_store = get_session_store()
+    deleted = session_store.delete(sid)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    logger.info("Session deleted", session_id=session_id)
+    return Response(status_code=204)
+
+
 @app.get("/api/v1/profile", response_model=ProfileResponse)
 async def get_profile() -> ProfileResponse:
     """Get profile metadata from memvid."""
@@ -607,6 +671,10 @@ async def get_profile() -> ProfileResponse:
     fit_examples_data = profile.get("fit_assessment_examples", [])
     fit_examples = [FitAssessmentExample(**example) for example in fit_examples_data]
 
+    # Parse optional UI config
+    config_data = profile.get("config")
+    ui_config = UIConfig(**config_data) if isinstance(config_data, dict) else None
+
     return ProfileResponse(
         name=profile.get("name", ""),
         title=profile.get("title", ""),
@@ -619,6 +687,7 @@ async def get_profile() -> ProfileResponse:
         experience=experience,
         skills=skills,
         fit_assessment_examples=fit_examples,
+        config=ui_config,
     )
 
 
@@ -810,6 +879,7 @@ RECOMMENDATION: [2-3 sentences. Address whether the candidate should be consider
             context="",  # Context already in user message
             user_message=fit_assessment_prompt,
             history=[],
+            max_tokens=2048,  # Structured output needs more room than chat
         )
 
         # Parse structured response
