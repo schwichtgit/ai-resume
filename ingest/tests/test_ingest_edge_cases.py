@@ -879,6 +879,56 @@ def test_ingest_debug_mode_all_sections() -> None:
         assert len(output) > 100  # Should have substantial output
 
 
+def test_ingest_unicode_and_emoji_content() -> None:
+    """Test that unicode and non-ASCII content is preserved through ingestion."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        input_path = Path(tmpdir) / "test.md"
+        input_path.write_text(
+            textwrap.dedent("""
+            ---
+            name: "Rene Muller"
+            title: "Ingenieur"
+            email: test@test.com
+            linkedin: ""
+            location: "Munchen, Deutschland"
+            status: ""
+            tags: []
+            system_prompt: ""
+            suggested_questions: []
+            ---
+
+            ## Summary
+
+            Experienced engineer specializing in scalable systems.
+
+            ## Professional Experience
+
+            ### Acme GmbH
+            **Role:** Senior Engineer
+            **Period:** 2020-2023
+            **Tags:** python, cloud
+
+            Built data pipelines processing multilingual content.
+        """).strip(),
+            encoding="utf-8",
+        )
+
+        output_path = Path(tmpdir) / "test.mv2"
+
+        stats = ingest_memory(input_path, output_path, verbose=False)
+
+        assert output_path.exists()
+        assert stats["frame_count"] >= 1
+
+        # Verify unicode content preserved in profile
+        mem = memvid_sdk.use("basic", str(output_path))
+        profile_state = mem.state("__profile__")
+        profile = json.loads(profile_state["slots"]["data"]["value"])
+        assert "Rene" in profile["name"]
+        assert "Muller" in profile["name"]
+        mem.close()
+
+
 def test_verify_function_verbose_mode() -> None:
     """Test verify() function with verbose output."""
     import sys

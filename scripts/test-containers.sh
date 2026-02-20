@@ -111,7 +111,16 @@ else
     FAILED=1
 fi
 
-# Test 6: Check Rust received gRPC request
+# Test 6: Profile endpoint
+PROFILE=$(curl -s http://localhost:3001/api/v1/profile 2>/dev/null || echo "")
+if echo "$PROFILE" | grep -q '"name"'; then
+    log_pass "Profile endpoint returns profile data"
+else
+    log_fail "Profile endpoint failed: $PROFILE"
+    FAILED=1
+fi
+
+# Test 7: Check Rust received gRPC request
 RUST_LOGS=$(podman logs test-memvid 2>&1)
 if echo "$RUST_LOGS" | grep -q "Processing search request"; then
     log_pass "Rust service processed gRPC search request"
@@ -130,7 +139,7 @@ podman run -d --name test-frontend \
 
 sleep 3
 
-# Test 7: Frontend container running
+# Test 8: Frontend container running
 if podman ps --filter "name=test-frontend" --format "{{.Names}}" | grep -q test-frontend; then
     log_pass "Frontend container running"
 else
@@ -139,7 +148,7 @@ else
     FAILED=1
 fi
 
-# Test 8: Frontend health endpoint
+# Test 9: Frontend health endpoint
 FRONTEND_HEALTH=$(curl -s http://localhost:8081/health 2>/dev/null || echo "")
 if echo "$FRONTEND_HEALTH" | grep -qiE 'healthy|ok|200'; then
     log_pass "Frontend health endpoint returns healthy"
@@ -148,7 +157,7 @@ else
     FAILED=1
 fi
 
-# Test 9: Frontend serves React SPA
+# Test 10: Frontend serves React SPA
 FRONTEND_INDEX=$(curl -s http://localhost:8081/ 2>/dev/null || echo "")
 if echo "$FRONTEND_INDEX" | grep -q 'id="root"'; then
     log_pass "Frontend serves React SPA"
@@ -157,7 +166,7 @@ else
     FAILED=1
 fi
 
-# Test 10: Frontend SPA routing
+# Test 11: Frontend SPA routing
 FRONTEND_SPA=$(curl -s http://localhost:8081/some/random/path 2>/dev/null || echo "")
 if echo "$FRONTEND_SPA" | grep -q 'id="root"'; then
     log_pass "Frontend SPA routing works (returns index.html for all routes)"

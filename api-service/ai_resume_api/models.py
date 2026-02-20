@@ -141,7 +141,7 @@ class AssessFitRequest(BaseModel):
     """Request for real-time fit assessment."""
 
     job_description: str = Field(
-        ..., description="Job description to assess fit against", min_length=50
+        ..., description="Job description to assess fit against", min_length=50, max_length=5000
     )
 
 

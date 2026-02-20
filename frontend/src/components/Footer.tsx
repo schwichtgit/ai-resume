@@ -1,5 +1,5 @@
-import { Github, Linkedin, Mail } from "lucide-react";
-import { useProfileContext } from "@/context/ProfileContext";
+import { Github, Linkedin, Mail } from 'lucide-react';
+import { useProfileContext } from '@/context/ProfileContext';
 
 const Footer = () => {
   const { profile, isLoading } = useProfileContext();
@@ -14,7 +14,9 @@ const Footer = () => {
       <div className="max-w-4xl mx-auto">
         <div className="flex flex-col md:flex-row items-center justify-between gap-8">
           <div>
-            <p className="text-2xl font-serif text-foreground mb-2">{profile.name}</p>
+            <p className="text-2xl font-serif text-foreground mb-2">
+              {profile.name}
+            </p>
             <p className="text-muted-foreground">{profile.title}</p>
           </div>
 
@@ -27,14 +29,16 @@ const Footer = () => {
             >
               <Github className="w-5 h-5" />
             </a>
-            <a
-              href={profile.linkedin}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-3 bg-secondary rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <Linkedin className="w-5 h-5" />
-            </a>
+            {profile.linkedin && (
+              <a
+                href={profile.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-3 bg-secondary rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <Linkedin className="w-5 h-5" />
+              </a>
+            )}
             <a
               href={`mailto:${profile.email}`}
               className="p-3 bg-secondary rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
@@ -48,7 +52,9 @@ const Footer = () => {
           <p className="text-sm text-muted-foreground">
             This portfolio demonstrates AI-queryable professional presentation.
             <br />
-            <span className="text-text-subtle">The interface is the proof.</span>
+            <span className="text-text-subtle">
+              The interface is the proof.
+            </span>
           </p>
         </div>
       </div>

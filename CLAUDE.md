@@ -224,13 +224,13 @@ See `data/example_resume.md` for a complete template.
 
 Quality is enforced by Claude Code hooks configured in `.claude/settings.json`:
 
-| Hook                | Trigger                | Purpose                                                                      |
-| ------------------- | ---------------------- | ---------------------------------------------------------------------------- |
-| `protect-files.sh`  | Pre-edit (Write/Edit)  | Blocks modification of sensitive files (.env, keys, credentials, lock files) |
-| `validate-bash.sh`  | Pre-bash               | Blocks destructive commands (rm -rf /, force push, hard reset)               |
-| `validate-pr.sh`    | Pre-bash               | Validates PR descriptions and targets                                        |
-| `post-edit.sh`      | Post-edit (Write/Edit) | Auto-formats files by detected language                                      |
-| `verify-quality.sh` | On stop                | Runs lint, type check, and test suite before session end                     |
+| Hook                | Trigger               | Purpose                                                                      |
+| ------------------- | --------------------- | ---------------------------------------------------------------------------- |
+| `protect-files.sh`  | Pre-edit (Write/Edit) | Blocks modification of sensitive files (.env, keys, credentials, lock files) |
+| `validate-bash.sh`  | Pre-bash              | Blocks destructive commands (rm -rf /, force push, hard reset)               |
+| `validate-pr.sh`    | Pre-bash              | Validates PR descriptions and targets                                        |
+| `format-changed.sh` | On stop               | Auto-formats changed files by detected language (runs before quality checks) |
+| `verify-quality.sh` | On stop               | Runs lint, type check, and test suite before session end                     |
 
 ### Coverage Threshold
 

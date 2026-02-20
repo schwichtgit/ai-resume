@@ -12,8 +12,8 @@ permissions:
   pull-requests: read
 
 env:
-  NODE_VERSION: "22"
-  PYTHON_VERSION: "3.11"
+  NODE_VERSION: '22'
+  PYTHON_VERSION: '3.11'
 
 jobs:
   # Detect which services changed
@@ -64,7 +64,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
+          cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
@@ -132,7 +132,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: '3.12'
 
       - name: Install dependencies
         run: uv sync --extra test --extra lint
@@ -153,7 +153,7 @@ jobs:
 
       - name: Test with pytest
         env:
-          HF_HUB_DOWNLOAD_TIMEOUT: "120"
+          HF_HUB_DOWNLOAD_TIMEOUT: '120'
         run: uv run pytest -v --tb=short -m "not slow"
 
   # Memvid Service: Rust/gRPC
@@ -170,7 +170,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.92.0"
+          toolchain: '1.92.0'
           components: clippy, rustfmt
 
       - name: Cache cargo
@@ -217,7 +217,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.92.0"
+          toolchain: '1.92.0'
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
@@ -262,12 +262,12 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: '3.12'
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.92.0"
+          toolchain: '1.92.0'
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
@@ -294,7 +294,7 @@ jobs:
 
       - name: Run true E2E tests
         env:
-          HF_HUB_DOWNLOAD_TIMEOUT: "120"
+          HF_HUB_DOWNLOAD_TIMEOUT: '120'
         run: |
           chmod +x scripts/test-e2e-real.sh
           ./scripts/test-e2e-real.sh
@@ -434,12 +434,12 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: '3.12'
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.92.0"
+          toolchain: '1.92.0'
 
       - name: Install protobuf compiler
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler

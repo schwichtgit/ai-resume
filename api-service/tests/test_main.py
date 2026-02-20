@@ -186,6 +186,58 @@ class TestSuggestedQuestionsEndpoint:
             assert len(q["question"]) > 0
 
 
+class TestProfileAIContext:
+    """Tests for profile endpoint ai_context subfields."""
+
+    def test_profile_experience_contains_ai_context_subfields(self, client: TestClient) -> None:
+        """Verify tests validate experience entries contain ai_context subfields."""
+        response = client.get("/api/v1/profile")
+        assert response.status_code == 200
+
+        data = response.json()
+        assert "experience" in data
+        assert len(data["experience"]) > 0
+
+        for exp in data["experience"]:
+            assert "ai_context" in exp, (
+                f"Experience entry '{exp.get('company')}' missing ai_context"
+            )
+            ai_ctx = exp["ai_context"]
+            assert "situation" in ai_ctx, "ai_context missing 'situation'"
+            assert "approach" in ai_ctx, "ai_context missing 'approach'"
+            assert "technical_work" in ai_ctx, "ai_context missing 'technical_work'"
+            assert "lessons_learned" in ai_ctx, "ai_context missing 'lessons_learned'"
+
+
+class TestClearConversation:
+    """Tests for session clear endpoint."""
+
+    def test_clear_session_success(self, client: TestClient) -> None:
+        """Verify POST /api/v1/session/{session_id}/clear empties server-side session history."""
+        # Create a session by sending a chat message
+        r = client.post(
+            "/api/v1/chat",
+            json={"message": "Hello", "stream": False},
+        )
+        assert r.status_code == 200
+        session_id = r.json()["session_id"]
+
+        # Clear the session
+        response = client.post(f"/api/v1/session/{session_id}/clear")
+        assert response.status_code == 200
+        assert response.json()["status"] == "cleared"
+
+    def test_clear_session_not_found(self, client: TestClient) -> None:
+        """Test clearing a non-existent session returns 404."""
+        response = client.post("/api/v1/session/00000000-0000-0000-0000-000000000000/clear")
+        assert response.status_code == 404
+
+    def test_clear_session_invalid_id(self, client: TestClient) -> None:
+        """Test clearing with invalid session ID returns 404."""
+        response = client.post("/api/v1/session/not-a-uuid/clear")
+        assert response.status_code == 404
+
+
 class TestChatEndpoint:
     """Tests for chat endpoint."""
 
@@ -1357,6 +1409,20 @@ RECOMMENDATION: Excellent fit for this VP Platform Engineering role. The candida
         )
         assert response.status_code == 422  # Validation error
 
+    def test_assess_fit_validation_too_long(self, client: TestClient) -> None:
+        """Verify 422 validation error when JD exceeds 5000 chars."""
+        long_jd = "A" * 5001
+        response = client.post(
+            "/api/v1/assess-fit",
+            json={"job_description": long_jd},
+        )
+        assert response.status_code == 422
+        detail = response.json()
+        # Pydantic should report max_length violation
+        assert any(
+            "5000" in str(err) or "max" in str(err).lower() for err in detail.get("detail", [])
+        )
+
     def test_assess_fit_validation_missing_field(self, client: TestClient) -> None:
         """Test that job_description field is required."""
         response = client.post(
@@ -1505,3 +1571,248 @@ RECOMMENDATION: Unable to properly assess fit due to lack of context.""",
             assert response.status_code == 200
             data = response.json()
             assert data["chunks_retrieved"] == 0
+
+
+class TestRateLimiting:
+    """Tests for rate limiting behavior."""
+
+    def test_rate_limit_returns_429_on_excess(self) -> None:
+        """Test that the 11th request within 60 seconds returns 429."""
+        from ai_resume_api.openrouter_client import LLMResponse
+
+        reset_session_store()
+
+        with (
+            patch("app.main.get_memvid_client") as mock_get_memvid,
+            patch("app.main.get_openrouter_client") as mock_get_or,
+            patch("app.config.get_settings") as mock_get_settings,
+        ):
+            # Setup settings with low rate limit for testing
+            mock_settings = AsyncMock()
+            mock_settings.load_profile_from_memvid = AsyncMock(return_value=MOCK_PROFILE)
+            mock_settings.load_profile = lambda: MOCK_PROFILE
+            mock_settings.get_system_prompt_from_profile = lambda: "You are an AI assistant."
+            mock_settings.max_history_messages = 10
+            mock_settings.llm_model = "anthropic/claude-3.5-sonnet"
+            mock_settings.rate_limit_per_minute = 10
+            mock_get_settings.return_value = mock_settings
+
+            # Memvid works
+            mock_memvid = AsyncMock()
+            mock_memvid.ask.return_value = {
+                "answer": "Test context",
+                "evidence": [],
+                "stats": {
+                    "candidates_retrieved": 5,
+                    "results_returned": 1,
+                    "retrieval_ms": 2.5,
+                    "reranking_ms": 1.2,
+                    "total_ms": 3.7,
+                },
+            }
+            mock_get_memvid.return_value = mock_memvid
+
+            # OpenRouter works
+            mock_or = AsyncMock()
+            mock_or.chat.return_value = LLMResponse(
+                content="Test response", tokens_used=50, finish_reason="stop"
+            )
+            mock_get_or.return_value = mock_or
+
+            # Reset the limiter storage before test
+            from app.main import limiter
+
+            limiter.reset()
+
+            with TestClient(app, raise_server_exceptions=False) as client:
+                # Send 10 requests (should all succeed)
+                for i in range(10):
+                    resp = client.post(
+                        "/api/v1/chat",
+                        json={"message": f"Request {i}", "stream": False},
+                    )
+                    assert resp.status_code == 200, f"Request {i} failed with {resp.status_code}"
+
+                # 11th request should be rate limited
+                resp = client.post(
+                    "/api/v1/chat",
+                    json={"message": "Request 11", "stream": False},
+                )
+                assert resp.status_code == 429
+
+        reset_session_store()
+
+    def test_rate_limit_headers_in_response(self) -> None:
+        """Test that X-RateLimit-Limit and X-RateLimit-Remaining headers are in responses."""
+        from ai_resume_api.openrouter_client import LLMResponse
+
+        reset_session_store()
+
+        with (
+            patch("app.main.get_memvid_client") as mock_get_memvid,
+            patch("app.main.get_openrouter_client") as mock_get_or,
+            patch("app.config.get_settings") as mock_get_settings,
+        ):
+            mock_settings = AsyncMock()
+            mock_settings.load_profile_from_memvid = AsyncMock(return_value=MOCK_PROFILE)
+            mock_settings.load_profile = lambda: MOCK_PROFILE
+            mock_settings.get_system_prompt_from_profile = lambda: "You are an AI assistant."
+            mock_settings.max_history_messages = 10
+            mock_settings.llm_model = "anthropic/claude-3.5-sonnet"
+            mock_settings.rate_limit_per_minute = 10
+            mock_get_settings.return_value = mock_settings
+
+            mock_memvid = AsyncMock()
+            mock_memvid.ask.return_value = {
+                "answer": "Test context",
+                "evidence": [],
+                "stats": {
+                    "candidates_retrieved": 5,
+                    "results_returned": 1,
+                    "retrieval_ms": 2.5,
+                    "reranking_ms": 1.2,
+                    "total_ms": 3.7,
+                },
+            }
+            mock_get_memvid.return_value = mock_memvid
+
+            mock_or = AsyncMock()
+            mock_or.chat.return_value = LLMResponse(
+                content="Test response", tokens_used=50, finish_reason="stop"
+            )
+            mock_get_or.return_value = mock_or
+
+            from app.main import limiter
+
+            limiter.reset()
+
+            with TestClient(app) as client:
+                resp = client.post(
+                    "/api/v1/chat",
+                    json={"message": "Check headers", "stream": False},
+                )
+                assert resp.status_code == 200
+                assert "x-ratelimit-limit" in resp.headers
+                assert resp.headers["x-ratelimit-limit"] == "10"
+
+        reset_session_store()
+
+    def test_health_endpoint_exempt_from_rate_limiting(self) -> None:
+        """Test that health check endpoints are exempt from rate limiting."""
+        reset_session_store()
+
+        with (
+            patch("app.main.get_memvid_client") as mock_get_memvid,
+            patch("app.config.get_settings") as mock_get_settings,
+            patch("app.main.get_openrouter_client") as mock_get_or,
+        ):
+            mock_settings = AsyncMock()
+            mock_settings.load_profile_from_memvid = AsyncMock(return_value=MOCK_PROFILE)
+            mock_settings.load_profile = lambda: MOCK_PROFILE
+            mock_settings.rate_limit_per_minute = 10
+            mock_get_settings.return_value = mock_settings
+
+            mock_memvid = AsyncMock()
+            mock_memvid.health_check.return_value = AsyncMock(status="SERVING", frame_count=100)
+            mock_get_memvid.return_value = mock_memvid
+
+            mock_or = AsyncMock()
+            mock_get_or.return_value = mock_or
+
+            from app.main import limiter
+
+            limiter.reset()
+
+            with TestClient(app) as client:
+                # Health endpoints should not have rate limit headers
+                # (they are exempt from rate limiting)
+                for _ in range(15):
+                    resp = client.get("/health")
+                    assert resp.status_code == 200
+
+                # Even after 15 health requests, health should still work
+                resp = client.get("/api/v1/health")
+                assert resp.status_code == 200
+
+        reset_session_store()
+
+
+class TestMockStreamingSessionPersistence:
+    """Tests for mock streaming mode session persistence."""
+
+    def test_mock_mode_creates_and_persists_sessions(self, client: TestClient) -> None:
+        """Verify mock mode still creates and persists sessions."""
+        # First streaming request creates a session
+        r1 = client.post(
+            "/api/v1/chat",
+            json={"message": "First mock question", "stream": True},
+        )
+        assert r1.status_code == 200
+
+        # Extract session_id from the non-streaming request to get the actual session ID
+        r2 = client.post(
+            "/api/v1/chat",
+            json={"message": "Second question non-stream", "stream": False},
+        )
+        assert r2.status_code == 200
+        session_id = r2.json()["session_id"]
+
+        # Use the session for a follow-up streaming request
+        r3 = client.post(
+            "/api/v1/chat",
+            json={
+                "message": "Follow up mock question",
+                "session_id": session_id,
+                "stream": True,
+            },
+        )
+        assert r3.status_code == 200
+
+        # Verify the session persisted by making another request with same session
+        r4 = client.post(
+            "/api/v1/chat",
+            json={
+                "message": "Another follow up",
+                "session_id": session_id,
+                "stream": False,
+            },
+        )
+        assert r4.status_code == 200
+        # Same session ID should be returned
+        assert r4.json()["session_id"] == session_id
+
+    def test_mock_streaming_preserves_session_across_requests(self, client: TestClient) -> None:
+        """Verify that mock streaming creates sessions that persist across requests."""
+        from uuid import UUID
+
+        # Import from ai_resume_api (not app) to get the same module as the handler
+        from ai_resume_api.session_store import get_session_store
+
+        # Make a non-streaming request to get a session ID
+        r1 = client.post(
+            "/api/v1/chat",
+            json={"message": "Get session", "stream": False},
+        )
+        assert r1.status_code == 200
+        session_id = r1.json()["session_id"]
+
+        store = get_session_store()
+        session = store.get(UUID(session_id))
+        assert session is not None
+
+        # Send a streaming request with same session
+        r2 = client.post(
+            "/api/v1/chat",
+            json={
+                "message": "Stream with session",
+                "session_id": session_id,
+                "stream": True,
+            },
+        )
+        assert r2.status_code == 200
+
+        # Session should still exist and have messages
+        store = get_session_store()
+        session = store.get(UUID(session_id))
+        assert session is not None
+        assert len(session.messages) > 0

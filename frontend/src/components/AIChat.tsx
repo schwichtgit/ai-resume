@@ -1,9 +1,16 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { X, Send, Sparkles, AlertCircle, RefreshCw, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useStreamingChat } from "@/hooks/useStreamingChat";
-import { getSuggestedQuestions, checkHealth } from "@/lib/api-client";
-import { useProfileContext } from "@/context/ProfileContext";
+import { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  X,
+  Send,
+  Sparkles,
+  AlertCircle,
+  RefreshCw,
+  Loader2,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useStreamingChat } from '@/hooks/useStreamingChat';
+import { getSuggestedQuestions, checkHealth } from '@/lib/api-client';
+import { useProfileContext } from '@/context/ProfileContext';
 
 interface AIChatProps {
   isOpen: boolean;
@@ -12,9 +19,11 @@ interface AIChatProps {
 
 const AIChat = ({ isOpen, onClose }: AIChatProps) => {
   const { profile } = useProfileContext();
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState('');
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
-  const [isBackendHealthy, setIsBackendHealthy] = useState<boolean | null>(null);
+  const [backendStatus, setBackendStatus] = useState<
+    'checking' | 'healthy' | 'degraded' | 'unavailable'
+  >('checking');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -30,13 +39,13 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
     retry,
   } = useStreamingChat({
     onError: (err) => {
-      console.error("Chat error:", err);
+      console.error('Chat error:', err);
     },
   });
 
   // Scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingContent]);
 
   // Check backend health and load suggested questions on open
@@ -46,10 +55,19 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
     // Check health
     checkHealth()
       .then((health) => {
-        setIsBackendHealthy(health.status === "healthy");
+        if (health.status === 'healthy' && health.memvid_connected) {
+          setBackendStatus('healthy');
+        } else if (
+          health.status === 'healthy' ||
+          health.status === 'degraded'
+        ) {
+          setBackendStatus('degraded');
+        } else {
+          setBackendStatus('unavailable');
+        }
       })
       .catch(() => {
-        setIsBackendHealthy(false);
+        setBackendStatus('unavailable');
       });
 
     // Load suggested questions
@@ -67,10 +85,10 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
   const handleSubmit = useCallback(
     (question: string) => {
       if (!question.trim() || isStreaming || isLoading) return;
-      setInput("");
+      setInput('');
       sendMessage(question);
     },
-    [isStreaming, isLoading, sendMessage]
+    [isStreaming, isLoading, sendMessage],
   );
 
   const handleFormSubmit = useCallback(
@@ -78,7 +96,7 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
       e.preventDefault();
       handleSubmit(input);
     },
-    [handleSubmit, input]
+    [handleSubmit, input],
   );
 
   if (!isOpen) return null;
@@ -92,22 +110,27 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center text-accent-foreground font-serif font-bold">
-              {profile?.initials || "AI"}
+              {profile?.initials || 'AI'}
             </div>
             <div>
               <p className="text-foreground font-medium">
-                Ask AI About {profile?.name?.split(" ")[0] || "Me"}
+                Ask AI About {profile?.name?.split(' ')[0] || 'Me'}
               </p>
               <p className="text-xs text-muted-foreground flex items-center gap-1">
-                {isBackendHealthy === null ? (
+                {backendStatus === 'checking' ? (
                   <>
                     <Loader2 className="w-2 h-2 animate-spin" />
                     Connecting...
                   </>
-                ) : isBackendHealthy ? (
+                ) : backendStatus === 'healthy' ? (
                   <>
                     <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
                     Ready to answer your questions
+                  </>
+                ) : backendStatus === 'degraded' ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-warning animate-pulse" />
+                    Limited functionality (semantic search unavailable)
                   </>
                 ) : (
                   <>
@@ -140,10 +163,12 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {/* Backend unavailable warning */}
-          {isBackendHealthy === false && (
+          {backendStatus === 'unavailable' && (
             <div className="flex items-center gap-2 p-3 bg-destructive/10 text-destructive rounded-lg text-sm">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <span>Backend service is unavailable. Please try again later.</span>
+              <span>
+                Backend service is unavailable. Please try again later.
+              </span>
             </div>
           )}
 
@@ -155,14 +180,16 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
                 What would you like to know?
               </h3>
               <p className="text-muted-foreground text-sm mb-6 max-w-md">
-                Ask specific questions about Frank's experience, skills, or fit for your role. Get honest, detailed answers.
+                Ask specific questions about{' '}
+                {profile?.name?.split(' ')[0] ?? 'the candidate'}'s experience,
+                skills, or fit for your role. Get honest, detailed answers.
               </p>
               <div className="w-full max-w-md space-y-2">
                 {suggestedQuestions.map((q, i) => (
                   <button
                     key={i}
                     onClick={() => handleSubmit(q)}
-                    disabled={isBackendHealthy === false}
+                    disabled={backendStatus === 'unavailable'}
                     className="w-full text-left p-3 bg-secondary rounded-xl text-sm text-foreground hover:bg-muted transition-colors border border-transparent hover:border-accent/30 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     "{q}"
@@ -177,19 +204,21 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
             <div
               key={i}
               className={cn(
-                "flex",
-                msg.role === "user" ? "justify-end" : "justify-start"
+                'flex',
+                msg.role === 'user' ? 'justify-end' : 'justify-start',
               )}
             >
               <div
                 className={cn(
-                  "max-w-[85%] rounded-2xl px-4 py-3",
-                  msg.role === "user"
-                    ? "bg-accent text-accent-foreground rounded-br-md"
-                    : "bg-secondary text-foreground rounded-bl-md"
+                  'max-w-[85%] rounded-2xl px-4 py-3',
+                  msg.role === 'user'
+                    ? 'bg-accent text-accent-foreground rounded-br-md'
+                    : 'bg-secondary text-foreground rounded-bl-md',
                 )}
               >
-                <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                  {msg.content}
+                </p>
               </div>
             </div>
           ))}
@@ -235,7 +264,9 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
                 <span>{stats.chunks_retrieved} sources used</span>
               )}
               {stats.elapsed_seconds && (
-                <span className="ml-2">({stats.elapsed_seconds.toFixed(1)}s)</span>
+                <span className="ml-2">
+                  ({stats.elapsed_seconds.toFixed(1)}s)
+                </span>
               )}
             </div>
           )}
@@ -250,8 +281,12 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={isWaiting ? "Waiting for response..." : "Ask a follow-up question..."}
-              disabled={isWaiting || isBackendHealthy === false}
+              placeholder={
+                isWaiting
+                  ? 'Waiting for response...'
+                  : 'Ask a follow-up question...'
+              }
+              disabled={isWaiting || backendStatus === 'unavailable'}
               className="flex-1 bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground border border-border focus:border-accent focus:outline-none transition-colors disabled:opacity-50"
             />
             {isStreaming ? (
@@ -266,7 +301,9 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
             ) : (
               <button
                 type="submit"
-                disabled={!input.trim() || isWaiting || isBackendHealthy === false}
+                disabled={
+                  !input.trim() || isWaiting || backendStatus === 'unavailable'
+                }
                 className="px-4 py-3 bg-accent text-accent-foreground rounded-xl font-medium disabled:opacity-50 hover:opacity-90 transition-opacity"
               >
                 <Send className="w-5 h-5" />

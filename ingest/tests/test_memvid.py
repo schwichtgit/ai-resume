@@ -69,6 +69,10 @@ def test_create_and_query() -> None:
         stats = mem.stats()
         print(f"\nStats: {stats}")
 
+        # Validate frame count matches the number of ingested chunks
+        assert "frame_count" in stats
+        assert stats["frame_count"] == len(test_documents)
+
         # Test search (find)
         print("\n--- Testing find() ---")
         query = "Python backend"
