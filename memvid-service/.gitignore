@@ -16,6 +16,7 @@ src/generated/
 
 # OS
 .DS_Store
+Thumbs.db
 
 # Environment
 .env

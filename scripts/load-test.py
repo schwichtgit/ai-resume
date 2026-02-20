@@ -89,6 +89,27 @@ def percentile(data: list[float], p: int) -> float:
     return sorted_data[f] + d * (sorted_data[c] - sorted_data[f])
 
 
+def wait_for_health(base_url: str, timeout: int = 30) -> bool:
+    """Poll service health endpoint until ready or timeout."""
+    url = f"{base_url}/api/v1/health"
+    start = time.monotonic()
+    print(f"Waiting for {url} to become healthy...", end="", flush=True)
+    while time.monotonic() - start < timeout:
+        try:
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                if resp.status == 200:
+                    elapsed = time.monotonic() - start
+                    print(f" ready ({elapsed:.0f}s)")
+                    return True
+        except Exception:
+            pass
+        time.sleep(2)
+    elapsed = time.monotonic() - start
+    print(f" TIMEOUT after {elapsed:.0f}s")
+    return False
+
+
 def main():
     parser = argparse.ArgumentParser(description="Load test ai-resume chat endpoint")
     parser.add_argument("--base-url", default="http://localhost:8000", help="API base URL")
@@ -98,6 +119,12 @@ def main():
 
     print(f"=== Load Test: {args.sessions} sessions x {args.messages} messages ===")
     print(f"Target: {args.base_url}")
+    print()
+
+    # Health-gate: verify service is reachable before load testing
+    if not wait_for_health(args.base_url):
+        print("FATAL: Service is not healthy. Start the service first.")
+        sys.exit(1)
     print()
 
     all_results = []

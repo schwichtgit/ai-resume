@@ -20,6 +20,7 @@ build/
 .pytest_cache/
 htmlcov/
 .coverage
+coverage.json
 *.cover
 .hypothesis/
 
@@ -27,6 +28,9 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# Linting
+.ruff_cache/
 
 # IDE
 .vscode/

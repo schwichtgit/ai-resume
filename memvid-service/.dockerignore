@@ -1,19 +1,9 @@
-# Rust build artifacts
-target/
-**/*.rs.bk
-*.pdb
+# Deny by default
+*
 
-# IDE files
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Security scanning artifacts
-sbom.json
-*.sbom.json
+# Allow only files needed by the Dockerfile
+!Cargo.toml
+!Cargo.lock
+!src/
+!proto/
+!build.rs

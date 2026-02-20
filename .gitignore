@@ -34,9 +34,28 @@ test_resume.mv2
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+.Python
 .pytest_cache/
 *.egg-info/
 **/.ruff_cache/
+.mypy_cache/
+.hypothesis/
+
+# Python packaging
+build/
+
+# Coverage artifacts
+.coverage
+coverage.json
+htmlcov/
+
+# Virtual environments
+.venv/
+
+# Environment files
+.env
+.env.local
 
 # Editor directories and files
 .vscode/*

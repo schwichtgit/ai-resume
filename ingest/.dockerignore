@@ -1,43 +1,7 @@
-# Python artifacts
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-venv/
-env/
-*.egg-info/
-dist/
-build/
-.ruff_cache/
+# Deny by default
+*
 
-# Testing
-.pytest_cache/
-htmlcov/
-.coverage
-*.cover
-coverage.json
-
-# IDE
-.vscode/
-.idea/
-.claude/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Dev tools
-.mypy_cache/
-.fastembed_cache/
-compare_models.py
-tests/
-
-# Security scanning artifacts
-sbom.json
-*.sbom.json
-
-.claude
-.ruff_cache
+# Allow only files needed by the Dockerfile
+!ingest.py
+!pyproject.toml
+!uv.lock
