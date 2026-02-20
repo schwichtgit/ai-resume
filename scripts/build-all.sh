@@ -63,9 +63,15 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${SCRIPT_DIR}/.."
 
+# OCI image metadata (dynamic values injected at build time)
+BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+GIT_REVISION=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+
 log_info "Building multi-arch containers for Hybrid Rust + Python setup"
 log_info "Version: ${VERSION}"
 log_info "Registry: ${REGISTRY}"
+log_info "Revision: ${GIT_REVISION}"
+log_info "Build date: ${BUILD_DATE}"
 log_info "Platforms: linux/amd64, linux/arm64"
 [[ -n "$NO_CACHE" ]] && log_info "Cache: disabled"
 echo ""
@@ -88,6 +94,9 @@ elif [ -f "frontend/Dockerfile" ]; then
     podman manifest rm "${REGISTRY}/ai-resume-frontend:${VERSION}" 2>/dev/null || true
     podman build \
         ${NO_CACHE} \
+        --build-arg VERSION="${VERSION}" \
+        --build-arg GIT_REVISION="${GIT_REVISION}" \
+        --build-arg BUILD_DATE="${BUILD_DATE}" \
         --platform linux/amd64,linux/arm64 \
         --manifest "${REGISTRY}/ai-resume-frontend:${VERSION}" \
         -f frontend/Dockerfile \
@@ -105,6 +114,9 @@ if [ -f "memvid-service/Dockerfile" ]; then
     podman manifest rm "${REGISTRY}/ai-resume-memvid:${VERSION}" 2>/dev/null || true
     podman build \
         ${NO_CACHE} \
+        --build-arg VERSION="${VERSION}" \
+        --build-arg GIT_REVISION="${GIT_REVISION}" \
+        --build-arg BUILD_DATE="${BUILD_DATE}" \
         --platform linux/amd64,linux/arm64 \
         --manifest "${REGISTRY}/ai-resume-memvid:${VERSION}" \
         -f memvid-service/Dockerfile \
@@ -122,6 +134,9 @@ if [ -f "api-service/Dockerfile" ]; then
     podman manifest rm "${REGISTRY}/ai-resume-api:${VERSION}" 2>/dev/null || true
     podman build \
         ${NO_CACHE} \
+        --build-arg VERSION="${VERSION}" \
+        --build-arg GIT_REVISION="${GIT_REVISION}" \
+        --build-arg BUILD_DATE="${BUILD_DATE}" \
         --platform linux/amd64,linux/arm64 \
         --manifest "${REGISTRY}/ai-resume-api:${VERSION}" \
         -f api-service/Dockerfile \
@@ -139,6 +154,9 @@ if [ -f "ingest/Dockerfile" ]; then
     podman manifest rm "${REGISTRY}/ai-resume-ingest:${VERSION}" 2>/dev/null || true
     podman build \
         ${NO_CACHE} \
+        --build-arg VERSION="${VERSION}" \
+        --build-arg GIT_REVISION="${GIT_REVISION}" \
+        --build-arg BUILD_DATE="${BUILD_DATE}" \
         --platform linux/amd64,linux/arm64 \
         --manifest "${REGISTRY}/ai-resume-ingest:${VERSION}" \
         -f ingest/Dockerfile \

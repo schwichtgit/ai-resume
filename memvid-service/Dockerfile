@@ -39,6 +39,24 @@ RUN cargo build -j $(nproc) --release
 # Stage 2: Runtime image (debian-slim for glibc compatibility)
 FROM debian:trixie-slim
 
+# OCI image metadata (dynamic values passed via --build-arg)
+ARG VERSION=latest
+ARG GIT_REVISION=unknown
+ARG BUILD_DATE=unknown
+
+LABEL org.opencontainers.image.title="ai-resume-memvid" \
+      org.opencontainers.image.description="Rust gRPC service for semantic search over resume data" \
+      org.opencontainers.image.url="https://frank-resume.schwichtenberg.us" \
+      org.opencontainers.image.source="https://github.com/schwichtgit/ai-resume" \
+      org.opencontainers.image.documentation="https://github.com/schwichtgit/ai-resume#readme" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.revision="${GIT_REVISION}" \
+      org.opencontainers.image.licenses="UNLICENSED" \
+      org.opencontainers.image.vendor="schwichtgit" \
+      org.opencontainers.image.authors="https://github.com/schwichtgit" \
+      org.opencontainers.image.base.name="debian:trixie-slim"
+
 # Install ca-certificates for TLS
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \

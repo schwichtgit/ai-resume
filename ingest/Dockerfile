@@ -18,6 +18,24 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # The lean final image based on the stable Bookworm release
 FROM python:3.12-slim-bookworm
 
+# OCI image metadata (dynamic values passed via --build-arg)
+ARG VERSION=latest
+ARG GIT_REVISION=unknown
+ARG BUILD_DATE=unknown
+
+LABEL org.opencontainers.image.title="ai-resume-ingest" \
+      org.opencontainers.image.description="Data ingestion pipeline for .mv2 file creation" \
+      org.opencontainers.image.url="https://frank-resume.schwichtenberg.us" \
+      org.opencontainers.image.source="https://github.com/schwichtgit/ai-resume" \
+      org.opencontainers.image.documentation="https://github.com/schwichtgit/ai-resume#readme" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.revision="${GIT_REVISION}" \
+      org.opencontainers.image.licenses="UNLICENSED" \
+      org.opencontainers.image.vendor="schwichtgit" \
+      org.opencontainers.image.authors="https://github.com/schwichtgit" \
+      org.opencontainers.image.base.name="python:3.12-slim-bookworm"
+
 # Production hardening: no .pyc creation at runtime, unbuffered logs
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
