@@ -46,6 +46,7 @@ from ai_resume_api.models import (
     Skills,
     SuggestedQuestion,
     SuggestedQuestionsResponse,
+    UIConfig,
 )
 from ai_resume_api.openrouter_client import (
     OpenRouterAuthError,
@@ -619,6 +620,28 @@ async def clear_session(session_id: str) -> dict[str, str]:
     return {"status": "cleared"}
 
 
+@app.delete("/api/v1/sessions/{session_id}", status_code=204)
+async def delete_session(session_id: str) -> Response:
+    """Delete a session entirely.
+
+    Returns 204 on success, 404 if session not found.
+    """
+    from uuid import UUID
+
+    try:
+        sid = UUID(session_id)
+    except ValueError as err:
+        raise HTTPException(status_code=404, detail="Session not found") from err
+
+    session_store = get_session_store()
+    deleted = session_store.delete(sid)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    logger.info("Session deleted", session_id=session_id)
+    return Response(status_code=204)
+
+
 @app.get("/api/v1/profile", response_model=ProfileResponse)
 async def get_profile() -> ProfileResponse:
     """Get profile metadata from memvid."""
@@ -648,6 +671,10 @@ async def get_profile() -> ProfileResponse:
     fit_examples_data = profile.get("fit_assessment_examples", [])
     fit_examples = [FitAssessmentExample(**example) for example in fit_examples_data]
 
+    # Parse optional UI config
+    config_data = profile.get("config")
+    ui_config = UIConfig(**config_data) if isinstance(config_data, dict) else None
+
     return ProfileResponse(
         name=profile.get("name", ""),
         title=profile.get("title", ""),
@@ -660,6 +687,7 @@ async def get_profile() -> ProfileResponse:
         experience=experience,
         skills=skills,
         fit_assessment_examples=fit_examples,
+        config=ui_config,
     )
 
 
@@ -851,6 +879,7 @@ RECOMMENDATION: [2-3 sentences. Address whether the candidate should be consider
             context="",  # Context already in user message
             user_message=fit_assessment_prompt,
             history=[],
+            max_tokens=2048,  # Structured output needs more room than chat
         )
 
         # Parse structured response

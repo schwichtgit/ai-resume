@@ -1,5 +1,5 @@
-import { useProfile } from "@/hooks/useProfile";
-import ExperienceCard from "./ExperienceCard";
+import { useProfile } from '@/hooks/useProfile';
+import ExperienceCard from './ExperienceCard';
 
 const Experience = () => {
   const { profile, loading, error } = useProfile();
@@ -25,26 +25,23 @@ const Experience = () => {
   }
 
   return (
-    <section id="experience" className="py-24 px-6">
+    <section id="experience" className="py-12 sm:py-24 px-4 sm:px-6">
       <div className="max-w-4xl mx-auto">
         {/* Section header */}
-        <div className="mb-12">
-          <h2 className="text-4xl md:text-5xl font-serif text-foreground mb-4">
+        <div className="mb-8 sm:mb-12">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif text-foreground mb-4">
             Experience
           </h2>
-          <p className="text-muted-foreground text-lg max-w-2xl">
-            Each role includes queryable AI context—the real story behind the bullet points.
+          <p className="text-muted-foreground text-base sm:text-lg max-w-2xl">
+            Each role includes queryable AI context—the real story behind the
+            bullet points.
           </p>
         </div>
 
         {/* Experience cards */}
         <div className="space-y-6">
           {profile.experience?.map((exp, index) => (
-            <ExperienceCard
-              key={exp.company}
-              {...exp}
-              index={index}
-            />
+            <ExperienceCard key={exp.company} {...exp} index={index} />
           ))}
         </div>
 
@@ -52,15 +49,18 @@ const Experience = () => {
         {(profile.skills?.strong?.length > 0 ||
           profile.skills?.moderate?.length > 0 ||
           profile.skills?.gaps?.length > 0) && (
-          <div className="mt-16 grid md:grid-cols-3 gap-6">
+          <div className="mt-10 sm:mt-16 grid md:grid-cols-3 gap-4 sm:gap-6">
             {profile.skills?.strong?.length > 0 && (
-              <div className="p-6 bg-success-muted border border-success/20 rounded-2xl">
+              <div className="p-4 sm:p-6 bg-success-muted border border-success/20 rounded-2xl">
                 <h4 className="text-sm font-mono uppercase tracking-wider text-success mb-4">
                   Strong
                 </h4>
                 <ul className="space-y-2">
                   {profile.skills.strong.map((skill) => (
-                    <li key={skill} className="text-foreground flex items-center gap-2">
+                    <li
+                      key={skill}
+                      className="text-foreground flex items-center gap-2"
+                    >
                       <span className="text-success">✓</span>
                       {skill}
                     </li>
@@ -70,13 +70,16 @@ const Experience = () => {
             )}
 
             {profile.skills?.moderate?.length > 0 && (
-              <div className="p-6 bg-secondary border border-border rounded-2xl">
+              <div className="p-4 sm:p-6 bg-secondary border border-border rounded-2xl">
                 <h4 className="text-sm font-mono uppercase tracking-wider text-muted-foreground mb-4">
                   Moderate
                 </h4>
                 <ul className="space-y-2">
                   {profile.skills.moderate.map((skill) => (
-                    <li key={skill} className="text-foreground flex items-center gap-2">
+                    <li
+                      key={skill}
+                      className="text-foreground flex items-center gap-2"
+                    >
                       <span className="text-muted-foreground">○</span>
                       {skill}
                     </li>
@@ -86,13 +89,16 @@ const Experience = () => {
             )}
 
             {profile.skills?.gaps?.length > 0 && (
-              <div className="p-6 bg-warning-muted border border-warning/20 rounded-2xl">
+              <div className="p-4 sm:p-6 bg-warning-muted border border-warning/20 rounded-2xl">
                 <h4 className="text-sm font-mono uppercase tracking-wider text-warning mb-4">
                   Gaps (I'll tell you)
                 </h4>
                 <ul className="space-y-2">
                   {profile.skills.gaps.map((skill) => (
-                    <li key={skill} className="text-foreground flex items-center gap-2">
+                    <li
+                      key={skill}
+                      className="text-foreground flex items-center gap-2"
+                    >
                       <span className="text-warning">✗</span>
                       {skill}
                     </li>

@@ -15,6 +15,7 @@ dependencies = [
 test = [
     "pytest>=8.3.4",
     "pytest-asyncio>=0.25.0",
+    "pytest-cov>=7.0.0",
     "numpy>=1.24.0",
 ]
 lint = [
@@ -25,9 +26,7 @@ lint = [
 ]
 
 [dependency-groups]
-dev = [
-    "pytest-cov>=7.0.0",
-]
+dev = []
 
 # New group for local developer utilities
 tools = [
@@ -65,8 +64,19 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 python_classes = ["Test*"]
-addopts = ["-v", "--strict-markers", "--tb=short"]
+addopts = ["-v", "--strict-markers", "--tb=short", "--cov=ingest", "--cov-report=term-missing", "--cov-fail-under=85"]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "asyncio: async test marker (pytest-asyncio)",
+]
+
+[tool.coverage.run]
+source = ["ingest"]
+omit = ["tests/*", "*/conftest.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.",
+    "if TYPE_CHECKING:",
 ]

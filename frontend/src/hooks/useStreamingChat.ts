@@ -4,7 +4,12 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { streamChat, StreamStats, ApiError } from '@/lib/api-client';
+import {
+  streamChat,
+  StreamStats,
+  ApiError,
+  RateLimitError,
+} from '@/lib/api-client';
 
 export interface Message {
   role: 'user' | 'assistant';
@@ -35,6 +40,10 @@ export interface UseStreamingChatReturn {
   stats: StreamStats | null;
   /** Session ID for conversation continuity */
   sessionId: string | null;
+  /** Timestamp (ms) when rate limit expires, or null if not rate limited */
+  rateLimitedUntil: number | null;
+  /** Whether currently rate limited */
+  isRateLimited: boolean;
   /** Send a message and stream the response */
   sendMessage: (message: string) => Promise<void>;
   /** Cancel the current stream */
@@ -66,14 +75,18 @@ function generateSessionId(): string {
   array[8] = (array[8] & 0x3f) | 0x80; // Variant 10
 
   // Convert to UUID string format
-  const hex = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
-  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+  const hex = Array.from(array, (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 /**
  * Hook for managing streaming chat with the AI Resume backend.
  */
-export function useStreamingChat(options: UseStreamingChatOptions = {}): UseStreamingChatReturn {
+export function useStreamingChat(
+  options: UseStreamingChatOptions = {},
+): UseStreamingChatReturn {
   const { onStreamStart, onStreamComplete, onError } = options;
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -83,6 +96,10 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}): UseStre
   const [error, setError] = useState<Error | null>(null);
   const [stats, setStats] = useState<StreamStats | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [rateLimitedUntil, setRateLimitedUntil] = useState<number | null>(null);
+
+  const isRateLimited =
+    rateLimitedUntil !== null && rateLimitedUntil > Date.now();
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastMessageRef = useRef<string | null>(null);
@@ -101,80 +118,101 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}): UseStre
     setIsLoading(false);
   }, []);
 
-  const sendMessage = useCallback(async (message: string) => {
-    if (!message.trim() || isStreaming || isLoading) return;
+  const sendMessage = useCallback(
+    async (message: string) => {
+      if (!message.trim() || isStreaming || isLoading || isRateLimited) return;
 
-    // Store for retry
-    lastMessageRef.current = message;
+      // Store for retry
+      lastMessageRef.current = message;
 
-    // Add user message
-    setMessages((prev) => [...prev, { role: 'user', content: message }]);
-    setError(null);
-    setStats(null);
-    setIsLoading(true);
-    setStreamingContent('');
+      // Add user message
+      setMessages((prev) => [...prev, { role: 'user', content: message }]);
+      setError(null);
+      setStats(null);
+      setIsLoading(true);
+      setStreamingContent('');
 
-    // Create abort controller
-    abortControllerRef.current = new AbortController();
+      // Create abort controller
+      abortControllerRef.current = new AbortController();
 
-    try {
-      let fullContent = '';
+      try {
+        let fullContent = '';
 
-      await streamChat(
-        {
-          message,
-          session_id: sessionId || undefined,
-        },
-        // onToken
-        (token) => {
-          if (!isStreaming) {
-            setIsLoading(false);
-            setIsStreaming(true);
-            onStreamStart?.();
-          }
-          fullContent += token;
-          setStreamingContent(fullContent);
-        },
-        // onStats
-        (newStats) => {
-          setStats(newStats);
-        },
-        // onError
-        (errorMessage) => {
-          const err = new Error(errorMessage);
-          setError(err);
-          onError?.(err);
-        },
-        abortControllerRef.current.signal
-      );
+        await streamChat(
+          {
+            message,
+            session_id: sessionId || undefined,
+          },
+          // onToken
+          (token) => {
+            if (!isStreaming) {
+              setIsLoading(false);
+              setIsStreaming(true);
+              onStreamStart?.();
+            }
+            fullContent += token;
+            setStreamingContent(fullContent);
+          },
+          // onStats
+          (newStats) => {
+            setStats(newStats);
+          },
+          // onError
+          (errorMessage) => {
+            const err = new Error(errorMessage);
+            setError(err);
+            onError?.(err);
+          },
+          abortControllerRef.current.signal,
+        );
 
-      // Stream complete - add assistant message
-      if (fullContent) {
-        setMessages((prev) => [...prev, { role: 'assistant', content: fullContent }]);
-      }
-      onStreamComplete?.(stats || undefined);
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        // User cancelled - don't treat as error
-        // Keep any partial content as the message
-        if (streamingContent) {
+        // Stream complete - add assistant message
+        if (fullContent) {
           setMessages((prev) => [
             ...prev,
-            { role: 'assistant', content: streamingContent + ' [cancelled]' },
+            { role: 'assistant', content: fullContent },
           ]);
         }
-      } else {
-        const error = err instanceof Error ? err : new Error('Unknown error');
-        setError(error);
-        onError?.(error);
+        onStreamComplete?.(stats || undefined);
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') {
+          // User cancelled - don't treat as error
+          // Keep any partial content as the message
+          if (streamingContent) {
+            setMessages((prev) => [
+              ...prev,
+              { role: 'assistant', content: streamingContent + ' [cancelled]' },
+            ]);
+          }
+        } else if (err instanceof RateLimitError) {
+          setRateLimitedUntil(Date.now() + err.retryAfter * 1000);
+          const error = err as Error;
+          setError(error);
+          onError?.(error);
+        } else {
+          const error = err instanceof Error ? err : new Error('Unknown error');
+          setError(error);
+          onError?.(error);
+        }
+      } finally {
+        setIsStreaming(false);
+        setIsLoading(false);
+        setStreamingContent('');
+        abortControllerRef.current = null;
       }
-    } finally {
-      setIsStreaming(false);
-      setIsLoading(false);
-      setStreamingContent('');
-      abortControllerRef.current = null;
-    }
-  }, [isStreaming, isLoading, sessionId, streamingContent, stats, onStreamStart, onStreamComplete, onError]);
+    },
+    [
+      isStreaming,
+      isLoading,
+      isRateLimited,
+      sessionId,
+      streamingContent,
+      stats,
+      onStreamStart,
+      onStreamComplete,
+      onError,
+    ],
+  );
 
   const clearMessages = useCallback(() => {
     cancelStream();
@@ -222,6 +260,8 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}): UseStre
     error,
     stats,
     sessionId,
+    rateLimitedUntil,
+    isRateLimited,
     sendMessage,
     cancelStream,
     clearMessages,

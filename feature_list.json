@@ -394,7 +394,7 @@
         "Run 'test -x .githooks/pre-commit && test -x .githooks/commit-msg && echo executable' and verify hooks are executable",
         "Run 'grep -rn \"core.hooksPath\\|hooksPath\" scripts/dev-setup.sh .githooks/ Makefile' and verify core.hooksPath is set to .githooks/ somewhere in setup automation"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -408,7 +408,7 @@
         "Run 'grep -rn \"85\\|thresholds\\|threshold\" frontend/vite.config.ts frontend/vitest.config.ts' and verify an 85% coverage threshold is set",
         "Run 'grep -n \"coverage\" .github/workflows/ci.yml' and verify the frontend CI job runs coverage collection"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -421,7 +421,7 @@
         "Run 'grep -n \"cov\\|coverage\" .github/workflows/ci.yml' and verify the ingest CI job runs pytest with --cov flag or coverage collection",
         "Run 'grep -rn \"cov\\|coverage\" ingest/pyproject.toml' and verify pytest coverage configuration exists in pyproject.toml (e.g., [tool.pytest.ini_options] or [tool.coverage])"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -434,7 +434,7 @@
         "Run 'grep -n \"tarpaulin\\|llvm-cov\" memvid-service/Cargo.toml' and verify a coverage tool is referenced in dev-dependencies or build config",
         "Run 'grep -rn \"coverage\" .github/workflows/ci.yml' and verify coverage output is produced for the memvid-service job"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -447,7 +447,7 @@
         "Run 'grep -n \"85\\|threshold\\|fail\" .github/workflows/ci.yml' and verify an 85% coverage gate is enforced in the CI pipeline",
         "Run 'grep -n \"coverage\" .github/workflows/ci.yml | wc -l' and verify coverage is referenced in multiple jobs (frontend, ingest, memvid, summary)"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "coverage-ci-frontend",
         "coverage-ci-ingest",
@@ -1537,7 +1537,7 @@
         "Verify containers are rolled back to previous version on health check timeout",
         "Run 'grep -rn \"arm64\\|aarch64\\|multi-arch\" scripts/build-all.sh' and verify multi-architecture build support for edge devices"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["mv2-file-creation"]
     },
     {
@@ -1554,7 +1554,7 @@
         "Verify nested error boundaries catch at the most specific level (e.g., ExperienceCard inside Experience)",
         "Verify async errors in useEffect are handled via window error handlers"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "ai-chat-component",
         "experience-component",
@@ -1579,7 +1579,7 @@
         "Run 'npx axe-core' or equivalent automated accessibility scanner on the built frontend and verify zero critical violations",
         "Run 'grep -rn \"aria-live\\|role=.alert\" frontend/src/components/AIChat.tsx' and verify live region announcements for chat messages"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "ai-chat-component",
         "fit-assessment-component",
@@ -1599,7 +1599,7 @@
         "Verify source markdown with zero fit assessment examples produces empty fit_examples array in API response",
         "Verify frontend renders only the 'Analyze Custom Job' tab when fit_examples array is empty"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "fit-assessment-parsing",
         "profile-in-memvid",
@@ -1619,7 +1619,7 @@
         "Verify invalid color value in theme configuration is ignored, default color used, and warning logged to browser console",
         "Verify page layout adjusts without blank space when a section is hidden"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["profile-api", "profile-hook"]
     },
     {
@@ -1635,7 +1635,7 @@
         "Verify false positive CVEs can be added to an allowlist with documented rationale in version control",
         "Grep .github/workflows/ for 'grype' or 'trivy' to verify scanner integration in CI"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["mv2-file-creation"]
     },
     {
@@ -1653,7 +1653,7 @@
         "Verify sessions with 20+ messages do not cause unbounded memory growth",
         "Verify OpenRouter rate limits are handled gracefully with queuing or backoff, not 5xx errors"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["chat-endpoint", "rate-limiting"]
     },
     {
@@ -1669,7 +1669,7 @@
         "Verify comparison of before/after profiling identifies functions with > 10% latency increase",
         "Verify profiling report highlights specific bottleneck with recommendation when P95 exceeds PRD targets"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["chat-endpoint", "grpc-memvid-server"]
     },
     {
@@ -1686,7 +1686,7 @@
         "Verify test report is generated with: total patterns tested, deflected count, compliance count, and per-category pass rate",
         "Run 'source api-service/.venv/bin/activate && pytest api-service/tests/test_guardrails.py -v' and verify existing injection detection tests pass"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "input-guardrails",
         "output-guardrails",
@@ -1708,7 +1708,7 @@
         "Grep api-service/ai_resume_api/guardrails.py for sliding buffer or chunk-based output filtering logic",
         "Run regex scan on collected responses for patterns like 'Frame \\d+', 'chunk', 'embedding', 'vector' in structural context"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["output-guardrails", "streaming-sse", "chat-endpoint"]
     },
     {
@@ -1726,7 +1726,7 @@
         "Verify verification report lists: total checks, passing checks, failing checks with file and line number for each failure",
         "Grep api-service/ai_resume_api/main.py for all @app route decorators and cross-reference with documentation"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -1746,7 +1746,7 @@
         "Verify inline code and syntax highlighting in chat responses are readable in both themes",
         "Verify loading skeletons and animations adapt to the active theme"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "header-component",
         "ai-chat-component",
@@ -1770,7 +1770,7 @@
         "Capture screenshots at 375px, 768px, and 1440px viewports and verify no text overflow or content truncation",
         "Run 'grep -rn \"@media\\|sm:\\|md:\\|lg:\" frontend/src/components/Hero.tsx' and verify responsive breakpoint classes are used in the Hero component"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "ai-chat-component",
         "experience-component",
@@ -1792,7 +1792,7 @@
         "Verify resumes with sparse relationship data degrade gracefully to vector-only search",
         "Verify graph cycles do not cause infinite traversal"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "semantic-embedding",
         "mv2-file-creation",
@@ -1817,7 +1817,7 @@
         "Verify multiple rapid clicks on send button are debounced client-side to reduce unnecessary 429 triggers",
         "Grep frontend/src/ for '429' or 'rate' or 'Retry-After' to verify rate limit handling exists"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "rate-limiting",
         "ai-chat-component",
@@ -1838,7 +1838,7 @@
         "Verify frontend shows 'Backend unavailable' with retry when health endpoint itself is unreachable",
         "Grep frontend/src/components/AIChat.tsx for 'memvid_connected' or 'degraded' to verify status propagation handling"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["backend-health-indicator", "profile-api"]
     },
     {
@@ -1855,7 +1855,7 @@
         "Run 'source api-service/.venv/bin/activate && pytest api-service/tests/test_main.py -v -k session' to verify session-related endpoint tests",
         "Grep api-service/ai_resume_api/main.py for 'session' and 'clear' to verify route definition"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["session-management", "clear-conversation"]
     },
     {
@@ -1875,7 +1875,7 @@
         "Run 'podman run -v ./data:/data ingest --input /data/example_resume.md --output /data/resume.mv2' and verify output file is > 100KB",
         "Run 'grep -n \"ENTRYPOINT\\|CMD\" ingest/Dockerfile' and verify the container has a proper entrypoint for the ingest pipeline"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["mv2-file-creation"]
     },
     {
@@ -2055,7 +2055,7 @@
         "Verify the harness generates a machine-readable report with per-category pass/fail, factual accuracy score, and hallucination count",
         "Verify the test suite integrates into CI as a release gate job"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "chat-endpoint",
         "streaming-sse",
@@ -2076,7 +2076,7 @@
         "Generate a coverage report listing each category, the query used, the top result snippet, and PASS/FAIL status",
         "If any category scores FAIL, the overall test fails with a non-zero exit code"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["mv2-file-creation", "ingest-retrieval-verification"]
     },
     {
@@ -2093,7 +2093,7 @@
         "Generate an accuracy report: total claims checked, verified count, unverified count, hallucination count",
         "Test fails with non-zero exit code if hallucination count > 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["chat-endpoint", "profile-api"]
     },
     {
@@ -2109,7 +2109,7 @@
         "Generate a negative testing report: query, response summary, uncertainty marker found (Y/N), fabricated content found (Y/N)",
         "Test fails with non-zero exit code if any out-of-scope query receives a fabricated answer"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["input-guardrails", "output-guardrails", "chat-endpoint"]
     },
     {
@@ -2126,7 +2126,7 @@
         "Report P50, P95, and P99 latencies for both total response and memvid search",
         "Verify container startup time (from podman start to first successful health check) is < 5 seconds per container"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "chat-endpoint",
         "grpc-memvid-server",
@@ -2145,7 +2145,7 @@
         "Grep frontend/src/ recursively for hardcoded candidate-specific values (names, company names, email addresses); assert zero matches",
         "Replace the .mv2 file with a different candidate's data, restart API, and verify the profile endpoint reflects the new candidate (not cached old data)"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["data-portability", "mv2-file-creation"]
     },
     {
@@ -2161,7 +2161,7 @@
         "Run scripts/test-containers.sh smoke tests; all 6 checks pass",
         "Verify containers run as non-root users with read-only filesystems (inspect container security options)"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "frontend-container",
         "api-service-container",
@@ -2182,7 +2182,7 @@
         "Verify chat input and send button are usable at 375px width without horizontal scrolling",
         "Verify navigation and section headers remain readable at all three viewport widths"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "hero-component",
         "experience-component",
@@ -2202,7 +2202,7 @@
         "Verify the fit assessment endpoint rates roles requiring gap skills as weak fits",
         "Generate an honesty report: limitation queried, response summary, acknowledged (Y/N), fabricated compensation (Y/N)"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["chat-endpoint", "skills-parsing"]
     },
     {
@@ -2218,7 +2218,7 @@
         "Verify rate limiting returns HTTP 429 after 10 requests per minute from the same IP",
         "Verify no API endpoint returns stack traces or internal error details to the client in production mode"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "input-guardrails",
         "output-guardrails",
@@ -2240,7 +2240,7 @@
         "Verify overall result is FAIL with clear indication of which gate(s) failed if any blocking metric does not meet its threshold",
         "Verify non-blocking metrics (latency, detail completeness) are reported but do not affect the overall PASS/FAIL determination"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "outcome-data-coverage",
         "outcome-factual-accuracy",
