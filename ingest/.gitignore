@@ -1,6 +1,6 @@
 # UV virtual environment
 .venv/
-uv.lock
+# uv.lock tracked for reproducible CI builds
 
 # Python artifacts
 __pycache__/

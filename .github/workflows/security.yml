@@ -29,6 +29,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Prepare build context
+        if: matrix.context == 'memvid-service'
+        run: cp -r proto/ memvid-service/proto/
+
       - name: Build image
         run: docker build -t ${{ matrix.image }}:scan ${{ matrix.context }}
 
