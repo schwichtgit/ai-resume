@@ -57,7 +57,6 @@ sbom.json
 # Rust build artifacts
 memvid-service/target/
 *.tar
-CLAUDE.md
 
 # Fastembed model cache (large binary files)
 .fastembed_cache/
