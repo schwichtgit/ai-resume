@@ -17,8 +17,8 @@
         "Run 'test -d api-service/ai_resume_api && echo exists' and verify api-service has the ai_resume_api package directory",
         "Run 'test -f memvid-service/Cargo.toml && echo exists' and verify memvid-service has a Cargo.toml build file"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -32,8 +32,8 @@
         "Run 'grep -l \"acceptance criteria\\|non-functional\" docs/PRD.md' (case-insensitive) and verify the PRD contains functional and non-functional requirements sections",
         "Run 'grep -l \"yellow-net\\|192.168.100\" docs/ARCHITECTURE.md' and verify the architecture doc references container network topology consistent with compose.yaml"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -53,8 +53,8 @@
         "Run 'grep -n \"pydantic\\|BaseSettings\" api-service/ai_resume_api/config.py' and verify Settings uses pydantic-settings BaseSettings",
         "Run 'grep -n \"\\[project\\]\" api-service/pyproject.toml ingest/pyproject.toml deployment/pyproject.toml' and verify all three declare [project] metadata"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -67,8 +67,8 @@
         "Run 'grep -n \"192.168.100\" deployment/compose.yaml' and verify subnet 192.168.100.0/24 is configured",
         "Run 'grep -A2 \"ipv4_address\" deployment/compose.yaml' and verify static IPs .10, .11, and .12 are assigned to frontend, api, and memvid respectively"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -103,8 +103,8 @@
         "Run 'grep -n \"skip-containers\\|--skip\" scripts/dev-setup.sh' and verify it accepts a --skip-containers flag",
         "Run 'test -x scripts/deploy.sh && echo executable || echo not-executable' and verify deploy.sh is executable"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -118,8 +118,8 @@
         "Run 'ls frontend/Dockerfile api-service/Dockerfile memvid-service/Dockerfile' and verify each service has its own Dockerfile",
         "Run 'grep -n \"no-cache\\|--no-cache\" scripts/build-all.sh' and verify a --no-cache option is supported"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -132,8 +132,8 @@
         "Run 'grep -A5 \"\\[project.dependencies\\]\\|dependencies\" api-service/pyproject.toml' and verify api-service declares its own dependencies",
         "Run 'grep -A5 \"\\[project.dependencies\\]\\|dependencies\" ingest/pyproject.toml' and verify ingest declares its own independent dependencies"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -146,8 +146,8 @@
         "Run 'grep -E \"ai-resume-(api|memvid|frontend)\" deployment/compose.yaml' and verify container names follow the ai-resume-{function} pattern",
         "Run 'test ! -d python-api && test ! -d rust-grpc && echo correct || echo wrong' and verify no technology-named directories exist"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -160,8 +160,8 @@
         "Run 'grep \"ai_resume_api\" api-service/pyproject.toml' and verify pyproject.toml references the ai_resume_api package for hatch build targets",
         "Run 'grep -rn \"from ai_resume_api\" api-service/ai_resume_api/' and verify all internal imports use the fully-qualified prefix"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -175,8 +175,8 @@
         "Run 'ls api-service/proto/ memvid-service/proto/' and verify both services have proto directories (copies or symlinks)",
         "Run 'grep -n \"tonic-build\\|tonic\" memvid-service/build.rs' and verify the Rust build uses tonic-build for code generation"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -190,8 +190,8 @@
         "Run 'grep -n \"8080\" frontend/Dockerfile' and verify the container exposes port 8080",
         "Run 'grep -in \"user\\|non-root\\|USER\" frontend/Dockerfile' and verify the container runs as a non-root user"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": [
         "tailwind-design-tokens",
         "shadcn-ui-components",
@@ -209,9 +209,12 @@
         "Run 'grep -n \"ai_resume_api\" api-service/Dockerfile' and verify the ai_resume_api package is included in the container",
         "Run 'grep -n \"healthcheck\\|/healthcheck\" api-service/Dockerfile' and verify a health check binary is included"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["pydantic-models", "toml-config-schema"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "pydantic-models",
+        "toml-config-schema"
+      ]
     },
     {
       "id": "memvid-service-container",
@@ -224,9 +227,12 @@
         "Run 'grep -n \"9090\" memvid-service/Dockerfile' and verify metrics port 9090 is referenced",
         "Run 'grep -n \"healthcheck\\|/healthcheck\" memvid-service/Dockerfile' and verify a health check binary is included"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["proto-definition", "real-memvid-searcher"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "proto-definition",
+        "real-memvid-searcher"
+      ]
     },
     {
       "id": "readonly-containers",
@@ -238,8 +244,8 @@
         "Run 'grep -A3 \"tmpfs\" deployment/compose.yaml' and verify tmpfs mounts are declared for writable paths (/tmp, /run, /var/cache/nginx as applicable) with size limits",
         "Run 'grep -c \"no-new-privileges\" deployment/compose.yaml' and verify all three services set security_opt no-new-privileges:true"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -252,8 +258,8 @@
         "Run 'grep -rn \"structlog\\|stdout\" api-service/ai_resume_api/' and verify the API service uses structlog configured for stdout/stderr output",
         "Run 'grep -rn \"tracing_subscriber\\|stdout\" memvid-service/src/' and verify the Rust service uses tracing with a stdout subscriber"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -273,8 +279,8 @@
         "Run 'grep -n \"healthy\" deployment/compose.yaml' and verify service_healthy condition is used in depends_on blocks",
         "Run 'grep -c \"healthcheck\" deployment/compose.yaml' and verify healthcheck blocks exist for all three services (count >= 3)"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -287,8 +293,8 @@
         "Run 'grep -n \"changeOrigin\" frontend/vite.config.ts' and verify changeOrigin: true is set for proper host header forwarding",
         "Run 'grep -n \"8080\" frontend/vite.config.ts' and verify the dev server listens on port 8080"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -308,8 +314,8 @@
         "Run 'grep -n \"index\" frontend/nginx-default.conf' and verify index.html is configured as the default document",
         "Run 'grep -n \"Cache-Control\" frontend/nginx-default.conf' and verify Cache-Control headers are set for static assets"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -323,8 +329,8 @@
         "Run 'grep -n \"chmod\\|executable\" scripts/install-hooks.sh' and verify the installer sets executable permissions on copied hooks",
         "Run 'grep -n \"eslint\\|ruff\" scripts/hooks/pre-commit' and verify the pre-commit hook runs language-appropriate linters"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -359,8 +365,8 @@
         "Run 'ls ingest/ingest.py' and verify the entry point script exists",
         "Run 'ls ingest/uv.lock' and verify a uv lockfile exists for reproducible dependency resolution"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -380,8 +386,8 @@
         "Run 'grep -n \"environment:\" deployment/compose.yaml' and verify environment variable sections exist for each service",
         "Run 'grep -c \"depends_on\" deployment/compose.yaml' and verify dependency ordering is configured between services"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -467,8 +473,8 @@
         "Grep ingest/tests/test_parsing.py for 'no.*frontmatter\\|missing.*delimiter\\|no.*---' and verify edge case tests exist for files without YAML delimiters",
         "Verify ingest/tests/test_parsing.py contains at least 5 test functions covering frontmatter parsing (basic fields, multiline, lists, missing delimiters, malformed YAML)"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -483,9 +489,11 @@
         "Grep ingest/tests/test_parsing.py for 'no.*heading\\|empty' and verify edge case for body with no ## headings returns empty list",
         "Grep ingest/tests/test_parsing.py for 'before.*first\\|pre.*heading' and verify content before the first ## heading is discarded"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["markdown-frontmatter-parsing"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "markdown-frontmatter-parsing"
+      ]
     },
     {
       "id": "experience-chunk-parsing",
@@ -502,7 +510,9 @@
       ],
       "passes": false,
       "verified": false,
-      "dependencies": ["section-extraction"]
+      "dependencies": [
+        "section-extraction"
+      ]
     },
     {
       "id": "skills-parsing",
@@ -517,7 +527,9 @@
       ],
       "passes": false,
       "verified": false,
-      "dependencies": ["section-extraction"]
+      "dependencies": [
+        "section-extraction"
+      ]
     },
     {
       "id": "faq-parsing",
@@ -532,7 +544,9 @@
       ],
       "passes": false,
       "verified": false,
-      "dependencies": ["section-extraction"]
+      "dependencies": [
+        "section-extraction"
+      ]
     },
     {
       "id": "failure-story-parsing",
@@ -544,9 +558,11 @@
         "Verify file 'ingest/ingest.py' contains a 'def extract_failure_chunks' function returning a list of dicts with 'title' and 'content' keys",
         "Grep ingest/tests/test_parsing.py for 'failure\\|story\\|growth' and verify at least 3 test functions cover failure chunk extraction"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["section-extraction"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "section-extraction"
+      ]
     },
     {
       "id": "fit-assessment-parsing",
@@ -563,7 +579,9 @@
       ],
       "passes": false,
       "verified": false,
-      "dependencies": ["section-extraction"]
+      "dependencies": [
+        "section-extraction"
+      ]
     },
     {
       "id": "semantic-embedding",
@@ -602,7 +620,9 @@
       ],
       "passes": false,
       "verified": false,
-      "dependencies": ["semantic-embedding"]
+      "dependencies": [
+        "semantic-embedding"
+      ]
     },
     {
       "id": "ingest-retrieval-verification",
@@ -615,9 +635,11 @@
         "Grep ingest/ingest.py for 'verification\\|verify.*quer' and confirm the function tests at least 5 distinct resume categories",
         "Grep ingest/tests/test_ingest_retrieval.py for 'keyword\\|relevance\\|result' and verify the test checks that each query returns at least 1 relevant result"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["mv2-file-creation"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "mv2-file-creation"
+      ]
     },
     {
       "id": "ingest-edge-cases",
@@ -658,9 +680,11 @@
         "Grep api-service/ai_resume_api/memvid_client.py for '__profile__\\|get_state' and verify the client retrieves profile from the __profile__ entity",
         "Grep ingest/ingest.py for 'name.*title.*email\\|experience.*skills.*fit' and verify the profile dict contains all required keys: name, title, email, linkedin, location, status, suggested_questions, tags, experience, skills, fit_assessment_examples, system_prompt"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["mv2-file-creation"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "mv2-file-creation"
+      ]
     },
     {
       "id": "profile-api",
@@ -684,7 +708,9 @@
       ],
       "passes": false,
       "verified": false,
-      "dependencies": ["profile-in-memvid"]
+      "dependencies": [
+        "profile-in-memvid"
+      ]
     },
     {
       "id": "suggested-questions-api",
@@ -699,9 +725,11 @@
         "Grep api-service/tests/test_main.py for 'suggested.*questions\\|/api/v1/suggested-questions' and verify tests check for 200 response with correct structure",
         "Grep api-service/ai_resume_api/main.py for '404\\|not.*found\\|no.*suggested' and verify that when profile has no suggested_questions, a 404 is returned instead of an empty array"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["profile-api"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "profile-api"
+      ]
     },
     {
       "id": "chat-endpoint",
@@ -744,9 +772,12 @@
         "Grep api-service/ai_resume_api/main.py for 'CancelledError\\|disconnect\\|client.*cancel' and verify graceful cleanup when client disconnects during stream",
         "Grep api-service/tests/test_main.py for 'data:.*\\[DONE\\]\\|event.*end' and verify tests check for the end-of-stream marker"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["chat-endpoint", "openrouter-client"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "chat-endpoint",
+        "openrouter-client"
+      ]
     },
     {
       "id": "mock-streaming",
@@ -762,7 +793,9 @@
       ],
       "passes": false,
       "verified": false,
-      "dependencies": ["streaming-sse"]
+      "dependencies": [
+        "streaming-sse"
+      ]
     },
     {
       "id": "openrouter-client",
@@ -808,7 +841,9 @@
       ],
       "passes": false,
       "verified": false,
-      "dependencies": ["pydantic-models"]
+      "dependencies": [
+        "pydantic-models"
+      ]
     },
     {
       "id": "rate-limiting",
@@ -848,8 +883,8 @@
         "Verify file 'proto/memvid/v1/memvid.proto' exists and contains service definition for MemvidService",
         "Grep api-service/tests/test_memvid_client.py for 'unreachable\\|timeout\\|connection.*error' and verify error handling tests exist for gRPC unavailability"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -869,9 +904,12 @@
         "Run 'grep -rn \"Server\\|serve\" memvid-service/src/' and verify the gRPC server initialization and binding code exists",
         "Run 'grep -rn \"50051\" memvid-service/src/' and verify the gRPC server binds to port 50051"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["mock-searcher", "real-memvid-searcher"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "mock-searcher",
+        "real-memvid-searcher"
+      ]
     },
     {
       "id": "mock-searcher",
@@ -903,9 +941,11 @@
         "Grep memvid-service/src/memvid/real.rs for 'get_state\\|state\\|memory_card' and verify state retrieval for memory cards is implemented",
         "Grep memvid-service/Cargo.toml for 'memvid' and verify memvid-core dependency is pinned to a specific version"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["mv2-file-creation"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "mv2-file-creation"
+      ]
     },
     {
       "id": "prometheus-metrics-api",
@@ -919,8 +959,8 @@
         "Grep api-service/ai_resume_api/observability.py for 'llm_requests_total\\|llm_tokens_total\\|llm_latency_seconds' and verify at least these three LLM metrics are defined",
         "Grep api-service/tests/test_main.py for '/metrics\\|text/plain\\|prometheus' and verify tests check the metrics endpoint returns 200 with text/plain content type"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -935,8 +975,8 @@
         "Grep memvid-service/src/metrics.rs for '9090\\|port' and verify the metrics server runs on port 9090",
         "Grep memvid-service/src/metrics.rs for 'record_search_latency\\|increment_search_count\\|increment_search_errors' and verify helper functions exist for recording each metric type"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -951,7 +991,9 @@
       ],
       "passes": false,
       "verified": false,
-      "dependencies": ["trace-id-propagation"]
+      "dependencies": [
+        "trace-id-propagation"
+      ]
     },
     {
       "id": "structured-logging-memvid",
@@ -963,8 +1005,8 @@
         "Grep memvid-service/src/grpc/service.rs for 'info!\\|warn!\\|error!\\|debug!\\|tracing::' and verify structured log calls exist in search RPC handlers",
         "Grep memvid-service/src/main.rs for 'frame_count\\|file_path\\|load_time' and verify startup logging includes .mv2 file details"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -979,8 +1021,8 @@
         "Grep api-service/ai_resume_api/main.py for 'contextvars\\|ContextVar\\|context' and verify trace IDs are propagated via Python contextvars for async isolation",
         "Grep api-service/ai_resume_api/main.py for 'stats.*trace_id\\|trace_id.*stats' and verify the trace_id is included in SSE stats JSON payload"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -995,9 +1037,11 @@
         "Grep api-service/ai_resume_api/observability.py for 'log_llm_response\\|record.*metric' and verify metrics are recorded on LLM response completion",
         "Grep api-service/ai_resume_api/observability.py for 'status.*error\\|error.*increment\\|status.*success' and verify both success and error statuses are tracked in llm_requests_total"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["prometheus-metrics-api"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "prometheus-metrics-api"
+      ]
     },
     {
       "id": "input-guardrails",
@@ -1019,7 +1063,9 @@
       ],
       "passes": false,
       "verified": false,
-      "dependencies": ["chat-endpoint"]
+      "dependencies": [
+        "chat-endpoint"
+      ]
     },
     {
       "id": "output-guardrails",
@@ -1043,7 +1089,9 @@
       ],
       "passes": false,
       "verified": false,
-      "dependencies": ["chat-endpoint"]
+      "dependencies": [
+        "chat-endpoint"
+      ]
     },
     {
       "id": "system-prompt-hardening",
@@ -1057,9 +1105,12 @@
         "Verify GROUND FACTS section is not duplicated when system prompt already contains it",
         "Run 'source api-service/.venv/bin/activate && python -c \"from ai_resume_api.config import get_system_prompt_from_profile; print(get_system_prompt_from_profile.__doc__)\"' to verify function exists"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["profile-in-memvid", "profile-api"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "profile-in-memvid",
+        "profile-api"
+      ]
     },
     {
       "id": "api-client-frontend",
@@ -1095,9 +1146,11 @@
         "Verify session ID is generated using Web Crypto API (crypto.getRandomValues) and reused across messages",
         "Grep frontend/src/hooks/useStreamingChat.ts for 'AbortController' to confirm cancellation support"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["api-client-frontend"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "api-client-frontend"
+      ]
     },
     {
       "id": "profile-hook",
@@ -1112,9 +1165,11 @@
         "Verify error state contains an Error object when profile API returns error",
         "Verify cleanup prevents state update on unmounted component"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["api-client-frontend"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "api-client-frontend"
+      ]
     },
     {
       "id": "ai-chat-component",
@@ -1161,9 +1216,11 @@
         "Verify no hardcoded candidate names or titles exist in the component source",
         "Grep frontend/src/components/Hero.tsx for 'profile' to confirm data-driven rendering"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["profile-hook"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "profile-hook"
+      ]
     },
     {
       "id": "experience-component",
@@ -1182,9 +1239,11 @@
         "Run 'grep -n \"useProfile\\|profile\" frontend/src/components/Experience.tsx' and verify data comes from the profile hook",
         "Run 'grep -n \"highlights\\|bullet\" frontend/src/components/Experience.tsx' and verify experience highlights or bullet points are rendered"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["profile-hook"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "profile-hook"
+      ]
     },
     {
       "id": "fit-assessment-component",
@@ -1206,9 +1265,12 @@
         "Run 'grep -n \"tab\\|Tab\" frontend/src/components/FitAssessment.tsx' and verify tabbed interface exists for fit assessment views",
         "Run 'grep -n \"useProfile\\|profile\" frontend/src/components/FitAssessment.tsx' and verify pre-analyzed examples come from profile data"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["profile-hook", "assess-fit-endpoint"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "profile-hook",
+        "assess-fit-endpoint"
+      ]
     },
     {
       "id": "header-component",
@@ -1222,9 +1284,11 @@
         "Verify single-word name produces a single initial letter",
         "Verify header shows minimal/default state when profile is not loaded"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["profile-hook"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "profile-hook"
+      ]
     },
     {
       "id": "footer-component",
@@ -1240,7 +1304,9 @@
       ],
       "passes": false,
       "verified": false,
-      "dependencies": ["profile-hook"]
+      "dependencies": [
+        "profile-hook"
+      ]
     },
     {
       "id": "dynamic-meta-tags",
@@ -1256,9 +1322,11 @@
         "Verify meta tags remain at placeholder values when profile load fails",
         "Verify profile name containing HTML special characters is properly escaped in meta content"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["profile-hook"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "profile-hook"
+      ]
     },
     {
       "id": "seo-lua-handler",
@@ -1277,9 +1345,11 @@
         "Run 'grep -rn \"lua\\|Lua\" frontend/nginx-default.conf' and verify Lua-based request handling is configured in nginx",
         "Run 'grep -rn \"bot\\|crawler\\|user.agent\" frontend/nginx-default.conf' and verify bot/crawler detection for SEO"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["profile-api"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "profile-api"
+      ]
     },
     {
       "id": "assess-fit-endpoint",
@@ -1300,7 +1370,11 @@
       ],
       "passes": false,
       "verified": false,
-      "dependencies": ["chat-endpoint", "role-classifier", "grpc-memvid-client"]
+      "dependencies": [
+        "chat-endpoint",
+        "role-classifier",
+        "grpc-memvid-client"
+      ]
     },
     {
       "id": "role-classifier",
@@ -1316,8 +1390,8 @@
         "Verify domain_confident is flagged as false when ambiguous keyword gap < 2",
         "Grep api-service/ai_resume_api/ for 'classify_role' to locate the role classifier module"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -1334,9 +1408,11 @@
         "Verify original question is returned without LLM call when OpenRouter is not configured",
         "Verify empty or gibberish LLM response falls back to original question"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["openrouter-client"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "openrouter-client"
+      ]
     },
     {
       "id": "pydantic-models",
@@ -1355,8 +1431,8 @@
         "Run 'grep -n \"class.*Model\\|class.*Request\\|class.*Response\" api-service/ai_resume_api/models.py' and verify named model classes exist for API contracts",
         "Run 'grep -n \"Field\\|validator\" api-service/ai_resume_api/models.py' and verify field validation is configured on model properties"
       ],
-      "passes": false,
-      "verified": false,
+      "passes": true,
+      "verified": true,
       "dependencies": []
     },
     {
@@ -1378,7 +1454,11 @@
       ],
       "passes": false,
       "verified": false,
-      "dependencies": ["profile-in-memvid", "profile-api", "profile-hook"]
+      "dependencies": [
+        "profile-in-memvid",
+        "profile-api",
+        "profile-hook"
+      ]
     },
     {
       "id": "fit-assessment-ui-tabs",
@@ -1393,9 +1473,12 @@
         "Verify error is displayed within Tab 3 with retry option when analysis API call fails",
         "Verify placeholder content is shown when only one fit example exists in profile"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["fit-assessment-component", "assess-fit-endpoint"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "fit-assessment-component",
+        "assess-fit-endpoint"
+      ]
     },
     {
       "id": "error-display-retry",
@@ -1409,9 +1492,11 @@
         "Verify retry button remains available when retry also fails with updated error message",
         "Verify retry button is not rendered when there is no previous message to retry"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["streaming-chat-hook"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "streaming-chat-hook"
+      ]
     },
     {
       "id": "loading-states",
@@ -1427,7 +1512,10 @@
       ],
       "passes": false,
       "verified": false,
-      "dependencies": ["profile-hook", "streaming-chat-hook"]
+      "dependencies": [
+        "profile-hook",
+        "streaming-chat-hook"
+      ]
     },
     {
       "id": "cancel-streaming",
@@ -1441,9 +1529,11 @@
         "Verify partial response text is preserved in the messages array after cancellation",
         "Verify cancel button is not visible when no streaming is in progress"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["streaming-chat-hook"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "streaming-chat-hook"
+      ]
     },
     {
       "id": "clear-conversation",
@@ -1460,7 +1550,9 @@
       ],
       "passes": false,
       "verified": false,
-      "dependencies": ["streaming-chat-hook"]
+      "dependencies": [
+        "streaming-chat-hook"
+      ]
     },
     {
       "id": "suggested-questions-ui",
@@ -1475,9 +1567,12 @@
         "Verify chat loads without suggestions when suggested questions API fails (input still functional)",
         "Verify suggested questions reappear after clearing conversation"
       ],
-      "passes": false,
-      "verified": false,
-      "dependencies": ["api-client-frontend", "suggested-questions-api"]
+      "passes": true,
+      "verified": true,
+      "dependencies": [
+        "api-client-frontend",
+        "suggested-questions-api"
+      ]
     },
     {
       "id": "backend-health-indicator",
@@ -1493,7 +1588,9 @@
       ],
       "passes": false,
       "verified": false,
-      "dependencies": ["api-client-frontend"]
+      "dependencies": [
+        "api-client-frontend"
+      ]
     },
     {
       "id": "ask-mode-reranking",
@@ -1538,7 +1635,9 @@
         "Run 'grep -rn \"arm64\\|aarch64\\|multi-arch\" scripts/build-all.sh' and verify multi-architecture build support for edge devices"
       ],
       "passes": false,
-      "dependencies": ["mv2-file-creation"]
+      "dependencies": [
+        "mv2-file-creation"
+      ]
     },
     {
       "id": "error-boundaries",
@@ -1620,7 +1719,10 @@
         "Verify page layout adjusts without blank space when a section is hidden"
       ],
       "passes": false,
-      "dependencies": ["profile-api", "profile-hook"]
+      "dependencies": [
+        "profile-api",
+        "profile-hook"
+      ]
     },
     {
       "id": "vulnerability-scanning",
@@ -1636,7 +1738,9 @@
         "Grep .github/workflows/ for 'grype' or 'trivy' to verify scanner integration in CI"
       ],
       "passes": false,
-      "dependencies": ["mv2-file-creation"]
+      "dependencies": [
+        "mv2-file-creation"
+      ]
     },
     {
       "id": "load-testing",
@@ -1654,7 +1758,10 @@
         "Verify OpenRouter rate limits are handled gracefully with queuing or backoff, not 5xx errors"
       ],
       "passes": false,
-      "dependencies": ["chat-endpoint", "rate-limiting"]
+      "dependencies": [
+        "chat-endpoint",
+        "rate-limiting"
+      ]
     },
     {
       "id": "performance-profiling",
@@ -1670,7 +1777,10 @@
         "Verify profiling report highlights specific bottleneck with recommendation when P95 exceeds PRD targets"
       ],
       "passes": false,
-      "dependencies": ["chat-endpoint", "grpc-memvid-server"]
+      "dependencies": [
+        "chat-endpoint",
+        "grpc-memvid-server"
+      ]
     },
     {
       "id": "injection-test-scenarios",
@@ -1709,7 +1819,11 @@
         "Run regex scan on collected responses for patterns like 'Frame \\d+', 'chunk', 'embedding', 'vector' in structural context"
       ],
       "passes": false,
-      "dependencies": ["output-guardrails", "streaming-sse", "chat-endpoint"]
+      "dependencies": [
+        "output-guardrails",
+        "streaming-sse",
+        "chat-endpoint"
+      ]
     },
     {
       "id": "documentation-audit",
@@ -1839,7 +1953,10 @@
         "Grep frontend/src/components/AIChat.tsx for 'memvid_connected' or 'degraded' to verify status propagation handling"
       ],
       "passes": false,
-      "dependencies": ["backend-health-indicator", "profile-api"]
+      "dependencies": [
+        "backend-health-indicator",
+        "profile-api"
+      ]
     },
     {
       "id": "session-clear-endpoint",
@@ -1856,7 +1973,10 @@
         "Grep api-service/ai_resume_api/main.py for 'session' and 'clear' to verify route definition"
       ],
       "passes": false,
-      "dependencies": ["session-management", "clear-conversation"]
+      "dependencies": [
+        "session-management",
+        "clear-conversation"
+      ]
     },
     {
       "id": "ingest-container",
@@ -1876,7 +1996,9 @@
         "Run 'grep -n \"ENTRYPOINT\\|CMD\" ingest/Dockerfile' and verify the container has a proper entrypoint for the ingest pipeline"
       ],
       "passes": false,
-      "dependencies": ["mv2-file-creation"]
+      "dependencies": [
+        "mv2-file-creation"
+      ]
     },
     {
       "id": "tailwind-design-tokens",
@@ -1889,9 +2011,9 @@
         "Verify custom semantic tokens --surface-elevated, --text-subtle, --text-highlight, --success, --success-muted, --warning, --warning-muted are defined and mapped",
         "Verify font families configured: Instrument Serif (headings), Inter (body), JetBrains Mono (code)"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [],
-      "verified": false
+      "verified": true
     },
     {
       "id": "custom-animations",
@@ -1903,9 +2025,11 @@
         "Verify utility classes .animate-fade-in (0.5s ease-out), .animate-slide-up (0.5s ease-out), .animate-pulse-soft (2s ease-in-out infinite) are defined",
         "Verify stagger utilities .stagger-1 through .stagger-4 apply animation-delay from 0.1s to 0.4s"
       ],
-      "passes": false,
-      "dependencies": ["tailwind-design-tokens"],
-      "verified": false
+      "passes": true,
+      "dependencies": [
+        "tailwind-design-tokens"
+      ],
+      "verified": true
     },
     {
       "id": "shadcn-ui-components",
@@ -1917,9 +2041,11 @@
         "Verify frontend/src/components/ui/ contains at least 20 shadcn components (button, card, tabs, dialog, toast, badge, input, textarea, etc.)",
         "Verify tailwindcss-animate plugin is registered in tailwind.config.ts for shadcn animation support"
       ],
-      "passes": false,
-      "dependencies": ["tailwind-design-tokens"],
-      "verified": false
+      "passes": true,
+      "dependencies": [
+        "tailwind-design-tokens"
+      ],
+      "verified": true
     },
     {
       "id": "single-page-scroll",
@@ -1931,9 +2057,12 @@
         "Verify frontend/src/pages/Index.tsx composes all section components (Hero, Experience, FitAssessment, AIChat, Header, Footer) on a single route",
         "Verify frontend/src/App.tsx defines / as the sole content route with a * catch-all for 404"
       ],
-      "passes": false,
-      "dependencies": ["tailwind-design-tokens", "shadcn-ui-components"],
-      "verified": false
+      "passes": true,
+      "dependencies": [
+        "tailwind-design-tokens",
+        "shadcn-ui-components"
+      ],
+      "verified": true
     },
     {
       "id": "frontend-test-infra",
@@ -2038,7 +2167,10 @@
         "Verify script reports individual check pass/fail status to stdout"
       ],
       "passes": false,
-      "dependencies": ["mv2-file-creation", "profile-in-memvid"],
+      "dependencies": [
+        "mv2-file-creation",
+        "profile-in-memvid"
+      ],
       "verified": false
     },
     {
@@ -2077,7 +2209,10 @@
         "If any category scores FAIL, the overall test fails with a non-zero exit code"
       ],
       "passes": false,
-      "dependencies": ["mv2-file-creation", "ingest-retrieval-verification"]
+      "dependencies": [
+        "mv2-file-creation",
+        "ingest-retrieval-verification"
+      ]
     },
     {
       "id": "outcome-factual-accuracy",
@@ -2094,7 +2229,10 @@
         "Test fails with non-zero exit code if hallucination count > 0"
       ],
       "passes": false,
-      "dependencies": ["chat-endpoint", "profile-api"]
+      "dependencies": [
+        "chat-endpoint",
+        "profile-api"
+      ]
     },
     {
       "id": "outcome-negative-testing",
@@ -2110,7 +2248,11 @@
         "Test fails with non-zero exit code if any out-of-scope query receives a fabricated answer"
       ],
       "passes": false,
-      "dependencies": ["input-guardrails", "output-guardrails", "chat-endpoint"]
+      "dependencies": [
+        "input-guardrails",
+        "output-guardrails",
+        "chat-endpoint"
+      ]
     },
     {
       "id": "outcome-latency-nfr",
@@ -2146,7 +2288,10 @@
         "Replace the .mv2 file with a different candidate's data, restart API, and verify the profile endpoint reflects the new candidate (not cached old data)"
       ],
       "passes": false,
-      "dependencies": ["data-portability", "mv2-file-creation"]
+      "dependencies": [
+        "data-portability",
+        "mv2-file-creation"
+      ]
     },
     {
       "id": "outcome-container-deployment",
@@ -2203,7 +2348,10 @@
         "Generate an honesty report: limitation queried, response summary, acknowledged (Y/N), fabricated compensation (Y/N)"
       ],
       "passes": false,
-      "dependencies": ["chat-endpoint", "skills-parsing"]
+      "dependencies": [
+        "chat-endpoint",
+        "skills-parsing"
+      ]
     },
     {
       "id": "outcome-security-guardrails",
