@@ -198,7 +198,7 @@ jobs:
         run: cargo install cargo-tarpaulin
 
       - name: Coverage
-        run: cargo tarpaulin --out xml --skip-clean --exclude-files 'src/main.rs' --exclude-files 'src/memvid/real.rs' --fail-under 85
+        run: cargo tarpaulin --config tarpaulin-unit.toml
 
   # Memvid Integration: real.rs coverage with actual .mv2 file
   # Runs ingest to produce a .mv2, then cargo tarpaulin on integration tests
@@ -273,18 +273,7 @@ jobs:
         env:
           TEST_MV2_PATH: /tmp/test_resume.mv2
         working-directory: memvid-service
-        run: |
-          cargo tarpaulin \
-            --out xml \
-            --skip-clean \
-            --test integration_real \
-            --exclude-files 'src/main.rs' \
-            --exclude-files 'src/memvid/mock.rs' \
-            --exclude-files 'src/grpc/*' \
-            --exclude-files 'src/config.rs' \
-            --exclude-files 'src/error.rs' \
-            --exclude-files 'src/metrics.rs' \
-            --fail-under 80
+        run: cargo tarpaulin --config tarpaulin-integration.toml
 
   # Cross-Service Integration Tests: API + gRPC (mock backends)
   cross-service:

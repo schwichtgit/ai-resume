@@ -1,0 +1,22 @@
+# Coverage profile: unit-testable production code
+# Scope: all library modules except real.rs (requires .mv2 file)
+# Excludes: main.rs (thin binary entrypoint), real.rs (integration-only)
+
+[unit]
+name = "unit"
+run-types = ["Lib", "Tests"]
+include-files = [
+  "src/lib.rs",
+  "src/config.rs",
+  "src/error.rs",
+  "src/grpc/*",
+  "src/memvid/mod.rs",
+  "src/memvid/searcher.rs",
+  "src/memvid/mock.rs",
+  "src/metrics.rs",
+]
+fail-under = 85
+skip-clean = true
+
+[report]
+out = ["Xml"]

@@ -1,0 +1,16 @@
+# Coverage profile: integration tests with real .mv2 file
+# Scope: real.rs and shared searcher trait
+# Requires: TEST_MV2_PATH env var pointing to a valid .mv2 file
+
+[integration]
+name = "integration"
+test-names = ["integration_real"]
+include-files = [
+  "src/memvid/real.rs",
+  "src/memvid/searcher.rs",
+]
+fail-under = 80
+skip-clean = true
+
+[report]
+out = ["Xml"]
