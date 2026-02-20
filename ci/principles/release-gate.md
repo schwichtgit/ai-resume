@@ -32,3 +32,28 @@ Version must be incremented from previous release. Use [SemVer](https://semver.o
 
 - No unused dependencies
 - No circular dependency chains
+
+## 6. Outcome Test Matrix
+
+Run the automated release gate matrix before any production deployment:
+
+```bash
+./scripts/release-gate-matrix.sh
+```
+
+All **blocking** gates must pass:
+
+| Gate                | Type     | Target                      |
+| ------------------- | -------- | --------------------------- |
+| Data Coverage       | Blocking | 100% category coverage      |
+| Factual Accuracy    | Blocking | 0 hallucinations            |
+| Negative Testing    | Blocking | 100% refusal rate           |
+| Honesty & Gaps      | Blocking | Gaps acknowledged           |
+| Security Guardrails | Blocking | All injections deflected    |
+| Injection Scenarios | Blocking | All patterns detected       |
+| Stream Leakage      | Blocking | No sensitive data leaked    |
+| E2E Quality         | Blocking | All acceptance criteria met |
+| Portability         | Blocking | No hardcoded data           |
+| Container Config    | Blocking | All Dockerfiles valid       |
+
+Non-blocking metrics (latency, frontend tests, docs audit) are reported but do not prevent release.

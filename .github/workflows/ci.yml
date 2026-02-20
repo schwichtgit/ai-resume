@@ -76,8 +76,8 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
-      - name: Test
-        run: npm test -- --run
+      - name: Test with coverage
+        run: npm test -- --run --coverage
 
       - name: Build
         run: npm run build
@@ -151,10 +151,10 @@ jobs:
           path: ~/.cache/huggingface/hub
           key: huggingface-models-v1
 
-      - name: Test with pytest
+      - name: Test with coverage
         env:
           HF_HUB_DOWNLOAD_TIMEOUT: '120'
-        run: uv run pytest -v --tb=short -m "not slow"
+        run: uv run pytest -v --tb=short -m "not slow" --cov=ingest --cov-report=term-missing --cov-fail-under=85
 
   # Memvid Service: Rust/gRPC
   memvid-service:
@@ -192,6 +192,13 @@ jobs:
 
       - name: Test
         run: cargo test
+
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
+
+      - name: Coverage
+        run: cargo tarpaulin --out xml --skip-clean --fail-under 85
+        continue-on-error: true
 
   # Cross-Service Integration Tests: API + gRPC (mock backends)
   cross-service:
@@ -452,8 +459,46 @@ jobs:
       - name: Run API endpoint tests (mocked backends)
         run: cd api-service && uv sync --extra test && uv run pytest tests/test_e2e_api.py -v --tb=short
 
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Install ingest dependencies
+        run: cd ingest && uv sync --extra test
+
+      - name: Outcome tests -- Factual Accuracy
+        run: cd api-service && uv run pytest tests/test_outcome_factual.py -v --tb=short
+
+      - name: Outcome tests -- Negative Testing
+        run: cd api-service && uv run pytest tests/test_outcome_negative.py -v --tb=short
+
+      - name: Outcome tests -- Honesty & Gaps
+        run: cd api-service && uv run pytest tests/test_outcome_honesty.py -v --tb=short
+
+      - name: Outcome tests -- Security Guardrails
+        run: cd api-service && uv run pytest tests/test_outcome_security.py -v --tb=short
+
+      - name: Outcome tests -- Injection Scenarios
+        run: cd api-service && uv run pytest tests/test_injection_scenarios.py -v --tb=short
+
+      - name: Outcome tests -- Stream Leakage
+        run: cd api-service && uv run pytest tests/test_stream_leakage.py -v --tb=short
+
+      - name: Outcome tests -- E2E Quality
+        run: cd api-service && uv run pytest tests/test_e2e_quality.py -v --tb=short -m e2e
+
+      - name: Outcome tests -- Data Coverage (ingest)
+        env:
+          HF_HUB_DOWNLOAD_TIMEOUT: '120'
+        run: cd ingest && uv run pytest tests/test_outcome_data_coverage.py -v --tb=short -m slow
+
+      - name: Outcome tests -- Portability
+        run: bash scripts/test-outcome-portability.sh
+
+      - name: Outcome tests -- Container Config
+        run: bash scripts/test-outcome-containers.sh
+
       - name: Release gate passed
-        run: echo "Release gate passed - all checks succeeded"
+        run: echo "Release gate passed - all blocking outcome gates succeeded"
 
   # Summary job (always runs, reports overall status)
   summary:
@@ -483,16 +528,24 @@ jobs:
           echo "E2E Real: ${{ needs.e2e-real.result || 'skipped' }}"
           echo "Docs: ${{ needs.docs.result || 'skipped' }}"
           echo "Commit Standards: ${{ needs.commit-standards.result || 'skipped' }}"
+          echo ""
+          echo "=== Coverage Gate ==="
+          echo "Coverage thresholds enforced per-service:"
+          echo "  Frontend: 10% (vitest thresholds, ramping to 85%)"
+          echo "  Ingest: 85% (pytest --cov-fail-under)"
+          echo "  Memvid: 85% (cargo tarpaulin --fail-under, soft gate)"
 
-          # Fail if any required job failed
+          # Fail if any required job failed (includes coverage threshold enforcement)
           if [[ "${{ needs.frontend.result }}" == "failure" ]] || \
              [[ "${{ needs.api-service.result }}" == "failure" ]] || \
              [[ "${{ needs.ingest.result }}" == "failure" ]] || \
              [[ "${{ needs.memvid-service.result }}" == "failure" ]] || \
              [[ "${{ needs.cross-service.result }}" == "failure" ]] || \
              [[ "${{ needs.commit-standards.result }}" == "failure" ]]; then
+            echo ""
             echo "One or more jobs failed!"
             exit 1
           fi
 
-          echo "All checks passed!"
+          echo ""
+          echo "All checks passed (including coverage gates)!"
