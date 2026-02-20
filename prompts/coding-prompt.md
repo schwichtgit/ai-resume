@@ -26,17 +26,27 @@ You are the coding agent in a multi-session autonomous development pipeline. You
 
 ### Step 4: Select Feature
 
-Select the next feature to implement:
+Select the next feature to work on:
 
 - Must have `passes: false`
 - All features listed in `dependencies` must have `passes: true`
-- Among eligible features, pick the earliest (highest priority) in the array
+- **Prioritize `verified: false` features** (brownfield verification) over features without a `verified` field (greenfield implementation). Verification is faster and unlocks dependency chains.
+- Among eligible features of the same type, pick the earliest (highest priority) in the array
 
 ### Step 5: Implement
 
+**Brownfield features (`verified: false`):**
+
+- READ the existing implementation first. Do NOT rebuild from scratch.
+- Run the feature's `testing_steps` against existing code
+- Fix gaps ONLY if tests reveal actual failures
+- This is validation work, not implementation work
+
+**Greenfield features (no `verified` field):**
+
+- Build from scratch per constitution and plan
 - Follow the constitution's quality standards
 - Follow the plan's architecture decisions
-- Build any missing functionality needed by this feature
 - Write tests alongside implementation
 
 ### Step 6: Test
@@ -50,7 +60,8 @@ Select the next feature to implement:
 ### Step 7: Update Tracking
 
 - Set `passes: true` in `feature_list.json` ONLY if ALL testing steps pass
-- ONLY modify the `passes` field. Never change any other field.
+- For brownfield features: also set `verified: true` when flipping `passes` to `true`
+- ONLY modify the `passes` and `verified` fields. Never change any other field.
 - If any step fails, leave `passes: false` and note the failure in progress
 
 ### Step 8: Commit
@@ -81,7 +92,7 @@ Update `claude-progress.txt` with:
 
 - **One feature thoroughly > many features started.** Complete one before moving to the next.
 - **Fix regressions first.** A previously passing feature that now fails is the top priority.
-- **Never modify feature_list.json** except the `passes` field.
+- **Never modify feature_list.json** except the `passes` and `verified` fields.
 - **Conventional commits only.** No emoji, no AI-isms, no Co-Authored-By.
 - **Document blockers.** If externally blocked (missing API key, unavailable service), note it in progress and move to the next eligible feature.
 - **Build missing functionality.** If a feature needs something that doesn't exist yet, build it. Don't treat missing internal code as a blocker.
