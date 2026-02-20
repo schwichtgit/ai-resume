@@ -94,11 +94,19 @@ elif [ -f "frontend/Dockerfile" ]; then
     podman manifest rm "${REGISTRY}/ai-resume-frontend:${VERSION}" 2>/dev/null || true
     podman build \
         ${NO_CACHE} \
-        --build-arg VERSION="${VERSION}" \
-        --build-arg GIT_REVISION="${GIT_REVISION}" \
-        --build-arg BUILD_DATE="${BUILD_DATE}" \
         --platform linux/amd64,linux/arm64 \
         --manifest "${REGISTRY}/ai-resume-frontend:${VERSION}" \
+        --annotation "org.opencontainers.image.title=ai-resume-frontend" \
+        --annotation "org.opencontainers.image.description=React SPA with OpenResty reverse proxy" \
+        --annotation "org.opencontainers.image.url=https://github.com/schwichtgit/ai-resume/pkgs/container/ai-resume-frontend" \
+        --annotation "org.opencontainers.image.source=https://github.com/schwichtgit/ai-resume" \
+        --annotation "org.opencontainers.image.documentation=https://github.com/schwichtgit/ai-resume#readme" \
+        --annotation "org.opencontainers.image.version=${VERSION}" \
+        --annotation "org.opencontainers.image.created=${BUILD_DATE}" \
+        --annotation "org.opencontainers.image.revision=${GIT_REVISION}" \
+        --annotation "org.opencontainers.image.licenses=UNLICENSED" \
+        --annotation "org.opencontainers.image.vendor=schwichtgit" \
+        --annotation "org.opencontainers.image.authors=https://github.com/schwichtgit" \
         -f frontend/Dockerfile \
         frontend/
     log_info "Frontend built successfully"
@@ -114,11 +122,19 @@ if [ -f "memvid-service/Dockerfile" ]; then
     podman manifest rm "${REGISTRY}/ai-resume-memvid:${VERSION}" 2>/dev/null || true
     podman build \
         ${NO_CACHE} \
-        --build-arg VERSION="${VERSION}" \
-        --build-arg GIT_REVISION="${GIT_REVISION}" \
-        --build-arg BUILD_DATE="${BUILD_DATE}" \
         --platform linux/amd64,linux/arm64 \
         --manifest "${REGISTRY}/ai-resume-memvid:${VERSION}" \
+        --annotation "org.opencontainers.image.title=ai-resume-memvid" \
+        --annotation "org.opencontainers.image.description=Rust gRPC service for semantic search over resume data" \
+        --annotation "org.opencontainers.image.url=https://github.com/schwichtgit/ai-resume/pkgs/container/ai-resume-memvid" \
+        --annotation "org.opencontainers.image.source=https://github.com/schwichtgit/ai-resume" \
+        --annotation "org.opencontainers.image.documentation=https://github.com/schwichtgit/ai-resume#readme" \
+        --annotation "org.opencontainers.image.version=${VERSION}" \
+        --annotation "org.opencontainers.image.created=${BUILD_DATE}" \
+        --annotation "org.opencontainers.image.revision=${GIT_REVISION}" \
+        --annotation "org.opencontainers.image.licenses=UNLICENSED" \
+        --annotation "org.opencontainers.image.vendor=schwichtgit" \
+        --annotation "org.opencontainers.image.authors=https://github.com/schwichtgit" \
         -f memvid-service/Dockerfile \
         memvid-service/
     log_info "Rust memvid service built successfully"
@@ -134,11 +150,19 @@ if [ -f "api-service/Dockerfile" ]; then
     podman manifest rm "${REGISTRY}/ai-resume-api:${VERSION}" 2>/dev/null || true
     podman build \
         ${NO_CACHE} \
-        --build-arg VERSION="${VERSION}" \
-        --build-arg GIT_REVISION="${GIT_REVISION}" \
-        --build-arg BUILD_DATE="${BUILD_DATE}" \
         --platform linux/amd64,linux/arm64 \
         --manifest "${REGISTRY}/ai-resume-api:${VERSION}" \
+        --annotation "org.opencontainers.image.title=ai-resume-api" \
+        --annotation "org.opencontainers.image.description=FastAPI backend for profile API and gRPC client" \
+        --annotation "org.opencontainers.image.url=https://github.com/schwichtgit/ai-resume/pkgs/container/ai-resume-api" \
+        --annotation "org.opencontainers.image.source=https://github.com/schwichtgit/ai-resume" \
+        --annotation "org.opencontainers.image.documentation=https://github.com/schwichtgit/ai-resume#readme" \
+        --annotation "org.opencontainers.image.version=${VERSION}" \
+        --annotation "org.opencontainers.image.created=${BUILD_DATE}" \
+        --annotation "org.opencontainers.image.revision=${GIT_REVISION}" \
+        --annotation "org.opencontainers.image.licenses=UNLICENSED" \
+        --annotation "org.opencontainers.image.vendor=schwichtgit" \
+        --annotation "org.opencontainers.image.authors=https://github.com/schwichtgit" \
         -f api-service/Dockerfile \
         api-service/
     log_info "Python API service built successfully"
@@ -154,11 +178,19 @@ if [ -f "ingest/Dockerfile" ]; then
     podman manifest rm "${REGISTRY}/ai-resume-ingest:${VERSION}" 2>/dev/null || true
     podman build \
         ${NO_CACHE} \
-        --build-arg VERSION="${VERSION}" \
-        --build-arg GIT_REVISION="${GIT_REVISION}" \
-        --build-arg BUILD_DATE="${BUILD_DATE}" \
         --platform linux/amd64,linux/arm64 \
         --manifest "${REGISTRY}/ai-resume-ingest:${VERSION}" \
+        --annotation "org.opencontainers.image.title=ai-resume-ingest" \
+        --annotation "org.opencontainers.image.description=Data ingestion pipeline for .mv2 file creation" \
+        --annotation "org.opencontainers.image.url=https://github.com/schwichtgit/ai-resume/pkgs/container/ai-resume-ingest" \
+        --annotation "org.opencontainers.image.source=https://github.com/schwichtgit/ai-resume" \
+        --annotation "org.opencontainers.image.documentation=https://github.com/schwichtgit/ai-resume#readme" \
+        --annotation "org.opencontainers.image.version=${VERSION}" \
+        --annotation "org.opencontainers.image.created=${BUILD_DATE}" \
+        --annotation "org.opencontainers.image.revision=${GIT_REVISION}" \
+        --annotation "org.opencontainers.image.licenses=UNLICENSED" \
+        --annotation "org.opencontainers.image.vendor=schwichtgit" \
+        --annotation "org.opencontainers.image.authors=https://github.com/schwichtgit" \
         -f ingest/Dockerfile \
         ingest/
     log_info "Ingest service built successfully"

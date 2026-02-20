@@ -30,24 +30,6 @@ RUN npm run build
 # =============================================================================
 FROM alpine:3.23
 
-# OCI image metadata (dynamic values passed via --build-arg)
-ARG VERSION=latest
-ARG GIT_REVISION=unknown
-ARG BUILD_DATE=unknown
-
-LABEL org.opencontainers.image.title="ai-resume-frontend" \
-      org.opencontainers.image.description="React SPA with OpenResty reverse proxy" \
-      org.opencontainers.image.url="https://frank-resume.schwichtenberg.us" \
-      org.opencontainers.image.source="https://github.com/schwichtgit/ai-resume" \
-      org.opencontainers.image.documentation="https://github.com/schwichtgit/ai-resume#readme" \
-      org.opencontainers.image.version="${VERSION}" \
-      org.opencontainers.image.created="${BUILD_DATE}" \
-      org.opencontainers.image.revision="${GIT_REVISION}" \
-      org.opencontainers.image.licenses="UNLICENSED" \
-      org.opencontainers.image.vendor="schwichtgit" \
-      org.opencontainers.image.authors="https://github.com/schwichtgit" \
-      org.opencontainers.image.base.name="alpine:3.23"
-
 # Install OpenResty, lua-resty-dns for dynamic DNS, and create directories
 # Note: openresty package creates 'nginx' user and group automatically
 # lua-resty-dns brings in all dependencies: lua-resty-core, nginx-mod-http-lua, luajit
