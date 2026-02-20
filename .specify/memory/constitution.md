@@ -29,6 +29,11 @@ Once established, these principles do not change without explicit human approval
 - Test frameworks: Vitest + RTL (frontend), pytest (Python), cargo test (Rust)
 - Test categories required: unit, integration, end-to-end
 - E2E quality gate: 100% category coverage, 100% factual accuracy, 0% hallucination
+- E2E test reliability protocol:
+  1. **Health-gate**: Poll the service health endpoint before running any tests. Timeout and abort if the service never becomes healthy.
+  2. **Follow 3xx transparently**: Follow redirects up to 3 hops (`curl -L --max-redirs 3`). Redirects are normal infrastructure behavior (nginx trailing slashes, proxy rewrites).
+  3. **Retry only on 429**: If an API call returns HTTP 429 (rate limited), respect the `Retry-After` header and retry (max 3 attempts). This is the only retriable condition.
+  4. **Fail immediately on all other errors**: Connection refused, timeouts, HTTP 5xx, and any other non-2xx response are immediate test failures. No retries, no sleeps, no masking.
 
 ### Code Style
 

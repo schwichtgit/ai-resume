@@ -4,6 +4,11 @@ set -euo pipefail
 # E2E Test Script for Mock Feature Gates
 # Tests all combinations of MOCK_MEMVID, MOCK_MEMVID_CLIENT, MOCK_OPENROUTER
 # Validates fail-fast behavior when real implementations unavailable
+#
+# E2E Reliability Protocol:
+#   - Health-gate / port-gate before testing service behavior
+#   - Retry only on HTTP 429, respect Retry-After, max 3 retries
+#   - Fail immediately on all other errors
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
@@ -31,18 +36,109 @@ print_test() {
 }
 
 print_pass() {
-    echo -e "${GREEN}✓ PASS: $1${NC}"
+    echo -e "${GREEN}PASS: $1${NC}"
     TESTS_PASSED=$((TESTS_PASSED + 1))
 }
 
 print_fail() {
-    echo -e "${RED}✗ FAIL: $1${NC}"
+    echo -e "${RED}FAIL: $1${NC}"
     TESTS_FAILED=$((TESTS_FAILED + 1))
 }
 
 run_test() {
     TESTS_RUN=$((TESTS_RUN + 1))
     print_test "$1"
+}
+
+# Wait for a TCP port to become available
+# Usage: wait_for_port <host> <port> <timeout_seconds> <label>
+wait_for_port() {
+    local host="$1"
+    local port="$2"
+    local timeout="$3"
+    local label="$4"
+    local elapsed=0
+
+    echo -e "  Waiting for ${label} on ${host}:${port} (timeout: ${timeout}s)..."
+    while [ "$elapsed" -lt "$timeout" ]; do
+        if nc -z "$host" "$port" 2>/dev/null; then
+            echo -e "  ${GREEN}${label} is ready (${elapsed}s)${NC}"
+            return 0
+        fi
+        sleep 1
+        elapsed=$((elapsed + 1))
+    done
+
+    echo -e "  ${RED}${label} failed to start within ${timeout}s${NC}"
+    return 1
+}
+
+# Wait for HTTP health endpoint to return 2xx
+# Usage: wait_for_health URL [timeout_seconds]
+wait_for_health() {
+    local url="$1"
+    local timeout="${2:-60}"
+    local start
+    start=$(date +%s)
+    printf "Waiting for %s to become healthy..." "$url"
+    while true; do
+        local elapsed=$(( $(date +%s) - start ))
+        if [ "$elapsed" -ge "$timeout" ]; then
+            printf " TIMEOUT after %ds\n" "$timeout"
+            return 1
+        fi
+        if curl -L --max-redirs 3 -sf --max-time 5 "$url" > /dev/null 2>&1; then
+            printf " ready (%ds)\n" "$elapsed"
+            return 0
+        fi
+        sleep 2
+    done
+}
+
+# Curl wrapper that retries ONLY on HTTP 429 (rate limit).
+curl_with_429_retry() {
+    local max_retries=3
+    local attempt=0
+    local tmpfile
+    tmpfile=$(mktemp)
+    local header_file
+    header_file=$(mktemp)
+
+    while [ "$attempt" -lt "$max_retries" ]; do
+        local http_code
+        http_code=$(curl -L --max-redirs 3 -s --max-time 30 -w '%{http_code}' -o "$tmpfile" -D "$header_file" "$@" 2>/dev/null) || {
+            rm -f "$tmpfile" "$header_file"
+            echo "CURL_FAILED:connection_error" >&2
+            return 1
+        }
+
+        if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
+            cat "$tmpfile"
+            rm -f "$tmpfile" "$header_file"
+            return 0
+        elif [ "$http_code" = "429" ]; then
+            attempt=$((attempt + 1))
+            if [ "$attempt" -ge "$max_retries" ]; then
+                rm -f "$tmpfile" "$header_file"
+                echo "CURL_FAILED:429_after_${max_retries}_retries" >&2
+                return 1
+            fi
+            local retry_after
+            retry_after=$(grep -i '^retry-after:' "$header_file" 2>/dev/null | awk '{print $2}' | tr -d '\r' || echo "2")
+            if [ -z "$retry_after" ] || ! [[ "$retry_after" =~ ^[0-9]+$ ]]; then
+                retry_after=2
+            fi
+            echo "  Rate limited (429), retry $attempt/$max_retries after ${retry_after}s..." >&2
+            sleep "$retry_after"
+        else
+            rm -f "$tmpfile" "$header_file"
+            echo "CURL_FAILED:http_$http_code" >&2
+            return 1
+        fi
+    done
+
+    rm -f "$tmpfile" "$header_file"
+    return 1
 }
 
 # Cleanup function
@@ -71,12 +167,16 @@ export MOCK_MEMVID_CLIENT=true
 export MOCK_OPENROUTER=true
 
 # Start Rust service in mock mode (no .mv2 file needed)
+GRPC_PORT=50051
 ./memvid-service/target/release/memvid-service > /tmp/memvid-test.log 2>&1 &
 MEMVID_PID=$!
-sleep 2
 
-if ps -p $MEMVID_PID > /dev/null; then
-    print_pass "Rust service started with MOCK_MEMVID=true (no .mv2 file required)"
+if wait_for_port localhost "$GRPC_PORT" 15 "memvid-service (mock)"; then
+    if ps -p $MEMVID_PID > /dev/null; then
+        print_pass "Rust service started with MOCK_MEMVID=true (no .mv2 file required)"
+    else
+        print_fail "Rust service died after port opened"
+    fi
 else
     print_fail "Rust service failed to start with MOCK_MEMVID=true"
 fi
@@ -111,7 +211,8 @@ if [ ! -f "$MEMVID_FILE_PATH" ]; then
 else
     ./memvid-service/target/release/memvid-service > /tmp/memvid-test.log 2>&1 &
     MEMVID_PID=$!
-    sleep 3
+
+    wait_for_port localhost "$GRPC_PORT" 15 "memvid-service (real)" || true
 
     if ps -p $MEMVID_PID > /dev/null; then
         # Check logs for successful load
@@ -139,7 +240,15 @@ export MEMVID_FILE_PATH="./nonexistent.mv2"
 
 ./memvid-service/target/release/memvid-service > /tmp/memvid-fail-test.log 2>&1 &
 MEMVID_PID=$!
-sleep 2
+
+# Wait for the process to exit (expected to fail fast)
+# Use wait with timeout: try for up to 10s
+for _i in $(seq 1 10); do
+    if ! ps -p $MEMVID_PID > /dev/null 2>&1; then
+        break
+    fi
+    sleep 1
+done
 
 if ps -p $MEMVID_PID > /dev/null; then
     print_fail "Rust service should have exited with error for missing .mv2 file"
@@ -244,10 +353,12 @@ else
     # Start Rust service
     ./memvid-service/target/release/memvid-service > /tmp/memvid-e2e.log 2>&1 &
     MEMVID_PID=$!
-    sleep 3
 
-    if ! ps -p $MEMVID_PID > /dev/null; then
+    if ! wait_for_port localhost "$GRPC_PORT" 15 "memvid-service (e2e)"; then
         print_fail "Rust service failed to start"
+        cat /tmp/memvid-e2e.log
+    elif ! ps -p $MEMVID_PID > /dev/null; then
+        print_fail "Rust service died after port opened"
         cat /tmp/memvid-e2e.log
     else
         # Start Python API service
@@ -256,16 +367,18 @@ else
 
         uvicorn ai_resume_api.main:app --host 0.0.0.0 --port 3000 > /tmp/api-e2e.log 2>&1 &
         API_PID=$!
-        sleep 3
 
-        if ! ps -p $API_PID > /dev/null; then
-            print_fail "Python API failed to start"
+        if ! wait_for_health "http://localhost:3000/api/v1/health" 30; then
+            print_fail "Python API failed to become healthy"
+            cat /tmp/api-e2e.log
+        elif ! ps -p $API_PID > /dev/null; then
+            print_fail "Python API died after starting"
             cat /tmp/api-e2e.log
         else
-            # Test the full stack with a query
-            response=$(curl -s -X POST http://localhost:3000/api/v1/chat \
+            # Test the full stack with a query (rate-limited endpoint)
+            response=$(curl_with_429_retry -X POST "http://localhost:3000/api/v1/chat" \
                 -H "Content-Type: application/json" \
-                -d '{"message":"What programming languages does she know?","stream":false}' || echo "CURL_FAILED")
+                -d '{"message":"What programming languages does she know?","stream":false}') || response="CURL_FAILED"
 
             if echo "$response" | grep -q "mock"; then
                 print_pass "Full E2E stack working (real memvid + real gRPC + mock OpenRouter)"
@@ -291,9 +404,9 @@ echo -e "${GREEN}Passed: $TESTS_PASSED${NC}"
 echo -e "${RED}Failed: $TESTS_FAILED${NC}"
 
 if [ $TESTS_FAILED -eq 0 ]; then
-    echo -e "\n${GREEN}✓ All tests passed!${NC}\n"
+    echo -e "\n${GREEN}All tests passed!${NC}\n"
     exit 0
 else
-    echo -e "\n${RED}✗ Some tests failed${NC}\n"
+    echo -e "\n${RED}Some tests failed${NC}\n"
     exit 1
 fi

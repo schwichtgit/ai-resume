@@ -6,8 +6,13 @@
 #   - deployment/.env configured with OPENROUTER_API_KEY
 #   - resume.mv2 created via ingest
 #   - podman-compose installed in deployment/.venv
+#
+# E2E Reliability Protocol:
+#   - Health-gate via podman health checks (poll with timeout)
+#   - Retry only on HTTP 429, respect Retry-After, max 3 retries
+#   - Fail immediately on all other errors
 
-set -uo pipefail
+set -euo pipefail
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -89,7 +94,7 @@ trap cleanup EXIT
 log_info "Starting services with podman-compose..."
 podman-compose up -d
 
-# Wait for services to be healthy
+# Health-gate: Wait for all services to become healthy via podman health checks
 log_info "Waiting for services to become healthy..."
 MAX_WAIT=60
 ELAPSED=0
@@ -124,43 +129,40 @@ TESTS_FAILED=0
 
 if [ "$MEMVID_CHECK" = "yes" ]; then
     log_pass "Memvid service is healthy"
-    ((TESTS_PASSED++))
+    TESTS_PASSED=$((TESTS_PASSED + 1))
 else
     log_fail "Memvid service is NOT healthy"
-    ((TESTS_FAILED++))
+    TESTS_FAILED=$((TESTS_FAILED + 1))
 fi
 
 if [ "$API_CHECK" = "yes" ]; then
     log_pass "API service is healthy"
-    ((TESTS_PASSED++))
+    TESTS_PASSED=$((TESTS_PASSED + 1))
 else
     log_fail "API service is NOT healthy"
-    ((TESTS_FAILED++))
+    TESTS_FAILED=$((TESTS_FAILED + 1))
 fi
 
 if [ "$FRONTEND_CHECK" = "yes" ]; then
     log_pass "Frontend service is healthy"
-    ((TESTS_PASSED++))
+    TESTS_PASSED=$((TESTS_PASSED + 1))
 else
     log_fail "Frontend service is NOT healthy"
-    ((TESTS_FAILED++))
+    TESTS_FAILED=$((TESTS_FAILED + 1))
 fi
 
 # Integration test: Test API endpoints from host (frontend is exposed on localhost:8080)
 log_info "Running integration tests..."
 
-# Give services a moment to fully initialize
-sleep 2
-
 # Test API profile endpoint through frontend (localhost:8080)
 log_info "Testing API profile endpoint..."
-PROFILE=$(curl -s http://localhost:8080/api/v1/profile 2>/dev/null || echo "")
-if echo "$PROFILE" | grep -q "name"; then
+PROFILE=$(curl -L --max-redirs 3 -sf --max-time 30 "http://localhost:8080/api/v1/profile") || PROFILE=""
+if [ -n "$PROFILE" ] && echo "$PROFILE" | grep -q "name"; then
     log_pass "API profile endpoint working via frontend"
-    ((TESTS_PASSED++))
+    TESTS_PASSED=$((TESTS_PASSED + 1))
 else
     log_fail "API profile endpoint not accessible"
-    ((TESTS_FAILED++))
+    TESTS_FAILED=$((TESTS_FAILED + 1))
 fi
 
 # Verify memvid loaded real data from logs
@@ -168,10 +170,10 @@ log_info "Verifying memvid loaded real data..."
 MEMVID_LOGS=$(podman-compose logs ai-resume-memvid 2>/dev/null | grep -i "real memvid" || echo "")
 if echo "$MEMVID_LOGS" | grep -q "Real memvid"; then
     log_pass "Memvid loaded real resume.mv2 file"
-    ((TESTS_PASSED++))
+    TESTS_PASSED=$((TESTS_PASSED + 1))
 else
     log_fail "Memvid did not load real data"
-    ((TESTS_FAILED++))
+    TESTS_FAILED=$((TESTS_FAILED + 1))
 fi
 
 echo ""

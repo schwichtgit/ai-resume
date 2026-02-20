@@ -74,7 +74,7 @@ wait_for_health() {
             printf " TIMEOUT after %ds\n" "$timeout"
             return 1
         fi
-        if curl -sf --max-time 5 "$url" > /dev/null 2>&1; then
+        if curl -L --max-redirs 3 -sf --max-time 5 "$url" > /dev/null 2>&1; then
             printf " ready (%ds)\n" "$elapsed"
             return 0
         fi
@@ -97,7 +97,7 @@ curl_with_429_retry() {
     while [ "$attempt" -lt "$max_retries" ]; do
         local http_code
         # Use -s (no -f) so curl doesn't exit non-zero on 4xx/5xx -- we handle codes ourselves
-        http_code=$(curl -s --max-time 30 -w '%{http_code}' -o "$tmpfile" -D "$header_file" "$@" 2>/dev/null) || {
+        http_code=$(curl -L --max-redirs 3 -s --max-time 30 -w '%{http_code}' -o "$tmpfile" -D "$header_file" "$@" 2>/dev/null) || {
             # curl itself failed (connection refused, DNS error, timeout, etc.)
             rm -f "$tmpfile" "$header_file"
             echo "CURL_FAILED:connection_error" >&2
@@ -314,7 +314,7 @@ print_header "Phase 3: Semantic Quality Assertions"
 # --- Test 1: Profile name matches example_resume.md ---
 run_test "Profile name is 'Jane Chen' (from example_resume.md, not mock data)"
 
-profile_response=$(curl -sf --max-time 30 "$BASE_URL/profile") || {
+profile_response=$(curl -L --max-redirs 3 -sf --max-time 30 "$BASE_URL/profile") || {
     print_fail "Could not reach /api/v1/profile"
     profile_response=""
 }
@@ -362,7 +362,7 @@ fi
 # --- Test 3: Health shows memvid_connected=true with real search ---
 run_test "Health endpoint reports memvid_connected=true (real .mv2)"
 
-health_response=$(curl -sf --max-time 30 "$BASE_URL/health") || {
+health_response=$(curl -L --max-redirs 3 -sf --max-time 30 "$BASE_URL/health") || {
     print_fail "Could not reach /api/v1/health"
     health_response=""
 }
@@ -420,7 +420,7 @@ fi
 # --- Test 5: Suggested questions match example_resume.md ---
 run_test "Suggested questions include questions from example_resume.md"
 
-questions_response=$(curl -sf --max-time 30 "$BASE_URL/suggested-questions") || {
+questions_response=$(curl -L --max-redirs 3 -sf --max-time 30 "$BASE_URL/suggested-questions") || {
     print_fail "Could not reach /api/v1/suggested-questions"
     questions_response=""
 }
@@ -496,7 +496,7 @@ fi
 run_test "Streaming chat returns SSE events with real search context"
 
 SSE_OUTPUT="/tmp/e2e-real-sse-output.txt"
-curl -sf -N -X POST "$BASE_URL/chat" \
+curl -L --max-redirs 3 -sf -N -X POST "$BASE_URL/chat" \
     -H "Content-Type: application/json" \
     -d '{"message":"Tell me about this persons security experience","stream":true}' \
     --max-time 30 \
