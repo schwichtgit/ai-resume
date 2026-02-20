@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Menu, X, Sun, Moon } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
-import { useProfileContext } from '@/context/ProfileContext';
+import { useProfileContext } from '@/hooks/useProfileContext';
 
 interface HeaderProps {
   onOpenChat?: () => void;

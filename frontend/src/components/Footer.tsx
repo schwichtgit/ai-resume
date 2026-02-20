@@ -1,5 +1,5 @@
 import { Github, Linkedin, Mail } from 'lucide-react';
-import { useProfileContext } from '@/context/ProfileContext';
+import { useProfileContext } from '@/hooks/useProfileContext';
 
 const Footer = () => {
   const { profile, isLoading } = useProfileContext();

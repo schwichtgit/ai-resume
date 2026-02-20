@@ -10,7 +10,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useStreamingChat } from '@/hooks/useStreamingChat';
 import { getSuggestedQuestions, checkHealth } from '@/lib/api-client';
-import { useProfileContext } from '@/context/ProfileContext';
+import { useProfileContext } from '@/hooks/useProfileContext';
 
 interface AIChatProps {
   isOpen: boolean;

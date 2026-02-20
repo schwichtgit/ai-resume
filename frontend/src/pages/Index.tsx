@@ -6,7 +6,7 @@ import FitAssessment from '@/components/FitAssessment';
 import AIChat from '@/components/AIChat';
 import Footer from '@/components/Footer';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { useProfileContext } from '@/context/ProfileContext';
+import { useProfileContext } from '@/hooks/useProfileContext';
 
 const Index = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);

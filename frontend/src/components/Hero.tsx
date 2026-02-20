@@ -1,5 +1,5 @@
 import { MessageSquare } from 'lucide-react';
-import { useProfileContext } from '@/context/ProfileContext';
+import { useProfileContext } from '@/hooks/useProfileContext';
 
 interface HeroProps {
   onOpenChat: () => void;
