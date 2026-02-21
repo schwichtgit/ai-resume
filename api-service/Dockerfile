@@ -1,6 +1,6 @@
 # --- Stage 1: Dependency Builder ---
 # Uses the official uv image to create the production virtual environment
-FROM ghcr.io/astral-sh/uv:0.9.26-python3.12-bookworm-slim AS builder
+FROM astral/uv:python3.12-bookworm-slim AS builder
 
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy

@@ -4,7 +4,7 @@
 # =============================================================================
 # Stage 1: Build React application
 # =============================================================================
-FROM node:24.13.0-bookworm-slim AS builder
+FROM node:24.13.1-bookworm-slim AS builder
 
 WORKDIR /app
 
@@ -28,7 +28,7 @@ RUN npm run build
 # =============================================================================
 # Stage 2: Production OpenResty server (Alpine package)
 # =============================================================================
-FROM alpine:3.23
+FROM alpine:3.23.3
 
 # Install OpenResty, lua-resty-dns for dynamic DNS, and create directories
 # Note: openresty package creates 'nginx' user and group automatically

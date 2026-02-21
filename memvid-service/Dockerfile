@@ -2,7 +2,7 @@
 # Supports amd64 and arm64 architectures
 
 # Stage 1: Build the Rust binary
-FROM rust:1.92.0-slim AS builder
+FROM rust:1.93.1-slim AS builder
 
 ARG TARGETARCH
 
