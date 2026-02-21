@@ -264,7 +264,7 @@ jobs:
       # Disable by setting repository variable REBUILD_TIME_INDEX=false
       - name: Rebuild .mv2 time index (Bug C workaround)
         if: ${{ vars.REBUILD_TIME_INDEX != 'false' }}
-        run: npx -y memvid-cli@2.0.153 doctor --rebuild-time-index /tmp/test_resume.mv2
+        run: npx -y memvid-cli@2.0.157 doctor --rebuild-time-index /tmp/test_resume.mv2
 
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin
