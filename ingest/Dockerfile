@@ -15,8 +15,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
 
 # --- Stage 2: Runtime ---
-# Distroless Python runtime (no pip, smaller attack surface)
-FROM cgr.dev/chainguard/python:3.12
+# Ubuntu Python 3.12 on Ubuntu 24.04 LTS — stable, pinned, regularly patched
+FROM docker.io/ubuntu/python:3.12-24.04_stable
 
 # Production hardening: no .pyc creation at runtime, unbuffered logs
 ENV PYTHONUNBUFFERED=1 \
@@ -37,7 +37,9 @@ RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTr
 # Copy application source
 COPY ingest.py ./ingest.py
 
-# Chainguard distroless images run as non-root by default
+# Run as a non-root user for security hardening
+RUN useradd -r -u 1000 -s /bin/false appuser
+USER appuser
 
 # One-shot service: run ingest pipeline then exit
 CMD ["python", "ingest.py"]
