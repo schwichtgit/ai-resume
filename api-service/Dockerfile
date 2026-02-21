@@ -1,6 +1,6 @@
 # --- Stage 1: Dependency Builder ---
 # Uses the official uv image to create the production virtual environment
-FROM ghcr.io/astral-sh/uv:0.9.26-python3.12-bookworm-slim AS builder
+FROM astral/uv:python3.12-bookworm-slim AS builder
 
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
@@ -15,7 +15,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
 
 # --- Stage 2: Runtime ---
-# The lean final image based on the stable Bookworm release
+# python:3.12-slim-bookworm matches the builder's Debian lineage so venv
+# symlinks (which point to /usr/local/bin/python3) resolve correctly.
 FROM python:3.12-slim-bookworm
 
 # Production hardening: no .pyc creation at runtime, unbuffered logs
@@ -31,22 +32,19 @@ COPY --from=builder /app/.venv /app/.venv
 
 # Copy application source (includes committed proto stubs with correct imports)
 COPY ai_resume_api/ ./ai_resume_api/
-COPY healthcheck /healthcheck
-COPY start.py /start.py
 
-# Ensure scripts are executable, create non-root user, and patch system
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    chmod +x /healthcheck /start.py && \
+# Copy scripts with executable bit set at COPY time
+COPY --chmod=755 healthcheck /healthcheck
+COPY --chmod=755 start.py /start.py
+
+# Remove pip to eliminate CVE-2025-8869, then create unprivileged user
+RUN pip uninstall -y pip setuptools && \
     useradd -r -u 1000 -s /bin/false appuser
+
+USER appuser
 
 # Expose the API port
 EXPOSE 3000
-
-# Run as non-root user
-USER appuser
 
 # Launch the service using the venv python
 CMD ["python", "/start.py"]
