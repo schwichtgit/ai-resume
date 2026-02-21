@@ -531,13 +531,11 @@ const SidebarMenuSkeleton = React.forwardRef<
     showIcon?: boolean;
   }
 >(({ className, showIcon = false, ...props }, ref) => {
-  // Random width between 50 to 90%.
-  const [width, setWidth] = React.useState("50%");
-
-  React.useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setWidth(`${Math.floor(Math.random() * 40) + 50}%`);
-  }, []);
+  // Use a stable random seed based on component instance to maintain consistency across renders
+  // This avoids the purity issue of calling Math.random() directly in render
+  const uniqueId = React.useId();
+  const seed = parseInt(uniqueId.replace(/\D/g, "").slice(-8), 10) || 0;
+  const width = `${(seed % 40) + 50}%`;
 
   return (
     <div
