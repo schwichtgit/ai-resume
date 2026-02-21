@@ -31,20 +31,21 @@ COPY --from=builder /app/.venv /app/.venv
 
 # Copy application source (includes committed proto stubs with correct imports)
 COPY ai_resume_api/ ./ai_resume_api/
-COPY healthcheck /healthcheck
-COPY start.py /start.py
 
-# Clear the inherited pebble entrypoint; remove the vulnerable binary
-# (CVE-2025-68121: crypto/tls in pebble's embedded Go stdlib v1.24.12).
-# pebble is not used — we run python directly via CMD.
-ENTRYPOINT []
-RUN rm /usr/bin/pebble \
-    && chmod +x /healthcheck /start.py \
-    && useradd -r -u 1000 -s /bin/false appuser
-USER appuser
+# Copy scripts with executable bit set at COPY time — no RUN chmod needed.
+# This image has no shell, so RUN commands are not available in this stage.
+COPY --chmod=755 healthcheck /healthcheck
+COPY --chmod=755 start.py /start.py
+
+# pebble is not invoked: ENTRYPOINT below overrides the inherited pebble entrypoint.
+# The binary cannot be removed (no shell in this image) but is never executed.
+# CVE-2025-68121 is mitigated by not invoking pebble.
+# _daemon_ (uid 584792) is the only unprivileged user available in this distroless image.
+USER _daemon_
 
 # Expose the API port
 EXPOSE 3000
 
 # Launch the service using the venv python
-CMD ["python", "/start.py"]
+ENTRYPOINT ["/usr/bin/python3"]
+CMD ["/start.py"]
