@@ -15,8 +15,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
 
 # --- Stage 2: Runtime ---
-# The lean final image based on the stable Bookworm release
-FROM python:3.12-slim-bookworm
+# Distroless Python runtime (no pip, smaller attack surface)
+FROM cgr.dev/chainguard/python:3.12
 
 # Production hardening: no .pyc creation at runtime, unbuffered logs
 ENV PYTHONUNBUFFERED=1 \
@@ -37,15 +37,7 @@ RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTr
 # Copy application source
 COPY ingest.py ./ingest.py
 
-# Patch system and create non-root user
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    useradd -r -u 1000 -s /bin/false appuser
-
-# Run as non-root user
-USER appuser
+# Chainguard distroless images run as non-root by default
 
 # One-shot service: run ingest pipeline then exit
 CMD ["python", "ingest.py"]

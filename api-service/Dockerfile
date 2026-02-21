@@ -15,8 +15,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
 
 # --- Stage 2: Runtime ---
-# The lean final image based on the stable Bookworm release
-FROM python:3.12-slim-bookworm
+# Distroless Python runtime (no pip, smaller attack surface)
+FROM cgr.dev/chainguard/python:3.12
 
 # Production hardening: no .pyc creation at runtime, unbuffered logs
 ENV PYTHONUNBUFFERED=1 \
@@ -34,19 +34,13 @@ COPY ai_resume_api/ ./ai_resume_api/
 COPY healthcheck /healthcheck
 COPY start.py /start.py
 
-# Ensure scripts are executable, create non-root user, and patch system
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    chmod +x /healthcheck /start.py && \
-    useradd -r -u 1000 -s /bin/false appuser
+# Ensure scripts are executable
+RUN chmod +x /healthcheck /start.py
 
 # Expose the API port
 EXPOSE 3000
 
-# Run as non-root user
-USER appuser
+# Chainguard distroless images run as non-root by default
 
 # Launch the service using the venv python
 CMD ["python", "/start.py"]
