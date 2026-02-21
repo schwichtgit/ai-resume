@@ -15,8 +15,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
 
 # --- Stage 2: Runtime ---
-# Ubuntu Python 3.12 on Ubuntu 24.04 LTS — stable, pinned, regularly patched
-FROM docker.io/ubuntu/python:3.12-24.04_stable
+# python:3.12-slim-bookworm matches the builder's Debian lineage so venv
+# symlinks (which point to /usr/local/bin/python3) resolve correctly.
+FROM python:3.12-slim-bookworm
 
 # Production hardening: no .pyc creation at runtime, unbuffered logs
 ENV PYTHONUNBUFFERED=1 \
@@ -32,20 +33,18 @@ COPY --from=builder /app/.venv /app/.venv
 # Copy application source (includes committed proto stubs with correct imports)
 COPY ai_resume_api/ ./ai_resume_api/
 
-# Copy scripts with executable bit set at COPY time — no RUN chmod needed.
-# This image has no shell, so RUN commands are not available in this stage.
+# Copy scripts with executable bit set at COPY time
 COPY --chmod=755 healthcheck /healthcheck
 COPY --chmod=755 start.py /start.py
 
-# pebble is not invoked: ENTRYPOINT below overrides the inherited pebble entrypoint.
-# The binary cannot be removed (no shell in this image) but is never executed.
-# CVE-2025-68121 is mitigated by not invoking pebble.
-# _daemon_ (uid 584792) is the only unprivileged user available in this distroless image.
-USER _daemon_
+# Remove pip to eliminate CVE-2025-8869, then create unprivileged user
+RUN pip uninstall -y pip setuptools && \
+    useradd -r -u 1000 -s /bin/false appuser
+
+USER appuser
 
 # Expose the API port
 EXPOSE 3000
 
 # Launch the service using the venv python
-ENTRYPOINT ["/usr/bin/python3"]
-CMD ["/start.py"]
+CMD ["python", "/start.py"]
