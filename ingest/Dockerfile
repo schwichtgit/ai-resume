@@ -37,8 +37,12 @@ RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTr
 # Copy application source
 COPY ingest.py ./ingest.py
 
-# Run as a non-root user for security hardening
-RUN useradd -r -u 1000 -s /bin/false appuser
+# Clear the inherited pebble entrypoint; remove the vulnerable binary
+# (CVE-2025-68121: crypto/tls in pebble's embedded Go stdlib v1.24.12).
+# pebble is not used — we run python directly via CMD.
+ENTRYPOINT []
+RUN rm /usr/bin/pebble \
+    && useradd -r -u 1000 -s /bin/false appuser
 USER appuser
 
 # One-shot service: run ingest pipeline then exit

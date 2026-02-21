@@ -34,11 +34,13 @@ COPY ai_resume_api/ ./ai_resume_api/
 COPY healthcheck /healthcheck
 COPY start.py /start.py
 
-# Ensure scripts are executable (must run as root, before USER switch)
-RUN chmod +x /healthcheck /start.py
-
-# Run as a non-root user for security hardening
-RUN useradd -r -u 1000 -s /bin/false appuser
+# Clear the inherited pebble entrypoint; remove the vulnerable binary
+# (CVE-2025-68121: crypto/tls in pebble's embedded Go stdlib v1.24.12).
+# pebble is not used — we run python directly via CMD.
+ENTRYPOINT []
+RUN rm /usr/bin/pebble \
+    && chmod +x /healthcheck /start.py \
+    && useradd -r -u 1000 -s /bin/false appuser
 USER appuser
 
 # Expose the API port
