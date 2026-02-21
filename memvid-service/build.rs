@@ -43,7 +43,7 @@ fn main() -> Result<()> {
         panic!("Proto file not found at: {}", proto_file.display());
     }
 
-    tonic_build::Builder::new()
+    tonic_prost_build::configure()
         .build_server(true)
         .build_client(true)
         .out_dir(&out_dir)

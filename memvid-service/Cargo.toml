@@ -26,9 +26,10 @@ metrics = "0.24"
 metrics-exporter-prometheus = "0.18"
 
 # gRPC (for communication with Python service)
-tonic = "0.12"
-tonic-health = "0.12"
-prost = "0.13"
+tonic = "0.14.5"
+tonic-health = "0.14.5"
+tonic-prost = "0.14.5"
+prost = "0.14"
 
 # Async utilities
 async-trait = "0.1"
@@ -42,7 +43,7 @@ chrono = "0.4"
 
 [build-dependencies]
 # For gRPC code generation
-tonic-build = "0.12"
+tonic-prost-build = "0.14.5"
 
 [dev-dependencies]
 # HTTP client for integration tests
