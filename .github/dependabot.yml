@@ -5,6 +5,8 @@ updates:
     directory: '/frontend'
     schedule:
       interval: 'weekly'
+    commit-message:
+      prefix: 'build(deps-dev):'
     groups:
       minor-and-patch:
         update-types:
@@ -16,6 +18,8 @@ updates:
     directory: '/api-service'
     schedule:
       interval: 'weekly'
+    commit-message:
+      prefix: 'build(deps):'
     groups:
       minor-and-patch:
         update-types:
@@ -27,6 +31,8 @@ updates:
     directory: '/ingest'
     schedule:
       interval: 'weekly'
+    commit-message:
+      prefix: 'build(deps):'
     groups:
       minor-and-patch:
         update-types:
@@ -38,6 +44,8 @@ updates:
     directory: '/memvid-service'
     schedule:
       interval: 'weekly'
+    commit-message:
+      prefix: 'build(deps):'
     groups:
       minor-and-patch:
         update-types:
@@ -49,6 +57,8 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
+    commit-message:
+      prefix: 'build(deps):'
     groups:
       minor-and-patch:
         update-types:
