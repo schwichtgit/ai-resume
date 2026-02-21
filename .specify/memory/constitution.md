@@ -44,6 +44,78 @@ Once established, these principles do not change without explicit human approval
 | Rust       | Clippy `-D warnings` | cargo fmt   | cargo check                                         |
 | Shell      | ShellCheck           | shfmt       | N/A                                                 |
 
+### React/TypeScript Patterns
+
+This project enforces strict React hook and purity patterns via ESLint v10. These constraints reflect React's official guidance, not arbitrary restrictions. **Do not disable rules with eslint-disable comments—refactor code to follow them.**
+
+**Effect Scoping Rule:** Effects must not call setState synchronously. State mutations must be scoped to the effect callback itself, never called from render or outside the effect. Violations indicate a component that is mutating state during render (impure) or attempting to derive state in an event handler (effect should own the mutation).
+
+- **Pattern (correct):** State is set only within the effect callback
+
+```tsx
+useEffect(() => {
+  setState(newValue);  // ✓ scoped to effect
+}, [deps]);
+```
+
+- **Anti-pattern (violates rules):** Calling setState in render or event handlers
+
+```tsx
+const handleClick = () => setState(value);  // ✗ state mutation outside effect
+```
+
+- **Fix:** Move the mutation into an effect or callback that controls when it fires
+
+**External State Subscription Rule:** When subscribing to external state (window.matchMedia, addEventListener), use `useSyncExternalStore` instead of useState + useEffect. This ensures the component does not render with stale state during SSR or during effect cleanup.
+
+- **Pattern (correct):** useSyncExternalStore for external subscriptions (see `src/hooks/use-mobile.tsx`)
+
+```tsx
+const isMobile = useSyncExternalStore(
+  (onStoreChange) => {
+    const mediaQuery = window.matchMedia("(max-width: 768px)");
+    mediaQuery.addEventListener("change", onStoreChange);
+    return () => mediaQuery.removeEventListener("change", onStoreChange);
+  },
+  () => window.matchMedia("(max-width: 768px)").matches,
+  () => false  // server-side default
+);
+```
+
+- **Anti-pattern (violates exhaustive-deps):** useState + useEffect with incomplete dependencies
+
+```tsx
+const [isMobile, setIsMobile] = useState(false);
+useEffect(() => {
+  const mediaQuery = window.matchMedia("(max-width: 768px)");
+  setIsMobile(mediaQuery.matches);
+  // ✗ forgot to add event listener cleanup or dependency tracking
+}, []);
+```
+
+**Purity in Render:** Functions passed to React hooks (render functions, event handlers, effect callbacks) must be pure—no impure functions like Math.random() in render. If deterministic but varying identifiers are needed (e.g., for styling), use `useId()`.
+
+- **Pattern (correct):** useId for stable, deterministic values (see `src/components/ui/carousel.tsx`)
+
+```tsx
+const id = useId();
+return <div id={`carousel-${id}`} />;  // ✓ stable across renders
+```
+
+- **Anti-pattern (violates purity):** Math.random() in render
+
+```tsx
+return <div id={`carousel-${Math.random()}`} />;  // ✗ impure, ID changes every render
+```
+
+**Compliance Checkpoint:** Commit 7049f73 ("refactor(hooks,ui): remove eslint-disable from react-hooks violations") documents patterns from real refactoring:
+
+- `src/hooks/use-mobile.tsx`: useSyncExternalStore example
+- `src/components/ui/carousel.tsx`: useId + effect scoping example
+- `src/components/ui/sidebar.tsx`: useId vs Math.random decision
+
+These patterns should be referenced as teaching examples for new code, not as special exceptions. Every new component should follow them without eslint-disable comments.
+
 ### Rate Limiting
 
 - 10 requests per minute per real client IP
