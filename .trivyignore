@@ -1,0 +1,8 @@
+# Trivy ignore file
+# Add CVE IDs (one per line) to suppress specific vulnerabilities.
+# Each entry should include a comment explaining why it is accepted.
+#
+# Example:
+#   CVE-2024-XXXXX  # accepted: no fix available, low exploitability in this context
+#
+# Reference: https://aquasecurity.github.io/trivy/latest/docs/configuration/filtering/#by-finding-ids
