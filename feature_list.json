@@ -2284,6 +2284,81 @@
       "passes": true,
       "verified": true,
       "dependencies": ["upstream-proxy-ips"]
+    },
+    {
+      "id": "os-independent-protoc",
+      "category": "infrastructure",
+      "title": "OS-Independent Protoc Binary for Memvid Builder",
+      "description": "Replace Debian-packaged protobuf-compiler with a pinned protoc binary downloaded from GitHub releases, decoupling protoc version from the builder OS. Remove unnecessary libprotobuf-dev dependency.",
+      "testing_steps": [
+        "Run 'grep -n PROTOC_VERSION memvid-service/Dockerfile' and verify an ARG PROTOC_VERSION is declared with a v28.x version",
+        "Run 'grep -n protobuf-compiler memvid-service/Dockerfile' and verify protobuf-compiler is NOT installed via apt-get",
+        "Run 'grep -n libprotobuf-dev memvid-service/Dockerfile' and verify libprotobuf-dev is NOT installed via apt-get",
+        "Run 'grep -n protocolbuffers/protobuf/releases memvid-service/Dockerfile' and verify protoc is downloaded from GitHub releases",
+        "Run 'grep -n TARGETARCH memvid-service/Dockerfile' and verify TARGETARCH is mapped to protoc release naming (x86_64 for amd64, aarch_64 for arm64)",
+        "Run 'grep -n protoc.*version memvid-service/Dockerfile' and verify protoc --version is called to validate the installation",
+        "Run 'docker build --target builder -t memvid-builder memvid-service/' from the repo root (with proto/ copied) and verify the build succeeds including tonic-build code generation"
+      ],
+      "passes": false,
+      "dependencies": ["memvid-service-container"]
+    },
+    {
+      "id": "memvid-distroless-runtime",
+      "category": "infrastructure",
+      "title": "Distroless Runtime for Memvid Service Container",
+      "description": "Replace debian:trixie-slim runtime with gcr.io/distroless/cc-debian12:nonroot. Pin builder to rust:slim-bookworm for glibc 2.36 compatibility. Implement --health CLI flag with TCP probe to gRPC port. UID changes from 1000 to 65534 (distroless nonroot).",
+      "testing_steps": [
+        "Run 'grep -n distroless/cc-debian12 memvid-service/Dockerfile' and verify the runtime stage uses gcr.io/distroless/cc-debian12:nonroot",
+        "Run 'grep -n slim-bookworm memvid-service/Dockerfile' and verify the builder stage uses a bookworm-based Rust image",
+        "Run 'grep -n debian:trixie memvid-service/Dockerfile' and verify debian:trixie-slim is NOT referenced",
+        "Run 'grep -n useradd memvid-service/Dockerfile' and verify useradd is NOT used (distroless :nonroot tag provides the non-root user)",
+        "Run 'grep -n \"ln -s\" memvid-service/Dockerfile' and verify no symlink commands exist in the Dockerfile",
+        "Run 'grep -rn \"\\-\\-health\" memvid-service/src/' and verify a --health CLI flag is implemented that performs a TCP connect to localhost:50051",
+        "Run 'cd memvid-service && cargo test health' and verify health check tests pass",
+        "Run 'grep -n healthcheck deployment/compose.yaml' and verify the memvid-service healthcheck uses /usr/local/bin/memvid-service --health",
+        "Build the container with 'cp -r proto/ memvid-service/proto/ && docker build -t memvid-test memvid-service/' and verify the build succeeds",
+        "Run 'docker run --rm memvid-test --health; echo $?' and verify exit code is 1 (no server running, expected failure proves the flag works)"
+      ],
+      "passes": false,
+      "dependencies": ["memvid-service-container", "os-independent-protoc"]
+    },
+    {
+      "id": "cargo-auditable-sbom",
+      "category": "infrastructure",
+      "title": "Rust Dependency SBOM via cargo-auditable",
+      "description": "Install cargo-auditable in the memvid-service builder stage and use 'cargo auditable build --release' to embed a .dep-v0 ELF section with compressed dependency metadata. Enables Trivy/Grype to detect Rust crate CVEs during container scans.",
+      "testing_steps": [
+        "Run 'grep -n cargo-auditable memvid-service/Dockerfile' and verify cargo-auditable is installed in the builder stage via 'cargo install cargo-auditable'",
+        "Run 'grep -n \"cargo auditable build\" memvid-service/Dockerfile' and verify 'cargo auditable build --release' is used instead of 'cargo build --release'",
+        "Run 'grep -n \"cargo build.*--release\" memvid-service/Dockerfile' and verify plain 'cargo build --release' is NOT used for the final binary (only for dependency caching layer if present)",
+        "Build the container with 'cp -r proto/ memvid-service/proto/ && docker build -t memvid-sbom-test memvid-service/' and verify the build succeeds",
+        "Run 'docker run --rm --entrypoint sh gcr.io/distroless/cc-debian12 -c echo 2>/dev/null || true' to confirm we need an alternative verification method for distroless",
+        "Run 'docker create --name sbom-check memvid-sbom-test && docker cp sbom-check:/usr/local/bin/memvid-service /tmp/memvid-binary && docker rm sbom-check' to extract the binary",
+        "Run 'readelf -S /tmp/memvid-binary | grep dep-v0' and verify the .dep-v0 section exists in the binary",
+        "Run 'rm -f /tmp/memvid-binary' to clean up the extracted binary"
+      ],
+      "passes": false,
+      "dependencies": ["memvid-service-container"]
+    },
+    {
+      "id": "trivy-severity-gate",
+      "category": "functional",
+      "title": "Trivy Severity Filter Fix and CI Exit-Code Gate",
+      "description": "Fix broken Trivy severity filter (aquasecurity/trivy-action#435) using TRIVY_SEVERITY env var. Add dual-run strategy: Run 1 for SARIF upload, Run 2 with exit-code:1 for CI gate. Use --ignore-unfixed so only fixable CRITICAL/HIGH CVEs fail CI. Add .trivyignore placeholder and explicit SARIF category.",
+      "testing_steps": [
+        "Run 'grep -n TRIVY_SEVERITY .github/workflows/security.yml' and verify TRIVY_SEVERITY env var is set to CRITICAL,HIGH",
+        "Run 'grep -n TRIVY_IGNORE_UNFIXED .github/workflows/security.yml' and verify TRIVY_IGNORE_UNFIXED env var is set to true",
+        "Run 'grep -c trivy-action .github/workflows/security.yml' and verify the count is 2 (dual-run: one for SARIF, one for gate)",
+        "Run 'grep -n exit-code .github/workflows/security.yml' and verify exit-code: '1' is set on the gate run (not the SARIF run)",
+        "Run 'grep -n \"format:.*sarif\" .github/workflows/security.yml' and verify the first Trivy run outputs SARIF format",
+        "Run 'grep -n \"format:.*table\" .github/workflows/security.yml' and verify the second Trivy run outputs table format for readable CI output",
+        "Run 'grep -n \"category:\" .github/workflows/security.yml' and verify the upload-sarif step sets category to trivy-${{ matrix.image }}",
+        "Run 'test -f .trivyignore && echo exists' and verify the .trivyignore file exists in the repository root",
+        "Run 'head -1 .trivyignore' and verify the file contains a comment header explaining its purpose",
+        "Run 'grep -n trivyignore .github/workflows/security.yml' and verify the Trivy action references the .trivyignore file"
+      ],
+      "passes": false,
+      "dependencies": ["vulnerability-scanning", "cargo-auditable-sbom"]
     }
   ]
 }

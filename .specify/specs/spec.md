@@ -2888,3 +2888,146 @@ Features planned but not yet started. These use FUNC-NNN identifiers continuing 
   **Then** a 404 response is returned
 
 **Dependencies:** FUNC-019 (session-management), FUNC-054 (clear-conversation)
+
+### INFRA-024: Distroless Runtime for Memvid Service Container
+
+**Description:** Replace the `debian:trixie-slim` runtime stage in the memvid-service Dockerfile with `gcr.io/distroless/cc-debian12:nonroot` to eliminate unnecessary OS packages and reduce the container attack surface. The builder stage is pinned to `rust:slim-bookworm` (glibc 2.36) to ensure binary compatibility with the debian12-based distroless runtime (glibc 2.36). No shell, package manager, or OS utilities are available in the runtime image.
+
+**Clarify Resolutions:**
+
+- **Healthcheck:** The `/healthcheck` symlink is replaced by a `--health` subcommand on the main binary. The compose.yaml healthcheck command changes from `/healthcheck` to `/usr/local/bin/memvid-service --health`. No separate binary copy needed.
+- **UID:** Accepts UID 65534 (distroless `:nonroot` default) replacing the current UID 1000 (`memvid` user). Volume ownership in compose.yaml updated accordingly.
+- **CVE target:** CI must hard-fail on CRITICAL or HIGH severity CVEs (per constitution Security Requirements item 6). A `.trivyignore` file provides a documented override mechanism for temporarily suspending specific CVE rules when the maintainer makes an explicit decision to accept the risk.
+
+**Acceptance Criteria:**
+
+- **Given** the memvid-service Dockerfile
+  **When** the container is built
+  **Then** the runtime stage uses `gcr.io/distroless/cc-debian12:nonroot` and the builder stage uses a bookworm-based Rust image with glibc 2.36
+
+- **Given** the built container image
+  **When** the memvid-service binary starts
+  **Then** the gRPC server binds to port 50051, the Prometheus metrics endpoint serves on port 9090, and `memvid-service --health` exits 0
+
+- **Given** the distroless runtime has no shell
+  **When** the Dockerfile is built
+  **Then** no `useradd`, `apt-get`, `ln -s`, or other shell commands exist in the runtime stage; the `:nonroot` tag provides the non-root user (UID 65534)
+
+- **Given** a Trivy scan of the built distroless memvid container
+  **When** the security workflow runs
+  **Then** the CI pipeline hard-fails on any CRITICAL or HIGH OS-level CVEs; a `.trivyignore` file in the repository provides a documented override mechanism for explicitly accepted risks
+
+**Error Handling:**
+
+- If the binary fails to start on distroless due to a missing runtime dependency, the PR is blocked until the incompatibility is resolved. No fallback to debian:trixie-slim.
+- If `memvid-core` or any dependency introduces a new native library requirement, the Dockerfile must be updated to either statically link it or use a distroless variant that provides it.
+
+**Edge Cases:**
+
+- CA certificates must be available at runtime for rustls-native-certs (distroless/cc-debian12 includes them)
+- The `openssl-probe` crate probes standard CA paths -- verify `/etc/ssl/certs/ca-certificates.crt` exists in the distroless image
+- Container smoke tests must pass with the new image (gRPC connectivity, health endpoint)
+
+**Dependencies:** INFRA-014 (Rust Memvid gRPC Container), INFRA-026 (OS-Independent Protoc)
+
+### INFRA-025: Rust Dependency SBOM via cargo-auditable
+
+**Description:** Install `cargo-auditable` in the memvid-service builder stage and replace `cargo build --release` with `cargo auditable build --release`. This embeds a compressed JSON dependency manifest in a `.dep-v0` ELF section of the compiled binary, enabling vulnerability scanners (Trivy 0.31+, Grype 0.83+) to detect Rust crate CVEs during container image scans. Without this, scanners have zero visibility into Rust dependencies. The `.dep-v0` section survives `strip = true` in the release profile.
+
+**Clarify Resolutions:**
+
+- **Verification method:** End-to-end verification via Trivy scan output. If Trivy's scan results for the memvid container include Rust crate entries (not just OS packages), the SBOM embedding is confirmed working. No need for `readelf`/`objdump` in the distroless container (which has no shell).
+- **Sequencing:** SBOM is merged before the Trivy exit-code gate (FUNC-075) to allow reviewing newly-exposed Rust crate CVEs before they become CI-blocking.
+
+**Acceptance Criteria:**
+
+- **Given** the memvid-service Dockerfile builder stage
+  **When** the binary is compiled
+  **Then** `cargo auditable build --release` is used instead of `cargo build --release`
+
+- **Given** the built memvid container image
+  **When** scanned by Trivy with `trivy image`
+  **Then** the scan results include Rust crate dependencies (not just OS packages), confirming the embedded SBOM is detected
+
+- **Given** the release profile has `strip = true`
+  **When** the binary is stripped during compilation
+  **Then** the `.dep-v0` section is preserved (it is a custom linker section, not a debug symbol)
+
+**Error Handling:**
+
+- If `cargo-auditable` is unavailable or fails to install, the build must fail (not silently fall back to a plain `cargo build`)
+
+**Dependencies:** INFRA-014 (Rust Memvid gRPC Container)
+
+### INFRA-026: OS-Independent Protoc Binary for Memvid Builder
+
+**Description:** Replace the Debian-packaged `protobuf-compiler` and `libprotobuf-dev` in the memvid-service builder stage with a pinned protoc binary downloaded directly from the official GitHub releases (protocolbuffers/protobuf). This decouples the protoc version from the builder OS, enabling free migration between Debian generations (trixie, bookworm, etc.) without affecting protoc compatibility. The `libprotobuf-dev` package is unnecessary -- `tonic-build`/`prost-build` only need the `protoc` binary to parse `.proto` files into descriptors; they do not link against `libprotobuf`.
+
+**Clarify Resolutions:**
+
+- **Output determinism:** Protoc output is deterministic for a given version regardless of host OS. Different protoc versions may produce different output. Pin the version via a Dockerfile `ARG`.
+- **Multi-arch:** Use Docker `TARGETARCH` to map `amd64` -> `x86_64` and `arm64` -> `aarch_64` for the protoc release download URL.
+
+**Acceptance Criteria:**
+
+- **Given** the memvid-service Dockerfile
+  **When** the builder stage installs protoc
+  **Then** protoc is downloaded from `https://github.com/protocolbuffers/protobuf/releases` at a version pinned via a Dockerfile `ARG PROTOC_VERSION`, not from `apt-get install protobuf-compiler`
+
+- **Given** the builder stage
+  **When** dependencies are installed
+  **Then** `libprotobuf-dev` is not installed (tonic-build/prost-build do not link against libprotobuf)
+
+- **Given** the Dockerfile is built on amd64 or arm64
+  **When** protoc is downloaded
+  **Then** the correct architecture binary is selected via `TARGETARCH` mapping
+
+- **Given** the pinned protoc version
+  **When** `cargo build` runs tonic-build
+  **Then** the generated Rust code compiles successfully and all tests pass
+
+**Error Handling:**
+
+- If the protoc download URL is unreachable or returns a non-200 status, the build fails immediately (`curl -fsSL` ensures this)
+- If the pinned protoc version is incompatible with the prost/tonic-build crate versions, the build fails at code generation time with a clear error
+
+**Dependencies:** INFRA-014 (Rust Memvid gRPC Container)
+
+### FUNC-075: Trivy Severity Filter and CI Exit-Code Gate
+
+**Description:** Fix the broken Trivy severity filter in the security workflow (known bug aquasecurity/trivy-action#435 where the `severity` input parameter is not passed to the Trivy CLI) by using the `TRIVY_SEVERITY` environment variable. Add `exit-code: '1'` so the CI pipeline hard-fails when CRITICAL or HIGH CVEs are found, per the constitution requirement (Security Requirements item 6: critical/high CVEs patched within 7 days). Add explicit `category: 'trivy-${{ matrix.image }}'` to the `upload-sarif` step for resilient alert tracking across workflow refactors.
+
+**Clarify Resolutions:**
+
+- **Ignore unfixed:** Use `--ignore-unfixed` (via `TRIVY_IGNORE_UNFIXED=true` env var) so CI only fails on CVEs that have a remediation available. Unfixed CVEs are still reported in SARIF but do not block the pipeline. This prevents CI from failing on CVEs where no action can be taken.
+- **Allowlist:** Use `.trivyignore` (Trivy-native) for temporarily suppressing specific CVEs with documented rationale. One CVE ID per line with comment explaining the acceptance decision.
+- **Sequencing:** Merged after INFRA-025 (cargo-auditable) so newly-exposed Rust crate CVEs can be reviewed before the gate is enabled.
+
+**Acceptance Criteria:**
+
+- **Given** the security workflow configuration
+  **When** Trivy runs a container scan
+  **Then** the `TRIVY_SEVERITY` environment variable is set to `CRITICAL,HIGH` and `TRIVY_IGNORE_UNFIXED` is set to `true` (not the broken `severity` action input)
+
+- **Given** a container image with a fixable CRITICAL or HIGH CVE
+  **When** the security workflow runs
+  **Then** the Trivy step exits with code 1 and the CI job fails with a clear message identifying the affected package and CVE ID
+
+- **Given** a container image with only unfixed CRITICAL/HIGH CVEs or MEDIUM/lower CVEs
+  **When** the security workflow runs
+  **Then** the Trivy step exits with code 0, the SARIF results are uploaded to GitHub Code Scanning, and the job passes
+
+- **Given** a `.trivyignore` file in the repository root
+  **When** Trivy runs
+  **Then** CVE IDs listed in the file are suppressed from the exit-code evaluation (but still reported in SARIF for visibility)
+
+- **Given** the `upload-sarif` step
+  **When** SARIF results are uploaded
+  **Then** the `category` parameter is set to `trivy-${{ matrix.image }}` for each matrix entry
+
+**Error Handling:**
+
+- If SARIF upload fails (e.g., permissions issue), the step uses `if: always()` to attempt upload regardless of Trivy exit code
+- The SARIF file must be generated even when Trivy finds CRITICAL/HIGH CVEs (format: sarif happens before exit-code evaluation)
+
+**Dependencies:** FUNC-063 (Container Vulnerability Scanning), INFRA-025 (Rust Dependency SBOM)
