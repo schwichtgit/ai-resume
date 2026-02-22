@@ -384,9 +384,9 @@ Example Traefik labels (in compose.yaml):
 
 ```yaml
 labels:
-  - "traefik.enable=true"
-  - "traefik.http.routers.ai-resume.rule=Host(`your-domain.com`)"
-  - "traefik.http.routers.ai-resume.tls.certresolver=letsencrypt"
+  - 'traefik.enable=true'
+  - 'traefik.http.routers.ai-resume.rule=Host(`your-domain.com`)'
+  - 'traefik.http.routers.ai-resume.tls.certresolver=letsencrypt'
 ```
 
 ### Internal Network
