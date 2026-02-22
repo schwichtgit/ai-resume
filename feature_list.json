@@ -2247,6 +2247,43 @@
         "outcome-negative-testing",
         "outcome-latency-nfr"
       ]
+    },
+    {
+      "id": "upstream-proxy-ips",
+      "category": "infrastructure",
+      "title": "Upstream Proxy IP Configuration for Real Client IP Resolution",
+      "description": "UPSTREAM_PROXY_IPS environment variable controls uvicorn proxy_headers and forwarded_allow_ips. When set, the API resolves real client IPs from X-Forwarded-For for accurate rate limiting and access logs. Empty disables proxy header processing (safe default for direct access).",
+      "testing_steps": [
+        "Run 'grep -n upstream_proxy_ips api-service/ai_resume_api/config.py' and verify the upstream_proxy_ips setting exists with empty string default",
+        "Run 'grep -n proxy_headers api-service/start.py' and verify conditional proxy_headers logic exists in uvicorn startup",
+        "Run 'grep -n forwarded_allow_ips api-service/start.py' and verify forwarded_allow_ips is passed when upstream_proxy_ips is set",
+        "Run 'grep -n UPSTREAM_PROXY_IPS deployment/compose.yaml' and verify the env var is passed to the api service",
+        "Run 'grep -n UPSTREAM_PROXY_IPS deployment/.env.example' and verify the variable is documented with examples",
+        "Run 'grep -n X-Real-IP frontend/lua/seo-handler.lua' and verify proxy headers are forwarded in the SEO Lua handler"
+      ],
+      "passes": true,
+      "verified": true,
+      "dependencies": ["toml-config-schema"]
+    },
+    {
+      "id": "grpc-correlation-metadata",
+      "category": "infrastructure",
+      "title": "gRPC Cross-Service Request Correlation via Metadata",
+      "description": "Propagates x-trace-id, x-session-id, and x-client-ip as gRPC metadata from the Python API service to the Rust memvid service. A CorrelationInterceptor on the Python client reads ContextVars and injects non-empty values as out-of-band headers. The Rust server extracts them into tracing spans for end-to-end log correlation. No proto changes required.",
+      "testing_steps": [
+        "Run 'grep -n session_id_ctx api-service/ai_resume_api/observability.py' and verify session_id_ctx ContextVar exists with empty string default",
+        "Run 'grep -n client_ip_ctx api-service/ai_resume_api/observability.py' and verify client_ip_ctx ContextVar exists with empty string default",
+        "Run 'grep -n CorrelationInterceptor api-service/ai_resume_api/memvid_client.py' and verify the interceptor class exists implementing grpc.aio.UnaryUnaryClientInterceptor",
+        "Run 'grep -n interceptors api-service/ai_resume_api/memvid_client.py' and verify the interceptor is attached to the channel in connect()",
+        "Run 'grep -n set_client_ip api-service/ai_resume_api/main.py' and verify client_ip is set in the trace_id_middleware",
+        "Run 'grep -n set_session_id api-service/ai_resume_api/main.py' and verify session_id is set in the chat endpoint",
+        "Run 'grep -n extract_correlation memvid-service/src/grpc/service.rs' and verify the Rust extraction helper exists and is called in search, ask, and get_state handlers",
+        "Run 'cd api-service && source .venv/bin/activate && python -m pytest tests/test_memvid_client_grpc.py::TestCorrelationInterceptor -v' and verify all 4 interceptor tests pass",
+        "Run 'cd memvid-service && cargo test test_extract_correlation' and verify all 3 extraction tests pass"
+      ],
+      "passes": true,
+      "verified": true,
+      "dependencies": ["upstream-proxy-ips"]
     }
   ]
 }

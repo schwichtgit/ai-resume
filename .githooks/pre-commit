@@ -36,6 +36,10 @@ check_forbidden_files() {
     for file in $STAGED_FILES; do
         for pattern in "${forbidden_patterns[@]}"; do
             if [[ "$(basename "$file")" == $pattern ]] || [[ "$file" == *"$pattern"* ]]; then
+                # Allow .example files (documentation, not secrets)
+                if [[ "$file" == *.example ]]; then
+                    continue
+                fi
                 echo "ERROR: Attempted to commit forbidden file: $file"
                 echo "       This file matches pattern: $pattern"
                 FAILED=$((FAILED + 1))
