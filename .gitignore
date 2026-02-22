@@ -74,6 +74,9 @@ htmlcov/
 sbom.json
 *.sbom.json
 
+# Task runner cache
+.task/
+
 # Rust build artifacts
 memvid-service/target/
 *.tar
