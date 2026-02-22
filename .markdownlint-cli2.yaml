@@ -4,5 +4,4 @@ ignores:
   - "**/node_modules/**"
   - "**/.venv/**"
   - "**/target/**"
-  - "memvid_issues/**"
   - "dist/**"
