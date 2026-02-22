@@ -4,11 +4,13 @@
 
 **Turn a static resume into an AI-powered conversation.**
 
+TypeScript (React 18) | Python 3.12 (FastAPI) | Rust (memvid gRPC)
+
 AI-Resume is a containerized web application that acts as your digital professional proxy. It provides a "30-second scan" layout for speed, backed by a semantic AI agent that recruiters can "interview" in real-time. Using natural language, they can query specific experience (e.g., "How has she handled MLOps at scale?") and receive a synthesized, evidence-based summary derived from your personal semantic knowledge base.
 
 <https://github.com/user-attachments/assets/0b183e42-db28-4ac0-ad22-8cd66d68308c>
 
-> _A recruiter asks about AI experience, tests job fit with a real job description, and explores leadership style — all without scheduling a call._
+> _A recruiter asks about AI experience, tests job fit with a real job description, and explores leadership style -- all without scheduling a call._
 
 ## Live Demo
 
@@ -28,33 +30,24 @@ Suggested things to try:
 | **Recruiter / Hiring Manager** | Instant, detailed answers about a candidate. Ask about specific skills, experience depth, or job fit. No more scanning PDFs or scheduling screening calls.                     |
 | **Engineer / Architect**       | A reference implementation of a production RAG system: Rust gRPC service, Python FastAPI, React frontend, semantic search with cross-encoder re-ranking, container deployment. |
 
-## What It Does
-
-**AI Chat** — Ask anything about the candidate's background. The agent retrieves relevant resume context via hybrid search (BM25 + vector embeddings + cross-encoder re-ranking) and generates grounded, citation-backed answers. It won't hallucinate or make things up.
-
-**Fit Assessment** — Paste a real job description and get an honest analysis: key matches, gaps, and a recommendation. Pre-analyzed examples show strong and weak fit scenarios so you know what calibrated output looks like.
-
-**Experience Cards** — Structured view of roles, projects, and skills loaded dynamically from a single portable data file.
-
-## How It Works
+## Architecture Overview
 
 ```text
 master_resume.md        Python ingest         .mv2 file          Rust gRPC        Python API       React SPA
-(your resume)     ───►  (chunk + embed)  ───► (vector DB)   ───► (search)    ───►  (LLM + SSE) ───► (chat UI)
+(your resume)     --->  (chunk + embed)  ---> (vector DB)   ---> (search)    --->  (LLM + SSE) ---> (chat UI)
                                                                   <5ms              streaming        responsive
 ```
 
-All content comes from a single Markdown file with YAML frontmatter. No hardcoded data in the frontend — everything flows through the API from the `.mv2` vector database.
+All content comes from a single Markdown file with YAML frontmatter. No hardcoded data in the frontend -- everything flows through the API from the `.mv2` vector database.
 
-### Architecture
-
-Three containers behind a reverse proxy:
+Four services behind a reverse proxy:
 
 | Service            | Stack                                  | Role                                                    |
 | ------------------ | -------------------------------------- | ------------------------------------------------------- |
-| **memvid-service** | Rust, Tonic gRPC, memvid-core          | Semantic search, state lookup, Ask mode with re-ranking |
-| **api-service**    | Python, FastAPI, OpenRouter            | LLM orchestration, fit assessment, SSE streaming        |
 | **frontend**       | React, TypeScript, Tailwind, shadcn/ui | Chat UI, experience cards, fit assessment               |
+| **api-service**    | Python, FastAPI, OpenRouter            | LLM orchestration, fit assessment, SSE streaming        |
+| **memvid-service** | Rust, Tonic gRPC, memvid-core          | Semantic search, state lookup, Ask mode with re-ranking |
+| **ingest**         | Python, memvid-sdk                     | One-shot pipeline: parse resume markdown into .mv2      |
 
 Key technical decisions:
 
@@ -63,65 +56,151 @@ Key technical decisions:
 - **Single-file portability**: One `.mv2` file contains all embeddings, metadata, and profile data
 - **Read-only containers**: All services run rootless with read-only filesystems
 
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system design, data flow, and network topology.
+
+## What It Does
+
+**AI Chat** -- Ask anything about the candidate's background. The agent retrieves relevant resume context via hybrid search (BM25 + vector embeddings + cross-encoder re-ranking) and generates grounded, citation-backed answers. It will not hallucinate or make things up.
+
+**Fit Assessment** -- Paste a real job description and get an honest analysis: key matches, gaps, and a recommendation. Pre-analyzed examples show strong and weak fit scenarios so you know what calibrated output looks like.
+
+**Experience Cards** -- Structured view of roles, projects, and skills loaded dynamically from a single portable data file.
+
 ## Prerequisites
 
-| Tool | Minimum Version | Required For |
-| ---- | --------------- | ------------ |
-| Node.js | >= 22.12.0 | Frontend build and dev server |
-| uv | latest | Python package management |
-| go-task | >= 3.0.0 | Build orchestration (`task` CLI) |
-| Rust | >= 1.92.0 | memvid-service only |
-| podman | >= 4.0.0 | Container builds and deployment only |
+| Tool    | Minimum | Required For                        |
+| ------- | ------- | ----------------------------------- |
+| Node.js | 22.12.0 | Frontend build and dev server       |
+| uv      | 0.4.0   | Python package management           |
+| go-task | 3.0.0   | Build orchestration (`task` CLI)    |
+| Rust    | 1.92.0  | memvid-service only                 |
+| podman  | 4.0.0   | Container builds and deployment only|
 
-Run `task deps` to verify all tools are installed and meet minimum versions.
+Python is not a global prerequisite. `uv` manages per-service virtual environments and pins the Python version in each service's `pyproject.toml`.
+
+Verify all tools are installed and meet minimum versions:
+
+```bash
+task deps
+```
+
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the full tiered prerequisite list.
 
 ## Quick Start
 
 ```bash
-# 0. Bootstrap dev environment (installs hooks, creates venvs, etc.)
+# 0. Bootstrap dev environment (npm deps, Python venvs, Rust crates, git hooks)
 task setup
 
 # 1. Create your resume
 cp data/example_resume.md data/master_resume.md
-# Edit with your information (see docs/MASTER_DOCUMENT_SCHEMA.md for format)
+# Edit with your information (see data/example_resume.md for the schema)
 
 # 2. Ingest into vector database
 cd ingest && uv run python ingest.py --verify
 
-# 3. Configure secrets
-cp deployment/.env.example deployment/.env
-# Add your OPENROUTER_API_KEY
+# 3. Run the full stack (three terminals)
+task dev:memvid      # Terminal 1 -- Rust gRPC service (port 50051)
+task dev:api         # Terminal 2 -- Python FastAPI (port 3000)
+task dev:frontend    # Terminal 3 -- Vite dev server (port 8080)
+```
 
-# 4. Deploy
+Print these dev instructions any time with `task dev`.
+
+## Build System
+
+The project uses [go-task](https://taskfile.dev) as the build orchestrator for the entire monorepo. A root `Taskfile.yml` includes per-service taskfiles. Run `task --list` for every available target.
+
+Key commands:
+
+```bash
+task setup           # Bootstrap full dev environment
+task deps            # Check tool dependencies
+task lint            # Lint all services (ESLint, ruff, clippy, markdownlint)
+task test            # Test all services
+task build           # Build all services (production)
+task check           # Full quality sweep: lint + typecheck + test + build
+task ci              # Reproduce CI pipeline locally
+task container:build # Build all container images
+task clean           # Remove build artifacts
+```
+
+Per-service targets are namespaced: `task frontend:test`, `task api:lint`, `task memvid:build:release`, `task ingest:test:coverage`.
+
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the complete build system reference, per-service commands, testing, and coverage thresholds.
+
+## API Endpoints
+
+| Method | Path                                 | Description                                           |
+| ------ | ------------------------------------ | ----------------------------------------------------- |
+| GET    | `/health`                            | Health check (root-level alias)                       |
+| GET    | `/api/v1/health`                     | Health check with dependency status                   |
+| POST   | `/api/v1/chat`                       | AI chat with semantic search (supports SSE streaming) |
+| GET    | `/api/v1/profile`                    | Profile metadata from memvid                          |
+| GET    | `/api/v1/suggested-questions`        | Suggested chat questions from profile                 |
+| POST   | `/api/v1/assess-fit`                 | Real-time job fit assessment via AI                   |
+| POST   | `/api/v1/session/{session_id}/clear` | Clear conversation history for a session              |
+| DELETE | `/api/v1/sessions/{session_id}`      | Delete a chat session                                 |
+| GET    | `/metrics`                           | Prometheus metrics (infrastructure)                   |
+
+## Deployment
+
+Configure secrets and deploy with containers:
+
+```bash
+# Configure
+cp deployment/.env.example deployment/.env
+# Set OPENROUTER_API_KEY in deployment/.env
+
+# Build container images
+task container:build
+
+# Deploy
 cd deployment && podman compose up -d
 ```
 
-See [docs/SETUP.md](docs/SETUP.md) for complete instructions including multi-arch container builds.
+The stack runs on both amd64 and arm64, including ARM64 edge devices (Raspberry Pi 4/5, NanoPi) with 4GB+ RAM. Each service enforces a 200MB memory limit.
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for multi-arch builds, ARM64 edge deployment, compose configuration, and troubleshooting.
+
+## Project Structure
+
+```text
+ai-resume/
+  frontend/           # React 18 + TypeScript + Vite + Tailwind + shadcn/ui
+  api-service/        # Python 3.12 FastAPI -- LLM orchestration, SSE streaming
+  memvid-service/     # Rust -- gRPC semantic search (<5ms retrieval)
+  ingest/             # Python -- resume markdown -> .mv2 vector database
+  deployment/         # Compose files, .env.example, deployment utilities
+  data/               # Resume source files and .mv2 output
+  proto/              # gRPC .proto definitions (shared)
+  scripts/            # Build, hook install, and utility scripts
+  ci/                 # CI gate principles (commit, PR, release)
+  docs/               # Architecture, deployment, security, development guides
+  Taskfile.yml        # Root build orchestrator (go-task)
+```
 
 ## Documentation
 
-| Document                                                 | Description                                  |
-| -------------------------------------------------------- | -------------------------------------------- |
-| [Setup](docs/SETUP.md)                                   | Installation, building, deployment           |
-| [Architecture](docs/ARCHITECTURE.md)                     | System design, data flow, network topology   |
-| [PRD](docs/PRD.md)                                       | Product requirements, success metrics        |
-| [Development](docs/DEVELOPMENT.md)                       | Contributing guide, workflows                |
-| [Master Document Schema](docs/MASTER_DOCUMENT_SCHEMA.md) | Resume markdown format                       |
-| [Agentic Flow](docs/AGENTIC_FLOW.md)                     | LLM orchestration and prompt design          |
-| [Security](docs/SECURITY.md)                             | Security hardening, vulnerability management |
-| [Test Coverage](docs/TEST_COVERAGE.md)                   | Test strategy and coverage reports           |
-| [TODO](docs/TODO.md)                                     | Roadmap and task breakdown                   |
+| Document                                                           | Description                                  |
+| ------------------------------------------------------------------ | -------------------------------------------- |
+| [Architecture](docs/ARCHITECTURE.md)                               | System design, data flow, network topology   |
+| [Deployment](docs/DEPLOYMENT.md)                                   | Container builds, ARM64 edge, compose config |
+| [Development](docs/DEVELOPMENT.md)                                 | Build system, per-service commands, testing  |
+| [Security](docs/SECURITY.md)                                       | Threat model, prompt injection, hardening    |
+| [Hook Exit Codes](docs/hook-exit-code-conventions.md)              | Claude Code hook exit code conventions       |
+| [Post-Edit Hook Antipattern](docs/post-edit-hook-antipattern.md)   | Hook design guidance                         |
 
 ## About This Project
 
-This is a reference project by [Frank Schwichtenberg](https://github.com/schwichtgit) — built to solve a real problem (making resumes interactive) while demonstrating production engineering practices across the stack:
+A reference project by [Frank Schwichtenberg](https://github.com/schwichtgit) -- built to solve a real problem (making resumes interactive) while demonstrating production engineering practices across the stack:
 
 - **Systems design**: Rust + Python hybrid architecture with gRPC boundaries
-- **Search & retrieval**: Semantic search, BM25, cross-encoder re-ranking, metadata filtering
+- **Search and retrieval**: Semantic search, BM25, cross-encoder re-ranking, metadata filtering
 - **LLM engineering**: RAG pipeline, prompt design, guardrails, streaming responses
 - **Infrastructure**: Multi-arch containers, rootless deployment, read-only filesystems
 - **Security**: Prompt injection defense, rate limiting, input validation, container hardening
 
 ## License
 
-PolyForm Noncommercial License 1.0.0 — See [LICENSE](LICENSE) file.
+PolyForm Noncommercial License 1.0.0 -- See [LICENSE](LICENSE) file.
