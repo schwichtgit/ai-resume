@@ -33,11 +33,15 @@ ENV RUST_MIN_STACK=16777216
 
 # Create dummy sources to cache dependencies (both lib.rs and main.rs
 # are required because Cargo.toml declares [lib] + [[bin]] targets)
+RUN uname -m && rustup show && \
     mkdir src && \
     echo "fn main() {}" > src/main.rs && \
     echo "" > src/lib.rs && \
     cargo build -j $(nproc) --release && \
     rm -rf src
+
+# Install cargo-auditable for Rust dependency SBOM embedding
+RUN cargo install cargo-auditable
 
 # Copy actual source code and build files
 COPY src/ ./src/
@@ -45,7 +49,7 @@ COPY proto/ ./proto/
 COPY build.rs ./
 
 # Build for target architecture (auto-detected by --platform)
-RUN cargo build -j $(nproc) --release
+RUN cargo auditable build -j $(nproc) --release
 
 # Stage 2: Runtime image (debian-slim for glibc compatibility)
 FROM debian:trixie-slim
