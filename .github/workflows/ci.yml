@@ -46,8 +46,8 @@ jobs:
               - 'proto/**'
             docs:
               - 'docs/**'
-              - '*.md'
-              - 'CLAUDE.md'
+              - '**/*.md'
+              - '.markdownlint*.yaml'
 
   # Frontend: TypeScript/React
   frontend:
@@ -625,6 +625,7 @@ jobs:
              [[ "${{ needs.ingest.result }}" == "failure" ]] || \
              [[ "${{ needs.memvid-service.result }}" == "failure" ]] || \
              [[ "${{ needs.cross-service.result }}" == "failure" ]] || \
+             [[ "${{ needs.docs.result }}" == "failure" ]] || \
              [[ "${{ needs.commit-standards.result }}" == "failure" ]]; then
             echo ""
             echo "One or more jobs failed!"
