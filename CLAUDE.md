@@ -31,6 +31,7 @@ This project uses the [specforge](https://github.com/schwichtgit/claude-project-
 - **Skip-if-current:** If an artifact already exists and is current, skip its phase
 - **Session bootstrap:** At the start of each coding session, read: constitution, plan, `feature_list.json`
 - **Feature tracking:** `feature_list.json` is the single source of truth for feature status
+- **Feature verification gate:** A feature may only be marked `"passes": true` and `"verified": true` AFTER every entry in its `testing_steps` array has been executed and confirmed passing in the current session. Never set these flags speculatively.
 - **Brownfield awareness:** 90 features have `verified: false` (existing code, not yet validated). 34 features are greenfield (no `verified` field)
 
 ## Subagent Policy
@@ -406,12 +407,10 @@ gh api --method PATCH repos/schwichtgit/ai-resume/code-scanning/alerts/1 \
 
 ### Commit Strategy
 
-When working on development tasks that result in multiple commits:
-
-1. Create focused, atomic commits with clear messages
-2. When features are complete and all tests pass:
-   - Squash/rebase commits using the original task commit message
-   - Push a single, clean commit to the public repository
+- Create focused, atomic commits with clear messages as you work
+- Each commit should be a meaningful, standalone change (not WIP or fixup)
+- Push individual commits to the feature branch -- do NOT squash before push
+- Squash happens at PR merge time (configured in GitHub), not by the developer
 
 ## Communication Style
 
