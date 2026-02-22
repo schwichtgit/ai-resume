@@ -78,6 +78,7 @@ lint_staged_files() {
     local ts_files=""
     local py_files=""
     local rs_files=""
+    local md_files=""
 
     for file in $STAGED_FILES; do
         case "$file" in
@@ -91,6 +92,9 @@ lint_staged_files() {
                 ;;
             memvid-service/*.rs)
                 rs_files="$rs_files $file"
+                ;;
+            *.md)
+                md_files="$md_files $file"
                 ;;
         esac
     done
@@ -122,6 +126,18 @@ lint_staged_files() {
             echo "ERROR: Rust formatting check failed"
             FAILED=$((FAILED + 1))
         }
+    fi
+
+    # Lint Markdown files
+    if [[ -n "$md_files" ]]; then
+        local MDLINT="$PROJECT_ROOT/frontend/node_modules/.bin/markdownlint-cli2"
+        if [[ -x "$MDLINT" ]]; then
+            echo "Checking Markdown files..."
+            (cd "$PROJECT_ROOT" && "$MDLINT" $md_files 2>/dev/null) || {
+                echo "ERROR: markdownlint-cli2 failed"
+                FAILED=$((FAILED + 1))
+            }
+        fi
     fi
 }
 
