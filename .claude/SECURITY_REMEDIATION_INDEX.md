@@ -19,10 +19,12 @@
 ## Documents in This Investigation
 
 ### 1. 🎯 restart-security-remediation.md (13 KB)
+
 **Purpose:** Complete implementation guide
 **Audience:** DevOps/Security team executing remediation
 
 **Sections:**
+
 - Executive Summary
 - Current Alert Breakdown
 - Root Cause Analysis
@@ -39,10 +41,12 @@
 ---
 
 ### 2. 📝 DOCKERFILE_CHANGES.txt (4.4 KB)
+
 **Purpose:** Quick reference for exact line-by-line changes
 **Audience:** Developers making Dockerfile edits
 
 **Sections:**
+
 - All 4 Dockerfiles with CURRENT → CHANGE mappings
 - Reason for each change
 - Verification commands (syntax check, security scan)
@@ -55,10 +59,12 @@
 ---
 
 ### 3. 🔍 SECURITY_ALERTS_DETAIL.md (8.1 KB)
+
 **Purpose:** Deep dive into each CVE and remediation strategy
 **Audience:** Security engineers, architecture review
 
 **Sections:**
+
 - ERROR level details (3 critical CVEs × 10 instances)
 - WARNING level breakdown (6 top warnings with counts)
 - NOTE level overview (201 deprecation warnings)
@@ -77,31 +83,33 @@
 
 ### By Severity
 
-| Level | Count | Status | Action |
-|-------|-------|--------|--------|
-| ERROR | 10 | BLOCKING | MUST FIX |
-| WARNING | 66 | HIGH PRIORITY | SHOULD FIX |
-| NOTE | 201 | MONITOR | TRACK |
+| Level   | Count | Status        | Action     |
+| ------- | ----- | ------------- | ---------- |
+| ERROR   | 10    | BLOCKING      | MUST FIX   |
+| WARNING | 66    | HIGH PRIORITY | SHOULD FIX |
+| NOTE    | 201   | MONITOR       | TRACK      |
 
 ### By Type
 
-| Category | Details |
-|----------|---------|
-| **Application Code** | 0 vulnerable (clean) ✅ |
-| **Container Base Images** | 277 vulnerabilities (fixable) ⚠️ |
-| **Unique CVE IDs** | ~25-30 distinct vulnerabilities |
-| **Actual Issues** | ~10 (most are duplication across services) |
+| Category                  | Details                                    |
+| ------------------------- | ------------------------------------------ |
+| **Application Code**      | 0 vulnerable (clean)                       |
+| **Container Base Images** | 277 vulnerabilities (fixable)              |
+| **Unique CVE IDs**        | ~25-30 distinct vulnerabilities            |
+| **Actual Issues**         | ~10 (most are duplication across services) |
 
 ---
 
 ## Implementation Checklist
 
 ### Before You Start
+
 - [ ] Read: `restart-security-remediation.md` (Phase 1 prerequisites)
 - [ ] Check disk space: `df -h /` (need 5GB+ free)
 - [ ] Verify no conflicts: `git status` (clean working directory)
 
 ### Phase 1: Dockerfile Updates (30 min)
+
 - [ ] Reference: `DOCKERFILE_CHANGES.txt`
 - [ ] Edit: `frontend/Dockerfile` (1 line)
 - [ ] Edit: `memvid-service/Dockerfile` (2 lines)
@@ -109,23 +117,27 @@
 - [ ] Edit: `ingest/Dockerfile` (1 line)
 
 ### Phase 2: Local Verification (10 min)
+
 - [ ] Syntax check: Verify Dockerfiles are valid
 - [ ] (Optional) Build locally: `./scripts/build-all.sh test-security`
 - [ ] (Optional) Scan locally: `trivy image --severity CRITICAL,HIGH ai-resume-*:test-security`
 
 ### Phase 3: Commit & Push (5 min)
+
 - [ ] Create branch: `git checkout -b fix/security-base-images main`
 - [ ] Stage changes: `git add frontend/Dockerfile memvid-service/Dockerfile api-service/Dockerfile ingest/Dockerfile`
 - [ ] Commit: Use message template from `DOCKERFILE_CHANGES.txt`
 - [ ] Push: `git push origin fix/security-base-images`
 
 ### Phase 4: PR & Merge (10 min)
+
 - [ ] Create PR: Use template from `restart-security-remediation.md`
 - [ ] Monitor CI: Watch `.github/workflows/security.yml` run
 - [ ] Verify: All checks passing (eslint, type-check, tests)
 - [ ] Merge: Once all checks pass
 
 ### Phase 5: Verification (10 min)
+
 - [ ] Check GitHub: Verify PR merged successfully
 - [ ] Monitor builds: Verify container scans complete
 - [ ] Review alerts: Confirm reduction in CVE count
@@ -136,7 +148,7 @@
 
 ### Dockerfile Changes Summary
 
-```
+```text
 frontend/Dockerfile
   alpine:3.23 → alpine:3.24
 
@@ -153,12 +165,12 @@ ingest/Dockerfile
 
 ### Expected Results
 
-| Before | After |
-|--------|-------|
-| 277 alerts | ~20-30 alerts |
-| 10 ERROR | 0 ERROR ✅ |
-| 66 WARNING | ~30 WARNING ✓ |
-| 201 NOTE | ~200 NOTE (unchanged, low-priority) |
+| Before     | After                               |
+| ---------- | ----------------------------------- |
+| 277 alerts | ~20-30 alerts                       |
+| 10 ERROR   | 0 ERROR                             |
+| 66 WARNING | ~30 WARNING                         |
+| 201 NOTE   | ~200 NOTE (unchanged, low-priority) |
 
 ### Success Criteria
 
@@ -183,28 +195,34 @@ ingest/Dockerfile
 ## Questions & Troubleshooting
 
 ### Q: Do I need to wait for Dependabot PRs?
+
 **A:** No. Security remediation is independent. Proceed in parallel.
 
 ### Q: Will this break anything?
+
 **A:** No. Base image upgrades are additive security patches. No breaking changes.
 
 ### Q: How long will this take?
+
 **A:** 1.5-2 hours for full implementation (most time is CI automation).
 
 ### Q: What if something fails?
+
 **A:** See "Rollback Plan" in `restart-security-remediation.md`.
 
 ### Q: Can I test locally first?
+
 **A:** Yes. See "Phase 2: Local Security Scanning" in main remediation document.
 
 ### Q: What about the NOTE-level alerts?
+
 **A:** Low priority. They may persist after upgrade (deprecated packages). Focus on ERROR and WARNING levels.
 
 ---
 
 ## File Locations
 
-```
+```text
 /Users/frank/projects/MY/AI-RESUME/ai-resume/
 ├── .claude/
 │   ├── restart-security-remediation.md      ← START HERE

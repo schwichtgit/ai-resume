@@ -10,7 +10,7 @@ from prometheus_client import Histogram
 
 from ai_resume_api.config import get_settings
 from ai_resume_api.models import MemvidHealthResponse, MemvidSearchHit, MemvidSearchResponse
-from ai_resume_api.observability import get_trace_id
+from ai_resume_api.observability import get_trace_id, get_session_id, get_client_ip
 
 logger = structlog.get_logger()
 
@@ -39,6 +39,48 @@ try:
 except ImportError:
     GRPC_AVAILABLE = False
     logger.warning("gRPC protobuf stubs not found, using mock client")
+
+
+class CorrelationInterceptor(grpc.aio.UnaryUnaryClientInterceptor):  # type: ignore[misc]
+    """gRPC client interceptor that injects correlation metadata.
+
+    Reads trace_id, session_id, and client_ip from context vars
+    and attaches them as gRPC metadata headers for cross-service correlation.
+    """
+
+    async def intercept_unary_unary(
+        self,
+        continuation: Any,
+        client_call_details: grpc.aio.ClientCallDetails,
+        request: Any,
+    ) -> Any:
+        metadata: list[tuple[str, str]] = []
+
+        trace_id = get_trace_id()
+        if trace_id:
+            metadata.append(("x-trace-id", trace_id))
+
+        session_id = get_session_id()
+        if session_id:
+            metadata.append(("x-session-id", session_id))
+
+        client_ip = get_client_ip()
+        if client_ip:
+            metadata.append(("x-client-ip", client_ip))
+
+        if metadata:
+            # Merge with existing metadata if any
+            existing = list(client_call_details.metadata or [])
+            existing.extend(metadata)
+            client_call_details = grpc.aio.ClientCallDetails(
+                method=client_call_details.method,
+                timeout=client_call_details.timeout,
+                metadata=existing,
+                credentials=client_call_details.credentials,
+                wait_for_ready=client_call_details.wait_for_ready,
+            )
+
+        return await continuation(client_call_details, request)
 
 
 class MemvidClientError(Exception):
@@ -88,7 +130,10 @@ class MemvidClient:
             return
 
         try:
-            self._channel = grpc.aio.insecure_channel(self._grpc_url)
+            self._channel = grpc.aio.insecure_channel(
+                self._grpc_url,
+                interceptors=[CorrelationInterceptor()],
+            )
             self._memvid_stub = memvid_pb2_grpc.MemvidServiceStub(self._channel)  # type: ignore[no-untyped-call]
             self._health_stub = memvid_pb2_grpc.HealthStub(self._channel)  # type: ignore[no-untyped-call]
             logger.info("Connected to memvid service", url=self._grpc_url)

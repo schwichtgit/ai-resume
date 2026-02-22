@@ -13,6 +13,30 @@ use crate::generated::memvid::v1::{
 use crate::memvid::{AskMode as SearcherAskMode, AskRequest as SearcherAskRequest, Searcher};
 use crate::metrics;
 
+/// Correlation IDs extracted from gRPC request metadata.
+struct Correlation {
+    trace_id: String,
+    session_id: String,
+    client_ip: String,
+}
+
+/// Extract correlation metadata from a gRPC request.
+/// Returns owned strings; defaults to empty if header is missing.
+fn extract_correlation<T>(request: &Request<T>) -> Correlation {
+    let md = request.metadata();
+    let get = |key: &str| -> String {
+        md.get(key)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("")
+            .to_owned()
+    };
+    Correlation {
+        trace_id: get("x-trace-id"),
+        session_id: get("x-session-id"),
+        client_ip: get("x-client-ip"),
+    }
+}
+
 /// gRPC implementation of the MemvidService.
 pub struct MemvidGrpcService {
     searcher: Arc<dyn Searcher>,
@@ -27,19 +51,25 @@ impl MemvidGrpcService {
 
 #[tonic::async_trait]
 impl MemvidService for MemvidGrpcService {
-    #[instrument(skip(self, request), fields(query))]
+    #[instrument(skip(self, request), fields(query, trace_id, session_id, client_ip))]
     async fn search(
         &self,
         request: Request<SearchRequest>,
     ) -> Result<Response<SearchResponse>, Status> {
+        let cor = extract_correlation(&request);
         let req = request.into_inner();
 
-        // Record the query in span
-        tracing::Span::current().record("query", &req.query);
+        // Record fields in span
+        let span = tracing::Span::current();
+        span.record("query", &req.query);
+        span.record("trace_id", &cor.trace_id);
+        span.record("session_id", &cor.session_id);
+        span.record("client_ip", &cor.client_ip);
 
         info!(
             query = %req.query,
             top_k = req.top_k,
+            trace_id = %cor.trace_id,
             "Processing search request"
         );
 
@@ -83,17 +113,23 @@ impl MemvidService for MemvidGrpcService {
         Ok(Response::new(response))
     }
 
-    #[instrument(skip(self, request), fields(question))]
+    #[instrument(skip(self, request), fields(question, trace_id, session_id, client_ip))]
     async fn ask(&self, request: Request<AskRequest>) -> Result<Response<AskResponse>, Status> {
+        let cor = extract_correlation(&request);
         let req = request.into_inner();
 
-        // Record the question in span
-        tracing::Span::current().record("question", &req.question);
+        // Record fields in span
+        let span = tracing::Span::current();
+        span.record("question", &req.question);
+        span.record("trace_id", &cor.trace_id);
+        span.record("session_id", &cor.session_id);
+        span.record("client_ip", &cor.client_ip);
 
         info!(
             question = %req.question,
             mode = ?req.mode,
             top_k = req.top_k,
+            trace_id = %cor.trace_id,
             "Processing ask request"
         );
 
@@ -167,19 +203,25 @@ impl MemvidService for MemvidGrpcService {
         Ok(Response::new(response))
     }
 
-    #[instrument(skip(self, request), fields(entity))]
+    #[instrument(skip(self, request), fields(entity, trace_id, session_id, client_ip))]
     async fn get_state(
         &self,
         request: Request<GetStateRequest>,
     ) -> Result<Response<GetStateResponse>, Status> {
+        let cor = extract_correlation(&request);
         let req = request.into_inner();
 
-        // Record the entity in span
-        tracing::Span::current().record("entity", &req.entity);
+        // Record fields in span
+        let span = tracing::Span::current();
+        span.record("entity", &req.entity);
+        span.record("trace_id", &cor.trace_id);
+        span.record("session_id", &cor.session_id);
+        span.record("client_ip", &cor.client_ip);
 
         info!(
             entity = %req.entity,
             slot = %req.slot,
+            trace_id = %cor.trace_id,
             "Processing get_state request"
         );
 
@@ -604,5 +646,145 @@ mod tests {
 
         let response = service.ask(request).await.unwrap();
         assert!(!response.into_inner().answer.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_search_with_correlation_metadata() {
+        init_test_metrics();
+
+        let searcher = Arc::new(MockSearcher::new());
+        let service = MemvidGrpcService::new(searcher);
+
+        let mut request = Request::new(SearchRequest {
+            query: "Python experience".to_string(),
+            top_k: 5,
+            snippet_chars: 200,
+            min_relevance: 0.0,
+            mode: 0,
+        });
+        request
+            .metadata_mut()
+            .insert("x-trace-id", "abc123".parse().unwrap());
+        request
+            .metadata_mut()
+            .insert("x-session-id", "sess-456".parse().unwrap());
+        request
+            .metadata_mut()
+            .insert("x-client-ip", "192.168.1.100".parse().unwrap());
+
+        let response = service.search(request).await;
+        assert!(response.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_ask_with_correlation_metadata() {
+        init_test_metrics();
+
+        let searcher = Arc::new(MockSearcher::new());
+        let service = MemvidGrpcService::new(searcher);
+
+        let mut request = Request::new(AskRequest {
+            question: "What skills?".to_string(),
+            mode: ProtoAskMode::Hybrid as i32,
+            use_llm: false,
+            top_k: 5,
+            snippet_chars: 200,
+            filters: std::collections::HashMap::new(),
+            start: 0,
+            end: 0,
+            uri: String::new(),
+            cursor: String::new(),
+            as_of_frame: None,
+            as_of_ts: None,
+            adaptive: None,
+        });
+        request
+            .metadata_mut()
+            .insert("x-trace-id", "trace-789".parse().unwrap());
+
+        let response = service.ask(request).await;
+        assert!(response.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_get_state_with_correlation_metadata() {
+        let searcher = Arc::new(MockSearcher::new());
+        let service = MemvidGrpcService::new(searcher);
+
+        let mut request = Request::new(GetStateRequest {
+            entity: "__profile__".to_string(),
+            slot: String::new(),
+        });
+        request
+            .metadata_mut()
+            .insert("x-trace-id", "trace-state".parse().unwrap());
+        request
+            .metadata_mut()
+            .insert("x-client-ip", "10.0.0.1".parse().unwrap());
+
+        let response = service.get_state(request).await.unwrap();
+        assert!(response.into_inner().found);
+    }
+
+    #[tokio::test]
+    async fn test_search_without_correlation_metadata() {
+        init_test_metrics();
+
+        let searcher = Arc::new(MockSearcher::new());
+        let service = MemvidGrpcService::new(searcher);
+
+        // No metadata set - should still work with empty defaults
+        let request = Request::new(SearchRequest {
+            query: "test".to_string(),
+            top_k: 5,
+            snippet_chars: 200,
+            min_relevance: 0.0,
+            mode: 0,
+        });
+
+        let response = service.search(request).await;
+        assert!(response.is_ok());
+    }
+
+    #[test]
+    fn test_extract_correlation_with_metadata() {
+        let mut request = Request::new(());
+        request
+            .metadata_mut()
+            .insert("x-trace-id", "t1".parse().unwrap());
+        request
+            .metadata_mut()
+            .insert("x-session-id", "s1".parse().unwrap());
+        request
+            .metadata_mut()
+            .insert("x-client-ip", "1.2.3.4".parse().unwrap());
+
+        let cor = extract_correlation(&request);
+        assert_eq!(cor.trace_id, "t1");
+        assert_eq!(cor.session_id, "s1");
+        assert_eq!(cor.client_ip, "1.2.3.4");
+    }
+
+    #[test]
+    fn test_extract_correlation_without_metadata() {
+        let request: Request<()> = Request::new(());
+
+        let cor = extract_correlation(&request);
+        assert_eq!(cor.trace_id, "");
+        assert_eq!(cor.session_id, "");
+        assert_eq!(cor.client_ip, "");
+    }
+
+    #[test]
+    fn test_extract_correlation_partial_metadata() {
+        let mut request = Request::new(());
+        request
+            .metadata_mut()
+            .insert("x-trace-id", "only-trace".parse().unwrap());
+
+        let cor = extract_correlation(&request);
+        assert_eq!(cor.trace_id, "only-trace");
+        assert_eq!(cor.session_id, "");
+        assert_eq!(cor.client_ip, "");
     }
 }

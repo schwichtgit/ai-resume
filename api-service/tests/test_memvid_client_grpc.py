@@ -9,9 +9,18 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from ai_resume_api.memvid_client import (
+    CorrelationInterceptor,
     MemvidClient,
     MemvidConnectionError,
     MemvidSearchError,
+)
+from ai_resume_api.observability import (
+    get_client_ip,
+    get_session_id,
+    get_trace_id,
+    set_client_ip,
+    set_session_id,
+    set_trace_id,
 )
 
 
@@ -576,3 +585,135 @@ class TestMemvidClientMetrics:
 
                     # Verify metric was still recorded on error
                     assert mock_histogram.observe.called
+
+
+class TestCorrelationInterceptor:
+    """Tests for the gRPC CorrelationInterceptor."""
+
+    @pytest.mark.asyncio
+    async def test_injects_all_metadata(self) -> None:
+        """Test interceptor injects trace_id, session_id, client_ip when set."""
+        set_trace_id("test-trace-123")
+        set_session_id("test-session-456")
+        set_client_ip("192.168.1.100")
+
+        interceptor = CorrelationInterceptor()
+        mock_continuation = AsyncMock(return_value="mock_response")
+
+        # Create mock call details
+        call_details = MagicMock()
+        call_details.method = "/memvid.v1.MemvidService/Search"
+        call_details.timeout = 5.0
+        call_details.metadata = None
+        call_details.credentials = None
+        call_details.wait_for_ready = None
+
+        await interceptor.intercept_unary_unary(mock_continuation, call_details, "mock_request")
+
+        # Verify continuation was called with updated metadata
+        updated_details = mock_continuation.call_args[0][0]
+        metadata = dict(updated_details.metadata)
+        assert metadata["x-trace-id"] == "test-trace-123"
+        assert metadata["x-session-id"] == "test-session-456"
+        assert metadata["x-client-ip"] == "192.168.1.100"
+
+    @pytest.mark.asyncio
+    async def test_skips_empty_values(self) -> None:
+        """Test interceptor does not inject empty context vars."""
+        set_trace_id("")
+        set_session_id("")
+        set_client_ip("")
+
+        interceptor = CorrelationInterceptor()
+        mock_continuation = AsyncMock(return_value="mock_response")
+
+        call_details = MagicMock()
+        call_details.method = "/memvid.v1.MemvidService/Search"
+        call_details.timeout = 5.0
+        call_details.metadata = None
+        call_details.credentials = None
+        call_details.wait_for_ready = None
+
+        await interceptor.intercept_unary_unary(mock_continuation, call_details, "mock_request")
+
+        # With all empty, original call_details should be passed unchanged
+        passed_details = mock_continuation.call_args[0][0]
+        assert passed_details is call_details
+
+    @pytest.mark.asyncio
+    async def test_partial_metadata(self) -> None:
+        """Test interceptor only injects non-empty values."""
+        set_trace_id("trace-only")
+        set_session_id("")
+        set_client_ip("")
+
+        interceptor = CorrelationInterceptor()
+        mock_continuation = AsyncMock(return_value="mock_response")
+
+        call_details = MagicMock()
+        call_details.method = "/memvid.v1.MemvidService/Search"
+        call_details.timeout = 5.0
+        call_details.metadata = None
+        call_details.credentials = None
+        call_details.wait_for_ready = None
+
+        await interceptor.intercept_unary_unary(mock_continuation, call_details, "mock_request")
+
+        updated_details = mock_continuation.call_args[0][0]
+        metadata = dict(updated_details.metadata)
+        assert metadata["x-trace-id"] == "trace-only"
+        assert "x-session-id" not in metadata
+        assert "x-client-ip" not in metadata
+
+    @pytest.mark.asyncio
+    async def test_preserves_existing_metadata(self) -> None:
+        """Test interceptor merges with existing metadata."""
+        set_trace_id("trace-merge")
+        set_session_id("")
+        set_client_ip("")
+
+        interceptor = CorrelationInterceptor()
+        mock_continuation = AsyncMock(return_value="mock_response")
+
+        call_details = MagicMock()
+        call_details.method = "/memvid.v1.MemvidService/Search"
+        call_details.timeout = 5.0
+        call_details.metadata = [("authorization", "Bearer tok")]
+        call_details.credentials = None
+        call_details.wait_for_ready = None
+
+        await interceptor.intercept_unary_unary(mock_continuation, call_details, "mock_request")
+
+        updated_details = mock_continuation.call_args[0][0]
+        metadata = dict(updated_details.metadata)
+        assert metadata["authorization"] == "Bearer tok"
+        assert metadata["x-trace-id"] == "trace-merge"
+
+
+class TestObservabilityContextVars:
+    """Tests for session_id and client_ip context vars."""
+
+    def test_session_id_default(self) -> None:
+        """session_id_ctx defaults to empty string."""
+        set_session_id("")
+        assert get_session_id() == ""
+
+    def test_session_id_set_get(self) -> None:
+        """set_session_id / get_session_id round-trip."""
+        set_session_id("abc-def-123")
+        assert get_session_id() == "abc-def-123"
+
+    def test_client_ip_default(self) -> None:
+        """client_ip_ctx defaults to empty string."""
+        set_client_ip("")
+        assert get_client_ip() == ""
+
+    def test_client_ip_set_get(self) -> None:
+        """set_client_ip / get_client_ip round-trip."""
+        set_client_ip("10.0.0.1")
+        assert get_client_ip() == "10.0.0.1"
+
+    def test_trace_id_still_works(self) -> None:
+        """Existing trace_id context var still works."""
+        set_trace_id("trace-xyz")
+        assert get_trace_id() == "trace-xyz"

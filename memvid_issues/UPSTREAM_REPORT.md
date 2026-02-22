@@ -2,7 +2,7 @@
 
 **Date:** 2026-02-20
 **Reporter:** Frank Schwichtenberg (ai-resume project)
-**Repository:** https://github.com/schwichtgit/ai-resume
+**Repository:** <https://github.com/schwichtgit/ai-resume>
 
 ---
 
@@ -12,7 +12,7 @@ We retested all three previously reported issues against the latest available
 releases. One issue is now resolved; two remain.
 
 | Issue | Title | Status | Versions Tested |
-|-------|-------|--------|-----------------|
+| ----- | ----- | ------ | --------------- |
 | [#194](https://github.com/memvid/memvid/issues/194) | `vec_enabled`/`lex_enabled` reset to `None` on re-open | **NOT FIXED** | SDK 2.0.157, Core 2.0.137 |
 | [#195](https://github.com/memvid/memvid/issues/195) | Cross-version deserialization failure (SDK vs crates.io) | **FIXED** | SDK 2.0.157, Core 2.0.137 |
 | [#196](https://github.com/memvid/memvid/issues/196) | `ask()` "frame id out of range" on fresh .mv2 files | **NOT FIXED** | SDK 2.0.157, Core 2.0.137 |
@@ -20,7 +20,7 @@ releases. One issue is now resolved; two remain.
 ## Test Environment
 
 | Component | Version |
-|-----------|---------|
+| --------- | ------- |
 | memvid-sdk (PyPI) | 2.0.157 |
 | memvid-core (bundled in SDK) | 2.0.137 |
 | memvid-core (crates.io) | 2.0.137 |
@@ -174,6 +174,7 @@ with tempfile.TemporaryDirectory() as tmpdir:
 ```
 
 **Self-contained scripts:**
+
 - `repro_bug_c.py` -- Python reproduction (attached)
 - `repro_bug_c_rust/` -- Rust reproduction using `memvid-core = "2.0.137"` (attached)
 
@@ -186,7 +187,7 @@ freshly created .mv2 file without requiring any post-creation repair step.
 
 `ask()` raises:
 
-```
+```text
 Time index track is invalid: frame id out of range
 ```
 
@@ -204,7 +205,7 @@ Time index track is invalid: frame id out of range
 We ran extensive boundary testing to characterize the trigger conditions:
 
 | Frames | Content | Timestamps | ask() Result |
-|--------|---------|------------|--------------|
+| ------ | ------- | ---------- | ------------ |
 | 1-7 | Short uniform | No | PASS |
 | 1-7 | Short uniform | Yes | PASS |
 | 5 | Medium varied | No | PASS |
@@ -244,7 +245,7 @@ final frame layout, which is why it fixes the problem.
 
 This report is distributed as a zip archive containing:
 
-```
+```text
 UPSTREAM_REPORT.md           -- This document
 repro_bug_a.py               -- Self-contained Python reproduction for #194
 repro_bug_c.py               -- Self-contained Python reproduction for #196

@@ -2,13 +2,13 @@
 
 ## Metadata
 
-| Field        | Value                  |
-| ------------ | ---------------------- |
-| Plan Version | 1.0.0                 |
-| Created      | 2026-02-20             |
-| Status       | Draft                  |
-| Depends On   | plan.md v1.0.0         |
-| Branch       | feat/taskfile-build    |
+| Field        | Value                |
+| ------------ | -------------------- |
+| Plan Version | 1.0.0                |
+| Created      | 2026-02-20           |
+| Status       | Draft                |
+| Depends On   | plan.md v1.0.0       |
+| Branch       | feat/taskfile-build  |
 
 ---
 
@@ -66,7 +66,7 @@ Taskfile (go-task) solves these problems with:
 
 ### Root Taskfile (`Taskfile.yml`)
 
-```
+```text
 task                          # default: list all tasks
 task setup                    # One-time dev environment bootstrap
 task dev                      # Start all services for local dev
@@ -85,7 +85,7 @@ task clean                    # Remove build artifacts and .task/ cache
 
 ### Frontend Taskfile (`frontend/Taskfile.yml`)
 
-```
+```text
 task frontend:install         # npm ci
 task frontend:dev             # npm run dev
 task frontend:build           # npm run build (with sources/generates)
@@ -101,7 +101,7 @@ task frontend:container       # podman build frontend container
 
 ### API Service Taskfile (`api-service/Taskfile.yml`)
 
-```
+```text
 task api:install              # uv sync --extra test --extra lint
 task api:dev                  # uvicorn with --reload
 task api:lint                 # ruff check + ruff format --check
@@ -116,7 +116,7 @@ task api:container            # podman build api container
 
 ### Memvid Service Taskfile (`memvid-service/Taskfile.yml`)
 
-```
+```text
 task memvid:build             # cargo build --release (with sources/generates)
 task memvid:build:debug       # cargo build
 task memvid:dev               # cargo run --release
@@ -130,7 +130,7 @@ task memvid:container         # podman build memvid container
 
 ### Ingest Taskfile (`ingest/Taskfile.yml`)
 
-```
+```text
 task ingest:install           # uv sync --extra test --extra lint
 task ingest:run               # python ingest.py --input ... --output ...
 task ingest:lint              # ruff check + ruff format --check
@@ -144,7 +144,7 @@ task ingest:container         # podman build ingest container
 
 ### Aggregate Tasks (Root)
 
-```
+```text
 task containers               # Build all 4 containers (deps: frontend:container, api:container, ...)
 task containers:export        # Save containers as OCI tarballs (replaces export-containers.sh)
 task containers:publish       # Push to remote registry (replaces publish-containers.sh)
@@ -296,14 +296,14 @@ storing checksums will be added to `.gitignore`.
 
 ### Scripts That Become Taskfile Tasks (Replace)
 
-| Script                        | Replacement Task                  | Notes                                           |
-| ----------------------------- | --------------------------------- | ----------------------------------------------- |
-| `scripts/build-all.sh`        | `task containers`                 | Per-service change detection via `sources`       |
-| `scripts/export-containers.sh`| `task containers:export`          | Rewrite as Taskfile commands                     |
-| `scripts/verify-quality.sh`   | `task quality`                    | Aggregate `lint` + `typecheck` + `test` per svc  |
-| `scripts/install-hooks.sh`    | `task hooks`                      | Simple enough to inline                          |
-| `scripts/gen-proto.sh`        | `task proto`                      | Add `sources`/`generates` for change detection   |
-| `scripts/dev-setup.sh`        | `task setup`                      | Prerequisites check + install per service        |
+| Script | Replacement Task | Notes |
+| --- | --- | --- |
+| `scripts/build-all.sh` | `task containers` | Per-service change detection via `sources` |
+| `scripts/export-containers.sh` | `task containers:export` | Rewrite as Taskfile commands |
+| `scripts/verify-quality.sh` | `task quality` | Aggregate `lint` + `typecheck` + `test` per svc |
+| `scripts/install-hooks.sh` | `task hooks` | Simple enough to inline |
+| `scripts/gen-proto.sh` | `task proto` | Add `sources`/`generates` for change detection |
+| `scripts/dev-setup.sh` | `task setup` | Prerequisites check + install per service |
 
 ### Scripts That Become Taskfile Wrappers (Keep Script, Task Calls It)
 
@@ -319,14 +319,14 @@ storing checksums will be added to `.gitignore`.
 
 ### Scripts That Remain Unchanged (No Task Wrapper Needed)
 
-| Script                              | Reason                                    |
-| ----------------------------------- | ----------------------------------------- |
-| `scripts/profile-latency.sh`        | Ad-hoc profiling tool, not a build target |
-| `scripts/load-test.py`              | Ad-hoc load testing tool                  |
-| `scripts/release-gate-matrix.sh`    | Companion to release-gate.sh              |
-| `scripts/test-outcome-portability.sh` | Called by CI directly                   |
-| `scripts/test-outcome-containers.sh`  | Called by CI directly                   |
-| `scripts/verify-docs.sh`           | Called by CI directly                     |
+| Script | Reason |
+| --- | --- |
+| `scripts/profile-latency.sh` | Ad-hoc profiling tool, not a build target |
+| `scripts/load-test.py` | Ad-hoc load testing tool |
+| `scripts/release-gate-matrix.sh` | Companion to release-gate.sh |
+| `scripts/test-outcome-portability.sh` | Called by CI directly |
+| `scripts/test-outcome-containers.sh` | Called by CI directly |
+| `scripts/verify-docs.sh` | Called by CI directly |
 
 ### Migration Order
 

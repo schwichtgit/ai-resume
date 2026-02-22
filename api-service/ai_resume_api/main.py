@@ -29,6 +29,8 @@ from ai_resume_api.observability import (
     generate_trace_id,
     get_trace_id,
     set_trace_id,
+    set_client_ip,
+    set_session_id,
     log_llm_request,
     log_llm_response,
 )
@@ -133,6 +135,10 @@ async def trace_id_middleware(request: Request, call_next: RequestResponseEndpoi
     trace_id = request.headers.get("X-Trace-ID", generate_trace_id())
     set_trace_id(trace_id)
 
+    # Set client IP for cross-service correlation
+    if request.client:
+        set_client_ip(request.client.host)
+
     # Bind trace ID to structlog context for all logs in this request
     structlog.contextvars.clear_contextvars()
     structlog.contextvars.bind_contextvars(trace_id=trace_id)
@@ -225,6 +231,9 @@ async def chat(request: Request, chat_request: ChatRequest) -> Any:
     """
     session_store = get_session_store()
     session = session_store.get_or_create(chat_request.session_id)
+
+    # Set session ID for cross-service correlation (gRPC metadata)
+    set_session_id(str(session.id))
 
     logger.info(
         "Chat request received",

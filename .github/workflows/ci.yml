@@ -505,8 +505,8 @@ jobs:
 
       - name: Lint Markdown
         run: |
-          npm install -g markdownlint-cli
-          markdownlint '**/*.md' --ignore node_modules --ignore '**/node_modules/**'
+          npm install -g markdownlint-cli2
+          markdownlint-cli2 '**/*.md'
 
   # Release gate: final validation on main branch pushes
   release-gate:

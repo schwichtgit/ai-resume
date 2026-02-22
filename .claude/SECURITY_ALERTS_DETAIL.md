@@ -8,6 +8,7 @@
 ## ERROR Level (Critical) - 10 Total
 
 ### CVE-2026-0861: glibc Integer Overflow in memalign
+
 **Severity:** ERROR (CRITICAL)
 **Occurrences:** 6 instances (all in memvid-service container)
 **Description:** Integer overflow in memalign leads to heap corruption
@@ -18,6 +19,7 @@
 **Status:** BLOCKING - Must upgrade base image
 
 **Remediation:**
+
 ```dockerfile
 FROM debian:trixie-slim      # CURRENT (vulnerable)
 FROM debian:bookworm-slim    # FIXED
@@ -26,6 +28,7 @@ FROM debian:bookworm-slim    # FIXED
 ---
 
 ### CVE-2023-45853: zlib Integer Overflow
+
 **Severity:** ERROR (CRITICAL)
 **Occurrences:** 2 instances (api-service, ingest containers)
 **Description:** Integer overflow and resultant heap-based buffer overflow in zipOpenNewFileInZip4_6
@@ -36,6 +39,7 @@ FROM debian:bookworm-slim    # FIXED
 **Status:** BLOCKING - Must upgrade base image
 
 **Remediation:**
+
 ```dockerfile
 FROM python:3.12-slim-bookworm                          # Use latest patch
 # OR
@@ -45,6 +49,7 @@ FROM ghcr.io/astral-sh/uv:latest-python3.12-bookworm-slim
 ---
 
 ### CVE-2025-7458: SQLite Integer Overflow
+
 **Severity:** ERROR (CRITICAL)
 **Occurrences:** 2 instances (ingest container)
 **Description:** Integer overflow in SQLite
@@ -62,24 +67,26 @@ FROM ghcr.io/astral-sh/uv:latest-python3.12-bookworm-slim
 
 ### Top Warnings by Frequency
 
-| CVE ID | Count | Description | Component | Impact |
-|--------|-------|-------------|-----------|--------|
-| CVE-2025-14104 | 25 | Linux kernel vulnerability | All containers | Medium |
-| CVE-2022-0563 | 25 | Linux kernel vulnerability | All containers | Medium |
-| CVE-2025-6141 | 11 | Kernel/system libraries | Alpine/Debian | Low-Medium |
-| CVE-2024-10041 | 8 | OpenSSL-related | Various | Low |
-| CVE-2024-26461 | 8 | Linux utilities (grep) | busybox | Low |
-| CVE-2024-26458 | 8 | Linux utilities (coreutils) | busybox | Low |
-| CVE-2023-50495 | 8 | Security library | Various | Low |
-| CVE-2018-5709 | 8 | Additional utilities | Various | Low |
+| CVE ID         | Count | Description                 | Component      | Impact     |
+| -------------- | ----- | --------------------------- | -------------- | ---------- |
+| CVE-2025-14104 | 25    | Linux kernel vulnerability  | All containers | Medium     |
+| CVE-2022-0563  | 25    | Linux kernel vulnerability  | All containers | Medium     |
+| CVE-2025-6141  | 11    | Kernel/system libraries     | Alpine/Debian  | Low-Medium |
+| CVE-2024-10041 | 8     | OpenSSL-related             | Various        | Low        |
+| CVE-2024-26461 | 8     | Linux utilities (grep)      | busybox        | Low        |
+| CVE-2024-26458 | 8     | Linux utilities (coreutils) | busybox        | Low        |
+| CVE-2023-50495 | 8     | Security library            | Various        | Low        |
+| CVE-2018-5709  | 8     | Additional utilities        | Various        | Low        |
 
 ### CVE-2025-14104 (25 instances)
+
 **Severity:** WARNING
 **Description:** Linux kernel vulnerability
 **Fixed In:** alpine:3.24, debian:bookworm-slim latest patches
 **Remediation:** Upgrade base images
 
 ### CVE-2022-0563 (25 instances)
+
 **Severity:** WARNING
 **Description:** Linux kernel vulnerability
 **Fixed In:** alpine:3.24, debian:bookworm-slim latest patches
@@ -91,12 +98,12 @@ FROM ghcr.io/astral-sh/uv:latest-python3.12-bookworm-slim
 
 ### Breakdown by Type
 
-| CVE ID | Count | Description | Severity |
-|--------|-------|-------------|----------|
-| Various deprecated packages | 100+ | Outdated libraries and tools | NOTE |
-| CVE-2022-0563 | 25 | Legacy kernel | NOTE |
-| CVE-2025-14104 | - | (counted above) | - |
-| Historical CVEs (2007-2019) | 50+ | Legacy packages | NOTE |
+| CVE ID                      | Count | Description                  | Severity |
+| --------------------------- | ----- | ---------------------------- | -------- |
+| Various deprecated packages | 100+  | Outdated libraries and tools | NOTE     |
+| CVE-2022-0563               | 25    | Legacy kernel                | NOTE     |
+| CVE-2025-14104              | -     | (counted above)              | -        |
+| Historical CVEs (2007-2019) | 50+   | Legacy packages              | NOTE     |
 
 **Note:** Most NOTE-level CVEs are for deprecated packages that may not be directly exploitable in container context. These are typically false positives from old package metadata.
 
@@ -110,13 +117,13 @@ FROM ghcr.io/astral-sh/uv:latest-python3.12-bookworm-slim
 
 Each container image scan reports vulnerabilities independently:
 
-```
-frontend scan       → 30 alerts (alpine:3.24 base)
-api-service scan    → 45 alerts (python:3.12-slim-bookworm base)
-memvid-service scan → 80 alerts (debian:trixie-slim base + rust base)
-ingest scan         → 50 alerts (python:3.12-slim-bookworm base)
+```text
+frontend scan       -> 30 alerts (alpine:3.24 base)
+api-service scan    -> 45 alerts (python:3.12-slim-bookworm base)
+memvid-service scan -> 80 alerts (debian:trixie-slim base + rust base)
+ingest scan         -> 50 alerts (python:3.12-slim-bookworm base)
 ----------------------------------------
-Raw total           → 205 alerts
+Raw total           -> 205 alerts
 
 However:
 - debian:trixie-slim appears in multiple layers
@@ -133,16 +140,18 @@ After deduplication:
 ### Why This Approach Reduces Alerts
 
 Upgrading to newer base images:
+
 - alpine:3.24 patches 25+ kernel/system CVEs
 - debian:bookworm-slim patches glibc, zlib, sqlite
 - python:3.12-slim-bookworm patches library dependencies
-- Result: ~90% reduction in scans (from 277 → ~20-30 NOTE alerts)
+- Result: ~90% reduction in scans (from 277 to ~20-30 NOTE alerts)
 
 ---
 
 ## Scanning Methodology
 
 ### Current Setup
+
 ```yaml
 # .github/workflows/security.yml
 - Runs on: push, PR, weekly schedule
@@ -152,12 +161,15 @@ Upgrading to newer base images:
 ```
 
 ### Alert Sources
+
 - **Trivy Database:** Updated daily with CVE feeds
 - **NIST NVD:** National Vulnerability Database
 - **Vendor Security Advisories:** Alpine, Debian, Python PSF, Rust Foundation
 
 ### False Positives
+
 Some alerts may be false positives:
+
 - **False Positive 1:** Package listed as vulnerable but not actually used
 - **False Positive 2:** Vulnerability requires specific configuration not present
 - **False Positive 3:** Deprecation warnings treated as security issues
@@ -168,25 +180,29 @@ Some alerts may be false positives:
 
 ## Remediation Impact by Service
 
-### Frontend (alpine:3.23 → 3.24)
+### Frontend (alpine:3.23 -> 3.24)
+
 **Alerts Reduced:** ~15 (out of 30)
 **Key Fixes:** CVE-2025-14104, CVE-2022-0563
 **Risk:** NONE - Alpine patch versions are backward compatible
 **Testing:** Vite build verification
 
 ### Memvid-Service (rust + debian updates)
+
 **Alerts Reduced:** ~40 (out of 80)
 **Key Fixes:** CVE-2026-0861 (glibc), CVE-2025-14104, CVE-2022-0563
 **Risk:** LOW - Stable Rust and Debian versions
 **Testing:** `cargo test` + container health check
 
 ### API-Service (uv latest)
+
 **Alerts Reduced:** ~20 (out of 45)
 **Key Fixes:** CVE-2023-45853 (zlib), glibc patches
 **Risk:** NONE - uv latest is production-ready
 **Testing:** FastAPI test suite
 
 ### Ingest (uv latest)
+
 **Alerts Reduced:** ~20 (out of 50)
 **Key Fixes:** CVE-2025-7458 (sqlite), CVE-2023-45853 (zlib)
 **Risk:** NONE - uv latest is production-ready
@@ -197,15 +213,17 @@ Some alerts may be false positives:
 ## Post-Remediation Verification
 
 ### Automated Checks (CI Pipeline)
+
 ```bash
 # Triggered automatically on PR
-1. security.yml runs Trivy on all images
-2. Results uploaded to GitHub code scanning
-3. PR shows alert count and severity breakdown
-4. Must have no NEW CRITICAL/HIGH alerts to merge
+# 1. security.yml runs Trivy on all images
+# 2. Results uploaded to GitHub code scanning
+# 3. PR shows alert count and severity breakdown
+# 4. Must have no NEW CRITICAL/HIGH alerts to merge
 ```
 
 ### Manual Verification (Optional)
+
 ```bash
 # Local scanning before pushing
 trivy image --severity CRITICAL,HIGH ai-resume-frontend:scan
@@ -217,6 +235,7 @@ trivy image --severity CRITICAL,HIGH ai-resume-ingest:scan
 ```
 
 ### Functional Testing
+
 ```bash
 npm run test           # Frontend
 pytest api-service/    # API
@@ -228,12 +247,12 @@ cargo test             # Memvid
 
 ## References
 
-- **CVE-2026-0861:** https://nvd.nist.gov/vuln/detail/CVE-2026-0861
-- **CVE-2023-45853:** https://nvd.nist.gov/vuln/detail/CVE-2023-45853
-- **CVE-2025-7458:** https://nvd.nist.gov/vuln/detail/CVE-2025-7458
-- **Alpine Security:** https://wiki.alpinelinux.org/wiki/Security
-- **Debian Security:** https://security-team.debian.org/
-- **Python PSF Security:** https://www.python.org/dev/peps/pep-0619/
+- **CVE-2026-0861:** <https://nvd.nist.gov/vuln/detail/CVE-2026-0861>
+- **CVE-2023-45853:** <https://nvd.nist.gov/vuln/detail/CVE-2023-45853>
+- **CVE-2025-7458:** <https://nvd.nist.gov/vuln/detail/CVE-2025-7458>
+- **Alpine Security:** <https://wiki.alpinelinux.org/wiki/Security>
+- **Debian Security:** <https://security-team.debian.org/>
+- **Python PSF Security:** <https://www.python.org/dev/peps/pep-0619/>
 
 ---
 

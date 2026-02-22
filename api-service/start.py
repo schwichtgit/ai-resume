@@ -52,6 +52,12 @@ def main() -> None:
     port = int(os.getenv("PORT", "3000"))
     bind_address = os.getenv("BIND_ADDRESS", "auto")
 
+    # Load upstream proxy IPs setting
+    from ai_resume_api.config import get_settings
+
+    settings = get_settings()
+    proxy_cidrs = settings.upstream_proxy_ips.strip()
+
     if bind_address == "auto":
         # Auto-detect: Try IPv6 first, fall back to IPv4
         if can_bind_ipv6_dualstack(port):
@@ -83,7 +89,12 @@ def main() -> None:
             sock.setblocking(False)
 
             # Pass socket to uvicorn
-            config_with_socket = uvicorn.Config("ai_resume_api.main:app", log_level="info")
+            uvi_kwargs: dict = {"log_level": "info"}
+            if proxy_cidrs:
+                uvi_kwargs["proxy_headers"] = True
+                uvi_kwargs["forwarded_allow_ips"] = proxy_cidrs
+                print(f"Proxy headers enabled, allow_ips: {proxy_cidrs}", file=sys.stderr)
+            config_with_socket = uvicorn.Config("ai_resume_api.main:app", **uvi_kwargs)
             server_with_socket = uvicorn.Server(config_with_socket)
             await server_with_socket.serve(sockets=[sock])
 
@@ -98,6 +109,9 @@ def main() -> None:
             "--port",
             str(port),
         ]
+        if proxy_cidrs:
+            cmd.extend(["--proxy-headers", "--forwarded-allow-ips", proxy_cidrs])
+            print(f"Proxy headers enabled, allow_ips: {proxy_cidrs}", file=sys.stderr)
         print(f"Starting: {' '.join(cmd)}", file=sys.stderr)
         sys.exit(subprocess.call(cmd))
 

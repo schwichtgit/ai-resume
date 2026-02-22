@@ -20,8 +20,10 @@ logger = structlog.get_logger()
 # Trace ID Context
 # =============================================================================
 
-# Context variable for trace ID propagation across async calls
+# Context variables for request correlation across async calls
 trace_id_ctx: ContextVar[str] = ContextVar("trace_id", default="")
+session_id_ctx: ContextVar[str] = ContextVar("session_id", default="")
+client_ip_ctx: ContextVar[str] = ContextVar("client_ip", default="")
 
 
 def generate_trace_id() -> str:
@@ -37,6 +39,26 @@ def get_trace_id() -> str:
 def set_trace_id(trace_id: str) -> None:
     """Set trace ID in context."""
     trace_id_ctx.set(trace_id)
+
+
+def get_session_id() -> str:
+    """Get current session ID from context, or empty string if not set."""
+    return session_id_ctx.get()
+
+
+def set_session_id(session_id: str) -> None:
+    """Set session ID in context."""
+    session_id_ctx.set(session_id)
+
+
+def get_client_ip() -> str:
+    """Get current client IP from context, or empty string if not set."""
+    return client_ip_ctx.get()
+
+
+def set_client_ip(client_ip: str) -> None:
+    """Set client IP in context."""
+    client_ip_ctx.set(client_ip)
 
 
 # =============================================================================

@@ -43,11 +43,24 @@ end
 local httpc = http.new()
 httpc:set_timeout(5000)  -- 5 second timeout
 
+local req_headers = {
+    ["Host"] = ngx.var.host,
+}
+if ngx.var.remote_addr then
+    req_headers["X-Real-IP"] = ngx.var.remote_addr
+end
+if ngx.var.http_x_forwarded_for then
+    req_headers["X-Forwarded-For"] = ngx.var.http_x_forwarded_for
+else
+    req_headers["X-Forwarded-For"] = ngx.var.remote_addr
+end
+if ngx.var.http_x_forwarded_proto then
+    req_headers["X-Forwarded-Proto"] = ngx.var.http_x_forwarded_proto
+end
+
 local res, err = httpc:request_uri("http://" .. target_ip .. ":" .. api_port .. "/api/v1/profile", {
     method = "GET",
-    headers = {
-        ["Host"] = ngx.var.host,
-    }
+    headers = req_headers,
 })
 
 if not res then

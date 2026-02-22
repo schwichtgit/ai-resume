@@ -75,6 +75,7 @@ services:
       - PORT=3000
       - BIND_ADDRESS=${BIND_ADDRESS:-auto}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - UPSTREAM_PROXY_IPS=${UPSTREAM_PROXY_IPS:-}
     volumes:
       - ${PROJECT_BASE_DIR:-/opt/ai-resume}/data:/data
     read_only: true
