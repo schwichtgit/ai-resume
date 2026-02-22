@@ -6,7 +6,9 @@ updates:
     schedule:
       interval: 'weekly'
     commit-message:
-      prefix: 'build(deps-dev):'
+      prefix: 'build'
+      prefix-development: 'build'
+      include: 'scope'
     groups:
       minor-and-patch:
         update-types:
@@ -19,7 +21,8 @@ updates:
     schedule:
       interval: 'weekly'
     commit-message:
-      prefix: 'build(deps):'
+      prefix: 'build'
+      include: 'scope'
     groups:
       minor-and-patch:
         update-types:
@@ -32,7 +35,8 @@ updates:
     schedule:
       interval: 'weekly'
     commit-message:
-      prefix: 'build(deps):'
+      prefix: 'build'
+      include: 'scope'
     groups:
       minor-and-patch:
         update-types:
@@ -45,7 +49,8 @@ updates:
     schedule:
       interval: 'weekly'
     commit-message:
-      prefix: 'build(deps):'
+      prefix: 'build'
+      include: 'scope'
     groups:
       minor-and-patch:
         update-types:
@@ -58,7 +63,8 @@ updates:
     schedule:
       interval: 'weekly'
     commit-message:
-      prefix: 'build(deps):'
+      prefix: 'build'
+      include: 'scope'
     groups:
       minor-and-patch:
         update-types:
