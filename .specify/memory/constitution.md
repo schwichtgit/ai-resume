@@ -8,7 +8,7 @@ Once established, these principles do not change without explicit human approval
 
 **Project Name:** ai-resume
 **One-Line Description:** Polyglot web application enabling recruiters to query a candidate's experience via AI chat with semantic search retrieval
-**Primary Language(s):** TypeScript (React 18), Python 3.12 (FastAPI), Rust 1.84 (memvid gRPC)
+**Primary Language(s):** TypeScript (React 18), Python 3.12 (FastAPI), Rust 1.93 (memvid gRPC)
 **Target Platform(s):** Linux (amd64, arm64), macOS (amd64, arm64 -- development only)
 
 ## Non-Negotiable Principles
@@ -54,14 +54,14 @@ This project enforces strict React hook and purity patterns via ESLint v10. Thes
 
 ```tsx
 useEffect(() => {
-  setState(newValue);  // ✓ scoped to effect
+  setState(newValue); // ✓ scoped to effect
 }, [deps]);
 ```
 
 - **Anti-pattern (violates rules):** Calling setState in render or event handlers
 
 ```tsx
-const handleClick = () => setState(value);  // ✗ state mutation outside effect
+const handleClick = () => setState(value); // ✗ state mutation outside effect
 ```
 
 - **Fix:** Move the mutation into an effect or callback that controls when it fires
@@ -73,12 +73,12 @@ const handleClick = () => setState(value);  // ✗ state mutation outside effect
 ```tsx
 const isMobile = useSyncExternalStore(
   (onStoreChange) => {
-    const mediaQuery = window.matchMedia("(max-width: 768px)");
-    mediaQuery.addEventListener("change", onStoreChange);
-    return () => mediaQuery.removeEventListener("change", onStoreChange);
+    const mediaQuery = window.matchMedia('(max-width: 768px)');
+    mediaQuery.addEventListener('change', onStoreChange);
+    return () => mediaQuery.removeEventListener('change', onStoreChange);
   },
-  () => window.matchMedia("(max-width: 768px)").matches,
-  () => false  // server-side default
+  () => window.matchMedia('(max-width: 768px)').matches,
+  () => false, // server-side default
 );
 ```
 
@@ -87,7 +87,7 @@ const isMobile = useSyncExternalStore(
 ```tsx
 const [isMobile, setIsMobile] = useState(false);
 useEffect(() => {
-  const mediaQuery = window.matchMedia("(max-width: 768px)");
+  const mediaQuery = window.matchMedia('(max-width: 768px)');
   setIsMobile(mediaQuery.matches);
   // ✗ forgot to add event listener cleanup or dependency tracking
 }, []);
@@ -99,13 +99,13 @@ useEffect(() => {
 
 ```tsx
 const id = useId();
-return <div id={`carousel-${id}`} />;  // ✓ stable across renders
+return <div id={`carousel-${id}`} />; // ✓ stable across renders
 ```
 
 - **Anti-pattern (violates purity):** Math.random() in render
 
 ```tsx
-return <div id={`carousel-${Math.random()}`} />;  // ✗ impure, ID changes every render
+return <div id={`carousel-${Math.random()}`} />; // ✗ impure, ID changes every render
 ```
 
 **Compliance Checkpoint:** Commit 7049f73 ("refactor(hooks,ui): remove eslint-disable from react-hooks violations") documents patterns from real refactoring:

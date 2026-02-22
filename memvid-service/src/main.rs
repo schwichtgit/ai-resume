@@ -37,83 +37,36 @@ use generated::memvid::v1::{
 use grpc::{HealthService, MemvidGrpcService};
 use memvid::{MockSearcher, RealSearcher, Searcher};
 
-/// Run healthcheck mode: connect to gRPC service and check health
-/// Tries both IPv4 and IPv6 addresses for dual-stack support
+/// Run healthcheck: TCP connect to gRPC port to verify service is listening.
+/// Tries both IPv4 and IPv6 for dual-stack support.
 async fn run_healthcheck() -> Result<(), Box<dyn std::error::Error>> {
-    // If GRPC_URL is explicitly set, use it; otherwise try both IPv4 and IPv6
-    if let Ok(grpc_url) = std::env::var("GRPC_URL") {
-        // Explicit URL provided, use it directly
+    let port: u16 = std::env::var("GRPC_PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(50051);
+
+    let addrs = [
+        std::net::SocketAddr::from(([127, 0, 0, 1], port)),
+        std::net::SocketAddr::from(([0, 0, 0, 0, 0, 0, 0, 1], port)),
+    ];
+
+    for addr in &addrs {
         match tokio::time::timeout(
-            std::time::Duration::from_secs(5),
-            check_grpc_health(&grpc_url),
+            std::time::Duration::from_secs(2),
+            tokio::net::TcpStream::connect(addr),
         )
         .await
         {
             Ok(Ok(_)) => {
-                eprintln!("healthcheck: gRPC service is healthy");
+                eprintln!("healthcheck: service is listening on {}", addr);
                 std::process::exit(0);
             }
-            Ok(Err(e)) => {
-                eprintln!("healthcheck: gRPC health check failed: {}", e);
-                std::process::exit(1);
-            }
-            Err(_) => {
-                eprintln!("healthcheck: timeout connecting to gRPC service");
-                std::process::exit(1);
-            }
+            _ => continue,
         }
-    } else {
-        // Try both IPv6 and IPv4 for dual-stack support
-        let urls = vec![
-            "http://[::1]:50051",     // IPv6 localhost
-            "http://127.0.0.1:50051", // IPv4 localhost
-        ];
-
-        for grpc_url in urls {
-            match tokio::time::timeout(
-                std::time::Duration::from_secs(2),
-                check_grpc_health(grpc_url),
-            )
-            .await
-            {
-                Ok(Ok(_)) => {
-                    eprintln!("healthcheck: gRPC service is healthy (via {})", grpc_url);
-                    std::process::exit(0);
-                }
-                Ok(Err(_)) | Err(_) => {
-                    // Continue to next URL
-                    continue;
-                }
-            }
-        }
-
-        eprintln!("healthcheck: failed to connect via IPv4 or IPv6");
-        std::process::exit(1);
     }
-}
 
-/// Check gRPC health endpoint
-async fn check_grpc_health(grpc_url: &str) -> Result<(), Box<dyn std::error::Error>> {
-    use generated::memvid::v1::health_client::HealthClient;
-    use generated::memvid::v1::HealthCheckRequest;
-
-    let channel = tonic::transport::Channel::from_shared(grpc_url.to_string())?
-        .connect()
-        .await?;
-
-    let mut client = HealthClient::new(channel);
-    let request = tonic::Request::new(HealthCheckRequest {
-        service: String::new(), // Empty string checks overall service health
-    });
-
-    let response = client.check(request).await?;
-
-    // Status 1 = SERVING
-    if response.get_ref().status == 1 {
-        Ok(())
-    } else {
-        Err("service not serving".into())
-    }
+    eprintln!("healthcheck: failed to connect on port {}", port);
+    std::process::exit(1);
 }
 
 #[tokio::main]
@@ -125,16 +78,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
 
     // Check if running in healthcheck mode
-    let program_name = std::env::args()
-        .next()
-        .and_then(|path| {
-            std::path::Path::new(&path)
-                .file_name()
-                .map(|n| n.to_string_lossy().to_string())
-        })
-        .unwrap_or_default();
-
-    if program_name == "healthcheck" {
+    if std::env::args().any(|arg| arg == "--health") {
         return run_healthcheck().await;
     }
 

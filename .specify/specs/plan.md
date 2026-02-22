@@ -344,21 +344,21 @@ The true E2E test (`scripts/test-e2e-real.sh`) enforces semantic quality across 
 
 ## Deployment Architecture
 
-| Component          | Platform                                    | Rationale                                                           |
-| ------------------ | ------------------------------------------- | ------------------------------------------------------------------- |
-| Production Host    | nanopi-r6s (RK3588 ARM64, 4GB RAM, OpenWrt) | Low-power edge server; 180MB total runtime, 3.8GB headroom          |
-| Container Runtime  | Podman (rootless) + podman compose          | Daemonless, rootless by default; no Docker dependency               |
-| Network            | `yellow-net` (192.168.100.0/24, external)   | Zone-isolated subnet with static IPs; firewall blocks cross-zone    |
-| Frontend Container | alpine + OpenResty (nginx + Lua)            | 35MB image; Lua SEO handler; Pattern B internal routing             |
-| API Container      | python:3.12-slim-bookworm                   | 500MB image, 150-200MB runtime; FastAPI + gRPC client               |
-| Memvid Container   | debian:trixie-slim (runtime)                | 15MB image, 20MB runtime; gRPC on :50051, metrics on :9090          |
-| Host Load Balancer | nginx on host (outside Podman)              | TLS termination; domain routing; SSE proxy support                  |
-| Container Security | read_only, no-new-privileges, non-root      | All containers unprivileged; volumes mounted ro where possible      |
-| Data Volume        | `/opt/ai-resume/data` mounted ro            | .mv2 file + profile config; stateless containers                    |
-| Development        | Local multi-terminal (3 terminals)          | Cargo run, uvicorn --reload, npm run dev                            |
-| CI/CD              | GitHub Actions (`.github/workflows/ci.yml`) | Monorepo path filtering; conditional jobs per service; summary gate |
-| Build Pipeline     | `scripts/build-all.sh`                      | Multi-arch (amd64 + arm64); scp transfer; podman compose deploy     |
-| Static Analysis    | SonarQube + CodeQL                          | Runs on push to main and PRs                                        |
+| Component          | Platform                                                                      | Rationale                                                                                |
+| ------------------ | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Production Host    | nanopi-r6s (RK3588 ARM64, 4GB RAM, OpenWrt)                                   | Low-power edge server; 180MB total runtime, 3.8GB headroom                               |
+| Container Runtime  | Podman (rootless) + podman compose                                            | Daemonless, rootless by default; no Docker dependency                                    |
+| Network            | `yellow-net` (192.168.100.0/24, external)                                     | Zone-isolated subnet with static IPs; firewall blocks cross-zone                         |
+| Frontend Container | alpine + OpenResty (nginx + Lua)                                              | 35MB image; Lua SEO handler; Pattern B internal routing                                  |
+| API Container      | python:3.12-slim-bookworm                                                     | 500MB image, 150-200MB runtime; FastAPI + gRPC client                                    |
+| Memvid Container   | distroless/cc-debian12:nonroot (runtime), rust:1.93.1-slim-bookworm (builder) | ~10MB image, 20MB runtime; gRPC on :50051, metrics on :9090; protoc from GitHub releases |
+| Host Load Balancer | nginx on host (outside Podman)                                                | TLS termination; domain routing; SSE proxy support                                       |
+| Container Security | read_only, no-new-privileges, non-root                                        | All containers unprivileged; volumes mounted ro where possible                           |
+| Data Volume        | `/opt/ai-resume/data` mounted ro                                              | .mv2 file + profile config; stateless containers                                         |
+| Development        | Local multi-terminal (3 terminals)                                            | Cargo run, uvicorn --reload, npm run dev                                                 |
+| CI/CD              | GitHub Actions (`.github/workflows/ci.yml`)                                   | Monorepo path filtering; conditional jobs per service; summary gate                      |
+| Build Pipeline     | `scripts/build-all.sh`                                                        | Multi-arch (amd64 + arm64); scp transfer; podman compose deploy                          |
+| Static Analysis    | SonarQube + CodeQL                                                            | Runs on push to main and PRs                                                             |
 
 ### Container Topology (Production)
 
@@ -582,3 +582,107 @@ Host nginx (TLS) --> 192.168.100.10:8080 (frontend/OpenResty)
 
 - Positive: Defense-in-depth, predictable static IPs for firewall rules, no published ports reduces attack surface, zone isolation matches enterprise patterns
 - Negative: More complex initial setup, debugging requires awareness of zone topology, host nginx must have route to 192.168.100.0/24
+
+### ADR-008: Distroless Runtime for Memvid Service (INFRA-024)
+
+**Date:** 2026-02-22
+**Status:** Accepted
+
+**Context:** The memvid-service runtime image uses `debian:trixie-slim` which carries 25 LOW/MEDIUM Trivy CVE alerts from unnecessary OS packages (shell, apt, coreutils, ncurses, etc.). The Rust binary only needs glibc, libgcc, and CA certificates at runtime.
+
+**Decision:** Replace the runtime stage with `gcr.io/distroless/cc-debian12:nonroot`. Pin the builder to `rust:1.93.1-slim-bookworm` (glibc 2.36) to match the debian12 distroless runtime (glibc 2.36). The `:nonroot` tag provides UID 65534, eliminating the need for `useradd`. No shell commands in the runtime stage.
+
+**Alternatives Considered:**
+
+1. **`distroless/cc-debian13:nonroot`** -- glibc 2.41 match with trixie builder, but Google labels debian13 images as "not yet stable."
+2. **musl static binary + `distroless/static`** -- Smallest possible image (~2MB), zero dynamic dependencies, but `memvid-core` and `aws-lc-sys` may have C dependencies that complicate musl cross-compilation.
+3. **Keep `debian:trixie-slim`** -- No migration risk, but 25 unnecessary CVE alerts persist and the attack surface remains larger than necessary.
+
+**Consequences:**
+
+- Positive: Eliminates ~25 OS-level CVE alerts, no shell (reduced attack surface), smaller image, no package manager in runtime
+- Negative: No shell for debugging (must use ephemeral debug containers), UID changes from 1000 to 65534 (compose.yaml volume ownership update needed), builder downgrade from trixie to bookworm
+
+### ADR-009: OS-Independent Protoc Binary (INFRA-026)
+
+**Date:** 2026-02-22
+**Status:** Accepted
+
+**Context:** The memvid-service Dockerfile pins `protobuf-compiler=3.21.12-11` from Debian's package repository. This couples the protoc version to the OS. Switching from trixie to bookworm requires a different version pin. The `libprotobuf-dev` package is unnecessary -- `tonic-build`/`prost-build` only invoke the `protoc` binary and do not link against `libprotobuf`.
+
+**Decision:** Download protoc v28.x (LTS) directly from GitHub releases (`protocolbuffers/protobuf`) using a pinned `ARG PROTOC_VERSION`. Map Docker `TARGETARCH` to protoc release naming (`amd64` -> `x86_64`, `arm64` -> `aarch_64`). Remove `protobuf-compiler` and `libprotobuf-dev` from apt dependencies.
+
+**Alternatives Considered:**
+
+1. **`protobuf-src` crate** -- Compiles protoc from C++ source via Cargo. Adds significant build time, bundles an old version (v3.19.1), may conflict with newer prost features.
+2. **`protoc-bin-vendored` crate** -- Pre-compiled binary as a Cargo dependency. Fast but version is whatever the crate bundles (may lag behind).
+3. **Keep apt package** -- Simplest but ties protoc version to OS, breaks on base image migration.
+
+**Consequences:**
+
+- Positive: Protoc version decoupled from OS, trivial to bump via `ARG`, multi-arch support, no unnecessary `libprotobuf-dev`
+- Negative: Requires `curl` + `unzip` as transient build dependencies (removed after download)
+
+### ADR-010: cargo-auditable for Rust SBOM (INFRA-025)
+
+**Date:** 2026-02-22
+**Status:** Accepted
+
+**Context:** Trivy and Grype have zero visibility into Rust crate dependencies in compiled binaries. Unlike Go (which embeds buildinfo automatically since 1.18), Rust binaries contain no dependency metadata by default. The security workflow scans memvid containers but only finds OS-level CVEs, creating a blind spot for Rust supply chain vulnerabilities.
+
+**Decision:** Install `cargo-auditable` via `cargo install cargo-auditable` in the builder stage. Replace `cargo build --release` with `cargo auditable build --release`. This embeds a `.dep-v0` ELF section (~4KB) containing compressed JSON dependency data. Verification is end-to-end: Trivy scan output must include Rust crate entries. Compatible with `strip = true` release profile.
+
+**Alternatives Considered:**
+
+1. **Copy `Cargo.lock` into runtime image** -- Simpler, Trivy can scan the lockfile, but may not match what was actually compiled (layer caching discrepancies), adds unnecessary file to minimal runtime.
+2. **Nightly `-Z sbom` flag** -- RFC 3553 native SBOM support, but behind an unstable flag, not ready for production.
+3. **No SBOM** -- Status quo, zero visibility into Rust crate CVEs.
+
+**Consequences:**
+
+- Positive: Full Rust dependency visibility for scanners, ~4KB overhead, survives stripping, drop-in replacement for `cargo build`
+- Negative: ~30s added to uncached builds for `cargo install cargo-auditable` (cached in Docker layer after first build)
+
+### ADR-011: Trivy CI Gate with Dual-Run Strategy (FUNC-075)
+
+**Date:** 2026-02-22
+**Status:** Accepted
+
+**Context:** The security workflow's `severity: 'CRITICAL,HIGH'` filter is ineffective (aquasecurity/trivy-action#435). All severity levels are reported. The constitution requires critical/high CVEs patched within 7 days, but CI does not enforce this -- the pipeline never fails regardless of findings. Additionally, SARIF must be uploaded even when the pipeline should fail.
+
+**Decision:** Two Trivy runs per container:
+
+1. **Run 1 (SARIF):** `format: sarif`, no exit-code. Always succeeds. Uploads results to GitHub Code Scanning with explicit `category: 'trivy-${{ matrix.image }}'`.
+2. **Run 2 (Gate):** `format: table` for readable output, `exit-code: '1'`. Uses `TRIVY_SEVERITY=CRITICAL,HIGH` and `TRIVY_IGNORE_UNFIXED=true` env vars. Fails CI only on fixable CRITICAL/HIGH CVEs.
+
+A `.trivyignore` file (committed empty with comment header) provides documented override for explicitly accepted risks. Sequenced after INFRA-025 (cargo-auditable) to review newly-exposed Rust crate CVEs before the gate activates.
+
+**Alternatives Considered:**
+
+1. **Single run + `continue-on-error`** -- Less clear; the step shows as "passed with warnings" rather than a definitive pass/fail.
+2. **Single run + `if: always()`** -- SARIF upload happens but the overall step failure semantics are muddled when multiple steps interact.
+
+**Consequences:**
+
+- Positive: Constitution compliance (CI fails on fixable CRITICAL/HIGH), SARIF always uploaded for visibility, `--ignore-unfixed` prevents blocking on CVEs with no available fix, `.trivyignore` provides escape hatch
+- Negative: Two Trivy runs per container (adds ~30s per matrix entry to CI), more complex workflow YAML
+
+### ADR-012: Memvid Health Check via gRPC Port Probe (INFRA-024)
+
+**Date:** 2026-02-22
+**Status:** Accepted
+
+**Context:** The current memvid-service healthcheck uses a `/healthcheck` symlink to the main binary. Distroless images have no shell, so `ln -s` is unavailable. The compose.yaml `healthcheck` must verify the service is actually serving, not just that the binary is runnable.
+
+**Decision:** Add a `--health` CLI flag to the memvid-service binary that attempts a TCP connection to `localhost:50051` (the gRPC port). Exits 0 if the connection succeeds (service is listening), exits 1 otherwise. The compose.yaml healthcheck becomes `["/usr/local/bin/memvid-service", "--health"]`. No separate binary or symlink needed.
+
+**Alternatives Considered:**
+
+1. **Minimal exit 0** -- Only proves the binary starts, not that the gRPC server is running.
+2. **HTTP /health on metrics port 9090** -- Would work but adds an HTTP handler to the metrics server, mixing concerns.
+3. **`grpc_health_probe` binary** -- Standard gRPC health checking, but requires copying an additional binary into the distroless image.
+
+**Consequences:**
+
+- Positive: Verifies actual service availability (not just binary existence), no additional binaries needed, works in distroless without shell
+- Negative: Requires a Rust code change (adding CLI argument parsing + TCP connect), binary serves dual purpose (server + health checker)

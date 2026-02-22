@@ -5,14 +5,26 @@
 FROM rust:1.93.1-slim AS builder
 
 ARG TARGETARCH
+ARG PROTOC_VERSION=28.3
 
 WORKDIR /app
 
-# Install protobuf compiler and dev libs (Debian equivalents)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    protobuf-compiler=3.21.12-11 \
-    libprotobuf-dev=3.21.12-11 \
-    && rm -rf /var/lib/apt/lists/*
+# Install protoc from GitHub releases (OS-independent, pinned version)
+# Maps TARGETARCH (amd64/arm64) to protoc archive naming convention
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) PROTOC_ARCH="x86_64" ;; \
+        arm64) PROTOC_ARCH="aarch_64" ;; \
+        *) echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    apt-get update && apt-get install -y --no-install-recommends curl unzip \
+    && curl -fsSL -o /tmp/protoc.zip \
+        "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-${PROTOC_ARCH}.zip" \
+    && unzip -o /tmp/protoc.zip -d /usr/local bin/protoc 'include/*' \
+    && rm /tmp/protoc.zip \
+    && apt-get purge -y curl unzip && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/* \
+    && protoc --version
 
 # Copy Cargo files
 COPY Cargo.toml Cargo.lock ./
@@ -28,37 +40,27 @@ RUN uname -m && rustup show && \
     cargo build -j $(nproc) --release && \
     rm -rf src
 
+# Install cargo-auditable for Rust dependency SBOM embedding
+RUN cargo install cargo-auditable
+
 # Copy actual source code and build files
 COPY src/ ./src/
 COPY proto/ ./proto/
 COPY build.rs ./
 
 # Build for target architecture (auto-detected by --platform)
-RUN cargo build -j $(nproc) --release
+RUN cargo auditable build -j $(nproc) --release
 
-# Stage 2: Runtime image (debian-slim for glibc compatibility)
-FROM debian:trixie-slim
-
-# Install ca-certificates for TLS
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/* \
-    && useradd -r -u 1000 -s /bin/false memvid
+# Stage 2: Distroless runtime (glibc 2.36, UID 65534 nonroot)
+FROM gcr.io/distroless/cc-debian12:nonroot
 
 # Copy binary from builder
 COPY --from=builder /app/target/release/memvid-service /usr/local/bin/memvid-service
-
-# Create symlink for healthcheck at root level
-WORKDIR /
-RUN ln -s /usr/local/bin/memvid-service healthcheck
 
 # Expose gRPC port
 EXPOSE 50051
 
 # Expose Prometheus metrics port
 EXPOSE 9090
-
-# Run as non-root user
-USER memvid
 
 ENTRYPOINT ["/usr/local/bin/memvid-service"]
