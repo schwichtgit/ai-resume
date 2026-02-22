@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     # Rate limiting
     rate_limit_per_minute: int = 10
 
+    # Proxy trust (empty = disabled, CIDR like "192.168.100.0/24" or "*")
+    upstream_proxy_ips: str = ""
+
     # Server configuration
     port: int = 3000
     host: str = "0.0.0.0"
