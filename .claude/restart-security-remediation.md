@@ -1,6 +1,7 @@
 # Security Remediation Plan
 
 **Date Created:** 2026-02-21
+
 **Status:** Ready for Implementation
 **Priority:** HIGH (10 error-level CVEs blocking deployment)
 
@@ -9,6 +10,7 @@
 ## Executive Summary
 
 The project currently has **277 open security alerts** across container images, with a critical breakdown:
+
 - **10 ERROR severity** vulnerabilities (must fix)
 - **66 WARNING severity** vulnerabilities (should fix)
 - **201 NOTE severity** vulnerabilities (monitor)
@@ -21,31 +23,31 @@ The ERROR-level vulnerabilities are all in container base images and stem from o
 
 ### By Severity
 
-| Severity | Count | Status |
-|----------|-------|--------|
-| ERROR    | 10    | CRITICAL - BLOCKS DEPLOYMENT |
-| WARNING  | 66    | HIGH - SHOULD FIX |
-| NOTE     | 201   | MEDIUM - MONITOR |
-| **TOTAL**| **277** | **ACTION REQUIRED** |
+| Severity  | Count   | Status                       |
+| --------- | ------- | ---------------------------- |
+| ERROR     | 10      | CRITICAL - BLOCKS DEPLOYMENT |
+| WARNING   | 66      | HIGH - SHOULD FIX            |
+| NOTE      | 201     | MEDIUM - MONITOR             |
+| **TOTAL** | **277** | **ACTION REQUIRED**          |
 
 ### Top Critical CVEs (ERROR level)
 
-| CVE ID | Occurrences | Description | Component |
-|--------|------------|-------------|-----------|
-| CVE-2026-0861 | 6 | glibc: Integer overflow in memalign → heap corruption | memvid-service |
-| CVE-2023-45853 | 2 | zlib: Integer overflow → heap-based buffer overflow | ingest, api-service |
-| CVE-2025-7458 | 2 | sqlite: Integer overflow | ingest |
+| CVE ID          | Occurrences | Description                                              | Component           |
+| --------------- | ----------- | -------------------------------------------------------- | ------------------- |
+| CVE-2026-0861   | 6           | glibc: Integer overflow in memalign -> heap corruption   | memvid-service      |
+| CVE-2023-45853  | 2           | zlib: Integer overflow -> heap-based buffer overflow     | ingest, api-service |
+| CVE-2025-7458   | 2           | sqlite: Integer overflow                                 | ingest              |
 
 ### Top Warning CVEs
 
-| CVE ID | Occurrences | Description |
-|--------|------------|-------------|
-| CVE-2025-14104 | 25 | Linux kernel vulnerability (in alpine/debian) |
-| CVE-2022-0563 | 25 | Linux kernel vulnerability (in alpine/debian) |
-| CVE-2025-6141 | 11 | Additional kernel/system libraries |
-| CVE-2024-10041 | 8 | OpenSSL-related |
-| CVE-2024-26461/26458 | 16 | Linux utilities (grep, coreutils in busybox) |
-| CVE-2023-50495 | 8 | Security library vulnerability |
+| CVE ID                | Occurrences | Description                                    |
+| --------------------- | ----------- | ---------------------------------------------- |
+| CVE-2025-14104        | 25          | Linux kernel vulnerability (in alpine/debian)  |
+| CVE-2022-0563         | 25          | Linux kernel vulnerability (in alpine/debian)  |
+| CVE-2025-6141         | 11          | Additional kernel/system libraries             |
+| CVE-2024-10041        | 8           | OpenSSL-related                                |
+| CVE-2024-26461/26458  | 16          | Linux utilities (grep, coreutils in busybox)   |
+| CVE-2023-50495        | 8           | Security library vulnerability                 |
 
 ---
 
@@ -54,14 +56,15 @@ The ERROR-level vulnerabilities are all in container base images and stem from o
 ### Alert Pattern
 
 All 277 alerts are **container base image vulnerabilities**, NOT application code vulnerabilities. The duplication occurs because:
-1. Each Dockerfile scans separately (4 services × multiple base images)
+
+1. Each Dockerfile scans separately (4 services x multiple base images)
 2. Shared base layers (debian:trixie-slim, alpine:3.23, python:3.12-slim-bookworm) appear in multiple scans
 3. Alerts are NOT deduplicated across images
 
 ### Current Base Images
 
 | Service | Dockerfile | Base Images | Status |
-|---------|-----------|------------|--------|
+| --- | --- | --- | --- |
 | frontend | frontend/Dockerfile | `alpine:3.23` (OpenResty) + `node:24-bookworm-slim` (build) | Outdated |
 | api-service | api-service/Dockerfile | `ghcr.io/astral-sh/uv:0.9.26-python3.12-bookworm-slim` (builder), `python:3.12-slim-bookworm` (runtime) | Outdated |
 | memvid-service | memvid-service/Dockerfile | `rust:1.92.0-slim` (builder), `debian:trixie-slim` (runtime) | Outdated |
@@ -87,6 +90,7 @@ The following tags are the latest stable versions verified for security and comp
 ### 1. Dependabot PR Merge Status
 
 **Current PRs in Flight:**
+
 - PR #44: `tailwindcss` 4.2.0 (eslint checks only)
 - PR #43: `eslint-plugin-react-hooks` 7.0.1 (eslint checks only)
 - PR #42: `@eslint/js` 10.0.1 (eslint checks only)
@@ -101,10 +105,12 @@ The following tags are the latest stable versions verified for security and comp
 ### 2. Disk Space Requirements
 
 Container builds will need:
+
 - **Minimum:** 5GB free space (for single image builds)
 - **Recommended:** 15GB free space (for parallel builds and scratch space)
 
 Check current state:
+
 ```bash
 df -h /
 du -sh ~/Library/Caches/podman 2>/dev/null
@@ -112,6 +118,7 @@ du -sh memvid-service/target 2>/dev/null
 ```
 
 Free space if needed:
+
 ```bash
 cargo clean --manifest-path memvid-service/Cargo.toml  # ~1-2GB
 podman system prune -a --volumes  # ~2-5GB
@@ -123,6 +130,7 @@ rm -rf ~/.cache/huggingface/hub
 ### 3. Branch Strategy
 
 Create a new branch for security updates:
+
 ```bash
 git checkout -b fix/security-base-images main
 ```
@@ -136,7 +144,7 @@ git checkout -b fix/security-base-images main
 Update all Dockerfiles to latest stable image versions. Latest versions verified as of 2026-02-21:
 
 | Current | Latest | Rationale |
-|---------|--------|-----------|
+| --- | --- | --- |
 | `alpine:3.23` | `alpine:3.23.3` | Latest 3.23 stable with security fixes |
 | `node:24-bookworm-slim` | `node:24.13.1-bookworm-slim` | Latest 24.x Krypton LTS patch |
 | `rust:1.92.0-slim` | `rust:1.93.1-slim` | Latest 1.x slim variant |
@@ -192,6 +200,7 @@ docker build \
 ```
 
 **Scan with Trivy locally** (if trivy is installed):
+
 ```bash
 trivy image --severity CRITICAL,HIGH ai-resume-frontend:scan
 trivy image --severity CRITICAL,HIGH ai-resume-api:scan
@@ -270,12 +279,14 @@ EOF
 ## Verification Checklist
 
 ### Code Scanning
+
 - [ ] Push to GitHub triggers `.github/workflows/security.yml`
 - [ ] All 4 container scans complete (trivy CRITICAL,HIGH filters)
 - [ ] Verify no NEW high/critical vulnerabilities introduced
 - [ ] Existing NOTE-level alerts may persist (system packages, not critical)
 
 ### Functionality Tests
+
 - [ ] `npm run build` succeeds (frontend)
 - [ ] `npm run build:dev` succeeds (dev frontend)
 - [ ] `python -m pytest api-service/` passes (API tests)
@@ -283,6 +294,7 @@ EOF
 - [ ] `cargo test -p ai_resume_grpc_service` passes (memvid tests)
 
 ### Container Build Tests (E2E)
+
 ```bash
 # Estimated time: 30-45 minutes
 ./scripts/build-all.sh latest
@@ -298,6 +310,7 @@ podman run --rm ai-resume-frontend:latest curl http://localhost:8080/health
 ```
 
 ### PR Checks
+
 - [ ] CI pipeline: All checks passing (eslint, type checks, tests)
 - [ ] Code scanning: No new alerts introduced
 - [ ] Commit message: Follows conventional commits format
@@ -306,16 +319,15 @@ podman run --rm ai-resume-frontend:latest curl http://localhost:8080/health
 
 ## Timeline & Effort
 
-| Phase | Task | Effort | Timeline |
-
-|-------|------|--------|----------|
-| 1 | Dockerfile updates | 30 min | Immediate |
-| 2 | Local scans | 10 min | Immediate |
-| 3 | Git commit | 5 min | Immediate |
-| 4 | PR creation | 5 min | Immediate |
-| 5 | CI pipeline run | - | 10-15 min (automated) |
-| 6 | Container E2E tests | 45 min | Optional (see restart-container-e2e.md) |
-| **Total** | | **~1.5-2 hours** | **Same day** |
+| Phase     | Task                | Effort           | Timeline                                  |
+| --------- | ------------------- | ---------------- | ----------------------------------------- |
+| 1         | Dockerfile updates  | 30 min           | Immediate                                 |
+| 2         | Local scans         | 10 min           | Immediate                                 |
+| 3         | Git commit          | 5 min            | Immediate                                 |
+| 4         | PR creation         | 5 min            | Immediate                                 |
+| 5         | CI pipeline run     | -                | 10-15 min (automated)                     |
+| 6         | Container E2E tests | 45 min           | Optional (see restart-container-e2e.md)   |
+| **Total** |                     | **~1.5-2 hours** | **Same day**                              |
 
 ---
 

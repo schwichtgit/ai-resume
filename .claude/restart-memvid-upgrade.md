@@ -1,14 +1,17 @@
 # Restart: Memvid Upgrade + Container E2E
 
 ## Context
+
 Session ran out of disk space. Need to free space before container builds.
 
 ## Branch
+
 `chore/memvid-upgrade-2.0.157` (based on `main` after PR #28 merge)
 
 ## Completed
 
 ### 1. Memvid evaluation
+
 - Reproduced all 3 bugs (A, B, C) against latest versions (SDK 2.0.157, core 2.0.137)
 - Bug B (#195): **FIXED** -- SDK/core version parity restored
 - Bug A (#194): NOT FIXED -- vec_enabled=None, semantic search raises MV011
@@ -16,7 +19,9 @@ Session ran out of disk space. Need to free space before container builds.
 - Upstream report packaged: `memvid_issues/memvid-bug-report-2026-02-20.zip`
 
 ### 2. Version upgrade (ALL DONE, NOT YET COMMITTED)
+
 Files changed:
+
 - `ingest/pyproject.toml`: memvid-sdk 2.0.153 -> 2.0.157
 - `ingest/uv.lock`: updated
 - `memvid-service/Cargo.toml`: memvid-core 2.0.136 -> 2.0.137
@@ -27,6 +32,7 @@ Files changed:
 - Local CLI: `volta install memvid-cli@2.0.157` (done)
 
 ### 3. Upstream bug report
+
 - `memvid_issues/UPSTREAM_REPORT.md` -- comprehensive report
 - `memvid_issues/repro_bug_a.py` -- Bug A reproduction
 - `memvid_issues/repro_bug_c.py` -- Bug C reproduction
@@ -37,10 +43,12 @@ Files changed:
 ## Remaining
 
 ### 1. Commit the version upgrade
+
 - All changes are unstaged on branch `chore/memvid-upgrade-2.0.157`
 - Commit message: `chore(deps): upgrade memvid SDK 2.0.157, core 2.0.137`
 
 ### 2. Container E2E testing
+
 - See `.claude/restart-container-e2e.md` for full checklist
 - DISK SPACE NEEDED: container builds require significant space
 - Free space first: `podman system prune -a`, check `~/Library/Caches`, etc.
@@ -49,9 +57,11 @@ Files changed:
 - Test: health endpoints, profile, chat
 
 ### 3. Taskfile implementation (optional, if time permits)
+
 - `.specify/specs/taskfile-plan.md` (F-125 to F-134)
 
 ## Disk space tips
+
 ```bash
 # Check disk usage
 df -h /
