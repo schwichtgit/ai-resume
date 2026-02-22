@@ -2,7 +2,7 @@
 # Publish multi-arch OCI containers to a remote registry using skopeo
 #
 # Usage:
-#   ./publish-containers.sh <registry> [version] [--dry-run] [--all|--frontend|--api|--memvid]
+#   ./publish-containers.sh <registry> [version] [--dry-run] [--all|--frontend|--api|--memvid|--ingest]
 #
 # Examples:
 #   ./publish-containers.sh ghcr.io/schwichtgit          # Push all, tag 'latest'
@@ -27,10 +27,11 @@ DRY_RUN=false
 PUSH_FRONTEND=false
 PUSH_API=false
 PUSH_MEMVID=false
+PUSH_INGEST=false
 PUSH_ALL=true
 
 if [ -z "$REMOTE_REGISTRY" ]; then
-    echo "Usage: $0 <registry> [version] [--dry-run] [--all|--frontend|--api|--memvid]"
+    echo "Usage: $0 <registry> [version] [--dry-run] [--all|--frontend|--api|--memvid|--ingest]"
     echo ""
     echo "  registry   Target registry path (e.g., ghcr.io/schwichtgit, docker.io/frank)"
     echo "  version    Image tag (default: latest)"
@@ -41,8 +42,9 @@ if [ -z "$REMOTE_REGISTRY" ]; then
     echo "  --frontend   Push only frontend"
     echo "  --api        Push only api"
     echo "  --memvid     Push only memvid"
+    echo "  --ingest     Push only ingest"
     echo ""
-    echo "Multiple selectors can be combined: --frontend --api"
+    echo "Multiple selectors can be combined: --frontend --api --ingest"
     exit 1
 fi
 
@@ -70,6 +72,11 @@ while [[ $# -gt 0 ]]; do
             PUSH_ALL=false
             shift
             ;;
+        --ingest)
+            PUSH_INGEST=true
+            PUSH_ALL=false
+            shift
+            ;;
         --all)
             PUSH_ALL=true
             shift
@@ -85,6 +92,7 @@ if [ "$PUSH_ALL" = true ]; then
     PUSH_FRONTEND=true
     PUSH_API=true
     PUSH_MEMVID=true
+    PUSH_INGEST=true
 fi
 
 # --- Colors ---
@@ -121,6 +129,9 @@ if [ "$PUSH_MEMVID" = true ]; then
 fi
 if [ "$PUSH_API" = true ]; then
     IMAGES+=("ai-resume-api")
+fi
+if [ "$PUSH_INGEST" = true ]; then
+    IMAGES+=("ai-resume-ingest")
 fi
 
 echo ""
@@ -191,25 +202,58 @@ for IMG in "${IMAGES[@]}"; do
     echo ""
 done
 
-# --- Also tag as 'latest' if version is not 'latest' ---
-if [ "$VERSION" != "latest" ] && [ "$FAILED" -eq 0 ] && [ "$DRY_RUN" = false ]; then
+# --- Semver tag family (server-side re-tagging via skopeo) ---
+if [ "$VERSION" != "latest" ] && [ "$FAILED" -eq 0 ]; then
+    BARE_VERSION="${VERSION#v}"
+    SHA_TAG="sha-$(git rev-parse --short HEAD)"
+
+    # Build list of additional tags to apply
+    declare -a EXTRA_TAGS=()
+
+    if [[ "$BARE_VERSION" == *-* ]]; then
+        # Pre-release: only the sha tag (VERSION itself was already pushed above)
+        log_step "Pre-release detected -- tagging with sha only"
+        EXTRA_TAGS+=("$SHA_TAG")
+        # Add bare version if VERSION had a v prefix
+        if [[ "$VERSION" != "$BARE_VERSION" ]]; then
+            EXTRA_TAGS+=("$BARE_VERSION")
+        fi
+    else
+        # Stable release: full semver tag family
+        MINOR_TAG="${BARE_VERSION%.*}"
+        log_step "Stable release detected -- applying semver tag family"
+
+        # Add bare version if VERSION had a v prefix
+        if [[ "$VERSION" != "$BARE_VERSION" ]]; then
+            EXTRA_TAGS+=("$BARE_VERSION")
+        fi
+        EXTRA_TAGS+=("$MINOR_TAG" "latest" "$SHA_TAG")
+    fi
+
     echo ""
-    log_step "Tagging ${VERSION} as 'latest'..."
+    log_info "Additional tags: ${EXTRA_TAGS[*]}"
+
     for IMG in "${IMAGES[@]}"; do
         REMOTE_VERSIONED="${REMOTE_REGISTRY}/${IMG}:${VERSION}"
-        REMOTE_LATEST="${REMOTE_REGISTRY}/${IMG}:latest"
-        log_info "  ${REMOTE_VERSIONED} -> ${REMOTE_LATEST}"
-        if skopeo copy \
-            --all \
-            "docker://${REMOTE_VERSIONED}" \
-            "docker://${REMOTE_LATEST}" 2>&1; then
-            log_info "  Tagged ${IMG}:latest"
-        else
-            log_warn "  Failed to tag ${IMG}:latest (non-fatal)"
-        fi
+        for TAG in "${EXTRA_TAGS[@]}"; do
+            REMOTE_TAG="${REMOTE_REGISTRY}/${IMG}:${TAG}"
+            if [ "$DRY_RUN" = true ]; then
+                log_warn "  [dry-run] skopeo copy --all docker://${REMOTE_VERSIONED} docker://${REMOTE_TAG}"
+            else
+                log_info "  Tagging ${IMG}:${TAG}"
+                if skopeo copy \
+                    --all \
+                    "docker://${REMOTE_VERSIONED}" \
+                    "docker://${REMOTE_TAG}" 2>&1; then
+                    log_info "  Tagged ${IMG}:${TAG}"
+                else
+                    log_warn "  Failed to tag ${IMG}:${TAG} (non-fatal)"
+                fi
+            fi
+        done
     done
-elif [ "$VERSION" != "latest" ] && [ "$DRY_RUN" = true ]; then
-    log_warn "[dry-run] Would also tag ${VERSION} as 'latest'"
+elif [ "$VERSION" != "latest" ] && [ "$FAILED" -gt 0 ]; then
+    log_warn "Skipping re-tagging -- ${FAILED} image(s) failed during primary push"
 fi
 
 # --- Summary ---
