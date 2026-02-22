@@ -5,14 +5,26 @@
 FROM rust:1.93.1-slim AS builder
 
 ARG TARGETARCH
+ARG PROTOC_VERSION=28.3
 
 WORKDIR /app
 
-# Install protobuf compiler and dev libs (Debian equivalents)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    protobuf-compiler=3.21.12-11 \
-    libprotobuf-dev=3.21.12-11 \
-    && rm -rf /var/lib/apt/lists/*
+# Install protoc from GitHub releases (OS-independent, pinned version)
+# Maps TARGETARCH (amd64/arm64) to protoc archive naming convention
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) PROTOC_ARCH="x86_64" ;; \
+        arm64) PROTOC_ARCH="aarch_64" ;; \
+        *) echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    apt-get update && apt-get install -y --no-install-recommends curl unzip \
+    && curl -fsSL -o /tmp/protoc.zip \
+        "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-${PROTOC_ARCH}.zip" \
+    && unzip -o /tmp/protoc.zip -d /usr/local bin/protoc 'include/*' \
+    && rm /tmp/protoc.zip \
+    && apt-get purge -y curl unzip && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/* \
+    && protoc --version
 
 # Copy Cargo files
 COPY Cargo.toml Cargo.lock ./
@@ -21,7 +33,6 @@ ENV RUST_MIN_STACK=16777216
 
 # Create dummy sources to cache dependencies (both lib.rs and main.rs
 # are required because Cargo.toml declares [lib] + [[bin]] targets)
-RUN uname -m && rustup show && \
     mkdir src && \
     echo "fn main() {}" > src/main.rs && \
     echo "" > src/lib.rs && \
