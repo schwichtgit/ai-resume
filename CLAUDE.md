@@ -63,6 +63,23 @@ This project uses the [specforge](https://github.com/schwichtgit/claude-project-
 
 ### Commands
 
+#### Taskfile (recommended -- orchestrates all services)
+
+```bash
+task setup           # Bootstrap full dev environment
+task deps            # Check tool dependencies
+task lint            # Lint all services
+task test            # Test all services
+task build           # Build all services
+task check           # Full quality sweep (lint + typecheck + test + build)
+task ci              # Reproduce CI pipeline locally
+task dev             # Show dev server instructions
+task container:build # Build all container images
+task clean           # Remove build artifacts
+```
+
+#### Frontend (npm)
+
 ```bash
 npm run dev          # Start dev server (http://localhost:8080)
 npm run build        # Production build

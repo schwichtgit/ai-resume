@@ -1,487 +1,358 @@
 # Development Guide
 
-Contributor guide for developing and extending AI Resume.
+Development reference for the ai-resume polyglot monorepo. For architecture,
+API endpoints, and content authoring, see [CLAUDE.md](../CLAUDE.md).
 
----
+## Prerequisites
 
-## Project Structure
+All dependencies are checked by `task deps`. Three tiers:
 
-```text
-ai-resume/
-├── README.md              # Entry point for users
-│
-├── frontend/              # React SPA (Vite + TypeScript)
-│   ├── Dockerfile         # Multi-arch frontend container
-│   ├── nginx.conf         # Nginx configuration & routing
-│   ├── src/
-│   │   ├── components/    # React components
-│   │   ├── pages/         # Page-level components
-│   │   └── App.tsx        # Root component
-│   └── package.json
-│
-├── api-service/     # FastAPI orchestration service
-│   ├── Dockerfile         # Multi-arch API container
-│   ├── pyproject.toml     # Python dependencies (UV)
-│   ├── app/
-│   │   ├── main.py        # FastAPI entrypoint
-│   │   ├── config.py      # Environment configuration
-│   │   ├── models.py      # Pydantic request/response models
-│   │   ├── memvid_client.py    # gRPC client to Rust service
-│   │   ├── openrouter_client.py # OpenRouter LLM calls
-│   │   ├── session_store.py     # In-memory session management
-│   │   └── rate_limiter.py      # Rate limiting middleware
-│   └── tests/
-│
-├── memvid-service/       # Memvid retrieval service
-│   ├── Dockerfile         # Multi-arch Rust container
-│   ├── Cargo.toml         # Rust dependencies
-│   ├── src/
-│   │   ├── main.rs        # gRPC server & memvid loading
-│   │   ├── models.rs      # Data structures
-│   │   └── grpc/          # Generated protobuf code
-│   └── proto/
-│       └── memvid.proto   # gRPC service definition
-│
-├── data/                  # Resume data & trained memory
-│   ├── profile.example.toml    # Configuration template
-│   ├── master_resume.md        # Content source
-│   └── .memvid/
-│       └── resume.mv2          # Trained memory file
-│
-├── deployment/            # Production orchestration
-│   ├── compose.yaml       # Podman Compose configuration
-│   ├── .env.example       # Environment template
-│   └── README.md          # Deployment instructions
-│
-├── scripts/               # Automation
-│   ├── build-all.sh       # Build multi-arch containers
-│   ├── train-memvid.sh    # Train memvid from resume
-│   ├── deploy.sh          # Deploy to edge server
-│   └── dev-setup.sh       # Local dev environment setup
-│
-└── docs/                  # Documentation
-    ├── PRD.md             # Product requirements
-    ├── ARCHITECTURE.md          # Architecture & design
-    ├── SECURITY.md        # Security hardening
-    ├── SETUP.md           # Setup & deployment
-    ├── DEVELOPMENT.md     # This file
-    └── TODO.md            # Development roadmap
+### Required (Tier 1 -- hard fail)
+
+| Tool    | Minimum | Install                                                        |
+| ------- | ------- | -------------------------------------------------------------- |
+| Node.js | 22.12.0 | <https://nodejs.org/>                                          |
+| npm     | 10.0.0  | Bundled with Node.js                                           |
+| uv      | 0.4.0   | `curl -LsSf https://astral.sh/uv/install.sh \| sh`             |
+| go-task | 3.0.0   | <https://taskfile.dev/installation/>                           |
+
+[go-task](https://taskfile.dev) is the build orchestrator for the entire
+monorepo. All build, lint, test, and deploy commands go through it.
+
+Python is **not** a global prerequisite. `uv` manages per-service virtual
+environments and pins the Python version in each service's `pyproject.toml`.
+
+### Service-level (Tier 2 -- warn only)
+
+| Tool   | Minimum | Notes                                |
+| ------ | ------- | ------------------------------------ |
+| rustc  | 1.92.0  | Required for memvid-service          |
+| cargo  | 1.92.0  | Bundled with Rust                    |
+| protoc | 3.0.0   | Required for gRPC proto regeneration |
+
+### Optional (Tier 3 -- informational)
+
+| Tool              | Purpose                         |
+| ----------------- | ------------------------------- |
+| podman            | Container builds and deployment |
+| skopeo            | Container image publishing      |
+| markdownlint-cli2 | Markdown linting                |
+| shellcheck        | Shell script linting            |
+| cargo-tarpaulin   | Rust code coverage              |
+
+Verify everything at once:
+
+```bash
+task deps
 ```
 
----
+## Quick Start
 
-## Development Workflows
+Bootstrap the full dev environment (installs npm deps, creates Python venvs,
+fetches Rust crates, installs git hooks):
 
-### 1. Frontend Development
+```bash
+task setup
+```
+
+Run the full stack in three terminals:
+
+```bash
+# Terminal 1 -- memvid gRPC service (Rust, port 50051)
+task dev:memvid
+
+# Terminal 2 -- API service (Python/FastAPI, port 3000)
+task dev:api
+
+# Terminal 3 -- Frontend dev server (Vite, port 8080)
+task dev:frontend
+```
+
+Or print these instructions any time with `task dev`.
+
+## Build System (Taskfile)
+
+The project uses [go-task](https://taskfile.dev) with a root `Taskfile.yml`
+that includes per-service taskfiles. Run `task --list` to see every available
+target.
+
+### Key Aggregate Tasks
+
+| Task                 | What it does                                         |
+| -------------------- | ---------------------------------------------------- |
+| `task setup`         | Bootstrap all services + git hooks                   |
+| `task lint`          | Lint all services + docs (ESLint, ruff, clippy, md)  |
+| `task lint:fix`      | Lint with auto-fix across all services               |
+| `task test`          | Unit test all services                               |
+| `task test:coverage` | Unit test all services with coverage reporting       |
+| `task build`         | Build frontend (production) + memvid (release)       |
+| `task check`         | Full quality sweep: lint, typecheck, test, build     |
+| `task ci`            | Reproduce CI pipeline locally (check + coverage)     |
+| `task clean`         | Remove build artifacts (preserves Python venvs)      |
+| `task clean:all`     | Remove build artifacts AND Python venvs              |
+
+### Per-Service Task Prefixes
+
+Each service is namespaced under its include alias:
+
+| Prefix      | Service        | Directory         |
+| ----------- | -------------- | ----------------- |
+| `frontend:` | Frontend       | `frontend/`       |
+| `api:`      | API Service    | `api-service/`    |
+| `memvid:`   | Memvid Service | `memvid-service/` |
+| `ingest:`   | Ingest         | `ingest/`         |
+| `deploy:`   | Deployment     | `deployment/`     |
+
+Common per-service targets: `setup`, `lint`, `lint:fix`, `test`,
+`test:coverage`, `dev`. Example: `task api:test:coverage`.
+
+### Other Tasks
+
+| Task                 | What it does                                    |
+| -------------------- | ----------------------------------------------- |
+| `task proto`         | Regenerate gRPC Python stubs from `.proto` file |
+| `task e2e`           | Cross-service integration tests (mock backends) |
+| `task e2e:real`      | True E2E tests (real ingest + real memvid)      |
+| `task docs:lint`     | Lint all Markdown files (markdownlint-cli2)     |
+| `task release-gate`  | Full release quality gate                       |
+
+## Per-Service Development
+
+### Frontend (`frontend/`)
+
+TypeScript, React 18, Vite, Tailwind CSS, shadcn/ui.
+
+```bash
+task frontend:dev             # Vite dev server on port 8080
+task frontend:build           # Production build -> frontend/dist/
+task frontend:lint            # ESLint
+task frontend:typecheck       # tsc --noEmit
+task frontend:test            # Vitest (single run)
+task frontend:test:coverage   # Vitest with coverage
+task frontend:test:watch      # Vitest in watch mode
+```
+
+Raw commands (from `frontend/` directory):
 
 ```bash
 npm run dev
-# Starts Vite dev server with hot reload at http://localhost:8080
-```
-
-**Key files:**
-
-- `src/components/` - Reusable UI components
-- `src/pages/Index.tsx` - Main page (sections)
-- `src/lib/api-client.ts` - API service layer
-- `src/hooks/useStreamingChat.ts` - SSE streaming hook
-
-**Common tasks:**
-
-- Add new section: Create component in `src/components/`, add to pages/Index.tsx
-- Update theme: Edit `tailwind.config.ts`, `src/index.css`
-- Add API integration: Use `lib/api-client.ts`
-
-### 2. Python API Server Development
-
-```bash
-cd api-service
-
-# Create/activate virtual environment
-uv venv .venv && source .venv/bin/activate
-
-# Install dependencies
-uv sync
-
-# Run with hot reload
-export OPENROUTER_API_KEY="your-key"
-export MEMVID_GRPC_URL="localhost:50051"
-uv run uvicorn app.main:app --reload --port 3000
-
-# Run tests
-uv run pytest
-
-# Type checking
-uv run mypy app/
-
-# Code formatting
-uv run black app/
-uv run isort app/
-uv run ruff check app/
-```
-
-**Key files:**
-
-- `app/main.py` - FastAPI routes
-- `app/config.py` - Environment configuration
-- `app/openrouter_client.py` - LLM integration
-- `app/memvid_client.py` - gRPC client to Rust service
-- `app/session_store.py` - Session management
-- `app/rate_limiter.py` - Rate limiting
-
-### 3. Rust Memvid Service Development
-
-```bash
-cd memvid-service
-
-# Build
-cargo build --release
-
-# Run
-export MEMVID_FILE_PATH="/path/to/resume.mv2"
-cargo run --release
-
-# Run tests
-cargo test
-
-# Check code
-cargo clippy -- -D warnings
-cargo fmt --check
-
-# Live reload during development
-cargo install cargo-watch
-cargo watch -x run
-```
-
-**Key files:**
-
-- `src/main.rs` - gRPC server, memvid loading
-- `src/models.rs` - Data structures
-- `proto/memvid.proto` - Service definition
-- `Cargo.toml` - Dependencies
-
----
-
-## Container Development
-
-### Building Locally
-
-```bash
-# Frontend only
-npm run build  # Creates dist/
-podman build -f frontend/Dockerfile -t localhost/ai-resume-frontend:latest frontend/
-
-# API server only
-podman build -f api-service/Dockerfile -t localhost/ai-resume-api:latest api-service/
-
-# Memvid service only
-podman build -f memvid-service/Dockerfile -t localhost/ai-resume-memvid:latest memvid-service/
-
-# All (multi-arch)
-./scripts/build-all.sh latest
-```
-
-### Testing Containers Locally
-
-```bash
-cd deployment/
-
-# Set up local environment
-cp .env.example .env
-# Edit .env with your API key
-
-# Run all services
-podman-compose up -d
-
-# Check logs
-podman-compose logs -f
-
-# Test endpoints
-curl http://localhost:8080/health
-curl http://localhost:3000/api/v1/health
-
-# Stop
-podman-compose down
-```
-
----
-
-## Code Quality Standards
-
-### TypeScript (Frontend)
-
-- Use TypeScript for type safety
-- Relaxed checking enabled (`noImplicitAny: false`)
-- ESLint configuration in `eslint.config.js`
-- Vitest for unit tests
-
-```bash
+npm run build
 npm run lint
-npm test
-npm run build  # Type check included
+npx tsc --noEmit
+npm test -- --run
+npm test -- --run --coverage
 ```
 
-### Python (API)
+### API Service (`api-service/`)
 
-- Python 3.12+ required
-- Type hints recommended (mypy)
-- Format with black, isort
-- Lint with ruff
+Python 3.12, FastAPI, uvicorn. The Python package name is `ai_resume_api`
+(not `app`).
 
 ```bash
-uv run mypy app/
-uv run black app/
-uv run isort app/
-uv run ruff check app/
-uv run pytest --cov
+task api:dev              # uvicorn with hot reload on port 3000
+task api:lint             # ruff check + format check
+task api:lint:fix         # ruff check --fix + format
+task api:typecheck        # mypy
+task api:test             # pytest
+task api:test:coverage    # pytest with --cov=ai_resume_api
 ```
 
-### Rust (Memvid)
-
-- Follow Rust conventions
-- No unsafe code without justification
-- No clippy warnings
+Raw commands (from `api-service/` directory):
 
 ```bash
-cargo fmt
+source .venv/bin/activate
+uv run uvicorn ai_resume_api.main:app --reload --port 3000
+uv run ruff check .
+uv run mypy .
+uv run pytest -v --tb=short
+uv run pytest -v --tb=short --cov=ai_resume_api --cov-report=term-missing
+```
+
+Each Python service has its own `.venv` managed by `uv`. Task commands handle
+venv activation automatically via `uv run`.
+
+### Memvid Service (`memvid-service/`)
+
+Rust 1.92+, gRPC (tonic), port 50051.
+
+```bash
+task memvid:dev             # cargo run
+task memvid:build           # cargo build (debug)
+task memvid:build:release   # cargo build --release
+task memvid:lint            # cargo clippy -- -D warnings
+task memvid:fmt             # cargo fmt
+task memvid:test            # cargo test
+task memvid:test:coverage   # cargo tarpaulin (requires cargo-tarpaulin)
+```
+
+Raw commands (from `memvid-service/` directory):
+
+```bash
+cargo run
+cargo build --release
 cargo clippy -- -D warnings
 cargo test
+cargo tarpaulin --config tarpaulin-unit.toml
 ```
 
----
+### Ingest (`ingest/`)
 
-## Adding Features
+Python pipeline for parsing resume markdown into `.mv2` files.
 
-### Adding a New API Endpoint
+```bash
+task ingest:lint            # ruff check + format check
+task ingest:lint:fix        # ruff check --fix + format
+task ingest:typecheck       # mypy
+task ingest:test            # pytest (excludes slow tests)
+task ingest:test:coverage   # pytest with --cov=ingest --cov-fail-under=85
+```
 
-1. **Define request/response models** in `api-service/app/models.py`:
+Raw commands (from `ingest/` directory):
 
-   ```python
-   from pydantic import BaseModel
-
-   class MyRequest(BaseModel):
-       query: str
-
-   class MyResponse(BaseModel):
-       result: str
-   ```
-
-2. **Implement endpoint** in `api-service/app/main.py`:
-
-   ```python
-   @app.post("/api/v1/my-endpoint")
-   async def my_endpoint(request: MyRequest) -> MyResponse:
-       # Implementation
-       return MyResponse(result="...")
-   ```
-
-3. **Test locally**:
-
-   ```bash
-   curl -X POST http://localhost:3000/api/v1/my-endpoint \
-     -H "Content-Type: application/json" \
-     -d '{"query":"test"}'
-   ```
-
-### Adding a New UI Component
-
-1. **Create component** in `src/components/MyComponent.tsx`
-2. **Add to layout** in `src/pages/Index.tsx`
-3. **Test locally**: `npm run dev`
-4. **Build and test container**: `npm run build && podman build ...`
-
-### Updating Resume Data
-
-1. **Edit** `data/profile.example.toml` (template) or user's `profile.toml` (instance config)
-2. **Edit** `data/master_resume.md` (content source)
-3. **Retrain memvid**: `./scripts/train-memvid.sh`
-4. **Test locally**: `podman-compose up -d`
-5. **Deploy**: `./scripts/deploy.sh user@server latest`
-
----
+```bash
+source .venv/bin/activate
+uv run pytest -v --tb=short -m "not slow"
+uv run ruff check .
+uv run mypy .
+```
 
 ## Testing
 
-### Unit Tests
-
-**Frontend:**
+Run all unit tests across the monorepo:
 
 ```bash
-npm test
-npm run test:watch
+task test
 ```
 
-**Python:**
+With coverage reporting:
 
 ```bash
-cd api-service
-uv run pytest tests/
-uv run pytest --cov=app --cov-report=html
+task test:coverage
 ```
 
-**Rust:**
+Integration and end-to-end:
 
 ```bash
-cd memvid-service
-cargo test
-cargo test -- --nocapture  # Show println! output
+task e2e          # Cross-service integration (mock backends)
+task e2e:real     # True E2E (real ingest + real memvid, mock LLM)
 ```
 
-### Integration Tests
+### Coverage Thresholds
+
+Target: 85% line coverage per service.
+
+| Service  | Threshold | Notes                                        |
+| -------- | --------- | -------------------------------------------- |
+| frontend | 10%       | Ramping up; target is 85% as tests are added |
+| api      | 85%       |                                              |
+| ingest   | 85%       | Enforced via `--cov-fail-under=85`           |
+| memvid   | 85%       | Requires `cargo-tarpaulin`                   |
+
+### Test Frameworks
+
+| Service  | Framework                     |
+| -------- | ----------------------------- |
+| frontend | Vitest + React Testing Library|
+| api      | pytest                        |
+| ingest   | pytest                        |
+| memvid   | cargo test                    |
+
+## Code Quality
+
+### Linters by Language
+
+| Language   | Tool              | Command                  |
+| ---------- | ----------------- | ------------------------ |
+| TypeScript | ESLint            | `task frontend:lint`     |
+| Python     | ruff              | `task api:lint`          |
+| Rust       | clippy            | `task memvid:lint`       |
+| Markdown   | markdownlint-cli2 | `task docs:lint`         |
+
+### Aggregate Commands
 
 ```bash
-# Local compose-based testing
-cd deployment/
-podman-compose up -d
-
-# Test health endpoints
-curl http://localhost:8080/health
-curl http://localhost:3000/api/v1/health
-
-# Test chat endpoint
-curl -X POST http://localhost:3000/api/v1/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message":"test","stream":false}'
-
-podman-compose down
+task lint        # Lint everything (all services + docs)
+task lint:fix    # Lint with auto-fix where possible
+task check       # lint + typecheck + test + build
+task ci          # Full CI reproduction: lint + typecheck + coverage + build + docs
 ```
 
-### Performance Testing
+### Type Checking
 
 ```bash
-# Check memvid retrieval speed (<5ms target)
-# Measure API response time for chat endpoint
-# Monitor container resource usage during load
+task frontend:typecheck   # tsc --noEmit
+task api:typecheck        # mypy
+task ingest:typecheck     # mypy
 ```
 
----
+## Container Development
 
-## Debugging
+Container tooling uses **podman** (not docker). Compose commands use
+`podman compose` (the compose plugin, not the standalone `podman-compose`).
 
-### Frontend Debugging
+### Build
 
 ```bash
-# Chrome DevTools for live debugging
-# React DevTools browser extension recommended
-npm run dev  # Vite displays source maps
+task container:build      # Build all service images (frontend, api, memvid)
 ```
 
-### Python Debugging
+This runs `scripts/build-all.sh` which builds each Dockerfile:
+
+- `frontend/Dockerfile` -- alpine + OpenResty, port 8080
+- `api-service/Dockerfile` -- python:3.12-slim, port 3000
+- `memvid-service/Dockerfile` -- debian:trixie-slim, port 50051
+
+### Deploy Locally
 
 ```bash
-# Using debugger
-import pdb; pdb.set_trace()
-
-# Or use VS Code debugger with python extension
-
-# Remote debugging in container
-podman exec -it ai-resume-api python -m pdb app/main.py
+task deploy:compose:up      # podman compose up -d
+task deploy:compose:down    # podman compose down
+task deploy:compose:logs    # podman compose logs -f
 ```
 
-### Rust Debugging
+### Other Container Tasks
 
 ```bash
-# Using GDB
-rust-gdb target/release/memvid-service
-
-# Or use VS Code with CodeLLDB extension
+task container:test         # Container smoke tests
+task container:export       # Export images as tar files
+task container:publish      # Publish to remote registry (requires skopeo)
 ```
-
-### Container Debugging
-
-```bash
-# View logs
-podman logs ai-resume-api
-podman logs -f ai-resume-memvid  # Follow
-
-# Enter container
-podman exec -it ai-resume-api /bin/bash
-
-# Check environment variables
-podman exec ai-resume-api env
-
-# Network debugging
-podman exec ai-resume-api ping memvid-service
-```
-
----
 
 ## Git Workflow
 
-1. **Branch naming**: `feature/description` or `fix/description`
-2. **Commit messages**: Clear, imperative tone
-3. **PR description**: Explain what and why
-4. **Code review**: Self-review before submitting
+### Commit Format
 
-Example:
+[Conventional Commits](https://www.conventionalcommits.org/):
 
-```bash
-git checkout -b feature/add-export-to-pdf
-# Make changes, test locally
-git add .
-git commit -m "Add PDF export to resume chat"
-# Create PR
+```text
+type(scope): description
 ```
 
----
+Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`,
+`ci`, `chore`, `revert`.
 
-## Security Considerations
+Subject line: 72 characters max, imperative mood, no emoji.
 
-- **Secrets**: Never commit `.env`, API keys, or credentials
-- **Dependencies**: Run `npm audit`, `cargo audit`, `pip check` regularly
-- **Input validation**: All user input must be validated
-- **Rate limiting**: Protect API endpoints from abuse
-- **Container security**: Run as non-root, minimal base images
+### Git Hooks
 
-See [SECURITY.md](./SECURITY.md) for detailed security practices.
+Project hooks live in `.githooks/` (tracked in git). Install them:
 
----
+```bash
+task setup:hooks
+# or directly:
+./scripts/install-hooks.sh
+```
 
-## Common Issues
+This sets `git config core.hooksPath .githooks`. Hooks include:
 
-### "memvid-service connection refused"
+- `pre-commit` -- runs ESLint on staged frontend files
+- `commit-msg` -- validates Conventional Commits format
 
-- Ensure Rust service is running: `podman logs ai-resume-memvid`
-- Check network: `podman exec ai-resume-api ping memvid-service`
-- Verify MEMVID_GRPC_URL environment variable
+Skip temporarily with `git commit --no-verify`. Uninstall with
+`git config --unset core.hooksPath`.
 
-### "OpenRouter API errors"
+### Branch Strategy
 
-- Check API key is set and valid
-- Verify model name is correct
-- Check API rate limits/quota
-- Test directly: `curl https://openrouter.ai/api/v1/models`
-
-### "Build fails with out of memory"
-
-- Use `npm run build` locally before containerizing
-- Increase Docker/Podman memory allocation
-- Check available disk space
-
-### ".mv2 file not found"
-
-- Run `./scripts/train-memvid.sh` first
-- Verify file exists: `ls -la data/.memvid/`
-- Check MEMVID_FILE_PATH environment variable
-
----
-
-## Performance Tips
-
-- Use React Query for efficient data fetching
-- Memoize expensive computations with `useMemo`
-- Lazy load routes and components
-- Compress assets in production builds
-- Use CDN for static assets
-- Monitor API response times
-- Profile with Rust `cargo flamegraph`
-
----
-
-## Getting Help
-
-- Check [SETUP.md](./SETUP.md) for common setup issues
-- Review [PRD.md](./PRD.md) for design decisions
-- Check [ARCHITECTURE.md](./ARCHITECTURE.md) for architecture details
-- Open an issue on GitHub for bugs
-- Discuss features in pull requests
+- Work on feature branches
+- Push individual, atomic commits (no squashing before push)
+- Squash happens at PR merge time (configured in GitHub)

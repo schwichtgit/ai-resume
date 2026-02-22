@@ -1,0 +1,230 @@
+version: '3'
+
+vars:
+  REGISTRY: '{{.REGISTRY | default "localhost"}}'
+  VERSION: '{{.VERSION | default "latest"}}'
+  PROJECT_ROOT:
+    sh: pwd
+  GIT_REVISION:
+    sh: git rev-parse --short HEAD 2>/dev/null || echo "unknown"
+  BUILD_DATE:
+    sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
+
+includes:
+  frontend:
+    taskfile: ./frontend/Taskfile.yml
+    dir: ./frontend
+  api:
+    taskfile: ./api-service/Taskfile.yml
+    dir: ./api-service
+  memvid:
+    taskfile: ./memvid-service/Taskfile.yml
+    dir: ./memvid-service
+  ingest:
+    taskfile: ./ingest/Taskfile.yml
+    dir: ./ingest
+  deploy:
+    taskfile: ./deployment/Taskfile.yml
+    dir: ./deployment
+    vars:
+      REGISTRY: '{{.REGISTRY}}'
+      VERSION: '{{.VERSION}}'
+
+tasks:
+  default:
+    desc: List all available tasks
+    cmds:
+      - task --list
+
+  deps:
+    desc: Check all tool dependencies
+    cmds:
+      - task: deps:required
+      - task: deps:service
+      - task: deps:optional
+
+  deps:required:
+    desc: Verify required tools (fail if missing or below minimum)
+    silent: true
+    cmds:
+      - bash scripts/check-deps.sh required
+
+  deps:service:
+    desc: Check service-specific tools (warn only)
+    silent: true
+    cmds:
+      - bash scripts/check-deps.sh service
+
+  deps:optional:
+    desc: Check optional tools (info only)
+    silent: true
+    cmds:
+      - bash scripts/check-deps.sh optional
+
+  setup:
+    desc: Bootstrap full dev environment
+    deps: [deps:required]
+    cmds:
+      - task: frontend:setup
+      - task: api:setup
+      - task: memvid:setup
+      - task: ingest:setup
+      - task: setup:hooks
+
+  setup:hooks:
+    desc: Install git hooks
+    cmds:
+      - ./scripts/install-hooks.sh
+    status:
+      - test "$(git config core.hooksPath)" = ".githooks"
+
+  lint:
+    desc: Lint all services
+    deps: [frontend:lint, api:lint, memvid:lint, ingest:lint, docs:lint]
+
+  lint:fix:
+    desc: Lint all services with auto-fix
+    deps:
+      [
+        frontend:lint:fix,
+        api:lint:fix,
+        memvid:fmt,
+        ingest:lint:fix,
+        docs:lint:fix,
+      ]
+
+  test:
+    desc: Unit test all services
+    deps: [frontend:test, api:test, memvid:test, ingest:test]
+
+  test:coverage:
+    desc: Unit test all services with coverage
+    deps:
+      [
+        frontend:test:coverage,
+        api:test:coverage,
+        memvid:test:coverage,
+        ingest:test:coverage,
+      ]
+
+  build:
+    desc: Build all services
+    deps: [frontend:build, memvid:build:release]
+
+  check:
+    desc: Full local quality sweep (lint + typecheck + test + build)
+    cmds:
+      - task: lint
+      - task: frontend:typecheck
+      - task: api:typecheck
+      - task: ingest:typecheck
+      - task: test
+      - task: build
+
+  ci:
+    desc: Reproduce CI pipeline locally
+    cmds:
+      - task: deps:required
+      - task: lint
+      - task: frontend:typecheck
+      - task: api:typecheck
+      - task: ingest:typecheck
+      - task: test:coverage
+      - task: build
+      - task: docs:lint
+
+  proto:
+    desc: Regenerate gRPC Python stubs
+    cmds:
+      - ./scripts/gen-proto.sh
+    sources:
+      - proto/memvid/v1/memvid.proto
+    generates:
+      - api-service/ai_resume_api/proto/memvid/v1/memvid_pb2.py
+      - api-service/ai_resume_api/proto/memvid/v1/memvid_pb2_grpc.py
+
+  e2e:
+    desc: Cross-service integration tests (mock backends)
+    cmds:
+      - ./scripts/test-e2e-integration.sh
+
+  e2e:real:
+    desc: True E2E tests (real ingest + real memvid, mock LLM)
+    cmds:
+      - ./scripts/test-e2e-real.sh
+
+  release-gate:
+    desc: Full release quality gate
+    cmds:
+      - ./scripts/release-gate.sh {{.VERSION}}
+
+  container:build:
+    desc: Build all container images
+    cmds:
+      - task: deploy:build
+
+  container:export:
+    desc: Export containers as tar files
+    cmds:
+      - task: deploy:export
+
+  container:publish:
+    desc: Publish containers to remote registry
+    cmds:
+      - task: deploy:publish
+
+  container:test:
+    desc: Run container smoke tests
+    cmds:
+      - task: deploy:test
+
+  dev:
+    desc: Print dev server startup instructions
+    cmds:
+      - |
+        echo "Start each service in a separate terminal:"
+        echo ""
+        echo "  Terminal 1 (memvid):   task dev:memvid"
+        echo "  Terminal 2 (api):      task dev:api"
+        echo "  Terminal 3 (frontend): task dev:frontend"
+
+  dev:frontend:
+    desc: Start frontend dev server
+    cmds:
+      - task: frontend:dev
+
+  dev:api:
+    desc: Start API service with hot reload
+    cmds:
+      - task: api:dev
+
+  dev:memvid:
+    desc: Start memvid gRPC service
+    cmds:
+      - task: memvid:dev
+
+  docs:lint:
+    desc: Lint Markdown files
+    cmds:
+      - npx --prefix frontend markdownlint-cli2 '**/*.md'
+
+  docs:lint:fix:
+    desc: Lint and fix Markdown files
+    cmds:
+      - npx --prefix frontend markdownlint-cli2 --fix '**/*.md'
+
+  clean:
+    desc: Remove build artifacts
+    cmds:
+      - rm -rf .task/
+      - rm -rf frontend/dist
+      - rm -rf memvid-service/target
+      - echo "Clean complete. Python .venvs preserved (use 'task clean:all' to remove)."
+
+  clean:all:
+    desc: Remove build artifacts AND virtual environments
+    cmds:
+      - task: clean
+      - rm -rf api-service/.venv
+      - rm -rf ingest/.venv
+      - rm -rf deployment/.venv

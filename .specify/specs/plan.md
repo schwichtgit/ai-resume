@@ -111,8 +111,8 @@ ai-resume/
 │   └── example_resume.md            # Template for new users
 │
 ├── deployment/                      # Container orchestration
-│   ├── compose.yaml                 # podman-compose for 3-service stack
-│   └── pyproject.toml               # podman-compose dependency
+│   ├── compose.yaml                 # podman compose for 3-service stack
+│   └── pyproject.toml               # podman compose dependency
 │
 ├── .githooks/                       # Git hooks (core.hooksPath target)
 │   ├── pre-commit                   # ESLint, ruff, clippy, shellcheck
@@ -347,7 +347,7 @@ The true E2E test (`scripts/test-e2e-real.sh`) enforces semantic quality across 
 | Component          | Platform                                    | Rationale                                                           |
 | ------------------ | ------------------------------------------- | ------------------------------------------------------------------- |
 | Production Host    | nanopi-r6s (RK3588 ARM64, 4GB RAM, OpenWrt) | Low-power edge server; 180MB total runtime, 3.8GB headroom          |
-| Container Runtime  | Podman (rootless) + podman-compose          | Daemonless, rootless by default; no Docker dependency               |
+| Container Runtime  | Podman (rootless) + podman compose          | Daemonless, rootless by default; no Docker dependency               |
 | Network            | `yellow-net` (192.168.100.0/24, external)   | Zone-isolated subnet with static IPs; firewall blocks cross-zone    |
 | Frontend Container | alpine + OpenResty (nginx + Lua)            | 35MB image; Lua SEO handler; Pattern B internal routing             |
 | API Container      | python:3.12-slim-bookworm                   | 500MB image, 150-200MB runtime; FastAPI + gRPC client               |
@@ -357,7 +357,7 @@ The true E2E test (`scripts/test-e2e-real.sh`) enforces semantic quality across 
 | Data Volume        | `/opt/ai-resume/data` mounted ro            | .mv2 file + profile config; stateless containers                    |
 | Development        | Local multi-terminal (3 terminals)          | Cargo run, uvicorn --reload, npm run dev                            |
 | CI/CD              | GitHub Actions (`.github/workflows/ci.yml`) | Monorepo path filtering; conditional jobs per service; summary gate |
-| Build Pipeline     | `scripts/build-all.sh`                      | Multi-arch (amd64 + arm64); scp transfer; podman-compose deploy     |
+| Build Pipeline     | `scripts/build-all.sh`                      | Multi-arch (amd64 + arm64); scp transfer; podman compose deploy     |
 | Static Analysis    | SonarQube + CodeQL                          | Runs on push to main and PRs                                        |
 
 ### Container Topology (Production)

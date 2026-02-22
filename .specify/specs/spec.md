@@ -2239,7 +2239,7 @@ AI-powered interactive resume agent enabling recruiters to query a candidate's e
 **Acceptance Criteria:**
 
 - [ ] Build all container images via `scripts/build-all.sh` (or equivalent); all builds succeed with exit code 0
-- [ ] Start all containers via `deployment/compose.yaml`; time from `podman-compose up` to all health checks passing must be < 30 seconds
+- [ ] Start all containers via `deployment/compose.yaml`; time from `podman compose up` to all health checks passing must be < 30 seconds
 - [ ] Verify `GET /api/v1/health` returns JSON with `memvid_connected: true`
 - [ ] Measure total memory consumption across all three containers via `podman stats --no-stream`; assert total RSS < 200MB
 - [ ] Run `scripts/test-containers.sh` smoke tests; all 6 checks pass

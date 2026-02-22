@@ -6,20 +6,20 @@ This directory contains the Podman Compose configuration for deploying the AI Re
 
 ```bash
 # Start all services
-podman-compose up -d
+podman compose up -d
 
 # View logs
-podman-compose logs -f [ai-resume-frontend|ai-resume-api|ai-resume-memvid]
+podman compose logs -f [ai-resume-frontend|ai-resume-api|ai-resume-memvid]
 
 # Stop services
-podman-compose down
+podman compose down
 
 # Restart single service
-podman-compose restart ai-resume-api
+podman compose restart ai-resume-api
 
 # Update .mv2 file
 scp data/.memvid/resume.mv2 user@edge:/opt/ai-resume/data/.memvid/
-ssh user@edge "cd /opt/ai-resume/deployment && podman-compose restart ai-resume-memvid ai-resume-api"
+ssh user@edge "cd /opt/ai-resume/deployment && podman compose restart ai-resume-memvid ai-resume-api"
 ```
 
 ## Architecture Overview
@@ -113,7 +113,7 @@ server {
 
 ```bash
 cd deployment
-podman-compose up -d
+podman compose up -d
 ```
 
 **Verify container IPs:**
@@ -177,7 +177,7 @@ curl -X POST http://192.168.100.10:8080/api/v1/chat \
 
    # Deploy
    cd /opt/ai-resume/deployment
-   podman-compose up -d
+   podman compose up -d
    ```
 
 4. **Configure host nginx and firewall** (see [docs/SETUP.md](../docs/SETUP.md))

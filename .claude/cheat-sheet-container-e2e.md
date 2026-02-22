@@ -8,7 +8,7 @@ Quick-reference for building, running, and testing the full containerized stack 
 | --- | --- |
 | Podman machine running | `podman machine info` (machinestate: Running) |
 | yellow-net exists | `podman network ls \| grep yellow-net` |
-| Deployment venv | `source deployment/.venv/bin/activate && podman-compose --version` |
+| Deployment venv | `source deployment/.venv/bin/activate && podman compose --version` |
 | `.env` configured | `cat deployment/.env` (needs OPENROUTER_API_KEY, PROJECT_BASE_DIR) |
 | Data dir has resume | `ls data/example_resume.md` (source for ingest) |
 
@@ -36,7 +36,7 @@ Volume mount: ${PROJECT_BASE_DIR}/data:/data
 
 ## Step-by-Step: Full E2E Test
 
-### 1. Activate deployment venv (provides podman-compose)
+### 1. Activate deployment venv (provides podman compose)
 
 ```bash
 cd /Users/frank/projects/MY/AI-RESUME/ai-resume
@@ -60,7 +60,7 @@ Or use the ingest container (one-shot, runs then exits):
 ```bash
 source deployment/.venv/bin/activate
 cd deployment
-podman-compose run --rm ai-resume-ingest \
+podman compose run --rm ai-resume-ingest \
   python ingest.py --input /data/example_resume.md --output /data/.memvid/resume.mv2 --verify
 ```
 
@@ -91,13 +91,13 @@ podman images | grep ai-resume
 ```bash
 cd /Users/frank/projects/MY/AI-RESUME/ai-resume/deployment
 source .venv/bin/activate
-podman-compose up -d
+podman compose up -d
 ```
 
 Watch logs:
 
 ```bash
-podman-compose logs -f
+podman compose logs -f
 ```
 
 Check all containers running:
@@ -196,7 +196,7 @@ curl -s -X POST $BASE/chat -H "Content-Type: application/json" -d '{"message":"W
 ```bash
 cd /Users/frank/projects/MY/AI-RESUME/ai-resume/deployment
 source .venv/bin/activate
-podman-compose down
+podman compose down
 ```
 
 ## Compose Environment Variables (.env)
@@ -239,15 +239,15 @@ ai-resume-api     (starts after memvid healthy)
 ai-resume-frontend (starts after api healthy)
 ```
 
-`ai-resume-ingest` is independent (one-shot, run manually or via `podman-compose run`).
+`ai-resume-ingest` is independent (one-shot, run manually or via `podman compose run`).
 
 ## Troubleshooting
 
 ```bash
 # Check container logs
-podman-compose logs ai-resume-memvid
-podman-compose logs ai-resume-api
-podman-compose logs ai-resume-frontend
+podman compose logs ai-resume-memvid
+podman compose logs ai-resume-api
+podman compose logs ai-resume-frontend
 
 # Check if .mv2 file is visible inside memvid container
 podman exec ai-resume-memvid ls -la /data/.memvid/
@@ -260,13 +260,13 @@ podman exec ai-resume-api ping -c1 192.168.100.12
 
 # Rebuild a single service
 podman build -f api-service/Dockerfile -t localhost/ai-resume-api:latest api-service/
-podman-compose up -d ai-resume-api
+podman compose up -d ai-resume-api
 
 # Nuclear reset
-podman-compose down
+podman compose down
 podman rmi localhost/ai-resume-frontend:latest localhost/ai-resume-api:latest localhost/ai-resume-memvid:latest localhost/ai-resume-ingest:latest
 bash scripts/build-all.sh latest
-cd deployment && podman-compose up -d
+cd deployment && podman compose up -d
 ```
 
 ## Key File Locations
@@ -276,7 +276,7 @@ cd deployment && podman-compose up -d
 | `deployment/compose.yaml` | Full stack orchestration spec |
 | `deployment/.env` | Runtime configuration (git-ignored, contains API key) |
 | `deployment/.env.example` | Template for .env |
-| `deployment/.venv/` | Python venv with podman-compose |
+| `deployment/.venv/` | Python venv with podman compose |
 | `scripts/build-all.sh` | Builds all 4 container images (multi-arch) |
 | `scripts/test-containers.sh` | Podman-native smoke test (without compose) |
 | `scripts/test-e2e-real.sh` | Real E2E with native processes (not containers) |

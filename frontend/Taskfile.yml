@@ -1,0 +1,79 @@
+version: '3'
+
+tasks:
+  setup:
+    desc: Install frontend npm dependencies
+    cmds:
+      - npm ci
+    sources:
+      - package.json
+      - package-lock.json
+    generates:
+      - node_modules/.package-lock.json
+    status:
+      - test -d node_modules
+
+  lint:
+    desc: Run ESLint
+    deps: [setup]
+    cmds:
+      - npm run lint
+    sources:
+      - src/**/*.{ts,tsx}
+      - eslint.config.js
+
+  lint:fix:
+    desc: Run ESLint with auto-fix
+    deps: [setup]
+    cmds:
+      - npm run lint -- --fix
+
+  typecheck:
+    desc: Run TypeScript type checking
+    deps: [setup]
+    cmds:
+      - npx tsc --noEmit
+
+  test:
+    desc: Run Vitest
+    deps: [setup]
+    cmds:
+      - npm test -- --run
+    sources:
+      - src/**/*.{ts,tsx}
+      - src/test/setup.ts
+      - vitest.config.ts
+
+  test:coverage:
+    desc: Run Vitest with coverage
+    deps: [setup]
+    cmds:
+      - npm test -- --run --coverage
+
+  test:watch:
+    desc: Run Vitest in watch mode
+    deps: [setup]
+    cmds:
+      - npm run test:watch
+
+  build:
+    desc: Production build
+    deps: [setup]
+    cmds:
+      - npm run build
+    sources:
+      - src/**/*.{ts,tsx,css}
+      - index.html
+      - vite.config.ts
+      - tailwind.config.ts
+      - tsconfig.json
+      - tsconfig.app.json
+      - package.json
+    generates:
+      - dist/**/*
+
+  dev:
+    desc: Start Vite dev server
+    deps: [setup]
+    cmds:
+      - npm run dev

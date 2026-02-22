@@ -1,0 +1,59 @@
+version: '3'
+
+tasks:
+  setup:
+    desc: Fetch Rust dependencies
+    cmds:
+      - cargo fetch
+    status:
+      - test -f Cargo.lock
+
+  lint:
+    desc: Run clippy with deny warnings
+    cmds:
+      - cargo clippy -- -D warnings
+
+  fmt:
+    desc: Format Rust code
+    cmds:
+      - cargo fmt
+
+  fmt:check:
+    desc: Check Rust formatting
+    cmds:
+      - cargo fmt --check
+
+  build:
+    desc: Build debug
+    cmds:
+      - cargo build
+
+  build:release:
+    desc: Build release
+    cmds:
+      - cargo build --release
+    sources:
+      - src/**/*.rs
+      - build.rs
+      - Cargo.toml
+      - Cargo.lock
+    generates:
+      - target/release/memvid-service
+
+  test:
+    desc: Run cargo test
+    cmds:
+      - cargo test
+
+  test:coverage:
+    desc: Run cargo tarpaulin (unit)
+    preconditions:
+      - sh: command -v cargo-tarpaulin
+        msg: 'cargo-tarpaulin not found. Install: cargo install cargo-tarpaulin'
+    cmds:
+      - cargo tarpaulin --config tarpaulin-unit.toml
+
+  dev:
+    desc: Run memvid service
+    cmds:
+      - cargo run
