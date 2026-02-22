@@ -1,0 +1,73 @@
+version: '3'
+
+vars:
+  VENV: .venv
+  UV_RUN: uv run
+
+tasks:
+  setup:
+    desc: Create venv and install dependencies
+    cmds:
+      - uv venv {{.VENV}}
+      - uv sync --extra test --extra lint
+    status:
+      - test -d {{.VENV}}
+      - test -f {{.VENV}}/bin/python
+
+  lint:
+    desc: Run ruff lint + format check
+    deps: [setup]
+    cmds:
+      - '{{.UV_RUN}} ruff check .'
+      - '{{.UV_RUN}} ruff format --check .'
+    sources:
+      - ai_resume_api/**/*.py
+      - tests/**/*.py
+      - pyproject.toml
+
+  lint:fix:
+    desc: Run ruff lint and format with auto-fix
+    deps: [setup]
+    cmds:
+      - '{{.UV_RUN}} ruff check --fix .'
+      - '{{.UV_RUN}} ruff format .'
+
+  typecheck:
+    desc: Run mypy type checking
+    deps: [setup]
+    cmds:
+      - '{{.UV_RUN}} mypy .'
+
+  format:
+    desc: Format with ruff
+    deps: [setup]
+    cmds:
+      - '{{.UV_RUN}} ruff format .'
+
+  format:check:
+    desc: Check formatting with ruff
+    deps: [setup]
+    cmds:
+      - '{{.UV_RUN}} ruff format --check .'
+
+  test:
+    desc: Run pytest
+    deps: [setup]
+    cmds:
+      - '{{.UV_RUN}} pytest -v --tb=short'
+    sources:
+      - ai_resume_api/**/*.py
+      - tests/**/*.py
+      - pyproject.toml
+
+  test:coverage:
+    desc: Run pytest with coverage
+    deps: [setup]
+    cmds:
+      - '{{.UV_RUN}} pytest -v --tb=short --cov=ai_resume_api --cov-report=term-missing'
+
+  dev:
+    desc: Start FastAPI with hot reload
+    deps: [setup]
+    cmds:
+      - '{{.UV_RUN}} uvicorn ai_resume_api.main:app --reload --port 3000'

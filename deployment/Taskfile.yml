@@ -1,0 +1,52 @@
+version: '3'
+
+vars:
+  REGISTRY: '{{.REGISTRY | default "localhost"}}'
+  VERSION: '{{.VERSION | default "latest"}}'
+
+tasks:
+  build:
+    desc: Build all container images
+    preconditions:
+      - sh: command -v podman
+        msg: 'podman not found. See: https://podman.io/docs/installation'
+    cmds:
+      - ../scripts/build-all.sh {{.VERSION}}
+
+  export:
+    desc: Export container images as tar files
+    preconditions:
+      - sh: command -v podman
+        msg: 'podman not found.'
+    cmds:
+      - ../scripts/export-containers.sh {{.VERSION}}
+
+  publish:
+    desc: Publish containers to remote registry
+    preconditions:
+      - sh: command -v skopeo
+        msg: 'skopeo not found. See: https://github.com/containers/skopeo/blob/main/install.md'
+      - sh: command -v podman
+        msg: 'podman not found.'
+    cmds:
+      - ../scripts/publish-containers.sh {{.CLI_ARGS}}
+
+  test:
+    desc: Run container smoke tests
+    cmds:
+      - ../scripts/test-containers.sh {{.VERSION}}
+
+  compose:up:
+    desc: Start services with podman compose
+    cmds:
+      - podman compose up -d
+
+  compose:down:
+    desc: Stop services
+    cmds:
+      - podman compose down
+
+  compose:logs:
+    desc: Show service logs
+    cmds:
+      - podman compose logs -f {{.CLI_ARGS}}
