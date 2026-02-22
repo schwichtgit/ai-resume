@@ -47,7 +47,7 @@ services:
           memory: 200M
     restart: unless-stopped
     healthcheck:
-      test: ['CMD', '/healthcheck']
+      test: ['CMD', '/usr/local/bin/memvid-service', '--health']
       interval: 45s
       timeout: 10s
       retries: 3

@@ -51,29 +51,16 @@ COPY build.rs ./
 # Build for target architecture (auto-detected by --platform)
 RUN cargo auditable build -j $(nproc) --release
 
-# Stage 2: Runtime image (debian-slim for glibc compatibility)
-FROM debian:trixie-slim
-
-# Install ca-certificates for TLS
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/* \
-    && useradd -r -u 1000 -s /bin/false memvid
+# Stage 2: Distroless runtime (glibc 2.36, UID 65534 nonroot)
+FROM gcr.io/distroless/cc-debian12:nonroot
 
 # Copy binary from builder
 COPY --from=builder /app/target/release/memvid-service /usr/local/bin/memvid-service
-
-# Create symlink for healthcheck at root level
-WORKDIR /
-RUN ln -s /usr/local/bin/memvid-service healthcheck
 
 # Expose gRPC port
 EXPOSE 50051
 
 # Expose Prometheus metrics port
 EXPOSE 9090
-
-# Run as non-root user
-USER memvid
 
 ENTRYPOINT ["/usr/local/bin/memvid-service"]
