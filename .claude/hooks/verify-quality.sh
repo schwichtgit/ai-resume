@@ -123,6 +123,19 @@ else
 fi
 
 echo ""
+echo "=== Markdown Lint Checks ==="
+if [[ -d "$PROJECT_ROOT/frontend/node_modules/.bin" ]]; then
+    MDLINT="$PROJECT_ROOT/frontend/node_modules/.bin/markdownlint-cli2"
+    if [[ -x "$MDLINT" ]]; then
+        run_check "Markdown lint" "$MDLINT '**/*.md'" "$PROJECT_ROOT" || FAILED=$((FAILED + 1))
+    else
+        echo "  Skipping: markdownlint-cli2 not installed"
+    fi
+else
+    echo "  Skipping: frontend/node_modules not found"
+fi
+
+echo ""
 echo "=== Summary ==="
 echo "Failed checks: $FAILED"
 echo "Warnings: $WARNINGS"
