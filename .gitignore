@@ -18,9 +18,10 @@ dist-ssr
 # Claude Code - Allow .claude directory for hooks and settings
 !.claude/
 !.claude/**
-# But ignore Claude Mind memory files
+# But ignore Claude Mind memory files and session restart notes
 .claude/mind.*
 .claude/*.mv2
+.claude/restart-*.md
 
 # Local working directories (for development, testing, temporary files)
 /local/
