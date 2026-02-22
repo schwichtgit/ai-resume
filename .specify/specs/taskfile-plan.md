@@ -1,168 +1,291 @@
-# Feature Plan: Taskfile Build Orchestration
+# Taskfile Build System -- Implementation Plan
 
 ## Metadata
 
-| Field        | Value                |
-| ------------ | -------------------- |
-| Plan Version | 1.0.0                |
-| Created      | 2026-02-20           |
-| Status       | Draft                |
-| Depends On   | plan.md v1.0.0       |
-| Branch       | feat/taskfile-build  |
+| Field        | Value                        |
+| ------------ | ---------------------------- |
+| Plan Version | 2.0.0                        |
+| Created      | 2026-02-21                   |
+| Status       | Pending Approval             |
+| Depends On   | plan.md v1.0.0               |
+| Branch       | `feat/taskfile-build-system` |
 
 ---
 
-## Motivation
+## Overview
 
-The ai-resume monorepo has 22 shell scripts in `scripts/` that handle building, testing,
-deploying, protobuf generation, quality verification, and release gating. These scripts:
+This plan introduces [go-task](https://taskfile.dev/) as the primary build orchestration
+tool for the ai-resume polyglot monorepo. The Taskfile replaces ad-hoc shell scripts with
+a declarative, discoverable, consistent interface for humans and AI agents.
 
-1. **Duplicate boilerplate** -- 8 scripts independently implement `wait_for_health`,
-   `curl_with_429_retry`, `wait_for_port`, color output helpers, and cleanup traps.
-2. **Lack change detection** -- `build-all.sh` rebuilds all 4 container images unconditionally,
-   even if only one service changed. `verify-quality.sh` re-checks every service on every run.
-3. **Have implicit ordering** -- `release-gate.sh` hard-codes a 6-phase pipeline
-   (`build` -> `export` -> `ingest` -> `smoke` -> `pytest` -> `e2e`), but the dependencies
-   between phases are implicit in the script flow, not declared.
-4. **Are not discoverable** -- New contributors must read each script to understand what
-   commands are available. There is no `--help` or task listing equivalent.
-5. **Are platform-fragile** -- Several scripts use GNU-specific `stat`, `numfmt`, `sed` flags
-   that behave differently on macOS (BSD) vs Linux (GNU).
+**Principle:** Existing scripts are **wrapped, not deleted** -- the Taskfile calls them
+where they already do the right thing and inlines logic only where scripts are thin wrappers.
 
-Taskfile (go-task) solves these problems with:
+### Prerequisites
 
-- **YAML-based task declarations** with `desc:` fields for discoverability (`task --list`)
-- **`sources`/`generates` change detection** via content checksums, skipping up-to-date tasks
-- **Declared `deps:`** for parallel dependency execution
-- **`includes:`** for monorepo service-scoped Taskfiles with namespacing
-- **Cross-platform** behavior without GNU vs BSD workarounds
-- **Single binary** (`brew install go-task`, no runtime dependencies)
+- go-task 3.48.0 already installed at `/usr/local/bin/task`
+- CI: `arduino/setup-task@v2` GitHub Action
 
 ---
 
-## Scope
+## File Layout
 
-### In Scope
+```text
+ai-resume/
+  Taskfile.yml                    # Root orchestrator (includes per-service)
+  frontend/Taskfile.yml           # Frontend tasks
+  api-service/Taskfile.yml        # API service tasks
+  memvid-service/Taskfile.yml     # Memvid service tasks
+  ingest/Taskfile.yml             # Ingest pipeline tasks
+  deployment/Taskfile.yml         # Container + compose tasks
+```
 
-- Root `Taskfile.yml` with monorepo orchestration
-- Per-service `Taskfile.yml` in `frontend/`, `api-service/`, `memvid-service/`, `ingest/`
-- Change detection via `sources`/`generates` for build, lint, test targets
-- Container build orchestration with service-level granularity
-- CI workflow integration (replace inline commands with `task` calls)
-- Release gate pipeline as dependent task chain
-- Developer ergonomics: `task setup`, `task dev`, `task test`, `task build`
-
-### Deferred (Out of Scope)
-
-- Remote Taskfiles or shared task libraries
-- Replacing the E2E test scripts entirely (they contain complex test logic; Taskfile wraps them)
-- Replacing `deployment/compose.yaml` (Taskfile orchestrates compose, does not replace it)
-- Windows support (project targets Linux/macOS only per constitution)
-- Taskfile-based CI caching (GitHub Actions cache continues to use its native mechanism)
+Add `.task/` to `.gitignore` (checksum storage directory).
 
 ---
 
-## Proposed Task Hierarchy
+## Naming Convention
 
-### Root Taskfile (`Taskfile.yml`)
+Task names follow a `namespace:verb` pattern. The root Taskfile re-exports high-level
+aggregate tasks (no namespace prefix) and includes service-specific tasks under their
+namespace.
 
-```text
-task                          # default: list all tasks
-task setup                    # One-time dev environment bootstrap
-task dev                      # Start all services for local dev
-task build                    # Build all containers (with change detection)
-task test                     # Run all unit tests
-task lint                     # Run all linters
-task quality                  # lint + typecheck + test (replaces verify-quality.sh)
-task proto                    # Regenerate gRPC stubs from proto/
-task hooks                    # Install git hooks
-task e2e                      # Cross-service integration tests
-task e2e:real                 # True E2E (real ingest, real search, mock LLM)
-task release-gate             # Full release quality gate pipeline
-task deploy                   # Build, export, transfer, deploy to edge
-task clean                    # Remove build artifacts and .task/ cache
-```
+### High-Level Aggregate Tasks (Primary Interface)
 
-### Frontend Taskfile (`frontend/Taskfile.yml`)
+| Task                     | Description                                         |
+| ------------------------ | --------------------------------------------------- |
+| `task setup`             | Install all deps, create venvs, install hooks       |
+| `task lint`              | Lint all services (parallel)                        |
+| `task lint:fix`          | Lint all services with auto-fix                     |
+| `task test`              | Unit test all services (parallel)                   |
+| `task test:coverage`     | Unit test all services with coverage enforcement    |
+| `task build`             | Build all services (frontend prod, cargo release)   |
+| `task check`             | Full quality sweep: lint + typecheck + test + build |
+| `task ci`                | Mirror GitHub Actions CI locally                    |
+| `task dev`               | Print instructions for starting dev servers         |
+| `task dev:frontend`      | Start frontend dev server                           |
+| `task dev:api`           | Start API service with hot reload                   |
+| `task dev:memvid`        | Start memvid gRPC service                           |
+| `task container:build`   | Build all container images                          |
+| `task container:export`  | Export containers as tar files                      |
+| `task container:publish` | Push containers to remote registry                  |
+| `task container:test`    | Run container smoke tests                           |
+| `task e2e`               | Run cross-service integration tests (mock)          |
+| `task e2e:real`          | Run true E2E tests (real ingest + real memvid)      |
+| `task release-gate`      | Full release quality gate                           |
+| `task proto`             | Regenerate gRPC stubs                               |
+| `task clean`             | Remove build artifacts                              |
+| `task deps`              | Check required tool dependencies                    |
 
-```text
-task frontend:install         # npm ci
-task frontend:dev             # npm run dev
-task frontend:build           # npm run build (with sources/generates)
-task frontend:lint            # npm run lint
-task frontend:typecheck       # npx tsc --noEmit
-task frontend:test            # npm test -- --run
-task frontend:test:watch      # npm run test:watch
-task frontend:test:coverage   # npm test -- --run --coverage
-task frontend:format          # npx prettier --write
-task frontend:format:check    # npx prettier --check
-task frontend:container       # podman build frontend container
-```
+### Service-Namespaced Tasks (Secondary)
 
-### API Service Taskfile (`api-service/Taskfile.yml`)
-
-```text
-task api:install              # uv sync --extra test --extra lint
-task api:dev                  # uvicorn with --reload
-task api:lint                 # ruff check + ruff format --check
-task api:lint:fix             # ruff check --fix + ruff format
-task api:typecheck            # mypy .
-task api:test                 # pytest -v --tb=short
-task api:test:coverage        # pytest --cov --cov-fail-under=85
-task api:test:e2e             # pytest tests/test_e2e_api.py
-task api:test:outcome         # pytest outcome tests (factual, honesty, security, etc.)
-task api:container            # podman build api container
-```
-
-### Memvid Service Taskfile (`memvid-service/Taskfile.yml`)
-
-```text
-task memvid:build             # cargo build --release (with sources/generates)
-task memvid:build:debug       # cargo build
-task memvid:dev               # cargo run --release
-task memvid:lint              # cargo clippy -- -D warnings
-task memvid:format            # cargo fmt
-task memvid:format:check      # cargo fmt --check
-task memvid:test              # cargo test
-task memvid:test:coverage     # cargo tarpaulin --fail-under 85
-task memvid:container         # podman build memvid container
-```
-
-### Ingest Taskfile (`ingest/Taskfile.yml`)
-
-```text
-task ingest:install           # uv sync --extra test --extra lint
-task ingest:run               # python ingest.py --input ... --output ...
-task ingest:lint              # ruff check + ruff format --check
-task ingest:lint:fix          # ruff check --fix + ruff format
-task ingest:typecheck         # mypy .
-task ingest:test              # pytest -v --tb=short -m "not slow"
-task ingest:test:coverage     # pytest --cov-fail-under=85
-task ingest:test:slow         # pytest -v -m slow (includes embedding tests)
-task ingest:container         # podman build ingest container
-```
-
-### Aggregate Tasks (Root)
-
-```text
-task containers               # Build all 4 containers (deps: frontend:container, api:container, ...)
-task containers:export        # Save containers as OCI tarballs (replaces export-containers.sh)
-task containers:publish       # Push to remote registry (replaces publish-containers.sh)
-task containers:smoke         # Quick smoke test (replaces test-containers.sh)
-```
+| Namespace   | Tasks                                                                                              |
+| ----------- | -------------------------------------------------------------------------------------------------- |
+| `frontend:` | `lint`, `lint:fix`, `typecheck`, `test`, `test:coverage`, `test:watch`, `build`, `dev`, `setup`    |
+| `api:`      | `lint`, `lint:fix`, `typecheck`, `test`, `test:coverage`, `format`, `format:check`, `dev`, `setup` |
+| `memvid:`   | `lint`, `fmt`, `fmt:check`, `build`, `build:release`, `test`, `test:coverage`, `dev`, `setup`      |
+| `ingest:`   | `lint`, `lint:fix`, `typecheck`, `test`, `test:coverage`, `format`, `format:check`, `setup`        |
+| `deploy:`   | `build`, `export`, `publish`, `test`, `compose:up`, `compose:down`, `compose:logs`                 |
+| `docs:`     | `lint`, `lint:fix`                                                                                 |
 
 ---
 
-## Change Detection Strategy
+## Dependency Detection
 
-### Frontend
+Tools are checked in three tiers. Each tier uses semantic version comparison
+(major.minor.patch) with a reusable `check_tool` function that extracts versions
+from varied `--version` output formats.
+
+**Python strategy:** The system `python3` (macOS 3.9.6) is irrelevant. Python is
+managed per-venv by `uv`. The global check only verifies `uv` is installed. Each
+service's `setup` task uses `uv venv` + `uv sync`, which downloads and pins the
+correct Python version from `.python-version`.
+
+### Tier 1 -- Required (fail if missing or below minimum)
+
+| Tool    | Minimum | Source                                   | Install Hint                                       |
+| ------- | ------- | ---------------------------------------- | -------------------------------------------------- |
+| Node.js | 22.12.0 | jsdom 27 peer dep; CI `NODE_VERSION: 22` | `https://nodejs.org/`                              |
+| npm     | 10.0.0  | Ships with Node 22+                      | (bundled with Node.js)                             |
+| uv      | 0.4.0   | Manages Python + venvs for all services  | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| go-task | 3.0.0   | Build orchestration                      | `https://taskfile.dev/installation/`               |
+
+### Tier 2 -- Service-specific (warn if missing; required for that service)
+
+| Tool       | Minimum | Required For   | Install Hint                                                      |
+| ---------- | ------- | -------------- | ----------------------------------------------------------------- |
+| Rust/rustc | 1.92.0  | memvid-service | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
+| Cargo      | 1.92.0  | memvid-service | (bundled with Rust)                                               |
+| protoc     | 3.0.0   | gRPC codegen   | `https://github.com/protocolbuffers/protobuf/releases`            |
+
+### Tier 3 -- Optional (info only, never fail)
+
+| Tool              | Install Hint                                                |
+| ----------------- | ----------------------------------------------------------- |
+| podman            | `https://podman.io/docs/installation`                       |
+| skopeo            | `https://github.com/containers/skopeo/blob/main/install.md` |
+| markdownlint-cli2 | `npm install -g markdownlint-cli2`                          |
+| shellcheck        | `https://github.com/koalaman/shellcheck#installing`         |
+| cargo-tarpaulin   | `cargo install cargo-tarpaulin`                             |
+
+### Version Comparison Implementation
+
+The `deps` task uses a shared script (`scripts/check-deps.sh`) for reuse across
+Taskfile and CI. Core functions:
+
+```bash
+# Extract first semver-like pattern (X.Y.Z or X.Y) from any --version output
+extract_version() {
+  echo "$1" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1
+}
+
+# Compare two semver strings: returns 0 if $1 >= $2, 1 otherwise
+version_gte() {
+  local have="$1" need="$2"
+  local have_major have_minor have_patch
+  local need_major need_minor need_patch
+  IFS='.' read -r have_major have_minor have_patch <<< "$have"
+  IFS='.' read -r need_major need_minor need_patch <<< "$need"
+  have_patch="${have_patch:-0}"
+  need_patch="${need_patch:-0}"
+  if (( have_major > need_major )); then return 0; fi
+  if (( have_major < need_major )); then return 1; fi
+  if (( have_minor > need_minor )); then return 0; fi
+  if (( have_minor < need_minor )); then return 1; fi
+  if (( have_patch >= need_patch )); then return 0; fi
+  return 1
+}
+
+# Check a single tool: name, version-command, minimum, install-hint
+check_tool() {
+  local name="$1" cmd="$2" min_version="$3" hint="$4"
+  if ! command -v "${cmd%% *}" &>/dev/null; then
+    printf "  MISSING  %-16s  -- %s\n" "$name" "$hint"
+    return 1
+  fi
+  local raw actual
+  raw=$(eval "$cmd" 2>&1) || true
+  actual=$(extract_version "$raw")
+  if [ -z "$actual" ]; then
+    printf "  UNKNOWN  %-16s  (could not parse version)\n" "$name"
+    return 1
+  fi
+  if version_gte "$actual" "$min_version"; then
+    printf "  PASS     %-16s  %s >= %s\n" "$name" "$actual" "$min_version"
+    return 0
+  else
+    printf "  FAIL     %-16s  %s < %s (need >= %s)\n" "$name" "$actual" "$min_version" "$min_version"
+    return 1
+  fi
+}
+```
+
+Note: Uses `FAIL=$((FAIL + 1))` not `((FAIL++))` to avoid the bash arithmetic
+exit-code bug with `set -e`.
+
+### Taskfile `deps` Tasks
 
 ```yaml
-# frontend/Taskfile.yml
+deps:
+  desc: Check all tool dependencies
+  cmds:
+    - task: deps:required
+    - task: deps:service
+    - task: deps:optional
+
+deps:required:
+  desc: Verify required tools (fail if missing or below minimum)
+  silent: true
+  cmds:
+    - bash scripts/check-deps.sh required
+
+deps:service:
+  desc: Check service-specific tools (warn only)
+  silent: true
+  cmds:
+    - bash scripts/check-deps.sh service
+
+deps:optional:
+  desc: Check optional tools (info only)
+  silent: true
+  cmds:
+    - bash scripts/check-deps.sh optional
+```
+
+---
+
+## Service Taskfile Designs
+
+### frontend/Taskfile.yml
+
+Key decisions:
+
+- `setup` uses `sources`/`generates`/`status` for idempotent `npm ci`
+- `deps: [setup]` on every lint/test/build ensures dependencies are present
+- Change detection via checksums skips up-to-date builds
+
+```yaml
+version: '3'
+
 tasks:
+  setup:
+    desc: Install frontend npm dependencies
+    cmds:
+      - npm ci
+    sources:
+      - package.json
+      - package-lock.json
+    generates:
+      - node_modules/.package-lock.json
+    status:
+      - test -d node_modules
+
+  lint:
+    desc: Run ESLint
+    deps: [setup]
+    cmds:
+      - npm run lint
+    sources:
+      - src/**/*.{ts,tsx}
+      - eslint.config.js
+
+  lint:fix:
+    desc: Run ESLint with auto-fix
+    deps: [setup]
+    cmds:
+      - npm run lint -- --fix
+
+  typecheck:
+    desc: Run TypeScript type checking
+    deps: [setup]
+    cmds:
+      - npx tsc --noEmit
+
+  test:
+    desc: Run Vitest
+    deps: [setup]
+    cmds:
+      - npm test -- --run
+    sources:
+      - src/**/*.{ts,tsx}
+      - src/test/setup.ts
+      - vitest.config.ts
+
+  test:coverage:
+    desc: Run Vitest with coverage
+    deps: [setup]
+    cmds:
+      - npm test -- --run --coverage
+
+  test:watch:
+    desc: Run Vitest in watch mode
+    deps: [setup]
+    cmds:
+      - npm run test:watch
+
   build:
     desc: Production build
-    deps: [install]
+    deps: [setup]
     cmds:
       - npm run build
     sources:
@@ -173,81 +296,139 @@ tasks:
       - tsconfig.json
       - tsconfig.app.json
       - package.json
-      - package-lock.json
     generates:
       - dist/**/*
 
-  lint:
-    desc: Run ESLint
+  dev:
+    desc: Start Vite dev server
+    deps: [setup]
     cmds:
-      - npm run lint
-    sources:
-      - src/**/*.{ts,tsx}
-      - eslint.config.js
-
-  test:
-    desc: Run tests
-    cmds:
-      - npm test -- --run
-    sources:
-      - src/**/*.{ts,tsx}
-      - src/test/setup.ts
-      - vitest.config.ts
-
-  container:
-    desc: Build frontend container image
-    deps: [build]
-    cmds:
-      - podman build ...
-    sources:
-      - dist/**/*
-      - Dockerfile
-      - nginx.conf
-      - nginx-default.conf
+      - npm run dev
 ```
 
-### API Service
+### api-service/Taskfile.yml
+
+Key decisions:
+
+- Uses `uv run` consistently (matches CI behavior)
+- No venv activation needed -- `uv run` detects and uses existing venvs
 
 ```yaml
-# api-service/Taskfile.yml
+version: '3'
+
+vars:
+  VENV: .venv
+  UV_RUN: uv run
+
 tasks:
+  setup:
+    desc: Create venv and install dependencies
+    cmds:
+      - uv venv {{.VENV}}
+      - uv sync --extra test --extra lint
+    status:
+      - test -d {{.VENV}}
+      - test -f {{.VENV}}/bin/python
+
+  lint:
+    desc: Run ruff lint + format check
+    deps: [setup]
+    cmds:
+      - '{{.UV_RUN}} ruff check .'
+      - '{{.UV_RUN}} ruff format --check .'
+    sources:
+      - ai_resume_api/**/*.py
+      - tests/**/*.py
+      - pyproject.toml
+
+  lint:fix:
+    desc: Run ruff lint and format with auto-fix
+    deps: [setup]
+    cmds:
+      - '{{.UV_RUN}} ruff check --fix .'
+      - '{{.UV_RUN}} ruff format .'
+
+  typecheck:
+    desc: Run mypy type checking
+    deps: [setup]
+    cmds:
+      - '{{.UV_RUN}} mypy .'
+
+  format:
+    desc: Format with ruff
+    deps: [setup]
+    cmds:
+      - '{{.UV_RUN}} ruff format .'
+
+  format:check:
+    desc: Check formatting with ruff
+    deps: [setup]
+    cmds:
+      - '{{.UV_RUN}} ruff format --check .'
+
   test:
     desc: Run pytest
+    deps: [setup]
     cmds:
-      - uv run pytest -v --tb=short
+      - '{{.UV_RUN}} pytest -v --tb=short'
     sources:
       - ai_resume_api/**/*.py
       - tests/**/*.py
       - pyproject.toml
 
-  lint:
-    desc: Lint with ruff
+  test:coverage:
+    desc: Run pytest with coverage
+    deps: [setup]
     cmds:
-      - uv run ruff check .
-      - uv run ruff format --check .
-    sources:
-      - ai_resume_api/**/*.py
-      - tests/**/*.py
-      - pyproject.toml
+      - '{{.UV_RUN}} pytest -v --tb=short --cov=ai_resume_api --cov-report=term-missing'
 
-  container:
-    desc: Build API container image
+  dev:
+    desc: Start FastAPI with hot reload
+    deps: [setup]
     cmds:
-      - podman build ...
-    sources:
-      - ai_resume_api/**/*.py
-      - Dockerfile
-      - pyproject.toml
-      - uv.lock
+      - '{{.UV_RUN}} uvicorn ai_resume_api.main:app --reload --port 3000'
 ```
 
-### Memvid Service
+### memvid-service/Taskfile.yml
+
+Key decisions:
+
+- No `deps: [setup]` -- `cargo build/test` automatically fetches dependencies
+- `test:coverage` uses existing `tarpaulin-unit.toml` config
 
 ```yaml
-# memvid-service/Taskfile.yml
+version: '3'
+
 tasks:
+  setup:
+    desc: Fetch Rust dependencies
+    cmds:
+      - cargo fetch
+    status:
+      - test -f Cargo.lock
+
+  lint:
+    desc: Run clippy with deny warnings
+    cmds:
+      - cargo clippy -- -D warnings
+
+  fmt:
+    desc: Format Rust code
+    cmds:
+      - cargo fmt
+
+  fmt:check:
+    desc: Check Rust formatting
+    cmds:
+      - cargo fmt --check
+
   build:
-    desc: Build release binary
+    desc: Build debug
+    cmds:
+      - cargo build
+
+  build:release:
+    desc: Build release
     cmds:
       - cargo build --release
     sources:
@@ -258,417 +439,163 @@ tasks:
     generates:
       - target/release/memvid-service
 
-  container:
-    desc: Build memvid container image
-    deps: [build]
+  test:
+    desc: Run cargo test
     cmds:
-      - podman build ...
-    sources:
-      - Dockerfile
-      - target/release/memvid-service
-```
+      - cargo test
 
-### Proto Generation
-
-```yaml
-# Root Taskfile.yml
-tasks:
-  proto:
-    desc: Regenerate gRPC stubs from proto definitions
+  test:coverage:
+    desc: Run cargo tarpaulin (unit)
+    preconditions:
+      - sh: command -v cargo-tarpaulin
+        msg: 'cargo-tarpaulin not found. Install: cargo install cargo-tarpaulin'
     cmds:
-      - ./scripts/gen-proto.sh
-    sources:
-      - proto/memvid/v1/memvid.proto
-    generates:
-      - api-service/ai_resume_api/proto/memvid/v1/memvid_pb2.py
-      - api-service/ai_resume_api/proto/memvid/v1/memvid_pb2_grpc.py
+      - cargo tarpaulin --config tarpaulin-unit.toml
+
+  dev:
+    desc: Run memvid service
+    cmds:
+      - cargo run
 ```
 
-### Method
-
-Use `checksum` (the default) for all tasks. Checksums are more reliable than timestamps
-across git operations (clone, checkout, rebase all reset timestamps). The `.task/` directory
-storing checksums will be added to `.gitignore`.
-
----
-
-## Migration Plan
-
-### Scripts That Become Taskfile Tasks (Replace)
-
-| Script | Replacement Task | Notes |
-| --- | --- | --- |
-| `scripts/build-all.sh` | `task containers` | Per-service change detection via `sources` |
-| `scripts/export-containers.sh` | `task containers:export` | Rewrite as Taskfile commands |
-| `scripts/verify-quality.sh` | `task quality` | Aggregate `lint` + `typecheck` + `test` per svc |
-| `scripts/install-hooks.sh` | `task hooks` | Simple enough to inline |
-| `scripts/gen-proto.sh` | `task proto` | Add `sources`/`generates` for change detection |
-| `scripts/dev-setup.sh` | `task setup` | Prerequisites check + install per service |
-
-### Scripts That Become Taskfile Wrappers (Keep Script, Task Calls It)
-
-| Script                            | Wrapper Task              | Rationale                                   |
-| --------------------------------- | ------------------------- | ------------------------------------------- |
-| `scripts/test-containers.sh`      | `task containers:smoke`   | Complex test logic; Taskfile adds deps      |
-| `scripts/test-e2e-integration.sh` | `task e2e`                | Complex multi-service orchestration         |
-| `scripts/test-e2e-real.sh`        | `task e2e:real`           | Complex 4-phase test with service lifecycle |
-| `scripts/test-e2e-mock-gates.sh`  | `task e2e:mock-gates`     | Complex test permutations                   |
-| `scripts/release-gate.sh`         | `task release-gate`       | Taskfile declares phase deps; script runs   |
-| `scripts/deploy.sh`               | `task deploy`             | SSH/SCP operations best in shell            |
-| `scripts/publish-containers.sh`   | `task containers:publish` | skopeo commands best in shell               |
-
-### Scripts That Remain Unchanged (No Task Wrapper Needed)
-
-| Script | Reason |
-| --- | --- |
-| `scripts/profile-latency.sh` | Ad-hoc profiling tool, not a build target |
-| `scripts/load-test.py` | Ad-hoc load testing tool |
-| `scripts/release-gate-matrix.sh` | Companion to release-gate.sh |
-| `scripts/test-outcome-portability.sh` | Called by CI directly |
-| `scripts/test-outcome-containers.sh` | Called by CI directly |
-| `scripts/verify-docs.sh` | Called by CI directly |
-
-### Migration Order
-
-1. **Phase 1**: Root Taskfile + per-service Taskfiles with `install`, `lint`, `test`, `build`
-2. **Phase 2**: Add `sources`/`generates` change detection to all tasks
-3. **Phase 3**: Container build tasks (`container`, `containers`, `containers:export`)
-4. **Phase 4**: E2E and integration test wrappers
-5. **Phase 5**: CI workflow migration (replace inline commands with `task` calls)
-6. **Phase 6**: Release gate pipeline as task dependency chain
-7. **Phase 7**: Remove replaced scripts, update CLAUDE.md and documentation
-
----
-
-## CI Integration
-
-### Current CI Structure
-
-The CI workflow (`.github/workflows/ci.yml`) uses `dorny/paths-filter` for monorepo change
-detection and conditional job execution. Each job inlines its own commands.
-
-### Proposed CI Structure
-
-Install `task` in CI via the official GitHub Action, then call task targets:
-
-```yaml
-# Example: frontend job
-frontend:
-  needs: changes
-  if: ${{ needs.changes.outputs.frontend == 'true' }}
-  runs-on: ubuntu-latest
-  steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version: '22'
-        cache: npm
-        cache-dependency-path: frontend/package-lock.json
-    - uses: arduino/setup-task@v2
-      with:
-        version: '3.x'
-    - run: task frontend:install
-    - run: task frontend:lint
-    - run: task frontend:typecheck
-    - run: task frontend:test:coverage
-    - run: task frontend:build
-```
-
-### What CI Continues to Own
-
-- **Path-based change detection** (`dorny/paths-filter`) -- Taskfile's `sources/generates` is
-  for local incremental builds, not CI job gating. CI still needs paths-filter to skip entire
-  jobs when a service has no changes.
-- **Caching** (node_modules, cargo, uv, HuggingFace) -- GitHub Actions cache is more
-  effective than Taskfile's checksum-based skip for CI cold starts.
-- **Matrix strategies** -- The security.yml Trivy scan uses a matrix; this stays in CI.
-- **Summary job** -- Aggregation logic stays in CI YAML.
-
-### What Migrates to Taskfile
-
-- **Inline command sequences** in each job step (lint, typecheck, test, build)
-- **Working directory management** (`defaults.run.working-directory` replaced by Taskfile `dir:`)
-- **Quality gate checks** (coverage thresholds, lint zero-error enforcement)
-
----
-
-## Feature List Entries
-
-The following features should be added to `feature_list.json` when implementation begins.
-IDs use the existing kebab-case naming convention matching the other 124 features.
-
-```json
-{
-  "id": "taskfile-root",
-  "category": "build",
-  "title": "Root Taskfile with Monorepo Task Orchestration",
-  "description": "Root Taskfile.yml providing aggregate tasks (setup, dev, build, test, lint, quality, clean) that delegate to per-service Taskfiles via includes. Supports task --list for discoverability.",
-  "testing_steps": [
-    "Run 'task --list' from the repo root and verify it lists at least 15 tasks across all services",
-    "Run 'task --version' and verify go-task is installed",
-    "Run 'cat Taskfile.yml' and verify it declares 'version: 3' and 'includes:' for frontend, api-service, memvid-service, and ingest",
-    "Run 'task quality --dry' and verify it would invoke lint, typecheck, and test for all services"
-  ],
-  "passes": false,
-  "verified": false,
-  "dependencies": []
-}
-```
-
-```json
-{
-  "id": "taskfile-frontend",
-  "category": "build",
-  "title": "Frontend Taskfile with Change Detection",
-  "description": "frontend/Taskfile.yml providing install, dev, build, lint, typecheck, test, format, and container tasks with sources/generates change detection for build and test targets.",
-  "testing_steps": [
-    "Run 'task frontend:build' twice in succession; verify second run prints 'Task \"frontend:build\" is up to date'",
-    "Modify frontend/src/App.tsx and run 'task frontend:build' again; verify it rebuilds",
-    "Run 'task frontend:lint' and verify ESLint executes against frontend/src",
-    "Run 'task frontend:test' and verify Vitest runs",
-    "Run 'task frontend:container' and verify podman builds the frontend image"
-  ],
-  "passes": false,
-  "verified": false,
-  "dependencies": ["taskfile-root"]
-}
-```
-
-```json
-{
-  "id": "taskfile-api-service",
-  "category": "build",
-  "title": "API Service Taskfile with Change Detection",
-  "description": "api-service/Taskfile.yml providing install, dev, lint, typecheck, test, and container tasks with sources/generates change detection. Activates the correct Python venv.",
-  "testing_steps": [
-    "Run 'task api:test' and verify pytest runs against api-service tests",
-    "Run 'task api:lint' and verify ruff check and ruff format --check execute",
-    "Run 'task api:typecheck' and verify mypy runs",
-    "Run 'task api:test' twice without changes; verify second run prints up to date",
-    "Run 'task api:container' and verify podman builds the API image"
-  ],
-  "passes": false,
-  "verified": false,
-  "dependencies": ["taskfile-root"]
-}
-```
-
-```json
-{
-  "id": "taskfile-memvid-service",
-  "category": "build",
-  "title": "Memvid Service Taskfile with Change Detection",
-  "description": "memvid-service/Taskfile.yml providing build, dev, lint, format, test, and container tasks with sources/generates for the Rust binary. Change detection skips cargo build when sources unchanged.",
-  "testing_steps": [
-    "Run 'task memvid:build' and verify cargo build --release completes",
-    "Run 'task memvid:build' again without changes; verify it prints up to date",
-    "Run 'task memvid:lint' and verify clippy runs with -D warnings",
-    "Run 'task memvid:test' and verify cargo test runs",
-    "Run 'task memvid:container' and verify podman builds the memvid image"
-  ],
-  "passes": false,
-  "verified": false,
-  "dependencies": ["taskfile-root"]
-}
-```
-
-```json
-{
-  "id": "taskfile-ingest",
-  "category": "build",
-  "title": "Ingest Taskfile with Change Detection",
-  "description": "ingest/Taskfile.yml providing install, run, lint, typecheck, test, and container tasks with sources/generates change detection for Python test results.",
-  "testing_steps": [
-    "Run 'task ingest:test' and verify pytest runs ingest tests",
-    "Run 'task ingest:lint' and verify ruff check and ruff format --check execute",
-    "Run 'task ingest:typecheck' and verify mypy runs",
-    "Run 'task ingest:container' and verify podman builds the ingest image"
-  ],
-  "passes": false,
-  "verified": false,
-  "dependencies": ["taskfile-root"]
-}
-```
-
-```json
-{
-  "id": "taskfile-proto-generation",
-  "category": "build",
-  "title": "Proto Stub Generation with Change Detection",
-  "description": "Root-level proto task that regenerates Python gRPC stubs from proto/memvid/v1/memvid.proto only when the .proto file changes. Uses sources/generates to skip when stubs are current.",
-  "testing_steps": [
-    "Run 'task proto' and verify Python stubs are generated in api-service/ai_resume_api/proto/",
-    "Run 'task proto' again without changing the .proto file; verify it prints up to date",
-    "Modify proto/memvid/v1/memvid.proto (add a comment) and run 'task proto'; verify stubs regenerate"
-  ],
-  "passes": false,
-  "verified": false,
-  "dependencies": ["taskfile-root"]
-}
-```
-
-```json
-{
-  "id": "taskfile-container-orchestration",
-  "category": "build",
-  "title": "Container Build Orchestration via Taskfile",
-  "description": "Root-level container tasks (containers, containers:export, containers:publish, containers:smoke) that orchestrate multi-service container builds with per-service change detection. Replaces scripts/build-all.sh and scripts/export-containers.sh.",
-  "testing_steps": [
-    "Run 'task containers' and verify all 4 container images are built",
-    "Run 'task containers' again without source changes; verify skipped services print up to date",
-    "Run 'task containers:export' and verify OCI tar files are created in deployment/",
-    "Run 'task containers:smoke' and verify the container smoke test suite passes"
-  ],
-  "passes": false,
-  "verified": false,
-  "dependencies": [
-    "taskfile-frontend",
-    "taskfile-api-service",
-    "taskfile-memvid-service",
-    "taskfile-ingest"
-  ]
-}
-```
-
-```json
-{
-  "id": "taskfile-quality-gate",
-  "category": "build",
-  "title": "Unified Quality Gate via Taskfile",
-  "description": "Root-level quality task that runs lint, typecheck, and test for all 4 services in parallel via Taskfile deps. Replaces scripts/verify-quality.sh with declarative dependency graph.",
-  "testing_steps": [
-    "Run 'task quality' and verify it runs lint, typecheck, and test for frontend, api-service, memvid-service, and ingest",
-    "Introduce a lint error in one service and run 'task quality'; verify it reports the failure",
-    "Run 'task quality' with all services clean; verify all checks pass"
-  ],
-  "passes": false,
-  "verified": false,
-  "dependencies": [
-    "taskfile-frontend",
-    "taskfile-api-service",
-    "taskfile-memvid-service",
-    "taskfile-ingest"
-  ]
-}
-```
-
-```json
-{
-  "id": "taskfile-ci-integration",
-  "category": "build",
-  "title": "CI Workflow Integration with Taskfile",
-  "description": "Update .github/workflows/ci.yml to install go-task and invoke task targets instead of inline commands. Preserves dorny/paths-filter for job gating and GitHub Actions caching.",
-  "testing_steps": [
-    "Verify .github/workflows/ci.yml installs go-task via arduino/setup-task action",
-    "Verify frontend CI job uses 'task frontend:lint', 'task frontend:typecheck', 'task frontend:test:coverage', 'task frontend:build'",
-    "Verify api-service CI job uses 'task api:lint', 'task api:typecheck', 'task api:test'",
-    "Verify memvid-service CI job uses 'task memvid:format:check', 'task memvid:lint', 'task memvid:build', 'task memvid:test'",
-    "Verify ingest CI job uses 'task ingest:lint', 'task ingest:typecheck', 'task ingest:test:coverage'",
-    "Verify dorny/paths-filter is preserved for monorepo change detection"
-  ],
-  "passes": false,
-  "verified": false,
-  "dependencies": [
-    "taskfile-root",
-    "taskfile-frontend",
-    "taskfile-api-service",
-    "taskfile-memvid-service",
-    "taskfile-ingest"
-  ]
-}
-```
-
-```json
-{
-  "id": "taskfile-release-pipeline",
-  "category": "build",
-  "title": "Release Gate Pipeline via Taskfile Dependencies",
-  "description": "Root-level release-gate task that chains the full release pipeline (build -> export -> ingest -> smoke -> pytest -> e2e) as declared Taskfile dependencies. Wraps existing scripts where needed.",
-  "testing_steps": [
-    "Run 'task release-gate --dry' and verify it shows the correct task execution order",
-    "Verify the release-gate task declares deps on containers, containers:export, containers:smoke, e2e",
-    "Run 'task release-gate' and verify all phases execute in dependency order"
-  ],
-  "passes": false,
-  "verified": false,
-  "dependencies": [
-    "taskfile-container-orchestration",
-    "taskfile-quality-gate"
-  ]
-}
-```
-
----
-
-## Dependencies
-
-### go-task Binary
-
-- **Version**: 3.x (latest stable, currently 3.43+)
-- **Install methods**:
-  - macOS: `brew install go-task`
-  - Linux: `sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin`
-  - CI: `arduino/setup-task@v2` GitHub Action
-- **No runtime dependencies**: Single static binary, no Go runtime needed
-- **Already available**: `go-task` is in Homebrew and major Linux package managers
-
-### Taskfile Schema
-
-- VSCode/IDE support: `schemaVersion: 3` provides JSON Schema validation
-- Add `.task/` to `.gitignore` (checksum storage directory)
-
-### Compatibility
-
-- `task` command must not conflict with existing system commands. On macOS, there is a
-  BSD `task` utility but it is rarely installed. go-task installs as both `task` and
-  `go-task` to avoid conflicts.
-
----
-
-## Risks and Trade-offs
-
-### Risks
-
-| Risk | Likelihood | Impact | Mitigation |
-| --- | --- | --- | --- |
-| Developers unfamiliar with Taskfile | Medium | Low | YAML syntax is simple; `task --list` provides discoverability; CLAUDE.md updated with examples |
-| go-task version incompatibility in CI | Low | Medium | Pin version in `arduino/setup-task@v2` with `version: '3.x'` |
-| Change detection false positives (task runs when not needed) | Low | Low | Acceptable; worst case is a redundant build. Use `--force` to override |
-| Change detection false negatives (task skips when source changed) | Very Low | High | Checksums are content-based, not timestamp-based; very reliable. `.task/` can be deleted to force rebuild |
-| Existing scripts break during migration | Medium | Medium | Phased migration; keep scripts alongside Taskfile tasks during transition. Only remove scripts after CI validates task equivalents |
-| Shell scripts with complex logic cannot be fully expressed in Taskfile | N/A | N/A | By design: complex scripts are wrapped, not replaced. Taskfile provides orchestration, not reimplementation |
-
-### Trade-offs
-
-| Decision | Pro | Con |
-| --- | --- | --- |
-| Wrap complex scripts instead of rewriting | Preserves tested logic; lower risk | Two layers (Taskfile + script) to maintain |
-| Use checksum method (default) over timestamp | Reliable across git operations | Slightly slower than timestamp for large source trees |
-| Keep dorny/paths-filter in CI alongside Taskfile sources | CI job gating is coarser-grained (skip entire jobs); Taskfile is finer-grained (skip individual tasks) | Two layers of change detection |
-| Single `task` binary dependency | No runtime, no plugins, cross-platform | Another tool to install; go-task is less universal than make |
-
-### Alternatives Considered
-
-| Alternative | Reason Not Chosen |
-| --- | --- |
-| **GNU Make** | Tab-sensitivity, no native YAML, poor Windows support, no built-in checksum-based change detection |
-| **just** | No `sources`/`generates` change detection; no task dependencies; positioned as a command runner not a build tool |
-| **mise** | More opinionated (replaces nvm/pyenv/asdf); Taskfile integration exists but adds unnecessary complexity for this project |
-| **Turborepo/Nx** | JavaScript-ecosystem focused; overkill for a 4-service polyglot monorepo; adds node_modules dependency to non-JS services |
-| **Bazel** | Enterprise-grade but massive learning curve; overkill for this project size |
-
----
-
-## Implementation Notes
-
-### Taskfile.yml Skeleton (Root)
+### ingest/Taskfile.yml
 
 ```yaml
 version: '3'
 
 vars:
-  VERSION: '{{.VERSION | default "latest"}}'
+  VENV: .venv
+  UV_RUN: uv run
+
+tasks:
+  setup:
+    desc: Create venv and install dependencies
+    cmds:
+      - uv venv {{.VENV}}
+      - uv sync --extra test --extra lint
+    status:
+      - test -d {{.VENV}}
+
+  lint:
+    desc: Run ruff lint + format check
+    deps: [setup]
+    cmds:
+      - '{{.UV_RUN}} ruff check .'
+      - '{{.UV_RUN}} ruff format --check .'
+
+  lint:fix:
+    desc: Run ruff lint and format with auto-fix
+    deps: [setup]
+    cmds:
+      - '{{.UV_RUN}} ruff check --fix .'
+      - '{{.UV_RUN}} ruff format .'
+
+  typecheck:
+    desc: Run mypy type checking
+    deps: [setup]
+    cmds:
+      - '{{.UV_RUN}} mypy .'
+
+  format:
+    desc: Format with ruff
+    deps: [setup]
+    cmds:
+      - '{{.UV_RUN}} ruff format .'
+
+  format:check:
+    desc: Check formatting with ruff
+    deps: [setup]
+    cmds:
+      - '{{.UV_RUN}} ruff format --check .'
+
+  test:
+    desc: Run pytest (exclude slow)
+    deps: [setup]
+    cmds:
+      - '{{.UV_RUN}} pytest -v --tb=short -m "not slow"'
+
+  test:coverage:
+    desc: Run pytest with coverage
+    deps: [setup]
+    cmds:
+      - '{{.UV_RUN}} pytest -v --tb=short -m "not slow" --cov=ingest --cov-report=term-missing --cov-fail-under=85'
+```
+
+### deployment/Taskfile.yml
+
+Key decisions:
+
+- Wraps existing shell scripts -- they handle multi-arch builds, OCI annotations, error handling
+- `preconditions` check for podman/skopeo with install hints
+- Uses `podman compose` (not podman-compose)
+
+```yaml
+version: '3'
+
+vars:
   REGISTRY: '{{.REGISTRY | default "localhost"}}'
+  VERSION: '{{.VERSION | default "latest"}}'
+
+tasks:
+  build:
+    desc: Build all container images
+    preconditions:
+      - sh: command -v podman
+        msg: 'podman not found. See: https://podman.io/docs/installation'
+    cmds:
+      - ../scripts/build-all.sh {{.VERSION}}
+
+  export:
+    desc: Export container images as tar files
+    preconditions:
+      - sh: command -v podman
+        msg: 'podman not found.'
+    cmds:
+      - ../scripts/export-containers.sh {{.VERSION}}
+
+  publish:
+    desc: Publish containers to remote registry
+    preconditions:
+      - sh: command -v skopeo
+        msg: 'skopeo not found. See: https://github.com/containers/skopeo/blob/main/install.md'
+      - sh: command -v podman
+        msg: 'podman not found.'
+    cmds:
+      - ../scripts/publish-containers.sh {{.CLI_ARGS}}
+
+  test:
+    desc: Run container smoke tests
+    cmds:
+      - ../scripts/test-containers.sh {{.VERSION}}
+
+  compose:up:
+    desc: Start services with podman compose
+    cmds:
+      - podman compose up -d
+
+  compose:down:
+    desc: Stop services
+    cmds:
+      - podman compose down
+
+  compose:logs:
+    desc: Show service logs
+    cmds:
+      - podman compose logs -f {{.CLI_ARGS}}
+```
+
+---
+
+## Root Taskfile.yml
+
+```yaml
+version: '3'
+
+vars:
+  REGISTRY: '{{.REGISTRY | default "localhost"}}'
+  VERSION: '{{.VERSION | default "latest"}}'
+  PROJECT_ROOT:
+    sh: pwd
   GIT_REVISION:
     sh: git rev-parse --short HEAD 2>/dev/null || echo "unknown"
   BUILD_DATE:
@@ -687,6 +614,12 @@ includes:
   ingest:
     taskfile: ./ingest/Taskfile.yml
     dir: ./ingest
+  deploy:
+    taskfile: ./deployment/Taskfile.yml
+    dir: ./deployment
+    vars:
+      REGISTRY: '{{.REGISTRY}}'
+      VERSION: '{{.VERSION}}'
 
 tasks:
   default:
@@ -694,26 +627,92 @@ tasks:
     cmds:
       - task --list
 
-  setup:
-    desc: Bootstrap development environment
-    deps:
-      - frontend:install
-      - api:install
-      - ingest:install
-      - hooks
+  deps:
+    desc: Check all required tool dependencies
     cmds:
-      - echo "Development environment ready"
+      - task: deps:required
+      - task: deps:optional
 
-  hooks:
+  deps:required:
+    # (see Dependency Detection section above)
+
+  deps:optional:
+    # (see Dependency Detection section above)
+
+  setup:
+    desc: Bootstrap full dev environment
+    deps: [deps:required]
+    cmds:
+      - task: frontend:setup
+      - task: api:setup
+      - task: memvid:setup
+      - task: ingest:setup
+      - task: setup:hooks
+
+  setup:hooks:
     desc: Install git hooks
     cmds:
-      - git config core.hooksPath .githooks
-      - chmod +x .githooks/*
+      - ./scripts/install-hooks.sh
     status:
       - test "$(git config core.hooksPath)" = ".githooks"
 
+  lint:
+    desc: Lint all services
+    deps: [frontend:lint, api:lint, memvid:lint, ingest:lint, docs:lint]
+
+  lint:fix:
+    desc: Lint all services with auto-fix
+    deps:
+      [
+        frontend:lint:fix,
+        api:lint:fix,
+        memvid:fmt,
+        ingest:lint:fix,
+        docs:lint:fix,
+      ]
+
+  test:
+    desc: Unit test all services
+    deps: [frontend:test, api:test, memvid:test, ingest:test]
+
+  test:coverage:
+    desc: Unit test all services with coverage
+    deps:
+      [
+        frontend:test:coverage,
+        api:test:coverage,
+        memvid:test:coverage,
+        ingest:test:coverage,
+      ]
+
+  build:
+    desc: Build all services
+    deps: [frontend:build, memvid:build:release]
+
+  check:
+    desc: Full local quality sweep (lint + typecheck + test + build)
+    cmds:
+      - task: lint
+      - task: frontend:typecheck
+      - task: api:typecheck
+      - task: ingest:typecheck
+      - task: test
+      - task: build
+
+  ci:
+    desc: Reproduce CI pipeline locally
+    cmds:
+      - task: deps:required
+      - task: lint
+      - task: frontend:typecheck
+      - task: api:typecheck
+      - task: ingest:typecheck
+      - task: test:coverage
+      - task: build
+      - task: docs:lint
+
   proto:
-    desc: Regenerate gRPC stubs from proto definitions
+    desc: Regenerate gRPC Python stubs
     cmds:
       - ./scripts/gen-proto.sh
     sources:
@@ -722,131 +721,273 @@ tasks:
       - api-service/ai_resume_api/proto/memvid/v1/memvid_pb2.py
       - api-service/ai_resume_api/proto/memvid/v1/memvid_pb2_grpc.py
 
-  lint:
-    desc: Run all linters
-    deps:
-      - frontend:lint
-      - api:lint
-      - memvid:lint
-      - ingest:lint
-
-  test:
-    desc: Run all unit tests
-    deps:
-      - frontend:test
-      - api:test
-      - memvid:test
-      - ingest:test
-
-  quality:
-    desc: Full quality check (lint + typecheck + test)
-    deps:
-      - lint
-      - frontend:typecheck
-      - api:typecheck
-      - ingest:typecheck
-      - test
-
-  build:
-    desc: Build all containers
-    aliases: [containers]
-    deps:
-      - frontend:container
-      - api:container
-      - memvid:container
-      - ingest:container
-
-  clean:
-    desc: Remove build artifacts and task cache
+  e2e:
+    desc: Cross-service integration tests (mock backends)
     cmds:
-      - rm -rf .task/
-      - rm -rf frontend/dist/
-      - rm -rf memvid-service/target/
-```
+      - ./scripts/test-e2e-integration.sh
 
-### Python Venv Handling
+  e2e:real:
+    desc: True E2E tests (real ingest + real memvid, mock LLM)
+    cmds:
+      - ./scripts/test-e2e-real.sh
 
-Taskfile tasks for Python services must activate the correct venv. Use `sh` to source
-the venv before running commands:
+  release-gate:
+    desc: Full release quality gate
+    cmds:
+      - ./scripts/release-gate.sh {{.VERSION}}
 
-```yaml
-# api-service/Taskfile.yml
-tasks:
-  test:
-    desc: Run pytest
+  container:build:
+    desc: Build all container images
+    cmds:
+      - task: deploy:build
+
+  container:export:
+    desc: Export containers as tar files
+    cmds:
+      - task: deploy:export
+
+  container:publish:
+    desc: Publish containers to remote registry
+    cmds:
+      - task: deploy:publish
+
+  container:test:
+    desc: Run container smoke tests
+    cmds:
+      - task: deploy:test
+
+  dev:
+    desc: Print dev server startup instructions
     cmds:
       - |
-        source .venv/bin/activate
-        pytest -v --tb=short
-    sources:
-      - ai_resume_api/**/*.py
-      - tests/**/*.py
-      - pyproject.toml
-```
+        echo "Start each service in a separate terminal:"
+        echo ""
+        echo "  Terminal 1 (memvid):   task dev:memvid"
+        echo "  Terminal 2 (api):      task dev:api"
+        echo "  Terminal 3 (frontend): task dev:frontend"
 
-Alternatively, reference the venv Python directly:
-
-```yaml
-tasks:
-  test:
-    desc: Run pytest
+  dev:frontend:
+    desc: Start frontend dev server
     cmds:
-      - .venv/bin/python -m pytest -v --tb=short
-```
+      - task: frontend:dev
 
-The second approach is preferred because it avoids shell sourcing complexity and works
-consistently across `sh` and `bash`.
-
-### Container Build Task Pattern
-
-Each service's `container` task follows the same pattern:
-
-```yaml
-tasks:
-  container:
-    desc: Build container image
-    vars:
-      IMAGE_NAME: ai-resume-frontend
+  dev:api:
+    desc: Start API service with hot reload
     cmds:
-      - podman manifest rm "{{.REGISTRY}}/{{.IMAGE_NAME}}:{{.VERSION}}" 2>/dev/null || true
-      - >-
-        podman build
-        --platform linux/amd64,linux/arm64
-        --manifest "{{.REGISTRY}}/{{.IMAGE_NAME}}:{{.VERSION}}"
-        --annotation "org.opencontainers.image.version={{.VERSION}}"
-        --annotation "org.opencontainers.image.created={{.BUILD_DATE}}"
-        --annotation "org.opencontainers.image.revision={{.GIT_REVISION}}"
-        -f Dockerfile .
-    sources:
-      - Dockerfile
-      - dist/**/*
-      - nginx.conf
-      - nginx-default.conf
-```
+      - task: api:dev
 
-Root variables (`VERSION`, `REGISTRY`, `GIT_REVISION`, `BUILD_DATE`) propagate to included
-Taskfiles automatically.
+  dev:memvid:
+    desc: Start memvid gRPC service
+    cmds:
+      - task: memvid:dev
+
+  docs:lint:
+    desc: Lint Markdown files
+    cmds:
+      - npx --prefix frontend markdownlint-cli2 '**/*.md'
+
+  docs:lint:fix:
+    desc: Lint and fix Markdown files
+    cmds:
+      - npx --prefix frontend markdownlint-cli2 --fix '**/*.md'
+
+  clean:
+    desc: Remove build artifacts
+    cmds:
+      - rm -rf .task/
+      - rm -rf frontend/dist
+      - rm -rf memvid-service/target
+      - echo "Clean complete. Python .venvs preserved (use 'task clean:all' to remove)."
+
+  clean:all:
+    desc: Remove build artifacts AND virtual environments
+    cmds:
+      - task: clean
+      - rm -rf api-service/.venv
+      - rm -rf ingest/.venv
+      - rm -rf deployment/.venv
+```
 
 ---
 
-## CLAUDE.md Updates Required
+## Script Absorption Strategy
 
-When implementation is complete, update the following CLAUDE.md sections:
+| Existing Script                   | Taskfile Action                  | Rationale                        |
+| --------------------------------- | -------------------------------- | -------------------------------- |
+| `scripts/build-all.sh`            | Wrapped by `deploy:build`        | Complex multi-arch logic -- keep |
+| `scripts/install-hooks.sh`        | Wrapped by `setup:hooks`         | Simple, correct -- keep          |
+| `scripts/gen-proto.sh`            | Wrapped by `task proto`          | Small, correct -- keep           |
+| `scripts/test-e2e-integration.sh` | Wrapped by `task e2e`            | Complex -- keep                  |
+| `scripts/test-e2e-real.sh`        | Wrapped by `task e2e:real`       | Complex -- keep                  |
+| `scripts/test-e2e-mock-gates.sh`  | Wrapped by `task e2e:mock-gates` | Complex -- keep                  |
+| `scripts/publish-containers.sh`   | Wrapped by `deploy:publish`      | Complex -- keep                  |
+| `scripts/export-containers.sh`    | Wrapped by `deploy:export`       | Correct -- keep                  |
+| `scripts/test-containers.sh`      | Wrapped by `deploy:test`         | Correct -- keep                  |
+| `scripts/release-gate.sh`         | Wrapped by `task release-gate`   | Complex -- keep                  |
+| `scripts/dev-setup.sh`            | **Replaced** by `task setup`     | Outdated paths                   |
+| `scripts/verify-quality.sh`       | **Replaced** by `task check`     | Reimplements what Taskfile does  |
 
-1. **Development > Commands**: Add `task` commands alongside existing `npm`/`uv` commands
-2. **Container Deployment > Building**: Reference `task containers` instead of `scripts/build-all.sh`
-3. **Development > Testing**: Add `task test`, `task e2e`, `task e2e:real`
-4. **Quality Standards**: Reference `task quality` as the primary quality gate command
-5. Add a new section **Build Orchestration** explaining the Taskfile structure
+Standalone tools (no wrapper needed): `profile-latency.sh`, `load-test.py`,
+`release-gate-matrix.sh`, `test-outcome-portability.sh`, `test-outcome-containers.sh`,
+`verify-docs.sh`.
+
+---
+
+## How `task ci` Mirrors GitHub Actions
+
+```text
+task ci
+  --> deps:required          (verify tools)
+  --> frontend:lint           (ESLint)
+  --> api:lint                (ruff check + format check)
+  --> memvid:lint             (cargo clippy)
+  --> ingest:lint             (ruff check + format check)
+  --> docs:lint               (markdownlint-cli2)
+  --> frontend:typecheck      (tsc --noEmit)
+  --> api:typecheck           (mypy)
+  --> ingest:typecheck        (mypy)
+  --> frontend:test:coverage  (vitest --coverage)
+  --> api:test:coverage       (pytest --cov)
+  --> memvid:test:coverage    (cargo tarpaulin)
+  --> ingest:test:coverage    (pytest --cov --cov-fail-under=85)
+  --> frontend:build          (vite build)
+  --> memvid:build:release    (cargo build --release)
+```
+
+Cross-service and E2E tests require running services, so they are excluded
+from `task ci` but available as `task e2e` and `task e2e:real`.
+
+---
+
+## Change Detection Strategy
+
+Uses `checksum` method (the default). Checksums are more reliable than timestamps across
+git operations (clone, checkout, rebase all reset timestamps). The `.task/` directory
+stores checksums and is added to `.gitignore`.
+
+Key `sources`/`generates` mappings:
+
+| Task                   | Sources                                                    | Generates                       |
+| ---------------------- | ---------------------------------------------------------- | ------------------------------- |
+| `frontend:build`       | `src/**/*.{ts,tsx,css}`, config files                      | `dist/**/*`                     |
+| `memvid:build:release` | `src/**/*.rs`, `build.rs`, `Cargo.toml`, `Cargo.lock`      | `target/release/memvid-service` |
+| `proto`                | `proto/memvid/v1/memvid.proto`                             | `*_pb2.py`, `*_pb2_grpc.py`     |
+| `frontend:lint`        | `src/**/*.{ts,tsx}`, `eslint.config.js`                    | --                              |
+| `api:lint`             | `ai_resume_api/**/*.py`, `tests/**/*.py`, `pyproject.toml` | --                              |
+
+---
+
+## CI Integration
+
+### Current
+
+CI workflow (`.github/workflows/ci.yml`) uses `dorny/paths-filter` for monorepo change
+detection and conditional job execution. Each job inlines its own commands.
+
+### Proposed (Phase 3)
+
+Install `task` in CI via `arduino/setup-task@v2`, then call task targets:
+
+```yaml
+frontend:
+  steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v6
+    - uses: arduino/setup-task@v2
+      with:
+        version: '3.x'
+    - run: task frontend:lint
+    - run: task frontend:typecheck
+    - run: task frontend:test:coverage
+    - run: task frontend:build
+```
+
+**CI continues to own**: path-based change detection, caching, matrix strategies,
+summary job. **Migrates to Taskfile**: inline command sequences, working directory
+management, quality gate checks.
+
+---
+
+## Implementation Sequence
+
+### Phase 1 -- Foundation (1 commit)
+
+1. Add `.task/` to `.gitignore`
+2. Create root `Taskfile.yml` with `deps`, `setup`, `clean`, `default` tasks
+3. Create `frontend/Taskfile.yml` with full task set + change detection
+4. Create `api-service/Taskfile.yml` with full task set
+5. Create `memvid-service/Taskfile.yml` with full task set + change detection
+6. Create `ingest/Taskfile.yml` with full task set
+7. Create `deployment/Taskfile.yml` wrapping existing scripts
+8. Verify: `task --list` shows all tasks with descriptions
+
+### Phase 2 -- Aggregate tasks (1 commit)
+
+1. Wire up `lint`, `test`, `build`, `check`, `ci` aggregate tasks
+2. Wire up `container:*`, `e2e`, `e2e:real`, `release-gate`
+3. Wire up `dev:*` and `docs:*` tasks
+4. Verify: `task ci` runs full quality suite locally
+
+### Phase 3 -- Documentation + feature tracking (1 commit)
+
+1. Update CLAUDE.md to document Taskfile commands alongside existing commands
+2. Add features F-125 through F-134 to `feature_list.json`
+
+---
+
+## Feature IDs (for feature_list.json)
+
+| ID    | Title                      | Category       |
+| ----- | -------------------------- | -------------- |
+| F-125 | Root Taskfile orchestrator | infrastructure |
+| F-126 | Dependency detection task  | infrastructure |
+| F-127 | Frontend Taskfile          | infrastructure |
+| F-128 | API service Taskfile       | infrastructure |
+| F-129 | Memvid service Taskfile    | infrastructure |
+| F-130 | Ingest Taskfile            | infrastructure |
+| F-131 | Deployment Taskfile        | infrastructure |
+| F-132 | CI reproduction task       | infrastructure |
+| F-133 | Setup task                 | infrastructure |
+| F-134 | Documentation update       | infrastructure |
+
+---
+
+## Risks and Trade-offs
+
+| Risk                                                        | Likelihood | Impact | Mitigation                                                 |
+| ----------------------------------------------------------- | ---------- | ------ | ---------------------------------------------------------- |
+| Developers unfamiliar with Taskfile                         | Medium     | Low    | `task --list` for discoverability; CLAUDE.md updated       |
+| Change detection false negatives                            | Very Low   | High   | Checksums are content-based; delete `.task/` to force      |
+| Existing scripts break during migration                     | Medium     | Medium | Phased migration; keep scripts alongside until validated   |
+| Two layers of change detection (CI paths-filter + Taskfile) | N/A        | Low    | Different granularity: CI gates jobs, Taskfile gates tasks |
+
+### Alternatives Considered
+
+| Alternative  | Reason Not Chosen                                                   |
+| ------------ | ------------------------------------------------------------------- |
+| GNU Make     | Tab-sensitivity, no native YAML, no checksum-based change detection |
+| just         | No `sources`/`generates` change detection; no task dependencies     |
+| Turborepo/Nx | JS-ecosystem focused; overkill for polyglot monorepo                |
+| Bazel        | Massive learning curve; overkill for this project size              |
+
+---
+
+## Design Principles
+
+- **Wrap, do not rewrite**: Complex scripts are wrapped, not reimplemented
+- **Fail fast with clear messages**: `preconditions` check tool availability with install hints
+- **Idempotent setup**: `status` checks prevent redundant installs
+- **Parallel by default**: Independent service tasks run concurrently via `deps:` blocks
+- **No hidden state**: No global environment modifications
+- **CI parity**: `task ci` reproduces exactly what GitHub Actions runs
 
 ---
 
 ## Success Criteria
 
 1. `task --list` from repo root shows all available tasks with descriptions
-2. `task quality` passes (lint + typecheck + test for all 4 services)
-3. `task containers` builds all 4 container images with per-service change detection
-4. Running `task containers` twice without source changes skips all builds
-5. CI workflows use `task` targets and all CI jobs pass
-6. No existing scripts are removed until their Taskfile replacements are validated in CI
-7. `task release-gate` executes the full release pipeline
+2. `task check` passes (lint + typecheck + test + build for all services)
+3. `task container:build` builds all container images
+4. Running `task build` twice without source changes skips all builds
+5. `task ci` reproduces CI locally and passes
+6. No existing scripts removed until Taskfile replacements validated
