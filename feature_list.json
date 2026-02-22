@@ -2359,6 +2359,97 @@
       ],
       "passes": false,
       "dependencies": ["vulnerability-scanning", "cargo-auditable-sbom"]
+    },
+    {
+      "id": "release-workflow",
+      "category": "infrastructure",
+      "title": "GitHub Actions Release Workflow for ghcr.io",
+      "description": "GitHub Actions workflow triggered by semantic version tags (v*.*.*) that builds all 4 container images for amd64+arm64 via Podman 5.8 (podman-static) + QEMU, pushes to ghcr.io, and creates a GitHub Release. Uses Taskfile orchestration (go-task/setup-task) to call existing container:build and container:publish targets.",
+      "testing_steps": [
+        "Run 'test -f .github/workflows/release.yml && echo exists' and verify the release workflow file exists",
+        "Run 'grep -n \"push:\" .github/workflows/release.yml' and verify the workflow triggers on push events",
+        "Run 'grep -A2 \"tags:\" .github/workflows/release.yml' and verify it filters on tags matching v*.*.* pattern",
+        "Run 'grep -n \"setup-task\" .github/workflows/release.yml' and verify go-task/setup-task@v1 is used to install Task",
+        "Run 'grep -n \"task container:build\" .github/workflows/release.yml' and verify the workflow calls task container:build",
+        "Run 'grep -n \"task container:publish\" .github/workflows/release.yml' and verify the workflow calls task container:publish",
+        "Run 'grep -n \"podman-static\\|podman-linux-amd64\" .github/workflows/release.yml' and verify Podman 5.8+ is installed from mgoltzsche/podman-static",
+        "Run 'grep -n \"setup-qemu\" .github/workflows/release.yml' and verify docker/setup-qemu-action is configured for multi-arch builds",
+        "Run 'grep -n \"ghcr.io\" .github/workflows/release.yml' and verify the registry target is ghcr.io",
+        "Run 'grep -n \"packages: write\" .github/workflows/release.yml' and verify the workflow has packages:write permission",
+        "Run 'grep -n \"contents: write\" .github/workflows/release.yml' and verify contents:write permission for GitHub Release creation",
+        "Run 'grep -n \"checks: read\" .github/workflows/release.yml' and verify checks:read permission for CI status check",
+        "Run 'grep -n \"gh release create\" .github/workflows/release.yml' and verify a GitHub Release is created"
+      ],
+      "passes": false,
+      "dependencies": ["ci-workflows", "build-automation"]
+    },
+    {
+      "id": "changelog-tracking",
+      "category": "infrastructure",
+      "title": "CHANGELOG.md and Version Tracking",
+      "description": "CHANGELOG.md at repository root following Keep a Changelog format. Release workflow validates that a changelog entry exists for stable release versions via grep -F. Pre-release tags (detected by hyphen in version) are exempt from changelog validation.",
+      "testing_steps": [
+        "Run 'test -f CHANGELOG.md && echo exists' and verify CHANGELOG.md exists at the repository root",
+        "Run 'head -5 CHANGELOG.md' and verify the file starts with a standard Keep a Changelog header",
+        "Run 'grep -n \"Unreleased\" CHANGELOG.md' and verify an [Unreleased] section exists",
+        "Run 'grep -n \"Added\\|Changed\\|Fixed\\|Removed\\|Deprecated\\|Security\" CHANGELOG.md' and verify at least one standard section heading exists",
+        "Run 'grep -n \"keepachangelog\\|Keep a Changelog\" CHANGELOG.md' and verify a reference to the Keep a Changelog standard is present",
+        "Run 'grep -n \"Semantic Versioning\\|semver\" CHANGELOG.md' and verify a reference to Semantic Versioning is present"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "container-image-tagging",
+      "category": "functional",
+      "title": "Container Image Tagging Strategy with Semver Tag Family",
+      "description": "Deterministic tagging strategy implemented in publish-containers.sh. Stable releases get full semver tags (v1.2.3, 1.2.3, 1.2, latest, sha-<short>). Pre-releases (detected by *-* pattern) get only full version tag and sha. Uses skopeo copy --all for server-side re-tagging.",
+      "testing_steps": [
+        "Run 'grep -n \"\\*-\\*\\|prerelease\\|pre-release\\|pre_release\" scripts/publish-containers.sh' and verify pre-release detection logic exists using shell pattern matching",
+        "Run 'grep -n \"skopeo copy --all\" scripts/publish-containers.sh' and verify skopeo is used for server-side re-tagging between tags",
+        "Run 'grep -c \"skopeo copy\" scripts/publish-containers.sh' and verify multiple skopeo copy calls exist for the tag family (at least 3 for stable: version, major.minor, latest)",
+        "Run 'grep -n \"sha-\\|SHA\\|short\" scripts/publish-containers.sh' and verify short SHA tagging logic is present",
+        "Run 'grep -n \"latest\" scripts/publish-containers.sh' and verify latest tag is only applied for stable releases (not pre-releases)",
+        "Run 'grep -n \"org.opencontainers\" scripts/publish-containers.sh' and verify OCI annotation labels are set including source, version, created, revision, and licenses",
+        "Run 'grep -n \"ai-resume-frontend\\|ai-resume-api\\|ai-resume-memvid\\|ai-resume-ingest\" scripts/publish-containers.sh' and verify all 4 image names are handled"
+      ],
+      "passes": false,
+      "dependencies": ["release-workflow"]
+    },
+    {
+      "id": "release-gate-ci-enforcement",
+      "category": "functional",
+      "title": "Release Gate Enforcement via CI Summary Job Check",
+      "description": "Release workflow validates release gate criteria before building. Queries GitHub API for the summary job status in ci.yml on the tagged commit SHA. Fails immediately if CI has not passed. For stable releases, also validates CHANGELOG.md entry via grep -F. Pre-releases skip changelog check.",
+      "testing_steps": [
+        "Run 'grep -n \"summary\\|ci.yml\\|check-runs\\|check-suites\" .github/workflows/release.yml' and verify the workflow checks CI summary job status via GitHub API",
+        "Run 'grep -n \"gh api\\|github.api\" .github/workflows/release.yml' and verify the GitHub API is called to check CI status",
+        "Run 'grep -n \"CHANGELOG\\|changelog\" .github/workflows/release.yml' and verify changelog validation is present for stable releases",
+        "Run 'grep -n \"grep -F\\|grep.*##\" .github/workflows/release.yml' and verify the changelog check uses grep -F for substring matching",
+        "Run 'grep -n \"\\*-\\*\\|prerelease\\|pre-release\" .github/workflows/release.yml' and verify pre-release detection logic exists to skip changelog validation",
+        "Run 'grep -n \"CI has not passed\\|CI.*not.*success\\|CI.*failed\" .github/workflows/release.yml' and verify a clear error message is shown when CI has not passed",
+        "Run 'grep -n \"CHANGELOG.md missing\\|changelog.*missing\\|missing.*entry\" .github/workflows/release.yml' and verify a clear error message for missing changelog entries"
+      ],
+      "passes": false,
+      "dependencies": ["release-workflow", "changelog-tracking"]
+    },
+    {
+      "id": "release-trivy-scan",
+      "category": "functional",
+      "title": "Inline Trivy Security Scan in Release Pipeline",
+      "description": "Trivy scans freshly-built images inline in the release workflow (after build, before push). Uses the same dual-run strategy from security.yml: Run 1 for SARIF upload (all severities), Run 2 with exit-code gate on fixable CRITICAL/HIGH. If any image fails, the entire release is aborted.",
+      "testing_steps": [
+        "Run 'grep -n \"trivy\" .github/workflows/release.yml' and verify Trivy scanning is included in the release workflow",
+        "Run 'grep -n \"TRIVY_SEVERITY\" .github/workflows/release.yml' and verify the severity filter is set to CRITICAL,HIGH",
+        "Run 'grep -n \"TRIVY_IGNORE_UNFIXED\" .github/workflows/release.yml' and verify TRIVY_IGNORE_UNFIXED is set to true",
+        "Run 'grep -c \"trivy-action\" .github/workflows/release.yml' and verify there are at least 2 trivy-action invocations (SARIF + gate, per image or via matrix)",
+        "Run 'grep -n \"exit-code\" .github/workflows/release.yml' and verify exit-code: 1 is set on the gate run",
+        "Run 'grep -n \"format:.*sarif\\|format:.*table\" .github/workflows/release.yml' and verify both sarif and table formats are used",
+        "Run 'grep -n \"trivyignore\" .github/workflows/release.yml' and verify .trivyignore is referenced",
+        "Run 'grep -n \"security-events: write\" .github/workflows/release.yml' and verify the permission for SARIF upload is present"
+      ],
+      "passes": false,
+      "dependencies": ["release-workflow", "trivy-severity-gate"]
     }
   ]
 }
