@@ -463,7 +463,7 @@ jobs:
             if [ -n "$COMMIT_ERRORS" ]; then
               ERRORS="${ERRORS}FAIL: ${SUBJECT}\n${COMMIT_ERRORS}\n"
             fi
-          done < <(git log --format=%s "${BASE_SHA}..${HEAD_SHA}")
+          done < <(git log --no-merges --format=%s "${BASE_SHA}..${HEAD_SHA}")
 
           echo "=== Commit Message Validation ==="
           echo "Checked ${COMMIT_COUNT} commit(s)"
