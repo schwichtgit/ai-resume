@@ -63,9 +63,24 @@ Key technical decisions:
 - **Single-file portability**: One `.mv2` file contains all embeddings, metadata, and profile data
 - **Read-only containers**: All services run rootless with read-only filesystems
 
+## Prerequisites
+
+| Tool | Minimum Version | Required For |
+| ---- | --------------- | ------------ |
+| Node.js | >= 22.12.0 | Frontend build and dev server |
+| uv | latest | Python package management |
+| go-task | >= 3.0.0 | Build orchestration (`task` CLI) |
+| Rust | >= 1.92.0 | memvid-service only |
+| podman | >= 4.0.0 | Container builds and deployment only |
+
+Run `task deps` to verify all tools are installed and meet minimum versions.
+
 ## Quick Start
 
 ```bash
+# 0. Bootstrap dev environment (installs hooks, creates venvs, etc.)
+task setup
+
 # 1. Create your resume
 cp data/example_resume.md data/master_resume.md
 # Edit with your information (see docs/MASTER_DOCUMENT_SCHEMA.md for format)
@@ -78,7 +93,7 @@ cp deployment/.env.example deployment/.env
 # Add your OPENROUTER_API_KEY
 
 # 4. Deploy
-cd deployment && podman-compose up -d
+cd deployment && podman compose up -d
 ```
 
 See [docs/SETUP.md](docs/SETUP.md) for complete instructions including multi-arch container builds.

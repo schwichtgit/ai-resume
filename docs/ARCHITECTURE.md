@@ -319,7 +319,7 @@ scp *.tar frank@nanopi-r6s:/tmp/
 # Deploy with Podman Compose
 ssh frank@nanopi-r6s
 cd /opt/frank-resume/deployment
-podman-compose up -d
+podman compose up -d
 ```
 
 ## Resource Usage (Edge Server)
