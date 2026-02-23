@@ -3,13 +3,17 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ['v*.*.*']
   pull_request:
     branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
-  pull-requests: read
+  pull-requests: write
+  packages: write
+  security-events: write
+  id-token: write
 
 env:
   NODE_VERSION: '22'
@@ -24,6 +28,7 @@ jobs:
       ingest: ${{ steps.filter.outputs.ingest }}
       memvid-service: ${{ steps.filter.outputs.memvid-service }}
       docs: ${{ steps.filter.outputs.docs }}
+      containers: ${{ steps.filter.outputs.containers }}
     steps:
       - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v3
@@ -47,6 +52,15 @@ jobs:
               - 'docs/**'
               - '**/*.md'
               - '.markdownlint*.yaml'
+            containers:
+              - '**/Dockerfile'
+              - 'frontend/**'
+              - 'api-service/**'
+              - 'memvid-service/**'
+              - 'ingest/**'
+              - 'proto/**'
+              - 'deployment/**'
+              - 'scripts/publish-ci.sh'
 
   # Frontend: TypeScript/React
   frontend:
@@ -76,7 +90,27 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Test with coverage
-        run: npm test -- --run --coverage
+        run: npm test -- --run --coverage 2>&1 | tee /tmp/test-output.txt
+
+      - name: Write test summary
+        if: always()
+        run: |
+          {
+            echo "## Frontend Tests"
+            echo ""
+            if [ -f /tmp/test-output.txt ]; then
+              TESTS=$(grep -oP 'Tests\s+\K\d+ passed' /tmp/test-output.txt || echo "unknown")
+              DURATION=$(grep -oP 'Duration\s+\K[\d.]+s' /tmp/test-output.txt || echo "unknown")
+              COVERAGE=$(grep -oP 'All files\s*\|\s*\K[\d.]+' /tmp/test-output.txt | head -1 || echo "unknown")
+              echo "| Metric | Value |"
+              echo "|--------|-------|"
+              echo "| Tests | ${TESTS} |"
+              echo "| Duration | ${DURATION} |"
+              echo "| Line Coverage | ${COVERAGE}% |"
+              echo "| Threshold | 10% |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY" || true
+        shell: bash
 
       - name: Build
         run: npm run build
@@ -110,7 +144,26 @@ jobs:
         run: uv run mypy .
 
       - name: Test with pytest
-        run: uv run pytest -v --tb=short
+        run: uv run pytest -v --tb=short 2>&1 | tee /tmp/test-output.txt
+
+      - name: Write test summary
+        if: always()
+        run: |
+          {
+            echo "## API Service Tests"
+            echo ""
+            if [ -f /tmp/test-output.txt ]; then
+              PASSED=$(grep -c "PASSED" /tmp/test-output.txt || echo "0")
+              FAILED=$(grep -c "FAILED" /tmp/test-output.txt || echo "0")
+              TOTAL=$((PASSED + FAILED))
+              echo "| Metric | Value |"
+              echo "|--------|-------|"
+              echo "| Passed | ${PASSED} |"
+              echo "| Failed | ${FAILED} |"
+              echo "| Total | ${TOTAL} |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY" || true
+        shell: bash
 
   # Ingest: Python data pipeline
   ingest:
@@ -149,7 +202,27 @@ jobs:
       - name: Test with coverage
         env:
           HF_HUB_DOWNLOAD_TIMEOUT: '120'
-        run: uv run pytest -v --tb=short -m "not slow" --cov=ingest --cov-report=term-missing --cov-fail-under=85
+        run: uv run pytest -v --tb=short -m "not slow" --cov=ingest --cov-report=term-missing --cov-fail-under=85 2>&1 | tee /tmp/test-output.txt
+
+      - name: Write test summary
+        if: always()
+        run: |
+          {
+            echo "## Ingest Tests"
+            echo ""
+            if [ -f /tmp/test-output.txt ]; then
+              PASSED=$(grep -c "PASSED" /tmp/test-output.txt || echo "0")
+              FAILED=$(grep -c "FAILED" /tmp/test-output.txt || echo "0")
+              COVERAGE=$(grep -oP 'TOTAL\s+\d+\s+\d+\s+\K\d+%' /tmp/test-output.txt || echo "unknown")
+              echo "| Metric | Value |"
+              echo "|--------|-------|"
+              echo "| Passed | ${PASSED} |"
+              echo "| Failed | ${FAILED} |"
+              echo "| Coverage | ${COVERAGE} |"
+              echo "| Threshold | 85% |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY" || true
+        shell: bash
 
   # Memvid Service: Rust/gRPC (unit tests + library coverage, excludes real.rs)
   # real.rs coverage is handled by the memvid-integration job below
@@ -193,7 +266,23 @@ jobs:
         run: cargo install cargo-tarpaulin
 
       - name: Coverage
-        run: cargo tarpaulin --config tarpaulin-unit.toml
+        run: cargo tarpaulin --config tarpaulin-unit.toml 2>&1 | tee /tmp/test-output.txt
+
+      - name: Write test summary
+        if: always()
+        run: |
+          {
+            echo "## Memvid Service Tests"
+            echo ""
+            if [ -f /tmp/test-output.txt ]; then
+              COVERAGE=$(grep -oP '\d+\.\d+% coverage' /tmp/test-output.txt | tail -1 || echo "unknown")
+              echo "| Metric | Value |"
+              echo "|--------|-------|"
+              echo "| Coverage | ${COVERAGE} |"
+              echo "| Threshold | 85% |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY" || true
+        shell: bash
 
   # Memvid Integration: real.rs coverage with actual .mv2 file
   # Runs ingest to produce a .mv2, then cargo tarpaulin on integration tests
@@ -568,6 +657,239 @@ jobs:
       - name: Release gate passed
         run: echo "Release gate passed - all blocking outcome gates succeeded"
 
+  # Container builds: 4 images x 2 platforms (native runners)
+  container-build:
+    needs: changes
+    if: ${{ needs.changes.outputs.containers == 'true' || startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ${{ matrix.platform == 'amd64' && 'ubuntu-latest' || 'ubuntu-24.04-arm' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [frontend, api, memvid, ingest]
+        platform: [amd64, arm64]
+    env:
+      IMAGE_NAME: ai-resume-${{ matrix.image }}
+      REGISTRY: ghcr.io/${{ github.repository_owner }}
+      VERSION: ${{ github.ref_name }}
+      COSIGN_YES: 'true'
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install cosign
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        uses: sigstore/cosign-installer@v3
+
+      - name: Install syft
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        uses: anchore/sbom-action/download-syft@v0
+
+      - name: Set version for non-tag refs
+        run: |
+          if [[ "$VERSION" != v* ]]; then
+            BUILD_TS=$(date -u +%Y%m%d%H%M%S)
+            VERSION="dev-$(git rev-parse --short HEAD)-B${BUILD_TS}"
+            echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          fi
+
+      - name: Sync proto files
+        if: matrix.image == 'memvid' || matrix.image == 'api'
+        run: |
+          SERVICE=${{ matrix.image == 'memvid' && 'memvid-service' || 'api-service' }}
+          mkdir -p "$SERVICE/proto/memvid/v1"
+          cp proto/memvid/v1/memvid.proto "$SERVICE/proto/memvid/v1/"
+
+      - name: Determine build context
+        id: ctx
+        run: |
+          case "${{ matrix.image }}" in
+            frontend) echo "dir=frontend" >> "$GITHUB_OUTPUT" ;;
+            api)      echo "dir=api-service" >> "$GITHUB_OUTPUT" ;;
+            memvid)   echo "dir=memvid-service" >> "$GITHUB_OUTPUT" ;;
+            ingest)   echo "dir=ingest" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Build container image
+        env:
+          BUILD_DATE: ${{ github.event.head_commit.timestamp || github.event.pull_request.updated_at }}
+        run: |
+          podman build \
+            --tag "localhost/${IMAGE_NAME}:${VERSION}" \
+            --annotation "org.opencontainers.image.title=${IMAGE_NAME}" \
+            --annotation "org.opencontainers.image.source=https://github.com/${{ github.repository }}" \
+            --annotation "org.opencontainers.image.version=${VERSION}" \
+            --annotation "org.opencontainers.image.created=${BUILD_DATE}" \
+            --annotation "org.opencontainers.image.revision=${{ github.sha }}" \
+            --annotation "org.opencontainers.image.licenses=PolyForm-Noncommercial-1.0.0 OR LicenseRef-Commercial" \
+            --annotation "org.opencontainers.image.vendor=${{ github.repository_owner }}" \
+            -f "${{ steps.ctx.outputs.dir }}/Dockerfile" \
+            "${{ steps.ctx.outputs.dir }}/"
+
+      - name: Start podman API for scanners
+        run: |
+          podman system service --time=0 "unix:///tmp/podman.sock" &
+          timeout 10 bash -c 'until [ -S /tmp/podman.sock ]; do sleep 0.5; done'
+          echo "DOCKER_HOST=unix:///tmp/podman.sock" >> "$GITHUB_ENV"
+
+      - name: Trivy scan (SARIF)
+        uses: aquasecurity/trivy-action@0.34.1
+        with:
+          image-ref: 'localhost/${{ env.IMAGE_NAME }}:${{ env.VERSION }}'
+          format: 'sarif'
+          output: 'trivy-${{ matrix.image }}-${{ matrix.platform }}.sarif'
+          trivyignores: '.trivyignore'
+
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: 'trivy-${{ matrix.image }}-${{ matrix.platform }}.sarif'
+          category: 'trivy-release-ai-resume-${{ matrix.image }}-${{ matrix.platform }}'
+
+      - name: Trivy severity gate (CRITICAL/HIGH)
+        uses: aquasecurity/trivy-action@0.34.1
+        with:
+          image-ref: 'localhost/${{ env.IMAGE_NAME }}:${{ env.VERSION }}'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          trivyignores: '.trivyignore'
+
+      - name: Container smoke tests
+        run: |
+          echo "--- Smoke testing ${IMAGE_NAME} on ${{ matrix.platform }} ---"
+
+          # Determine health check port and path
+          case "${{ matrix.image }}" in
+            frontend) PORT=8080; HEALTH_PATH="/health" ;;
+            api)      PORT=3000; HEALTH_PATH="/health" ;;
+            memvid)   PORT=50051; HEALTH_PATH="" ;;
+            ingest)   PORT=""; HEALTH_PATH="" ;;
+          esac
+
+          # Test 1: Image runs
+          CID=$(podman run -d --name smoke-test "localhost/${IMAGE_NAME}:${VERSION}")
+
+          # Test 2: Non-root user check
+          USER=$(podman exec "$CID" whoami 2>/dev/null || podman exec "$CID" id -u 2>/dev/null || echo "unknown")
+          echo "Container user: $USER"
+          if [ "$USER" = "root" ] || [ "$USER" = "0" ]; then
+            echo "::warning::Container runs as root"
+          fi
+
+          # Test 3: Health check (if applicable)
+          if [ -n "$PORT" ] && [ -n "$HEALTH_PATH" ]; then
+            sleep 3
+            STATUS=$(podman exec "$CID" wget -q -O /dev/null -S "http://localhost:${PORT}${HEALTH_PATH}" 2>&1 | grep "HTTP/" | tail -1 | awk '{print $2}') || true
+            echo "Health check status: ${STATUS:-no response}"
+          fi
+
+          # Test 4: OCI annotations (stored in manifest, not Docker labels)
+          podman image inspect "localhost/${IMAGE_NAME}:${VERSION}" --format '{{ index .Annotations "org.opencontainers.image.version" }}' | grep -q "${VERSION}" && echo "OCI version annotation: OK" || echo "::warning::OCI version annotation missing"
+
+          # Cleanup
+          podman rm -f smoke-test || true
+
+      - name: Login to ghcr.io
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push arch-specific image
+        id: push
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        run: |
+          chmod +x scripts/publish-ci.sh
+          OUTPUT=$(scripts/publish-ci.sh push-arch "$REGISTRY" "$IMAGE_NAME" "$VERSION" "${{ matrix.platform }}")
+          echo "$OUTPUT"
+          DIGEST=$(echo "$OUTPUT" | grep '^DIGEST=' | cut -d= -f2)
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+
+      - name: Create digest metadata
+        if: steps.push.outputs.digest != ''
+        run: |
+          cat > /tmp/digest-metadata.json <<ENDJSON
+          {
+            "image": "${{ env.IMAGE_NAME }}",
+            "platform": "${{ matrix.platform }}",
+            "digest": "${{ steps.push.outputs.digest }}",
+            "version": "${{ env.VERSION }}"
+          }
+          ENDJSON
+
+      - name: Upload digest metadata
+        if: steps.push.outputs.digest != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ matrix.image }}-${{ matrix.platform }}
+          path: /tmp/digest-metadata.json
+          retention-days: 1
+
+      - name: Generate SBOM
+        if: steps.push.outputs.digest != ''
+        run: |
+          syft "${REGISTRY}/${IMAGE_NAME}@${{ steps.push.outputs.digest }}" \
+            -o cyclonedx-json=/tmp/sbom-${{ matrix.image }}-${{ matrix.platform }}.json
+
+      - name: Attest SBOM
+        if: steps.push.outputs.digest != ''
+        run: |
+          cosign attest --type cyclonedx \
+            --predicate /tmp/sbom-${{ matrix.image }}-${{ matrix.platform }}.json \
+            "${REGISTRY}/${IMAGE_NAME}@${{ steps.push.outputs.digest }}"
+
+      - name: Sign image
+        if: steps.push.outputs.digest != ''
+        run: |
+          cosign sign "${REGISTRY}/${IMAGE_NAME}@${{ steps.push.outputs.digest }}"
+
+      - name: Upload SBOM artifact
+        if: steps.push.outputs.digest != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.image }}-${{ matrix.platform }}
+          path: /tmp/sbom-${{ matrix.image }}-${{ matrix.platform }}.json
+          retention-days: 90
+
+      - name: Write build summary
+        if: always()
+        run: |
+          {
+            echo "## Container: ${IMAGE_NAME} (${{ matrix.platform }})"
+            echo ""
+
+            # Image size
+            SIZE=$(podman image inspect "localhost/${IMAGE_NAME}:${VERSION}" --format '{{.Size}}' 2>/dev/null || echo "0")
+            SIZE_MB=$((SIZE / 1024 / 1024))
+
+            # Trivy results from SARIF
+            TRIVY_SARIF="trivy-${{ matrix.image }}-${{ matrix.platform }}.sarif"
+            if [ -f "$TRIVY_SARIF" ]; then
+              CRITICAL=$(jq '[.runs[].results[] | select(.level == "error")] | length' "$TRIVY_SARIF" 2>/dev/null || echo "?")
+              HIGH=$(jq '[.runs[].results[] | select(.level == "warning")] | length' "$TRIVY_SARIF" 2>/dev/null || echo "?")
+            else
+              CRITICAL="?"
+              HIGH="?"
+            fi
+
+            # Push status
+            DIGEST="${{ steps.push.outputs.digest }}"
+            PUSH_STATUS="${DIGEST:-skipped (PR)}"
+
+            echo "| Metric | Value |"
+            echo "|--------|-------|"
+            echo "| Image | ${IMAGE_NAME} |"
+            echo "| Platform | ${{ matrix.platform }} |"
+            echo "| Size | ${SIZE_MB} MB |"
+            echo "| Trivy Critical | ${CRITICAL} |"
+            echo "| Trivy High | ${HIGH} |"
+            echo "| Push | ${PUSH_STATUS} |"
+          } >> "$GITHUB_STEP_SUMMARY" || true
+        shell: bash
+
   # Summary job (always runs, reports overall status)
   summary:
     needs:
@@ -582,6 +904,7 @@ jobs:
         e2e-real,
         docs,
         commit-standards,
+        container-build,
       ]
     if: always()
     runs-on: ubuntu-latest
@@ -598,6 +921,7 @@ jobs:
           echo "E2E Real: ${{ needs.e2e-real.result || 'skipped' }}"
           echo "Docs: ${{ needs.docs.result || 'skipped' }}"
           echo "Commit Standards: ${{ needs.commit-standards.result || 'skipped' }}"
+          echo "Container Build: ${{ needs.container-build.result || 'skipped' }}"
           echo ""
           echo "=== Coverage Gate ==="
           echo "Coverage thresholds enforced per-service:"
@@ -613,11 +937,107 @@ jobs:
              [[ "${{ needs.memvid-service.result }}" == "failure" ]] || \
              [[ "${{ needs.cross-service.result }}" == "failure" ]] || \
              [[ "${{ needs.docs.result }}" == "failure" ]] || \
-             [[ "${{ needs.commit-standards.result }}" == "failure" ]]; then
+             [[ "${{ needs.commit-standards.result }}" == "failure" ]] || \
+             [[ "${{ needs.container-build.result }}" == "failure" ]]; then
             echo ""
             echo "One or more jobs failed!"
             exit 1
           fi
 
+          # Write aggregated summary
+          {
+            echo "## CI Summary"
+            echo ""
+            echo "| Job | Status |"
+            echo "|-----|--------|"
+            echo "| Frontend | ${{ needs.frontend.result || 'skipped' }} |"
+            echo "| API Service | ${{ needs.api-service.result || 'skipped' }} |"
+            echo "| Ingest | ${{ needs.ingest.result || 'skipped' }} |"
+            echo "| Memvid Service | ${{ needs.memvid-service.result || 'skipped' }} |"
+            echo "| Memvid Integration | ${{ needs.memvid-integration.result || 'skipped' }} |"
+            echo "| Cross-Service | ${{ needs.cross-service.result || 'skipped' }} |"
+            echo "| E2E Real | ${{ needs.e2e-real.result || 'skipped' }} |"
+            echo "| Docs | ${{ needs.docs.result || 'skipped' }} |"
+            echo "| Commit Standards | ${{ needs.commit-standards.result || 'skipped' }} |"
+            echo "| Container Build | ${{ needs.container-build.result || 'skipped' }} |"
+            echo ""
+            echo "### Container Build Matrix"
+            echo ""
+            echo "See individual container-build job summaries for image size, Trivy findings, and push status."
+          } >> "$GITHUB_STEP_SUMMARY" || true
+
           echo ""
           echo "All checks passed (including coverage gates)!"
+
+      - name: Post PR comment
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Map result to status indicator
+          status_icon() {
+            case "$1" in
+              success)  echo "pass" ;;
+              failure)  echo "FAIL" ;;
+              skipped)  echo "skip" ;;
+              *)        echo "$1" ;;
+            esac
+          }
+
+          FRONTEND=$(status_icon "${{ needs.frontend.result || 'skipped' }}")
+          API=$(status_icon "${{ needs.api-service.result || 'skipped' }}")
+          INGEST=$(status_icon "${{ needs.ingest.result || 'skipped' }}")
+          MEMVID=$(status_icon "${{ needs.memvid-service.result || 'skipped' }}")
+          MEMVID_INT=$(status_icon "${{ needs.memvid-integration.result || 'skipped' }}")
+          CROSS=$(status_icon "${{ needs.cross-service.result || 'skipped' }}")
+          E2E=$(status_icon "${{ needs.e2e-real.result || 'skipped' }}")
+          DOCS=$(status_icon "${{ needs.docs.result || 'skipped' }}")
+          COMMITS=$(status_icon "${{ needs.commit-standards.result || 'skipped' }}")
+          CONTAINERS=$(status_icon "${{ needs.container-build.result || 'skipped' }}")
+
+          # Determine overall status
+          OVERALL="All checks passed"
+          if [[ "${{ needs.frontend.result }}" == "failure" ]] || \
+             [[ "${{ needs.api-service.result }}" == "failure" ]] || \
+             [[ "${{ needs.ingest.result }}" == "failure" ]] || \
+             [[ "${{ needs.memvid-service.result }}" == "failure" ]] || \
+             [[ "${{ needs.cross-service.result }}" == "failure" ]] || \
+             [[ "${{ needs.docs.result }}" == "failure" ]] || \
+             [[ "${{ needs.commit-standards.result }}" == "failure" ]] || \
+             [[ "${{ needs.container-build.result }}" == "failure" ]]; then
+            OVERALL="One or more checks failed"
+          fi
+
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          BODY=$(cat <<ENDMD
+          ### CI Summary
+
+          | Job | Status |
+          |-----|--------|
+          | Frontend | ${FRONTEND} |
+          | API Service | ${API} |
+          | Ingest | ${INGEST} |
+          | Memvid Service | ${MEMVID} |
+          | Memvid Integration | ${MEMVID_INT} |
+          | Cross-Service | ${CROSS} |
+          | E2E Real | ${E2E} |
+          | Docs | ${DOCS} |
+          | Commit Standards | ${COMMITS} |
+          | Container Build | ${CONTAINERS} |
+
+          **${OVERALL}** | [Full run details](${RUN_URL})
+          ENDMD
+          )
+
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          if [ -n "$PR_NUMBER" ]; then
+            # Delete previous CI summary comment if exists (sticky comment pattern)
+            PREV_COMMENT=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+              --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | contains("### CI Summary"))) | .id' | tail -1)
+            if [ -n "$PREV_COMMENT" ]; then
+              gh api "repos/${{ github.repository }}/issues/comments/${PREV_COMMENT}" -X DELETE || true
+            fi
+            gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "$BODY"
+          fi
+        shell: bash

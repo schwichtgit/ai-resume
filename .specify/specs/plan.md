@@ -807,3 +807,118 @@ A `.trivyignore` file (committed empty with comment header) provides documented 
 
 - Positive: Single source of truth for Python versions (`.python-version` per service), fixes 3.11 vs 3.12 mismatch, removes redundant action, simpler YAML (~18 lines removed)
 - Negative: First CI run after migration has no Python cache (~15s download), uv becomes the sole Python provider in CI (acceptable given it already manages venvs and dependencies)
+
+### ADR-019: Native ARM Runner Multi-Arch Container Pipeline (INFRA-030)
+
+**Date:** 2026-02-22
+**Status:** Accepted
+
+**Context:** The release pipeline (`release.yml`) uses a static podman binary (`mgoltzsche/podman-static`) for container builds, which fails on GitHub Actions runners with `failed to reexec: Permission denied`. The existing approach also uses QEMU emulation for cross-platform builds (amd64 + arm64), which is slow. GitHub now provides free native ARM64 runners (`ubuntu-24.04-arm64`) for public repositories, enabling native compilation on both architectures.
+
+**Decision:** Split the container pipeline across `ci.yml` (build + test) and `release.yml` (merge manifests + publish + release). Use a matrix strategy of 4 images x 2 platforms (8 parallel jobs) on native runners. CI pushes arch-specific images to ghcr.io on main branch pushes only (PRs verify build but don't push). Release workflow pulls tested arch-specific images and creates OCI manifest lists.
+
+**Key Technical Decisions:**
+
+1. **Job architecture:** `container-build` (8 matrix, ci.yml) -> `container-test` (8 matrix, ci.yml) -> `container-merge` (1 job, release.yml) -> `release` (1 job, release.yml)
+2. **Push policy:** Build-only on PRs. Push arch-specific images to ghcr.io only on main branch pushes.
+3. **Paths filter:** New `containers` filter triggers on Dockerfiles, service source, deployment configs, proto files.
+4. **Registry auth:** `redhat-actions/podman-login@v1` for native podman credential handling.
+5. **Smoke tests:** Per-arch health check, port verification, non-root user check, OCI annotation verification.
+6. **publish-ci.sh:** Subcommand design (`push-arch`, `merge`, `tag-family`) for composability and local testability.
+7. **release.yml jobs:** `validate` -> `merge-manifests` -> `publish-tags` -> `create-release`. Separates concerns for partial re-runs.
+
+**Arch-specific tag format:** Dot-separated: `<version>.<arch>` (e.g., `v0.1.0-alpha.1.amd64`). Version tag applied only to merged manifest list.
+
+**Trivy SARIF categories:** Arch-qualified: `trivy-release-<image>-<arch>` for unique GitHub Code Scanning entries.
+
+**Proto sync:** Conditional on `matrix.image`, only for `memvid-service` and `api-service`.
+
+**Alternatives Considered:**
+
+1. **Fix static podman binary (add rootless setup)** -- Fragile, non-standard for GitHub Actions, still requires QEMU for cross-arch. Does not solve the performance problem.
+2. **Switch to Docker/Buildx** -- Pre-installed on runners and well-supported, but diverges from the project's podman-based toolchain. Would require maintaining two container runtimes (podman local, Docker CI).
+3. **Single runner with QEMU + runner's native podman** -- Quick fix that unblocks the immediate failure but ARM builds remain ~10x slower than native. Acceptable as a temporary workaround but not a long-term solution.
+4. **Push arch images from PRs** -- Enables testing PR container images but creates ghcr.io tag pollution with orphaned PR-specific tags. Storage cost and cleanup overhead not justified.
+
+**Consequences:**
+
+- Positive: Native ARM compilation (~10x faster than QEMU), containers tested as CI quality gate, clean separation between build (CI) and publish (release), no static binary hacks, composable publish script
+- Negative: CI pushes arch-specific images to ghcr.io on every main push (storage cost, mitigated by retention policies), more complex YAML (~100 lines in ci.yml, release.yml refactored), `redhat-actions/podman-login@v1` adds a third-party action dependency
+
+### ADR-020: Container Supply Chain Security via Sigstore (INFRA-031)
+
+**Date:** 2026-02-23
+**Status:** Accepted
+
+**Context:** The INFRA-030 container pipeline uses tag-based handoff between CI and release workflows. Arch-specific images are referenced by mutable tags rather than immutable digests. No cryptographic signing, SBOM generation, or transparency logging exists. This leaves a supply chain integrity gap: there is no proof that released images are the exact bytes that passed CI security scanning. A comparable Jenkins pipeline (previously built for a different project) solved this with native arch nodes, build timestamps, per-arch cosign signing, SBOM attestation, digest-based manifest merging, and a verification gate before tag promotion.
+
+**Decision:** Implement a Sigstore-based supply chain using cosign keyless signing (Fulcio OIDC + Rekor transparency log), syft SBOM generation, and OCI 1.1 referrers for attestation storage. The signing chain is:
+
+1. CI builds and pushes arch images, capturing digests via `--digestfile`
+2. CI generates CycloneDX SBOM against the pushed image by digest
+3. CI attaches SBOM as OCI 1.1 referrer via `cosign attest --type cyclonedx`
+4. CI signs the image by digest with `cosign sign` (keyless, Fulcio cert + Rekor inclusion proof)
+5. CI uploads digest JSON artifact per matrix cell
+6. Release downloads digests and creates manifest lists using `podman manifest add <image>@<digest>`
+7. Release signs each manifest list with `cosign sign`
+8. `verify-signatures` job gates tag promotion: `cosign verify` with workflow-scoped identity
+9. Only after verification: semver tag family applied via `skopeo copy --all`
+
+**Key Technical Decisions:**
+
+1. **Cosign keyless (Sigstore Fulcio + Rekor)** -- No manual key management. GitHub Actions OIDC token as identity claim. Signatures countersigned by Rekor transparency log with trusted timestamp. Certificate expiry (10 min) does not affect verification because Rekor entry is immutable.
+2. **Workflow-scoped identity** -- `--certificate-identity` matching exact workflow path + ref (e.g., `ci.yml@refs/heads/main`). Tighter than repo-scoped: only the designated CI/release workflows can produce valid signatures.
+3. **Digest-based handoff** -- `podman push --digestfile` captures exact digest at push time. Stored as JSON artifact per matrix cell. Release uses `podman manifest add <image>@<digest>` instead of tag refs. Eliminates TOCTOU window.
+4. **SBOM: CycloneDX JSON against pushed digest** -- `syft <registry>/<image>@<digest>` ensures SBOM describes exactly what is in registry (not the local build cache). CycloneDX chosen over SPDX for broader container ecosystem tooling support.
+5. **Dual SBOM storage** -- Actions artifact (for CI/audit access) + OCI 1.1 referrer via `cosign attest` (travels with image, discoverable by scanners).
+6. **Step ordering (Sigstore convention)** -- After push: (1) SBOM generation, (2) SBOM attestation, (3) image signing. Attestation before signing follows the Sigstore reference workflow.
+7. **`COSIGN_YES: "true"` env var** -- Single declaration at job level instead of `--yes` per invocation.
+8. **Tool installation via GitHub Actions** -- `sigstore/cosign-installer@v3` (v2.4.0+ for OCI 1.1), `anchore/sbom-action/download-syft@v0`. Pinned actions, not ad-hoc curl downloads.
+9. **Build timestamp dev tags** -- `dev-<sha>-B<YYYYMMDDHHMMSS>` guarantees uniqueness across re-runs. Version tags unaffected.
+10. **Always-blocking failures** -- cosign sign, cosign attest, and syft all fail the CI job if they error. The verify-signatures gate in release is the final check, not a compensating control.
+11. **Verify checks both identities** -- `publish-ci.sh verify` tries ci.yml identity then release.yml identity. Covers arch images (signed by CI) and manifest lists (signed by release) without requiring a flag.
+
+**Alternatives Considered:**
+
+1. **Manual key management (cosign generate-key-pair)** -- More control but requires secret key storage, rotation, and distribution. Keyless via Fulcio is zero-management for GitHub Actions.
+2. **Notation (CNCF)** -- Alternative signing tool. Less mature GitHub Actions integration, smaller ecosystem. Cosign + Sigstore has wider adoption and first-class OIDC support.
+3. **SPDX-JSON SBOMs** -- ISO standard (ISO/IEC 5962:2021). CycloneDX chosen for broader tooling support in container/DevSecOps ecosystems.
+4. **SBOM from local image (pre-push)** -- Faster (no network pull). Rejected because the SBOM would describe the local build cache, not necessarily what was pushed to registry. Digest-referenced SBOM is provably accurate.
+5. **Repository-scoped cosign identity** -- Simpler, survives workflow renames. Rejected in favor of workflow-scoped for tighter security: only the designated workflow can sign.
+6. **Non-blocking signing on dev pushes** -- Would allow dev iteration if Sigstore has outages. Rejected for simplicity: one policy (always block) is easier to reason about. Sigstore has high availability (Fulcio + Rekor are production Google services).
+
+**Consequences:**
+
+- Positive: Cryptographic proof of image provenance via Sigstore, digest-pinned releases eliminate TOCTOU, SBOM for compliance (EO 14028, NIST SSDF), OCI 1.1 referrers for scanner discoverability, Rekor transparency log prevents backdating, verification gate prevents unsigned tag promotion, build timestamps prevent dev tag collisions
+- Negative: Adds ~30-45s per matrix cell (syft + cosign attest + cosign sign), requires `id-token: write` permission (OIDC), artifact upload/download between workflows adds complexity, external dependency on Sigstore infrastructure (Fulcio, Rekor), workflow rename requires updating verification commands
+
+---
+
+### ADR-021: PR Check Result Visibility via Job Summaries (INFRA-032)
+
+**Date:** 2026-02-23
+**Status:** Accepted
+
+**Context:** CI runs tests, coverage, container builds, and Trivy scans, but results are buried in job logs. PR reviewers must click into each job and scroll through logs to assess test completeness and scan findings. GitHub Actions `$GITHUB_STEP_SUMMARY` provides a native mechanism to write markdown summaries visible in the Actions run summary page, linked from the PR checks tab.
+
+**Decision:** Add inline bash blocks after each test, coverage, build, and scan step that write structured markdown tables to `$GITHUB_STEP_SUMMARY`. No third-party actions. Parse existing text output from test runners and scanners (no JSON reporter changes). The summary job aggregates results into a single overview table.
+
+**Key Technical Decisions:**
+
+1. **Native bash + `$GITHUB_STEP_SUMMARY`** -- No third-party actions. Inline `cat >> "$GITHUB_STEP_SUMMARY"` blocks write markdown after each step. Full control over format, no version pinning of reporter actions, no extra permissions.
+2. **Parse existing output** -- grep/awk coverage percentages and test counts from existing text output. Avoids changing test commands or adding JSON reporters. Works with vitest terminal output, pytest terminal output, and cargo-tarpaulin terminal output.
+3. **Per-step summaries, not per-job** -- Each step writes its own section to `$GITHUB_STEP_SUMMARY`. Steps append (>>), so multiple sections compose into one job summary. This avoids needing a separate "write summary" step that depends on outputs from all prior steps.
+4. **Summary job aggregation** -- The summary job (which already exists and runs `if: always()`) writes an overview table referencing all job results via `needs.<job>.result`. This provides the at-a-glance view.
+5. **Non-blocking summary writes** -- Summary writes use `|| true` to prevent summary generation failures from failing the actual test/build step. Missing summaries are acceptable; failing tests are not.
+6. **1MB summary limit awareness** -- GitHub caps `$GITHUB_STEP_SUMMARY` at 1MB per job. Truncate individual failure listings to 50 entries. Container build summaries are compact (one table row per cell).
+
+**Alternatives Considered:**
+
+1. **PR comments via actions** -- More visible in PR conversation. Rejected: adds write permission requirements, creates notification noise, sticky-comment actions require maintenance.
+2. **Third-party test reporter actions** -- Richer formatting (collapsible failures, annotations). Rejected: adds action dependencies, version pinning overhead, and the native approach is sufficient.
+3. **JSON reporters** -- More structured data extraction. Rejected: changes test commands, adds complexity, text parsing is sufficient for summary tables.
+
+**Consequences:**
+
+- Positive: PR reviewers see test/coverage/scan results without digging through logs, no new action dependencies, no extra permissions, composable per-step summaries
+- Negative: Text parsing is fragile if output format changes (mitigated by pinned tool versions), limited to what's visible in step output, summary tables are less rich than dedicated reporter actions

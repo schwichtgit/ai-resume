@@ -3211,3 +3211,209 @@ Features planned but not yet started. These use FUNC-NNN identifiers continuing 
 - `deployment/.python-version` pins 3.13; if a CI job ever runs deployment code, uv handles the different version transparently
 
 **Dependencies:** INFRA-021 (GitHub CI Workflows)
+
+---
+
+### INFRA-030: Native ARM Runner Multi-Arch Container Builds
+
+**Description:** Replace the static podman binary approach in `release.yml` (which fails with `failed to reexec: Permission denied`) and the QEMU-emulated builds with native architecture runners. Use a matrix strategy of 4 images x 2 platforms (8 parallel jobs) on `ubuntu-latest` (amd64) and `ubuntu-24.04-arm64` (arm64). Each job builds a single-arch image using the runner's pre-installed podman, pushes it to ghcr.io with an arch-specific tag, then a merge job creates OCI manifest lists combining both architectures. The same native runner pattern applies to any container build steps in `ci.yml`. Local development (`build-all.sh`) remains unchanged (podman + QEMU).
+
+A new CI-optimized publish script (`scripts/publish-ci.sh`) handles single-arch push, manifest creation, manifest push, and semver tag family application. The existing `publish-containers.sh` (which uses skopeo and local manifest lists) remains for local/manual use.
+
+**Clarify Resolutions:**
+
+- **ci.yml scope:** CI builds containers (matrixed on native runners) and tests them as a quality gate. Arch-specific images are pushed to ghcr.io from CI. `release.yml` pulls the tested images and publishes manifest lists -- no rebuild on release. The `validate` job in `release.yml` checks that CI passed on the tagged commit (existing behavior).
+- **Arch-specific tag format:** Always dot-separated: `<version>.<arch>`. Examples: `v1.0.0.amd64`, `v0.1.0-alpha.1.arm64`. The version tag (without arch suffix) is applied only to the merged manifest list.
+- **Trivy SARIF categories:** Include arch in category name: `trivy-release-<image>-<arch>` (e.g., `trivy-release-ai-resume-frontend-amd64`). Ensures unique entries in GitHub Code Scanning.
+- **Proto file sync:** Conditional on `matrix.image` -- only run for `memvid-service` and `api-service` builds.
+
+**Scope:**
+
+- `ci.yml`: Add matrixed container build jobs (4 images x 2 platforms on native runners), container smoke tests, and push arch-specific images to ghcr.io
+- `release.yml`: Refactor to pull CI-built arch images, create manifest lists, publish with semver tags, create GitHub Release. Remove static podman install and QEMU. No container rebuilds.
+- `scripts/publish-ci.sh`: New script for manifest creation, manifest push, and semver tag family application
+- `build-all.sh`, `publish-containers.sh`: No changes (local dev stays podman + QEMU)
+
+**Acceptance Criteria:**
+
+- [ ] `ci.yml` includes matrixed container build jobs using `ubuntu-latest` for `linux/amd64` and `ubuntu-24.04-arm64` for `linux/arm64`
+- [ ] CI container build jobs push arch-specific images to ghcr.io with dot-separated tags (e.g., `ai-resume-frontend:v0.1.0-alpha.1.amd64`)
+- [ ] CI runs container smoke tests on built images before the build is considered passing
+- [ ] The static podman binary download step (`mgoltzsche/podman-static`) is removed from `release.yml`
+- [ ] `release.yml` does not rebuild containers -- it pulls arch-specific images already pushed by CI
+- [ ] 8 arch-specific images are built in parallel (4 images x 2 platforms) in CI
+- [ ] `release.yml` merge job creates OCI manifest lists for each image combining both arch-specific tags
+- [ ] Merged manifest lists are pushed to ghcr.io with the version tag (e.g., `ai-resume-frontend:v0.1.0-alpha.1`)
+- [ ] Trivy SARIF scans run per-arch in CI build jobs (8 scans), results uploaded with arch-qualified categories (e.g., `trivy-release-ai-resume-frontend-amd64`)
+- [ ] Trivy severity gate (CRITICAL/HIGH) runs per-arch in CI build jobs
+- [ ] If any single CI build job fails, the release is blocked (all-or-nothing via CI status check)
+- [ ] `scripts/publish-ci.sh` exists and handles: manifest create/add/push, semver tag family
+- [ ] Semver tag family is applied: `sha-<short>`, bare version (strip `v` prefix), and for stable releases: minor tag + `latest`
+- [ ] GitHub Release is created with `--prerelease` flag for pre-release versions
+- [ ] `build-all.sh` and `publish-containers.sh` are unchanged (local dev workflow preserved)
+- [ ] The `validate` job in `release.yml` (CI status check, changelog validation) is unchanged
+- [ ] OCI image annotations (org.opencontainers.image.\*) are preserved on all images
+- [ ] ghcr.io login uses `github.actor` + `secrets.GITHUB_TOKEN` with `packages: write` permission
+- [ ] Proto file sync runs conditionally, only for `memvid-service` and `api-service` matrix entries
+
+**Error Handling:**
+
+| Error Condition                         | Expected Behavior                    | User-Facing Message                     |
+| --------------------------------------- | ------------------------------------ | --------------------------------------- |
+| ARM64 runner unavailable                | Job queued until runner available    | GitHub Actions: "Waiting for a runner"  |
+| podman build fails on one arch          | Matrix job fails, merge job skipped  | Build step error output in job log      |
+| ghcr.io push fails (auth, network)      | Job fails immediately                | podman push error with HTTP status      |
+| Manifest merge fails (missing arch tag) | Merge job fails, release not created | podman manifest add error               |
+| Trivy finds CRITICAL/HIGH CVE           | Build job fails at severity gate     | Trivy table output with CVE details     |
+| One of 8 matrix jobs fails              | Merge job skipped, release fails     | GitHub Actions shows failed matrix cell |
+
+**Edge Cases:**
+
+- First release after migration: no ghcr.io cache exists, all layers pushed fresh (~5-10 min per image)
+- ARM64 Rust compilation (memvid-service): significantly slower than amd64 (~15-20 min), may dominate total build time
+- Pre-release tags (e.g., `v0.1.0-alpha.1`): changelog validation skipped, `--prerelease` flag on GitHub Release, semver tag family limited to sha + bare version
+- Runner OS differences: `ubuntu-latest` (currently 24.04) vs `ubuntu-24.04-arm64` may have different podman versions; workflow should not pin podman version
+- Manifest list format: must use OCI index (not Docker manifest list v2) for ghcr.io compatibility
+- Concurrent tag pushes: if two releases are triggered simultaneously, arch-specific tags may collide; mitigated by GitHub's single-run-per-tag guarantee
+
+**Dependencies:** INFRA-027 (Release Workflow), FUNC-075 (Trivy Severity Gate), INFRA-021 (GitHub CI Workflows)
+
+### INFRA-031: Container Supply Chain Security
+
+**Description:** Add cryptographic supply chain integrity to the container build and release pipeline. This closes the gap between a functional CI/CD pipeline and a production-grade secure software supply chain by implementing: (1) digest-based handoff between CI and release workflows, replacing mutable tag references with immutable `sha256:` digests, (2) cosign keyless signing of every arch-specific image and every merged manifest list using Sigstore Fulcio OIDC via GitHub Actions, (3) SBOM generation with syft (CycloneDX JSON) stored both as GitHub Actions artifacts and as OCI 1.1 referrers via `cosign attest`, (4) a verification gate (`verify-signatures` job) that blocks tag promotion until all signatures are cryptographically verified, and (5) build-timestamp-suffixed dev tags to guarantee tag uniqueness on re-runs.
+
+**Clarify Resolutions:**
+
+- **Build timestamps:** Dev tags include a build timestamp suffix: `dev-<sha>-B<YYYYMMDDHHMMSS>` (e.g., `dev-abc1234-B20260223143000`). Ensures tag uniqueness across workflow re-runs. Version tags (`v*`) are unaffected.
+- **SBOM storage:** Both GitHub Actions artifact AND OCI 1.1 referrer. CI uploads CycloneDX JSON as an Actions artifact per matrix cell. CI also attaches the SBOM to the pushed image (by digest) as an OCI 1.1 referrer via `cosign attest --type cyclonedx`.
+- **Digest transport:** GitHub Actions artifacts. CI uploads a JSON file per matrix cell `{image, platform, digest, version}`. Release downloads artifacts from the CI run via `gh api` (the CI run ID is already resolved in the `validate` job).
+- **Cosign identity scope:** Workflow-scoped. `--certificate-identity` matching the exact workflow file path and ref (e.g., `https://github.com/schwichtgit/ai-resume/.github/workflows/ci.yml@refs/heads/main`). Tighter than repo-scoped: only the specific CI workflow can produce valid signatures.
+- **SBOM target:** SBOM is generated against the pushed image by digest (`syft <registry>/<image>@sha256:...`), not the local image. This guarantees the SBOM describes exactly what is in the registry.
+- **Step ordering (Sigstore convention):** After push: (1) generate SBOM against pushed digest, (2) attest SBOM as OCI 1.1 referrer, (3) sign the image. Attestation before signing follows the Sigstore reference workflow.
+- **Tool installation:** cosign via `sigstore/cosign-installer@v3` (v2.4.0+ for OCI 1.1), syft via `anchore/sbom-action/download-syft@v0` GitHub Action (not curl). Pinned actions, not ad-hoc binary downloads.
+- **COSIGN_YES env var:** Set `COSIGN_YES: "true"` as a job-level env var instead of `--yes` flag per invocation. Single declaration, cleaner.
+
+**Sigstore Security Model:**
+
+The signing chain relies on three Sigstore components:
+
+1. **Fulcio** (Certificate Authority): Exchanges the GitHub Actions OIDC token for a short-lived (10-minute) X.509 certificate containing the workflow identity claim
+2. **Rekor** (Transparency Log): Records an inclusion proof with a trusted timestamp. Even after the certificate expires, the Rekor entry proves the artifact was signed while the certificate was valid. Tamper-resistant: an attacker cannot backdate a signature.
+3. **OCI 1.1 Referrers API**: Signatures and SBOM attestations are stored as referrers linked to the image manifest in the OCI registry. No `.sig` or `.sbom` tag hacks. Discoverable by security scanners automatically via `cosign tree`.
+
+**Minimum Tool Versions:**
+
+| Tool | Min Version | Role |
+| --- | --- | --- |
+| cosign | v2.4.0+ | Signing, verification, OCI 1.1 attachment, SBOM attestation |
+| syft | v1.0.0+ | SBOM generation (CycloneDX JSON, OCI 1.1 format support) |
+| OCI Registry | ghcr.io | Must support the Referrers API (ghcr.io supports OCI 1.1) |
+
+**Scope:**
+
+- `scripts/publish-ci.sh`: Digest capture in `push-arch` (`--digestfile`), digest-based `merge` (`--digest-amd64`/`--digest-arm64` flags with tag-based fallback), manifest list digest output, new `verify` subcommand wrapping `cosign verify`
+- `.github/workflows/ci.yml`: `id-token: write` permission, `COSIGN_YES: "true"` env, `sigstore/cosign-installer@v3`, `anchore/sbom-action/download-syft@v0`, keyless sign per arch image, syft SBOM against pushed digest + `cosign attest`, digest JSON artifact upload, SBOM artifact upload, build timestamp in dev tags
+- `.github/workflows/release.yml`: `id-token: write` permission, `COSIGN_YES: "true"` env, download digest artifacts from CI run, digest-based manifest merge, cosign sign manifest list, new `verify-signatures` job between `merge-manifests` and `publish-tags`
+- `docs/CI-CONTAINER-FLOW.md`: Supply chain security section, Sigstore model, attestation model, updated data flow diagram
+
+**Acceptance Criteria:**
+
+- [ ] `publish-ci.sh push-arch` uses `podman push --digestfile` and prints `DIGEST=sha256:...` to stdout
+- [ ] `publish-ci.sh merge` accepts `--digest-amd64` and `--digest-arm64` flags for digest-based `podman manifest add <image>@<digest>`
+- [ ] `publish-ci.sh merge` falls back to tag-based references when digest flags are omitted
+- [ ] `publish-ci.sh merge` prints `MANIFEST_DIGEST=sha256:...` to stdout after push
+- [ ] `publish-ci.sh verify` subcommand runs `cosign verify` with `--certificate-identity` (workflow-scoped) and `--certificate-oidc-issuer`
+- [ ] ci.yml permissions include `id-token: write`
+- [ ] ci.yml sets `COSIGN_YES: "true"` as job-level env var
+- [ ] ci.yml installs cosign via `sigstore/cosign-installer@v3` (v2.4.0+) in `container-build` (push events only)
+- [ ] ci.yml installs syft via `anchore/sbom-action/download-syft@v0` (not curl)
+- [ ] ci.yml generates CycloneDX JSON SBOM against the pushed image by digest: `syft <registry>/<image>@<digest>`
+- [ ] ci.yml attaches SBOM as OCI 1.1 referrer via `cosign attest --type cyclonedx --predicate <sbom.json> <image>@<digest>` (push events only)
+- [ ] ci.yml signs each arch-specific image by digest with `cosign sign <image>@<digest>` AFTER SBOM attestation (push events only)
+- [ ] ci.yml step order after push: (1) generate SBOM, (2) attest SBOM, (3) sign image
+- [ ] ci.yml uploads digest JSON artifact per matrix cell (`{image, platform, digest, version}`)
+- [ ] ci.yml uploads SBOM artifact per matrix cell
+- [ ] ci.yml dev tags include build timestamp: `dev-<sha>-B<YYYYMMDDHHMMSS>`
+- [ ] release.yml permissions include `id-token: write`
+- [ ] release.yml sets `COSIGN_YES: "true"` as job-level env var
+- [ ] release.yml `validate` job downloads digest artifacts from the CI run via `gh api`
+- [ ] release.yml `merge-manifests` job passes digests to `publish-ci.sh merge`
+- [ ] release.yml `merge-manifests` job signs each manifest list with `cosign sign` after push
+- [ ] release.yml has a `verify-signatures` job between `merge-manifests` and `publish-tags`
+- [ ] release.yml `publish-tags` depends on `verify-signatures` (not `merge-manifests`)
+- [ ] release.yml job chain: `validate` -> `merge-manifests` -> `verify-signatures` -> `publish-tags` -> `create-release`
+- [ ] Consumers can verify images with workflow-scoped identity: `cosign verify --certificate-identity 'https://github.com/schwichtgit/ai-resume/.github/workflows/ci.yml@refs/heads/main' --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' <image>@<digest>`
+- [ ] `cosign tree <image>` shows signature + SBOM attestation as OCI 1.1 referrers
+- [ ] `docs/CI-CONTAINER-FLOW.md` documents the Sigstore model (Fulcio, Rekor, OCI 1.1 Referrers), signing chain, verification commands, and attestation artifacts
+
+**Error Handling:**
+
+| Error Condition | Expected Behavior | User-Facing Message |
+| --- | --- | --- |
+| Cosign signing fails (OIDC token issue) | CI job fails, release blocked | cosign error with Fulcio/OIDC details |
+| Fulcio certificate expired during long build | cosign retries OIDC token exchange | Transparent retry, Rekor timestamp covers the gap |
+| Digest mismatch (tag overwritten between push and merge) | `podman manifest add @digest` fails | podman error: manifest not found |
+| Syft SBOM generation fails | CI job fails, release blocked | syft error in job logs |
+| `cosign attest` fails | CI job fails, release blocked | cosign attest error in job logs |
+| Rekor transparency log unreachable | cosign sign fails (Rekor is mandatory in keyless mode) | cosign error: failed to upload to tlog |
+| Signature verification fails before tag promotion | `verify-signatures` fails, tags not promoted | cosign verify error listing failed images |
+| CI digest artifacts not found in release | `validate` job fails | Artifact download error with CI run ID |
+| Build timestamp collision (sub-second re-trigger) | Effectively impossible (YYYYMMDDHHMMSS granularity) | N/A |
+
+**Edge Cases:**
+
+- First release with signing: no previous signatures exist in registry; `cosign tree` returns empty. Normal behavior.
+- cosign keyless certificates expire after 10 minutes (Fulcio default); verification still works because the certificate is countersigned by Rekor transparency log with a trusted timestamp
+- SBOM size varies by image: Python images (api, ingest) produce larger SBOMs than the Alpine frontend or Debian memvid images
+- `cosign attest` on ghcr.io requires the image to be pushed first (attestation references the digest). Step ordering enforces this.
+- Multiple concurrent tag pushes: each gets unique build timestamps, digests are per-push, no collision
+- Shallow clone (`actions/checkout` default `fetch-depth: 1`): `git rev-parse --short HEAD` works, sufficient for SHA tags
+- Registry garbage collection: OCI 1.1 referrers (signatures, SBOM attestations) are linked to the image manifest. If the image is deleted, referrers are also deleted.
+- Workflow rename: If `ci.yml` is renamed, existing signatures remain valid (Rekor entry is immutable) but new verification commands must use the new path. Document the workflow path in `CLAUDE.md`.
+- Cosign verification of release manifest lists: The release workflow signs with `release.yml` identity, while CI signs with `ci.yml` identity. The `verify` subcommand must accept both workflow paths.
+
+**Dependencies:** INFRA-030 (Native ARM Runner Multi-Arch Container Builds)
+
+---
+
+### INFRA-032: PR Check Result Visibility via Job Summaries
+
+**Description:** Surface test results, coverage reports, container build matrix status, and Trivy vulnerability findings directly in GitHub Actions job summaries (`$GITHUB_STEP_SUMMARY`). PR reviewers currently must dig through CI logs to assess test completeness and scan results. Job summaries appear in the Actions run summary page, linked from the PR checks tab.
+
+**Acceptance Criteria:**
+
+1. **Test result summaries:** Each service test job (frontend, api-service, ingest, memvid-service) writes a markdown summary to `$GITHUB_STEP_SUMMARY` containing: service name, total tests, passed, failed, skipped, and duration. Failed tests list individual test names.
+
+2. **Coverage summaries:** Each service test job appends coverage data to `$GITHUB_STEP_SUMMARY` containing: service name, line coverage percentage, threshold, and pass/fail status. Coverage is parsed from existing text output (vitest terminal, pytest-cov terminal, cargo-tarpaulin terminal). No JSON reporters.
+
+3. **Container build matrix summary:** Each container-build matrix cell writes to `$GITHUB_STEP_SUMMARY` containing: image name, platform, build duration, image size (compressed), Trivy finding counts (critical/high/medium/low), smoke test results (user, health check, OCI annotation), and push status (digest if pushed, "skipped" for PRs).
+
+4. **Trivy vulnerability summary:** Each container-build matrix cell includes in its `$GITHUB_STEP_SUMMARY` a vulnerability count table broken down by severity. If CRITICAL or HIGH vulnerabilities are found, individual CVE IDs are listed.
+
+5. **Summary job aggregation:** The summary job writes an aggregated overview to `$GITHUB_STEP_SUMMARY` containing: overall pass/fail per job category, total test count across all services, coverage per service, container build matrix status table (8 cells).
+
+**Given/When/Then:**
+
+- Given a PR triggers CI, when service test jobs complete, then each job's Actions summary page shows a markdown table with test counts and any failures
+- Given a PR triggers CI, when coverage collection runs, then each job's summary shows line coverage percentage relative to the threshold
+- Given a PR triggers container-build, when all 8 matrix cells complete, then each cell's summary shows image size, Trivy counts, and smoke test results
+- Given a PR triggers CI, when the summary job runs, then its summary page shows an aggregated overview of all job results
+
+**Error Handling:**
+
+| Condition | Behavior | Visible In |
+| --- | --- | --- |
+| Test framework exits non-zero | Job fails, partial summary still written (summary written before test exit) | Job summary shows "FAILED" badge |
+| Coverage below threshold | Job fails, summary shows actual vs required | Coverage table with red threshold |
+| Trivy finds CRITICAL/HIGH | Severity gate step fails, summary still written (written before gate) | Trivy summary table in cell summary |
+| `$GITHUB_STEP_SUMMARY` write fails | Non-blocking (echo to file failure doesn't fail the job) | Missing summary, job logs contain write error |
+
+**Edge Cases:**
+
+- Skipped jobs (no changes detected): skipped jobs produce no summary. The summary job notes them as "skipped (no changes)".
+- Matrix cell failure with fail-fast: false: other cells still produce summaries.
+- Coverage reporter not installed: fall back to text parsing of test output (grep for coverage line).
+- Very large test suites: truncate individual failure listings to 50 entries (GitHub has a 1MB step summary limit).
+- memvid-integration (continue-on-error: true): summary shows soft gate status, not blocking.
+
+**Dependencies:** INFRA-030 (Native ARM Runner Multi-Arch Container Builds), INFRA-031 (Container Supply Chain Security)
