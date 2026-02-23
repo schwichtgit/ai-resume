@@ -15,6 +15,7 @@ permissions:
 
 env:
   REGISTRY: ghcr.io/schwichtgit
+  COSIGN_YES: "true"
 
 jobs:
   # Gate: verify CI passed and changelog has an entry for this version
@@ -85,6 +86,9 @@ jobs:
         image: [ai-resume-frontend, ai-resume-api, ai-resume-memvid, ai-resume-ingest]
     steps:
       - uses: actions/checkout@v6
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
 
       - name: Login to ghcr.io
         uses: redhat-actions/podman-login@v1
@@ -173,9 +177,47 @@ jobs:
           fi
           scripts/publish-ci.sh merge $DIGEST_FLAGS "${{ env.REGISTRY }}" "${{ matrix.image }}" "${{ github.ref_name }}"
 
+      - name: Sign manifest list
+        run: |
+          cosign sign "${{ env.REGISTRY }}/${{ matrix.image }}:${{ github.ref_name }}"
+
+  # Verify all signatures before tag promotion
+  verify-signatures:
+    needs: merge-manifests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image: [ai-resume-frontend, ai-resume-api, ai-resume-memvid, ai-resume-ingest]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Verify arch image signatures (CI-signed)
+        run: |
+          for ARCH in amd64 arm64; do
+            echo "Verifying ${ARCH} image..."
+            cosign verify \
+              --certificate-identity "https://github.com/${{ github.repository }}/.github/workflows/ci.yml@refs/heads/main" \
+              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+              "${{ env.REGISTRY }}/${{ matrix.image }}:${{ github.ref_name }}.${ARCH}" || \
+            cosign verify \
+              --certificate-identity "https://github.com/${{ github.repository }}/.github/workflows/ci.yml@${{ github.ref }}" \
+              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+              "${{ env.REGISTRY }}/${{ matrix.image }}:${{ github.ref_name }}.${ARCH}"
+          done
+
+      - name: Verify manifest list signature (release-signed)
+        run: |
+          cosign verify \
+            --certificate-identity "https://github.com/${{ github.repository }}/.github/workflows/release.yml@${{ github.ref }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "${{ env.REGISTRY }}/${{ matrix.image }}:${{ github.ref_name }}"
+
   # Apply semver tag family (major, major.minor, latest) to all images
   publish-tags:
-    needs: merge-manifests
+    needs: verify-signatures
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
