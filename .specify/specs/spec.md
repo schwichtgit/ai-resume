@@ -3174,3 +3174,40 @@ Features planned but not yet started. These use FUNC-NNN identifiers continuing 
 - Multiple CI runs on same commit: any successful run satisfies the gate
 
 **Dependencies:** INFRA-027 (Release Workflow), INFRA-028 (CHANGELOG.md), FUNC-075 (Trivy Severity Gate)
+
+---
+
+### INFRA-029: CI Python Management via uv (Drop setup-python)
+
+**Description:** Remove `actions/setup-python` from all CI jobs in `.github/workflows/ci.yml` and delegate Python version management entirely to `uv`. Each Python service directory contains a `.python-version` file pinning the required version (currently 3.12). The `astral-sh/setup-uv@v7` action with `cache-python: true` handles Python installation and caching. The top-level `PYTHON_VERSION` env var in `ci.yml` is removed. This fixes a latent version mismatch where `api-service` and `cross-service` jobs test on Python 3.11 despite `pyproject.toml` declaring `requires-python >= 3.12`. The `.python-version` file is required in every Python service directory; missing files cause immediate job failure.
+
+**Clarify Resolutions:**
+
+- **Scope:** `ci.yml` only (all 6 occurrences). The "no setup-python in any workflow" acceptance criterion is a guardrail, not expanded scope.
+- **Multi-service jobs:** No explicit `uv python install` step. `uv sync` auto-downloads the required Python version lazily on first invocation.
+- **Action version:** Keep `astral-sh/setup-uv@v7` (already supports `cache-python` and `enable-cache`).
+
+**Acceptance Criteria:**
+
+- [ ] `actions/setup-python` is not present in any job in `.github/workflows/ci.yml`
+- [ ] `astral-sh/setup-uv` in every Python job includes `enable-cache: true` and `cache-python: true`
+- [ ] The top-level `env.PYTHON_VERSION` variable is removed from `ci.yml`
+- [ ] Every Python service directory (`api-service/`, `ingest/`) contains a `.python-version` file
+- [ ] All 6 affected CI jobs pass: `api-service`, `ingest`, `memvid-integration`, `cross-service`, `e2e-real`, `release-gate`
+- [ ] No `setup-python` action appears in any workflow file in `.github/workflows/`
+
+**Error Handling:**
+
+| Error Condition                                       | Expected Behavior      | User-Facing Message                             |
+| ----------------------------------------------------- | ---------------------- | ----------------------------------------------- |
+| `.python-version` file missing from service directory | Job fails immediately  | uv error: "No Python version found"             |
+| Python download fails (network, unavailable version)  | Job fails immediately  | uv error with download URL and HTTP status      |
+| `.python-version` specifies unsupported version       | Job fails at `uv sync` | uv error: "No interpreter found for python X.Y" |
+
+**Edge Cases:**
+
+- Multi-service jobs (`cross-service`, `e2e-real`, `release-gate`) that `cd` into different directories: each `uv sync` picks up the local `.python-version` file from the working directory
+- First CI run after migration has no Python cache: uv downloads Python (~15s), subsequent runs use cache
+- `deployment/.python-version` pins 3.13; if a CI job ever runs deployment code, uv handles the different version transparently
+
+**Dependencies:** INFRA-021 (GitHub CI Workflows)

@@ -787,3 +787,23 @@ A `.trivyignore` file (committed empty with comment header) provides documented 
 
 - Positive: Simple and direct, checks the single aggregation gate, fails fast with clear error message
 - Negative: No polling (if user tags before CI completes, release fails; must re-trigger manually), depends on the `summary` job name not changing
+
+### ADR-018: uv-Managed Python in CI (INFRA-029)
+
+**Date:** 2026-02-22
+**Status:** Accepted
+
+**Context:** CI currently uses both `astral-sh/setup-uv@v7` and `actions/setup-python@v6` in every Python job -- redundant since uv can install and manage Python natively. The top-level `PYTHON_VERSION: '3.11'` env var contradicts `requires-python >= 3.12` in `api-service/pyproject.toml`, causing `api-service` and `cross-service` jobs to run on an unsupported Python version. Each Python service already has a `.python-version` file (3.12 for api-service and ingest, 3.13 for deployment).
+
+**Decision:** Remove `actions/setup-python` from all 6 Python jobs in `ci.yml`. Add `enable-cache: true` and `cache-python: true` to each `astral-sh/setup-uv@v7` step. Delete the top-level `PYTHON_VERSION` env var. Let `uv sync` resolve the Python version from each service's `.python-version` file lazily (no explicit `uv python install` step).
+
+**Alternatives Considered:**
+
+1. **Keep setup-python, fix version to 3.12** -- Fixes the mismatch but retains the redundant action and the duplicated version pin (env var + .python-version file). Two sources of truth can drift again.
+2. **Use setup-uv `python-version` input** -- Sets `UV_PYTHON` env var but does not install Python. Works for single-service jobs but requires per-job overrides for multi-service jobs. Adds complexity without benefit over `.python-version` files.
+3. **Pin uv to specific minor (`@v7.2`)** -- Tighter reproducibility but breaks Dependabot auto-updates for the GitHub Actions ecosystem. The `@v7` major tag is the convention used by the action's maintainers.
+
+**Consequences:**
+
+- Positive: Single source of truth for Python versions (`.python-version` per service), fixes 3.11 vs 3.12 mismatch, removes redundant action, simpler YAML (~18 lines removed)
+- Negative: First CI run after migration has no Python cache (~15s download), uv becomes the sole Python provider in CI (acceptable given it already manages venvs and dependencies)
