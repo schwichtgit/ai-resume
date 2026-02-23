@@ -2535,6 +2535,85 @@
         "publish-ci-script",
         "ci-container-build"
       ]
+    },
+    {
+      "id": "digest-handoff",
+      "category": "infrastructure",
+      "title": "Digest-Based Handoff Between CI and Release",
+      "description": "Capture image digests at push time via --digestfile, upload as JSON artifacts per matrix cell, download in release workflow, and use digest-based podman manifest add instead of tag-based references. Dev tags include build timestamps (dev-<sha>-B<YYYYMMDDHHMMSS>) for uniqueness.",
+      "testing_steps": [
+        "Run 'scripts/publish-ci.sh push-arch --dry-run ghcr.io/test ai-resume-frontend v0.1.0 amd64' and verify output includes a 'DIGEST=' line",
+        "Run 'grep -c digestfile scripts/publish-ci.sh' and verify at least 1 match (--digestfile used in push)",
+        "Run 'scripts/publish-ci.sh merge --dry-run --digest-amd64 sha256:aaa --digest-arm64 sha256:bbb ghcr.io/test ai-resume-frontend v0.1.0' and verify manifest add uses @sha256: digest references",
+        "Run 'scripts/publish-ci.sh merge --dry-run ghcr.io/test ai-resume-frontend v0.1.0' (no digest flags) and verify it falls back to tag-based references",
+        "Run 'scripts/publish-ci.sh merge --dry-run --digest-amd64 sha256:aaa --digest-arm64 sha256:bbb ghcr.io/test ai-resume-frontend v0.1.0' and verify output includes 'MANIFEST_DIGEST=' line",
+        "Run 'grep -c upload-artifact .github/workflows/ci.yml' and verify at least 2 matches (digest + SBOM artifacts)",
+        "Run 'grep -c download-artifact .github/workflows/release.yml' and verify at least 1 match (digest download)",
+        "Run 'grep -c digest-metadata .github/workflows/ci.yml' and verify at least 1 match (digest JSON upload)",
+        "Verify ci.yml dev version includes build timestamp: grep for 'YYYYMMDDHHMMSS\\|%Y%m%d%H%M%S\\|BUILD_TS' pattern in ci.yml"
+      ],
+      "passes": false,
+      "dependencies": ["publish-ci-script", "ci-container-build", "release-native-runners"]
+    },
+    {
+      "id": "cosign-signing",
+      "category": "infrastructure",
+      "title": "Cosign Keyless Signing with Sigstore (Fulcio + Rekor)",
+      "description": "Sign each arch-specific container image and each merged manifest list using cosign keyless signing via Sigstore Fulcio OIDC. Workflow-scoped identity. Signatures stored as OCI 1.1 referrers. Rekor transparency log provides tamper-proof timestamps. COSIGN_YES env var for automated acceptance. Always-blocking failures.",
+      "testing_steps": [
+        "Verify ci.yml permissions include 'id-token: write' (grep -c 'id-token' .github/workflows/ci.yml >= 1)",
+        "Verify ci.yml uses 'sigstore/cosign-installer@v3' (grep -c 'cosign-installer' .github/workflows/ci.yml >= 1)",
+        "Verify ci.yml has 'COSIGN_YES' env var (grep -c 'COSIGN_YES' .github/workflows/ci.yml >= 1)",
+        "Verify ci.yml has a 'cosign sign' step that references the digest (grep -c 'cosign sign' .github/workflows/ci.yml >= 1)",
+        "Run 'grep -n \"syft\\|cosign attest\\|cosign sign\" .github/workflows/ci.yml' and verify syft line number < cosign attest line number < cosign sign line number (step ordering)",
+        "Verify release.yml permissions include 'id-token: write' (grep -c 'id-token' .github/workflows/release.yml >= 1)",
+        "Verify release.yml has 'cosign sign' in merge-manifests job for manifest list signing",
+        "Verify release.yml has a 'verify-signatures' job (grep -c 'verify-signatures' .github/workflows/release.yml >= 2)",
+        "Verify release.yml publish-tags depends on verify-signatures: grep 'needs: verify-signatures' .github/workflows/release.yml",
+        "Verify release.yml has 'COSIGN_YES' env var (grep -c 'COSIGN_YES' .github/workflows/release.yml >= 1)",
+        "Verify release.yml full job chain by grepping 'needs:' lines: validate -> merge-manifests -> verify-signatures -> publish-tags -> create-release",
+        "Run 'scripts/publish-ci.sh verify --dry-run ghcr.io/test ai-resume-frontend v0.1.0' and verify it prints cosign verify with --certificate-identity and --certificate-oidc-issuer",
+        "Verify publish-ci.sh verify checks both ci.yml and release.yml workflow identities"
+      ],
+      "passes": false,
+      "dependencies": ["digest-handoff"]
+    },
+    {
+      "id": "sbom-generation",
+      "category": "infrastructure",
+      "title": "SBOM Generation and OCI 1.1 Attestation with Syft",
+      "description": "Generate CycloneDX JSON SBOMs for each arch-specific container image using syft against the pushed image by digest. Store as both GitHub Actions artifact and OCI 1.1 referrer via cosign attest --type cyclonedx. Installed via anchore/sbom-action/download-syft action.",
+      "testing_steps": [
+        "Verify ci.yml uses 'anchore/sbom-action/download-syft' action (grep -c 'download-syft' .github/workflows/ci.yml >= 1)",
+        "Verify ci.yml has a syft step that references the pushed digest (grep for 'syft.*@' pattern)",
+        "Verify ci.yml has a 'cosign attest' step with --type cyclonedx (grep -c 'cosign attest' .github/workflows/ci.yml >= 1)",
+        "Verify cosign attest references the pushed digest (not a tag)",
+        "Verify ci.yml uploads SBOM artifact via actions/upload-artifact with name pattern containing 'sbom'",
+        "Run 'grep -n \"syft\\|cosign attest\\|cosign sign\" .github/workflows/ci.yml' and verify syft line < attest line < sign line (ordering within container-build job)",
+        "Verify syft SBOM generation failure is blocking (no continue-on-error)"
+      ],
+      "passes": false,
+      "dependencies": ["ci-container-build", "digest-handoff"]
+    },
+    {
+      "id": "supply-chain-docs",
+      "category": "infrastructure",
+      "title": "Supply Chain Security Documentation",
+      "description": "Update docs/CI-CONTAINER-FLOW.md with Sigstore security model (Fulcio, Rekor, OCI 1.1 Referrers), signing chain, consumer verification commands (cosign verify, cosign tree), and attestation artifact inventory.",
+      "testing_steps": [
+        "Run 'test -f docs/CI-CONTAINER-FLOW.md' and verify the file exists",
+        "Run 'grep -c Fulcio docs/CI-CONTAINER-FLOW.md' and verify at least 1 match",
+        "Run 'grep -c Rekor docs/CI-CONTAINER-FLOW.md' and verify at least 1 match",
+        "Run 'grep -c \"cosign verify\" docs/CI-CONTAINER-FLOW.md' and verify at least 1 match",
+        "Run 'grep -c \"cosign tree\" docs/CI-CONTAINER-FLOW.md' and verify at least 1 match",
+        "Run 'grep -c \"cosign attest\" docs/CI-CONTAINER-FLOW.md' and verify at least 1 match",
+        "Run 'grep -c \"certificate-identity\" docs/CI-CONTAINER-FLOW.md' and verify at least 1 match (consumer verify command)",
+        "Run 'grep -c \"OCI 1.1\" docs/CI-CONTAINER-FLOW.md' and verify at least 1 match",
+        "Run 'grep -c verify-signatures docs/CI-CONTAINER-FLOW.md' and verify at least 1 match (verification gate documented)"
+      ],
+      "passes": false,
+      "dependencies": ["cosign-signing", "sbom-generation"]
     }
   ]
 }
+

@@ -844,3 +844,50 @@ A `.trivyignore` file (committed empty with comment header) provides documented 
 
 - Positive: Native ARM compilation (~10x faster than QEMU), containers tested as CI quality gate, clean separation between build (CI) and publish (release), no static binary hacks, composable publish script
 - Negative: CI pushes arch-specific images to ghcr.io on every main push (storage cost, mitigated by retention policies), more complex YAML (~100 lines in ci.yml, release.yml refactored), `redhat-actions/podman-login@v1` adds a third-party action dependency
+
+### ADR-020: Container Supply Chain Security via Sigstore (INFRA-031)
+
+**Date:** 2026-02-23
+**Status:** Accepted
+
+**Context:** The INFRA-030 container pipeline uses tag-based handoff between CI and release workflows. Arch-specific images are referenced by mutable tags rather than immutable digests. No cryptographic signing, SBOM generation, or transparency logging exists. This leaves a supply chain integrity gap: there is no proof that released images are the exact bytes that passed CI security scanning. A comparable Jenkins pipeline (previously built for a different project) solved this with native arch nodes, build timestamps, per-arch cosign signing, SBOM attestation, digest-based manifest merging, and a verification gate before tag promotion.
+
+**Decision:** Implement a Sigstore-based supply chain using cosign keyless signing (Fulcio OIDC + Rekor transparency log), syft SBOM generation, and OCI 1.1 referrers for attestation storage. The signing chain is:
+
+1. CI builds and pushes arch images, capturing digests via `--digestfile`
+2. CI generates CycloneDX SBOM against the pushed image by digest
+3. CI attaches SBOM as OCI 1.1 referrer via `cosign attest --type cyclonedx`
+4. CI signs the image by digest with `cosign sign` (keyless, Fulcio cert + Rekor inclusion proof)
+5. CI uploads digest JSON artifact per matrix cell
+6. Release downloads digests and creates manifest lists using `podman manifest add <image>@<digest>`
+7. Release signs each manifest list with `cosign sign`
+8. `verify-signatures` job gates tag promotion: `cosign verify` with workflow-scoped identity
+9. Only after verification: semver tag family applied via `skopeo copy --all`
+
+**Key Technical Decisions:**
+
+1. **Cosign keyless (Sigstore Fulcio + Rekor)** -- No manual key management. GitHub Actions OIDC token as identity claim. Signatures countersigned by Rekor transparency log with trusted timestamp. Certificate expiry (10 min) does not affect verification because Rekor entry is immutable.
+2. **Workflow-scoped identity** -- `--certificate-identity` matching exact workflow path + ref (e.g., `ci.yml@refs/heads/main`). Tighter than repo-scoped: only the designated CI/release workflows can produce valid signatures.
+3. **Digest-based handoff** -- `podman push --digestfile` captures exact digest at push time. Stored as JSON artifact per matrix cell. Release uses `podman manifest add <image>@<digest>` instead of tag refs. Eliminates TOCTOU window.
+4. **SBOM: CycloneDX JSON against pushed digest** -- `syft <registry>/<image>@<digest>` ensures SBOM describes exactly what is in registry (not the local build cache). CycloneDX chosen over SPDX for broader container ecosystem tooling support.
+5. **Dual SBOM storage** -- Actions artifact (for CI/audit access) + OCI 1.1 referrer via `cosign attest` (travels with image, discoverable by scanners).
+6. **Step ordering (Sigstore convention)** -- After push: (1) SBOM generation, (2) SBOM attestation, (3) image signing. Attestation before signing follows the Sigstore reference workflow.
+7. **`COSIGN_YES: "true"` env var** -- Single declaration at job level instead of `--yes` per invocation.
+8. **Tool installation via GitHub Actions** -- `sigstore/cosign-installer@v3` (v2.4.0+ for OCI 1.1), `anchore/sbom-action/download-syft@v0`. Pinned actions, not ad-hoc curl downloads.
+9. **Build timestamp dev tags** -- `dev-<sha>-B<YYYYMMDDHHMMSS>` guarantees uniqueness across re-runs. Version tags unaffected.
+10. **Always-blocking failures** -- cosign sign, cosign attest, and syft all fail the CI job if they error. The verify-signatures gate in release is the final check, not a compensating control.
+11. **Verify checks both identities** -- `publish-ci.sh verify` tries ci.yml identity then release.yml identity. Covers arch images (signed by CI) and manifest lists (signed by release) without requiring a flag.
+
+**Alternatives Considered:**
+
+1. **Manual key management (cosign generate-key-pair)** -- More control but requires secret key storage, rotation, and distribution. Keyless via Fulcio is zero-management for GitHub Actions.
+2. **Notation (CNCF)** -- Alternative signing tool. Less mature GitHub Actions integration, smaller ecosystem. Cosign + Sigstore has wider adoption and first-class OIDC support.
+3. **SPDX-JSON SBOMs** -- ISO standard (ISO/IEC 5962:2021). CycloneDX chosen for broader tooling support in container/DevSecOps ecosystems.
+4. **SBOM from local image (pre-push)** -- Faster (no network pull). Rejected because the SBOM would describe the local build cache, not necessarily what was pushed to registry. Digest-referenced SBOM is provably accurate.
+5. **Repository-scoped cosign identity** -- Simpler, survives workflow renames. Rejected in favor of workflow-scoped for tighter security: only the designated workflow can sign.
+6. **Non-blocking signing on dev pushes** -- Would allow dev iteration if Sigstore has outages. Rejected for simplicity: one policy (always block) is easier to reason about. Sigstore has high availability (Fulcio + Rekor are production Google services).
+
+**Consequences:**
+
+- Positive: Cryptographic proof of image provenance via Sigstore, digest-pinned releases eliminate TOCTOU, SBOM for compliance (EO 14028, NIST SSDF), OCI 1.1 referrers for scanner discoverability, Rekor transparency log prevents backdating, verification gate prevents unsigned tag promotion, build timestamps prevent dev tag collisions
+- Negative: Adds ~30-45s per matrix cell (syft + cosign attest + cosign sign), requires `id-token: write` permission (OIDC), artifact upload/download between workflows adds complexity, external dependency on Sigstore infrastructure (Fulcio, Rekor), workflow rename requires updating verification commands

@@ -3277,3 +3277,99 @@ A new CI-optimized publish script (`scripts/publish-ci.sh`) handles single-arch 
 - Concurrent tag pushes: if two releases are triggered simultaneously, arch-specific tags may collide; mitigated by GitHub's single-run-per-tag guarantee
 
 **Dependencies:** INFRA-027 (Release Workflow), FUNC-075 (Trivy Severity Gate), INFRA-021 (GitHub CI Workflows)
+
+### INFRA-031: Container Supply Chain Security
+
+**Description:** Add cryptographic supply chain integrity to the container build and release pipeline. This closes the gap between a functional CI/CD pipeline and a production-grade secure software supply chain by implementing: (1) digest-based handoff between CI and release workflows, replacing mutable tag references with immutable `sha256:` digests, (2) cosign keyless signing of every arch-specific image and every merged manifest list using Sigstore Fulcio OIDC via GitHub Actions, (3) SBOM generation with syft (CycloneDX JSON) stored both as GitHub Actions artifacts and as OCI 1.1 referrers via `cosign attest`, (4) a verification gate (`verify-signatures` job) that blocks tag promotion until all signatures are cryptographically verified, and (5) build-timestamp-suffixed dev tags to guarantee tag uniqueness on re-runs.
+
+**Clarify Resolutions:**
+
+- **Build timestamps:** Dev tags include a build timestamp suffix: `dev-<sha>-B<YYYYMMDDHHMMSS>` (e.g., `dev-abc1234-B20260223143000`). Ensures tag uniqueness across workflow re-runs. Version tags (`v*`) are unaffected.
+- **SBOM storage:** Both GitHub Actions artifact AND OCI 1.1 referrer. CI uploads CycloneDX JSON as an Actions artifact per matrix cell. CI also attaches the SBOM to the pushed image (by digest) as an OCI 1.1 referrer via `cosign attest --type cyclonedx`.
+- **Digest transport:** GitHub Actions artifacts. CI uploads a JSON file per matrix cell `{image, platform, digest, version}`. Release downloads artifacts from the CI run via `gh api` (the CI run ID is already resolved in the `validate` job).
+- **Cosign identity scope:** Workflow-scoped. `--certificate-identity` matching the exact workflow file path and ref (e.g., `https://github.com/schwichtgit/ai-resume/.github/workflows/ci.yml@refs/heads/main`). Tighter than repo-scoped: only the specific CI workflow can produce valid signatures.
+- **SBOM target:** SBOM is generated against the pushed image by digest (`syft <registry>/<image>@sha256:...`), not the local image. This guarantees the SBOM describes exactly what is in the registry.
+- **Step ordering (Sigstore convention):** After push: (1) generate SBOM against pushed digest, (2) attest SBOM as OCI 1.1 referrer, (3) sign the image. Attestation before signing follows the Sigstore reference workflow.
+- **Tool installation:** cosign via `sigstore/cosign-installer@v3` (v2.4.0+ for OCI 1.1), syft via `anchore/sbom-action/download-syft@v0` GitHub Action (not curl). Pinned actions, not ad-hoc binary downloads.
+- **COSIGN_YES env var:** Set `COSIGN_YES: "true"` as a job-level env var instead of `--yes` flag per invocation. Single declaration, cleaner.
+
+**Sigstore Security Model:**
+
+The signing chain relies on three Sigstore components:
+
+1. **Fulcio** (Certificate Authority): Exchanges the GitHub Actions OIDC token for a short-lived (10-minute) X.509 certificate containing the workflow identity claim
+2. **Rekor** (Transparency Log): Records an inclusion proof with a trusted timestamp. Even after the certificate expires, the Rekor entry proves the artifact was signed while the certificate was valid. Tamper-resistant: an attacker cannot backdate a signature.
+3. **OCI 1.1 Referrers API**: Signatures and SBOM attestations are stored as referrers linked to the image manifest in the OCI registry. No `.sig` or `.sbom` tag hacks. Discoverable by security scanners automatically via `cosign tree`.
+
+**Minimum Tool Versions:**
+
+| Tool | Min Version | Role |
+| --- | --- | --- |
+| cosign | v2.4.0+ | Signing, verification, OCI 1.1 attachment, SBOM attestation |
+| syft | v1.0.0+ | SBOM generation (CycloneDX JSON, OCI 1.1 format support) |
+| OCI Registry | ghcr.io | Must support the Referrers API (ghcr.io supports OCI 1.1) |
+
+**Scope:**
+
+- `scripts/publish-ci.sh`: Digest capture in `push-arch` (`--digestfile`), digest-based `merge` (`--digest-amd64`/`--digest-arm64` flags with tag-based fallback), manifest list digest output, new `verify` subcommand wrapping `cosign verify`
+- `.github/workflows/ci.yml`: `id-token: write` permission, `COSIGN_YES: "true"` env, `sigstore/cosign-installer@v3`, `anchore/sbom-action/download-syft@v0`, keyless sign per arch image, syft SBOM against pushed digest + `cosign attest`, digest JSON artifact upload, SBOM artifact upload, build timestamp in dev tags
+- `.github/workflows/release.yml`: `id-token: write` permission, `COSIGN_YES: "true"` env, download digest artifacts from CI run, digest-based manifest merge, cosign sign manifest list, new `verify-signatures` job between `merge-manifests` and `publish-tags`
+- `docs/CI-CONTAINER-FLOW.md`: Supply chain security section, Sigstore model, attestation model, updated data flow diagram
+
+**Acceptance Criteria:**
+
+- [ ] `publish-ci.sh push-arch` uses `podman push --digestfile` and prints `DIGEST=sha256:...` to stdout
+- [ ] `publish-ci.sh merge` accepts `--digest-amd64` and `--digest-arm64` flags for digest-based `podman manifest add <image>@<digest>`
+- [ ] `publish-ci.sh merge` falls back to tag-based references when digest flags are omitted
+- [ ] `publish-ci.sh merge` prints `MANIFEST_DIGEST=sha256:...` to stdout after push
+- [ ] `publish-ci.sh verify` subcommand runs `cosign verify` with `--certificate-identity` (workflow-scoped) and `--certificate-oidc-issuer`
+- [ ] ci.yml permissions include `id-token: write`
+- [ ] ci.yml sets `COSIGN_YES: "true"` as job-level env var
+- [ ] ci.yml installs cosign via `sigstore/cosign-installer@v3` (v2.4.0+) in `container-build` (push events only)
+- [ ] ci.yml installs syft via `anchore/sbom-action/download-syft@v0` (not curl)
+- [ ] ci.yml generates CycloneDX JSON SBOM against the pushed image by digest: `syft <registry>/<image>@<digest>`
+- [ ] ci.yml attaches SBOM as OCI 1.1 referrer via `cosign attest --type cyclonedx --predicate <sbom.json> <image>@<digest>` (push events only)
+- [ ] ci.yml signs each arch-specific image by digest with `cosign sign <image>@<digest>` AFTER SBOM attestation (push events only)
+- [ ] ci.yml step order after push: (1) generate SBOM, (2) attest SBOM, (3) sign image
+- [ ] ci.yml uploads digest JSON artifact per matrix cell (`{image, platform, digest, version}`)
+- [ ] ci.yml uploads SBOM artifact per matrix cell
+- [ ] ci.yml dev tags include build timestamp: `dev-<sha>-B<YYYYMMDDHHMMSS>`
+- [ ] release.yml permissions include `id-token: write`
+- [ ] release.yml sets `COSIGN_YES: "true"` as job-level env var
+- [ ] release.yml `validate` job downloads digest artifacts from the CI run via `gh api`
+- [ ] release.yml `merge-manifests` job passes digests to `publish-ci.sh merge`
+- [ ] release.yml `merge-manifests` job signs each manifest list with `cosign sign` after push
+- [ ] release.yml has a `verify-signatures` job between `merge-manifests` and `publish-tags`
+- [ ] release.yml `publish-tags` depends on `verify-signatures` (not `merge-manifests`)
+- [ ] release.yml job chain: `validate` -> `merge-manifests` -> `verify-signatures` -> `publish-tags` -> `create-release`
+- [ ] Consumers can verify images with workflow-scoped identity: `cosign verify --certificate-identity 'https://github.com/schwichtgit/ai-resume/.github/workflows/ci.yml@refs/heads/main' --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' <image>@<digest>`
+- [ ] `cosign tree <image>` shows signature + SBOM attestation as OCI 1.1 referrers
+- [ ] `docs/CI-CONTAINER-FLOW.md` documents the Sigstore model (Fulcio, Rekor, OCI 1.1 Referrers), signing chain, verification commands, and attestation artifacts
+
+**Error Handling:**
+
+| Error Condition | Expected Behavior | User-Facing Message |
+| --- | --- | --- |
+| Cosign signing fails (OIDC token issue) | CI job fails, release blocked | cosign error with Fulcio/OIDC details |
+| Fulcio certificate expired during long build | cosign retries OIDC token exchange | Transparent retry, Rekor timestamp covers the gap |
+| Digest mismatch (tag overwritten between push and merge) | `podman manifest add @digest` fails | podman error: manifest not found |
+| Syft SBOM generation fails | CI job fails, release blocked | syft error in job logs |
+| `cosign attest` fails | CI job fails, release blocked | cosign attest error in job logs |
+| Rekor transparency log unreachable | cosign sign fails (Rekor is mandatory in keyless mode) | cosign error: failed to upload to tlog |
+| Signature verification fails before tag promotion | `verify-signatures` fails, tags not promoted | cosign verify error listing failed images |
+| CI digest artifacts not found in release | `validate` job fails | Artifact download error with CI run ID |
+| Build timestamp collision (sub-second re-trigger) | Effectively impossible (YYYYMMDDHHMMSS granularity) | N/A |
+
+**Edge Cases:**
+
+- First release with signing: no previous signatures exist in registry; `cosign tree` returns empty. Normal behavior.
+- cosign keyless certificates expire after 10 minutes (Fulcio default); verification still works because the certificate is countersigned by Rekor transparency log with a trusted timestamp
+- SBOM size varies by image: Python images (api, ingest) produce larger SBOMs than the Alpine frontend or Debian memvid images
+- `cosign attest` on ghcr.io requires the image to be pushed first (attestation references the digest). Step ordering enforces this.
+- Multiple concurrent tag pushes: each gets unique build timestamps, digests are per-push, no collision
+- Shallow clone (`actions/checkout` default `fetch-depth: 1`): `git rev-parse --short HEAD` works, sufficient for SHA tags
+- Registry garbage collection: OCI 1.1 referrers (signatures, SBOM attestations) are linked to the image manifest. If the image is deleted, referrers are also deleted.
+- Workflow rename: If `ci.yml` is renamed, existing signatures remain valid (Rekor entry is immutable) but new verification commands must use the new path. Document the workflow path in `CLAUDE.md`.
+- Cosign verification of release manifest lists: The release workflow signs with `release.yml` identity, while CI signs with `ci.yml` identity. The `verify` subcommand must accept both workflow paths.
+
+**Dependencies:** INFRA-030 (Native ARM Runner Multi-Arch Container Builds)
