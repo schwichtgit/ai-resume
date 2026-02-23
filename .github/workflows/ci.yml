@@ -10,6 +10,8 @@ on:
 permissions:
   contents: read
   pull-requests: read
+  packages: write
+  security-events: write
 
 env:
   NODE_VERSION: '22'
@@ -24,6 +26,7 @@ jobs:
       ingest: ${{ steps.filter.outputs.ingest }}
       memvid-service: ${{ steps.filter.outputs.memvid-service }}
       docs: ${{ steps.filter.outputs.docs }}
+      containers: ${{ steps.filter.outputs.containers }}
     steps:
       - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v3
@@ -47,6 +50,15 @@ jobs:
               - 'docs/**'
               - '**/*.md'
               - '.markdownlint*.yaml'
+            containers:
+              - '**/Dockerfile'
+              - 'frontend/**'
+              - 'api-service/**'
+              - 'memvid-service/**'
+              - 'ingest/**'
+              - 'proto/**'
+              - 'deployment/**'
+              - 'scripts/publish-ci.sh'
 
   # Frontend: TypeScript/React
   frontend:
@@ -568,6 +580,137 @@ jobs:
       - name: Release gate passed
         run: echo "Release gate passed - all blocking outcome gates succeeded"
 
+  # Container builds: 4 images x 2 platforms (native runners)
+  container-build:
+    needs: changes
+    if: ${{ needs.changes.outputs.containers == 'true' }}
+    runs-on: ${{ matrix.platform == 'amd64' && 'ubuntu-latest' || 'ubuntu-24.04-arm64' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [frontend, api, memvid, ingest]
+        platform: [amd64, arm64]
+    env:
+      IMAGE_NAME: ai-resume-${{ matrix.image }}
+      REGISTRY: ghcr.io/${{ github.repository_owner }}
+      VERSION: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set version for non-tag refs
+        run: |
+          if [[ "$VERSION" != v* ]]; then
+            VERSION="dev-$(git rev-parse --short HEAD)"
+            echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          fi
+
+      - name: Sync proto files
+        if: matrix.image == 'memvid' || matrix.image == 'api'
+        run: |
+          SERVICE=${{ matrix.image == 'memvid' && 'memvid-service' || 'api-service' }}
+          mkdir -p "$SERVICE/proto/memvid/v1"
+          cp proto/memvid/v1/memvid.proto "$SERVICE/proto/memvid/v1/"
+
+      - name: Determine build context
+        id: ctx
+        run: |
+          case "${{ matrix.image }}" in
+            frontend) echo "dir=frontend" >> "$GITHUB_OUTPUT" ;;
+            api)      echo "dir=api-service" >> "$GITHUB_OUTPUT" ;;
+            memvid)   echo "dir=memvid-service" >> "$GITHUB_OUTPUT" ;;
+            ingest)   echo "dir=ingest" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Build container image
+        env:
+          BUILD_DATE: ${{ github.event.head_commit.timestamp || github.event.pull_request.updated_at }}
+        run: |
+          podman build \
+            --tag "localhost/${IMAGE_NAME}:${VERSION}" \
+            --annotation "org.opencontainers.image.title=${IMAGE_NAME}" \
+            --annotation "org.opencontainers.image.source=https://github.com/${{ github.repository }}" \
+            --annotation "org.opencontainers.image.version=${VERSION}" \
+            --annotation "org.opencontainers.image.created=${BUILD_DATE}" \
+            --annotation "org.opencontainers.image.revision=${{ github.sha }}" \
+            --annotation "org.opencontainers.image.licenses=PolyForm-Noncommercial-1.0.0 OR LicenseRef-Commercial" \
+            --annotation "org.opencontainers.image.vendor=${{ github.repository_owner }}" \
+            -f "${{ steps.ctx.outputs.dir }}/Dockerfile" \
+            "${{ steps.ctx.outputs.dir }}/"
+
+      - name: Trivy scan (SARIF)
+        uses: aquasecurity/trivy-action@0.34.1
+        with:
+          image-ref: 'localhost/${{ env.IMAGE_NAME }}:${{ env.VERSION }}'
+          format: 'sarif'
+          output: 'trivy-${{ matrix.image }}-${{ matrix.platform }}.sarif'
+          trivyignores: '.trivyignore'
+
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: 'trivy-${{ matrix.image }}-${{ matrix.platform }}.sarif'
+          category: 'trivy-release-ai-resume-${{ matrix.image }}-${{ matrix.platform }}'
+
+      - name: Trivy severity gate (CRITICAL/HIGH)
+        uses: aquasecurity/trivy-action@0.34.1
+        with:
+          image-ref: 'localhost/${{ env.IMAGE_NAME }}:${{ env.VERSION }}'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          trivyignores: '.trivyignore'
+
+      - name: Container smoke tests
+        run: |
+          echo "--- Smoke testing ${IMAGE_NAME} on ${{ matrix.platform }} ---"
+
+          # Determine health check port and path
+          case "${{ matrix.image }}" in
+            frontend) PORT=8080; HEALTH_PATH="/health" ;;
+            api)      PORT=3000; HEALTH_PATH="/health" ;;
+            memvid)   PORT=50051; HEALTH_PATH="" ;;
+            ingest)   PORT=""; HEALTH_PATH="" ;;
+          esac
+
+          # Test 1: Image runs
+          CID=$(podman run -d --name smoke-test "localhost/${IMAGE_NAME}:${VERSION}")
+
+          # Test 2: Non-root user check
+          USER=$(podman exec "$CID" whoami 2>/dev/null || podman exec "$CID" id -u 2>/dev/null || echo "unknown")
+          echo "Container user: $USER"
+          if [ "$USER" = "root" ] || [ "$USER" = "0" ]; then
+            echo "::warning::Container runs as root"
+          fi
+
+          # Test 3: Health check (if applicable)
+          if [ -n "$PORT" ] && [ -n "$HEALTH_PATH" ]; then
+            sleep 3
+            STATUS=$(podman exec "$CID" wget -q -O /dev/null -S "http://localhost:${PORT}${HEALTH_PATH}" 2>&1 | grep "HTTP/" | tail -1 | awk '{print $2}') || true
+            echo "Health check status: ${STATUS:-no response}"
+          fi
+
+          # Test 4: OCI annotations
+          podman inspect "localhost/${IMAGE_NAME}:${VERSION}" --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' | grep -q "${VERSION}" && echo "OCI version annotation: OK" || echo "::warning::OCI version annotation missing"
+
+          # Cleanup
+          podman rm -f smoke-test || true
+
+      - name: Login to ghcr.io
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push arch-specific image
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          chmod +x scripts/publish-ci.sh
+          scripts/publish-ci.sh push-arch "$REGISTRY" "$IMAGE_NAME" "$VERSION" "${{ matrix.platform }}"
+
   # Summary job (always runs, reports overall status)
   summary:
     needs:
@@ -582,6 +725,7 @@ jobs:
         e2e-real,
         docs,
         commit-standards,
+        container-build,
       ]
     if: always()
     runs-on: ubuntu-latest
@@ -598,6 +742,7 @@ jobs:
           echo "E2E Real: ${{ needs.e2e-real.result || 'skipped' }}"
           echo "Docs: ${{ needs.docs.result || 'skipped' }}"
           echo "Commit Standards: ${{ needs.commit-standards.result || 'skipped' }}"
+          echo "Container Build: ${{ needs.container-build.result || 'skipped' }}"
           echo ""
           echo "=== Coverage Gate ==="
           echo "Coverage thresholds enforced per-service:"
@@ -613,7 +758,8 @@ jobs:
              [[ "${{ needs.memvid-service.result }}" == "failure" ]] || \
              [[ "${{ needs.cross-service.result }}" == "failure" ]] || \
              [[ "${{ needs.docs.result }}" == "failure" ]] || \
-             [[ "${{ needs.commit-standards.result }}" == "failure" ]]; then
+             [[ "${{ needs.commit-standards.result }}" == "failure" ]] || \
+             [[ "${{ needs.container-build.result }}" == "failure" ]]; then
             echo ""
             echo "One or more jobs failed!"
             exit 1
