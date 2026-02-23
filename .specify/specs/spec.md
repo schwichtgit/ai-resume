@@ -3211,3 +3211,69 @@ Features planned but not yet started. These use FUNC-NNN identifiers continuing 
 - `deployment/.python-version` pins 3.13; if a CI job ever runs deployment code, uv handles the different version transparently
 
 **Dependencies:** INFRA-021 (GitHub CI Workflows)
+
+---
+
+### INFRA-030: Native ARM Runner Multi-Arch Container Builds
+
+**Description:** Replace the static podman binary approach in `release.yml` (which fails with `failed to reexec: Permission denied`) and the QEMU-emulated builds with native architecture runners. Use a matrix strategy of 4 images x 2 platforms (8 parallel jobs) on `ubuntu-latest` (amd64) and `ubuntu-24.04-arm64` (arm64). Each job builds a single-arch image using the runner's pre-installed podman, pushes it to ghcr.io with an arch-specific tag, then a merge job creates OCI manifest lists combining both architectures. The same native runner pattern applies to any container build steps in `ci.yml`. Local development (`build-all.sh`) remains unchanged (podman + QEMU).
+
+A new CI-optimized publish script (`scripts/publish-ci.sh`) handles single-arch push, manifest creation, manifest push, and semver tag family application. The existing `publish-containers.sh` (which uses skopeo and local manifest lists) remains for local/manual use.
+
+**Clarify Resolutions:**
+
+- **ci.yml scope:** CI builds containers (matrixed on native runners) and tests them as a quality gate. Arch-specific images are pushed to ghcr.io from CI. `release.yml` pulls the tested images and publishes manifest lists -- no rebuild on release. The `validate` job in `release.yml` checks that CI passed on the tagged commit (existing behavior).
+- **Arch-specific tag format:** Always dot-separated: `<version>.<arch>`. Examples: `v1.0.0.amd64`, `v0.1.0-alpha.1.arm64`. The version tag (without arch suffix) is applied only to the merged manifest list.
+- **Trivy SARIF categories:** Include arch in category name: `trivy-release-<image>-<arch>` (e.g., `trivy-release-ai-resume-frontend-amd64`). Ensures unique entries in GitHub Code Scanning.
+- **Proto file sync:** Conditional on `matrix.image` -- only run for `memvid-service` and `api-service` builds.
+
+**Scope:**
+
+- `ci.yml`: Add matrixed container build jobs (4 images x 2 platforms on native runners), container smoke tests, and push arch-specific images to ghcr.io
+- `release.yml`: Refactor to pull CI-built arch images, create manifest lists, publish with semver tags, create GitHub Release. Remove static podman install and QEMU. No container rebuilds.
+- `scripts/publish-ci.sh`: New script for manifest creation, manifest push, and semver tag family application
+- `build-all.sh`, `publish-containers.sh`: No changes (local dev stays podman + QEMU)
+
+**Acceptance Criteria:**
+
+- [ ] `ci.yml` includes matrixed container build jobs using `ubuntu-latest` for `linux/amd64` and `ubuntu-24.04-arm64` for `linux/arm64`
+- [ ] CI container build jobs push arch-specific images to ghcr.io with dot-separated tags (e.g., `ai-resume-frontend:v0.1.0-alpha.1.amd64`)
+- [ ] CI runs container smoke tests on built images before the build is considered passing
+- [ ] The static podman binary download step (`mgoltzsche/podman-static`) is removed from `release.yml`
+- [ ] `release.yml` does not rebuild containers -- it pulls arch-specific images already pushed by CI
+- [ ] 8 arch-specific images are built in parallel (4 images x 2 platforms) in CI
+- [ ] `release.yml` merge job creates OCI manifest lists for each image combining both arch-specific tags
+- [ ] Merged manifest lists are pushed to ghcr.io with the version tag (e.g., `ai-resume-frontend:v0.1.0-alpha.1`)
+- [ ] Trivy SARIF scans run per-arch in CI build jobs (8 scans), results uploaded with arch-qualified categories (e.g., `trivy-release-ai-resume-frontend-amd64`)
+- [ ] Trivy severity gate (CRITICAL/HIGH) runs per-arch in CI build jobs
+- [ ] If any single CI build job fails, the release is blocked (all-or-nothing via CI status check)
+- [ ] `scripts/publish-ci.sh` exists and handles: manifest create/add/push, semver tag family
+- [ ] Semver tag family is applied: `sha-<short>`, bare version (strip `v` prefix), and for stable releases: minor tag + `latest`
+- [ ] GitHub Release is created with `--prerelease` flag for pre-release versions
+- [ ] `build-all.sh` and `publish-containers.sh` are unchanged (local dev workflow preserved)
+- [ ] The `validate` job in `release.yml` (CI status check, changelog validation) is unchanged
+- [ ] OCI image annotations (org.opencontainers.image.\*) are preserved on all images
+- [ ] ghcr.io login uses `github.actor` + `secrets.GITHUB_TOKEN` with `packages: write` permission
+- [ ] Proto file sync runs conditionally, only for `memvid-service` and `api-service` matrix entries
+
+**Error Handling:**
+
+| Error Condition                         | Expected Behavior                    | User-Facing Message                     |
+| --------------------------------------- | ------------------------------------ | --------------------------------------- |
+| ARM64 runner unavailable                | Job queued until runner available    | GitHub Actions: "Waiting for a runner"  |
+| podman build fails on one arch          | Matrix job fails, merge job skipped  | Build step error output in job log      |
+| ghcr.io push fails (auth, network)      | Job fails immediately                | podman push error with HTTP status      |
+| Manifest merge fails (missing arch tag) | Merge job fails, release not created | podman manifest add error               |
+| Trivy finds CRITICAL/HIGH CVE           | Build job fails at severity gate     | Trivy table output with CVE details     |
+| One of 8 matrix jobs fails              | Merge job skipped, release fails     | GitHub Actions shows failed matrix cell |
+
+**Edge Cases:**
+
+- First release after migration: no ghcr.io cache exists, all layers pushed fresh (~5-10 min per image)
+- ARM64 Rust compilation (memvid-service): significantly slower than amd64 (~15-20 min), may dominate total build time
+- Pre-release tags (e.g., `v0.1.0-alpha.1`): changelog validation skipped, `--prerelease` flag on GitHub Release, semver tag family limited to sha + bare version
+- Runner OS differences: `ubuntu-latest` (currently 24.04) vs `ubuntu-24.04-arm64` may have different podman versions; workflow should not pin podman version
+- Manifest list format: must use OCI index (not Docker manifest list v2) for ghcr.io compatibility
+- Concurrent tag pushes: if two releases are triggered simultaneously, arch-specific tags may collide; mitigated by GitHub's single-run-per-tag guarantee
+
+**Dependencies:** INFRA-027 (Release Workflow), FUNC-075 (Trivy Severity Gate), INFRA-021 (GitHub CI Workflows)

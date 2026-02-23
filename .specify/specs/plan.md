@@ -807,3 +807,40 @@ A `.trivyignore` file (committed empty with comment header) provides documented 
 
 - Positive: Single source of truth for Python versions (`.python-version` per service), fixes 3.11 vs 3.12 mismatch, removes redundant action, simpler YAML (~18 lines removed)
 - Negative: First CI run after migration has no Python cache (~15s download), uv becomes the sole Python provider in CI (acceptable given it already manages venvs and dependencies)
+
+### ADR-019: Native ARM Runner Multi-Arch Container Pipeline (INFRA-030)
+
+**Date:** 2026-02-22
+**Status:** Accepted
+
+**Context:** The release pipeline (`release.yml`) uses a static podman binary (`mgoltzsche/podman-static`) for container builds, which fails on GitHub Actions runners with `failed to reexec: Permission denied`. The existing approach also uses QEMU emulation for cross-platform builds (amd64 + arm64), which is slow. GitHub now provides free native ARM64 runners (`ubuntu-24.04-arm64`) for public repositories, enabling native compilation on both architectures.
+
+**Decision:** Split the container pipeline across `ci.yml` (build + test) and `release.yml` (merge manifests + publish + release). Use a matrix strategy of 4 images x 2 platforms (8 parallel jobs) on native runners. CI pushes arch-specific images to ghcr.io on main branch pushes only (PRs verify build but don't push). Release workflow pulls tested arch-specific images and creates OCI manifest lists.
+
+**Key Technical Decisions:**
+
+1. **Job architecture:** `container-build` (8 matrix, ci.yml) -> `container-test` (8 matrix, ci.yml) -> `container-merge` (1 job, release.yml) -> `release` (1 job, release.yml)
+2. **Push policy:** Build-only on PRs. Push arch-specific images to ghcr.io only on main branch pushes.
+3. **Paths filter:** New `containers` filter triggers on Dockerfiles, service source, deployment configs, proto files.
+4. **Registry auth:** `redhat-actions/podman-login@v1` for native podman credential handling.
+5. **Smoke tests:** Per-arch health check, port verification, non-root user check, OCI annotation verification.
+6. **publish-ci.sh:** Subcommand design (`push-arch`, `merge`, `tag-family`) for composability and local testability.
+7. **release.yml jobs:** `validate` -> `merge-manifests` -> `publish-tags` -> `create-release`. Separates concerns for partial re-runs.
+
+**Arch-specific tag format:** Dot-separated: `<version>.<arch>` (e.g., `v0.1.0-alpha.1.amd64`). Version tag applied only to merged manifest list.
+
+**Trivy SARIF categories:** Arch-qualified: `trivy-release-<image>-<arch>` for unique GitHub Code Scanning entries.
+
+**Proto sync:** Conditional on `matrix.image`, only for `memvid-service` and `api-service`.
+
+**Alternatives Considered:**
+
+1. **Fix static podman binary (add rootless setup)** -- Fragile, non-standard for GitHub Actions, still requires QEMU for cross-arch. Does not solve the performance problem.
+2. **Switch to Docker/Buildx** -- Pre-installed on runners and well-supported, but diverges from the project's podman-based toolchain. Would require maintaining two container runtimes (podman local, Docker CI).
+3. **Single runner with QEMU + runner's native podman** -- Quick fix that unblocks the immediate failure but ARM builds remain ~10x slower than native. Acceptable as a temporary workaround but not a long-term solution.
+4. **Push arch images from PRs** -- Enables testing PR container images but creates ghcr.io tag pollution with orphaned PR-specific tags. Storage cost and cleanup overhead not justified.
+
+**Consequences:**
+
+- Positive: Native ARM compilation (~10x faster than QEMU), containers tested as CI quality gate, clean separation between build (CI) and publish (release), no static binary hacks, composable publish script
+- Negative: CI pushes arch-specific images to ghcr.io on every main push (storage cost, mitigated by retention policies), more complex YAML (~100 lines in ci.yml, release.yml refactored), `redhat-actions/podman-login@v1` adds a third-party action dependency

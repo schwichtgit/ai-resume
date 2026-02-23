@@ -2469,6 +2469,72 @@
       "passes": true,
       "verified": true,
       "dependencies": ["ci-workflows"]
+    },
+    {
+      "id": "publish-ci-script",
+      "category": "infrastructure",
+      "title": "CI Publish Script with Subcommands (publish-ci.sh)",
+      "description": "New scripts/publish-ci.sh with subcommands: push-arch (push single-arch image to registry), merge (create OCI manifest list from arch-specific tags and push), tag-family (apply semver tag family via skopeo). Uses dot-separated arch tags (<version>.<arch>). Script is locally testable with --dry-run.",
+      "testing_steps": [
+        "Run 'test -f scripts/publish-ci.sh && test -x scripts/publish-ci.sh' and verify the script exists and is executable",
+        "Run 'scripts/publish-ci.sh --help' and verify output mentions subcommands: push-arch, merge, tag-family",
+        "Run 'scripts/publish-ci.sh push-arch --dry-run ghcr.io/test ai-resume-frontend v0.1.0 amd64' and verify it prints the podman push command without executing",
+        "Run 'scripts/publish-ci.sh merge --dry-run ghcr.io/test ai-resume-frontend v0.1.0' and verify it prints podman manifest create, add (for .amd64 and .arm64), and push commands",
+        "Run 'scripts/publish-ci.sh tag-family --dry-run ghcr.io/test ai-resume-frontend v0.1.0-alpha.1' and verify it prints skopeo copy commands for sha-<short> and 0.1.0-alpha.1 (bare version) tags only (pre-release, no minor/latest)",
+        "Run 'scripts/publish-ci.sh tag-family --dry-run ghcr.io/test ai-resume-frontend v1.2.3' and verify it prints skopeo copy commands for sha-<short>, 1.2.3, 1.2, and latest tags (stable release full family)",
+        "Run 'grep -c set.*-euo.*pipefail scripts/publish-ci.sh' and verify at least 1 match (strict bash mode)",
+        "Run 'shellcheck scripts/publish-ci.sh' and verify no errors (warnings acceptable)",
+        "Verify the script uses podman manifest (not docker manifest) for OCI manifest list operations",
+        "Verify the script uses skopeo copy --all for server-side re-tagging (no re-push of layers)"
+      ],
+      "passes": false,
+      "dependencies": ["ci-workflows"]
+    },
+    {
+      "id": "ci-container-build",
+      "category": "infrastructure",
+      "title": "CI Matrixed Container Build on Native ARM Runners",
+      "description": "Add container build jobs to ci.yml using a 4-image x 2-platform matrix on ubuntu-latest (amd64) and ubuntu-24.04-arm64 (arm64). Each job builds a single-arch image with the runner's native podman, runs Trivy SARIF scan + severity gate, and runs container smoke tests. On main branch pushes, arch-specific images are pushed to ghcr.io with dot-separated tags (<version>.<arch>). PR builds verify the image builds but do not push. Proto sync is conditional on matrix.image (memvid-service and api-service only). New containers paths filter triggers builds.",
+      "testing_steps": [
+        "Run 'grep -c ubuntu-24.04-arm64 .github/workflows/ci.yml' and verify at least 1 match (ARM64 runner configured)",
+        "Run 'grep -c matrix.image .github/workflows/ci.yml' and verify at least 1 match (image matrix dimension exists)",
+        "Run 'grep -c matrix.platform .github/workflows/ci.yml' and verify at least 1 match (platform matrix dimension exists)",
+        "Verify the ci.yml paths filter includes a 'containers' entry that matches '**/Dockerfile' and service source directories",
+        "Run 'grep -c podman-login .github/workflows/ci.yml' and verify at least 1 match (redhat-actions/podman-login used for auth)",
+        "Run 'grep -c trivy-action .github/workflows/ci.yml' and verify at least 4 matches (Trivy scans in container build jobs)",
+        "Verify Trivy SARIF categories include arch qualifier (e.g., grep for 'trivy-release.*amd64' or 'trivy-release.*arm64' pattern)",
+        "Verify proto sync step has a conditional (if) that checks matrix.image for memvid-service or api-service",
+        "Verify container-build job has a condition that only pushes to ghcr.io on github.ref == 'refs/heads/main' (not on PRs)",
+        "Run 'grep -c mgoltzsche/podman-static .github/workflows/ci.yml' and verify count is 0 (static podman removed)",
+        "Verify container smoke test steps exist: health check, port verification, non-root user check",
+        "Verify OCI annotations (org.opencontainers.image.*) are set in the podman build command"
+      ],
+      "passes": false,
+      "dependencies": ["ci-workflows", "publish-ci-script"]
+    },
+    {
+      "id": "release-native-runners",
+      "category": "infrastructure",
+      "title": "Release Pipeline with Native Runner Manifests",
+      "description": "Refactor release.yml to pull CI-built arch-specific images instead of rebuilding. Job structure: validate (unchanged) -> merge-manifests (create OCI manifest lists from arch tags) -> publish-tags (semver tag family) -> create-release (GitHub Release with --prerelease for pre-release). Remove static podman binary download and QEMU setup. Uses publish-ci.sh merge and tag-family subcommands.",
+      "testing_steps": [
+        "Run 'grep -c mgoltzsche/podman-static .github/workflows/release.yml' and verify count is 0 (static podman binary removed)",
+        "Run 'grep -c docker/setup-qemu .github/workflows/release.yml' and verify count is 0 (QEMU removed)",
+        "Run 'grep -c podman.build .github/workflows/release.yml' and verify count is 0 (no container builds in release)",
+        "Verify release.yml has a merge-manifests job that calls publish-ci.sh merge for each of the 4 images",
+        "Verify release.yml has a publish-tags job that calls publish-ci.sh tag-family for each of the 4 images",
+        "Verify release.yml has a create-release job that runs gh release create with --prerelease detection",
+        "Verify the validate job is unchanged (CI status check via gh api, changelog validation for non-prerelease)",
+        "Run 'grep -c podman-login .github/workflows/release.yml' and verify at least 1 match (registry auth present)",
+        "Verify job dependency chain: validate -> merge-manifests -> publish-tags -> create-release",
+        "Verify release.yml permissions include packages: write and contents: write"
+      ],
+      "passes": false,
+      "dependencies": [
+        "release-workflow",
+        "publish-ci-script",
+        "ci-container-build"
+      ]
     }
   ]
 }
