@@ -1,0 +1,218 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+  packages: write
+  checks: read
+  security-events: write
+
+env:
+  REGISTRY: ghcr.io/schwichtgit
+  PODMAN_VERSION: "5.8.0"
+
+jobs:
+  # Gate: verify CI passed and changelog has an entry for this version
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Extract version and detect pre-release
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [[ "$VERSION" == *-* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check CI status
+        run: |
+          SHA="${{ github.sha }}"
+          echo "Checking CI status for commit ${SHA}..."
+
+          # Find the most recent completed CI run for this commit
+          RUN_ID=$(gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=${SHA}&status=completed" \
+            --jq '.workflow_runs[0].id // empty')
+
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::CI has not passed on commit ${SHA}"
+            echo "No completed CI workflow run found for this commit."
+            exit 1
+          fi
+
+          # Check that the summary job concluded with success
+          SUMMARY_CONCLUSION=$(gh api "repos/${{ github.repository }}/actions/runs/${RUN_ID}/jobs" \
+            --jq '.jobs[] | select(.name == "summary") | .conclusion')
+
+          if [ "$SUMMARY_CONCLUSION" != "success" ]; then
+            echo "::error::CI has not passed on commit ${SHA}"
+            echo "Summary job conclusion: ${SUMMARY_CONCLUSION:-not found}"
+            exit 1
+          fi
+
+          echo "CI passed (run ${RUN_ID}, summary: ${SUMMARY_CONCLUSION})"
+
+      - name: Validate changelog entry
+        if: steps.version.outputs.prerelease == 'false'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if ! grep -qF "## [$VERSION]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md missing entry for version $VERSION"
+            echo "Expected a heading like: ## [$VERSION]"
+            exit 1
+          fi
+          echo "Changelog entry found for version $VERSION"
+
+  # Build containers, scan for vulnerabilities, publish to ghcr.io
+  build-and-publish:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Install Podman ${{ env.PODMAN_VERSION }}
+        run: |
+          curl -fsSL "https://github.com/mgoltzsche/podman-static/releases/download/v${PODMAN_VERSION}/podman-linux-amd64.tar.gz" \
+            -o podman.tar.gz
+          tar xzf podman.tar.gz
+          export PATH="$(pwd)/podman-linux-amd64/usr/local/bin:$PATH"
+          echo "$(pwd)/podman-linux-amd64/usr/local/bin" >> "$GITHUB_PATH"
+          podman --version
+
+      - name: Install go-task
+        uses: go-task/setup-task@v1
+
+      - name: Login to ghcr.io
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io \
+            -u "${{ github.actor }}" --password-stdin
+
+      - name: Sync proto files
+        run: |
+          mkdir -p memvid-service/proto/memvid/v1
+          cp proto/memvid/v1/memvid.proto memvid-service/proto/memvid/v1/
+
+      - name: Build containers
+        env:
+          VERSION: ${{ github.ref_name }}
+          REGISTRY: localhost
+        run: task container:build
+
+      # -- Trivy SARIF scans (one per image for upload-sarif) --
+      - name: Trivy scan (SARIF) - frontend
+        uses: aquasecurity/trivy-action@0.34.1
+        with:
+          image-ref: 'localhost/ai-resume-frontend:${{ github.ref_name }}'
+          format: 'sarif'
+          output: 'trivy-frontend.sarif'
+          trivyignores: '.trivyignore'
+
+      - name: Upload SARIF - frontend
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: 'trivy-frontend.sarif'
+          category: 'trivy-release-ai-resume-frontend'
+
+      - name: Trivy scan (SARIF) - api
+        uses: aquasecurity/trivy-action@0.34.1
+        with:
+          image-ref: 'localhost/ai-resume-api:${{ github.ref_name }}'
+          format: 'sarif'
+          output: 'trivy-api.sarif'
+          trivyignores: '.trivyignore'
+
+      - name: Upload SARIF - api
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: 'trivy-api.sarif'
+          category: 'trivy-release-ai-resume-api'
+
+      - name: Trivy scan (SARIF) - memvid
+        uses: aquasecurity/trivy-action@0.34.1
+        with:
+          image-ref: 'localhost/ai-resume-memvid:${{ github.ref_name }}'
+          format: 'sarif'
+          output: 'trivy-memvid.sarif'
+          trivyignores: '.trivyignore'
+
+      - name: Upload SARIF - memvid
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: 'trivy-memvid.sarif'
+          category: 'trivy-release-ai-resume-memvid'
+
+      - name: Trivy scan (SARIF) - ingest
+        uses: aquasecurity/trivy-action@0.34.1
+        with:
+          image-ref: 'localhost/ai-resume-ingest:${{ github.ref_name }}'
+          format: 'sarif'
+          output: 'trivy-ingest.sarif'
+          trivyignores: '.trivyignore'
+
+      - name: Upload SARIF - ingest
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: 'trivy-ingest.sarif'
+          category: 'trivy-release-ai-resume-ingest'
+
+      # -- Trivy severity gate (CRITICAL/HIGH, all images) --
+      - name: Install Trivy CLI
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sh -s -- -b /usr/local/bin
+
+      - name: Trivy severity gate (CRITICAL/HIGH)
+        env:
+          TRIVY_SEVERITY: CRITICAL,HIGH
+          TRIVY_IGNORE_UNFIXED: 'true'
+        run: |
+          IMAGES=(
+            ai-resume-frontend
+            ai-resume-api
+            ai-resume-memvid
+            ai-resume-ingest
+          )
+          for IMG in "${IMAGES[@]}"; do
+            echo "--- Scanning ${IMG} for fixable CRITICAL/HIGH vulnerabilities ---"
+            trivy image \
+              --exit-code 1 \
+              --format table \
+              --ignorefile .trivyignore \
+              "localhost/${IMG}:${{ github.ref_name }}"
+          done
+
+      - name: Publish containers
+        run: task container:publish -- ${{ env.REGISTRY }} ${{ github.ref_name }}
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          PRERELEASE_FLAG=""
+          if [[ "$VERSION" == *-* ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            $PRERELEASE_FLAG

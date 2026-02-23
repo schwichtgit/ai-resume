@@ -357,7 +357,10 @@ The true E2E test (`scripts/test-e2e-real.sh`) enforces semantic quality across 
 | Data Volume        | `/opt/ai-resume/data` mounted ro                                              | .mv2 file + profile config; stateless containers                                         |
 | Development        | Local multi-terminal (3 terminals)                                            | Cargo run, uvicorn --reload, npm run dev                                                 |
 | CI/CD              | GitHub Actions (`.github/workflows/ci.yml`)                                   | Monorepo path filtering; conditional jobs per service; summary gate                      |
-| Build Pipeline     | `scripts/build-all.sh`                                                        | Multi-arch (amd64 + arm64); scp transfer; podman compose deploy                          |
+| Release Pipeline   | GitHub Actions (`.github/workflows/release.yml`)                              | Tag-triggered; Podman 5.8 (podman-static) + QEMU; Taskfile orchestration; ghcr.io push   |
+| Build Pipeline     | `scripts/build-all.sh` via `task container:build`                             | Multi-arch (amd64 + arm64); Podman manifests; OCI annotations                            |
+| Publish Pipeline   | `scripts/publish-containers.sh` via `task container:publish`                  | skopeo manifest copy; semver tag family; server-side re-tagging                          |
+| Container Registry | ghcr.io/schwichtgit/ai-resume-{service}                                       | All 4 images; semver tags + latest + sha; monorepo versioning                            |
 | Static Analysis    | SonarQube + CodeQL                                                            | Runs on push to main and PRs                                                             |
 
 ### Container Topology (Production)
@@ -686,3 +689,101 @@ A `.trivyignore` file (committed empty with comment header) provides documented 
 
 - Positive: Verifies actual service availability (not just binary existence), no additional binaries needed, works in distroless without shell
 - Negative: Requires a Rust code change (adding CLI argument parsing + TCP connect), binary serves dual purpose (server + health checker)
+
+### ADR-013: Monorepo Versioning -- All Images Same Tag (INFRA-027)
+
+**Date:** 2026-02-22
+**Status:** Accepted
+
+**Context:** The repository contains four container images. Two versioning strategies are possible: all images share one version from a single git tag, or each image has independent versions (e.g., `frontend-v1.0.0`, `api-v2.1.0`). The `compose.yaml` uses a single `${VERSION:-latest}` variable for all images. All services are built and deployed together from the same commit.
+
+**Decision:** All four images share the same version derived from a single git tag. A tag `v1.0.0` produces `ghcr.io/schwichtgit/ai-resume-frontend:v1.0.0`, `ai-resume-api:v1.0.0`, `ai-resume-memvid:v1.0.0`, and `ai-resume-ingest:v1.0.0`.
+
+**Alternatives Considered:**
+
+1. **Independent versioning** (`frontend-v1.0.0`, `api-v2.1.0`) -- More granular, but 4x release overhead, breaks compose.yaml's single `VERSION` variable, over-engineered for a single-developer project where all services deploy together.
+2. **CalVer** (`2026.02.1`) -- Communicates recency but loses semantic meaning (major/minor/patch). Incompatible with the constitution's explicit SemVer 2.0.0 requirement.
+
+**Consequences:**
+
+- Positive: Simple mental model, one tag per release, compose.yaml works unmodified, single changelog
+- Negative: A change to only one service still bumps the version for all images; unchanged images are rebuilt (acceptable for 4 images)
+
+### ADR-014: Podman 5.8 + QEMU in CI via podman-static (INFRA-027)
+
+**Date:** 2026-02-22
+**Status:** Accepted
+
+**Context:** GitHub Actions `ubuntu-24.04` runners ship Podman 4.9.3. The project requires Podman 5.8+ for `podman farm build` (native multi-arch distribution). Multi-arch builds in CI require QEMU emulation since runners are amd64-only. The local development workflow uses Podman exclusively.
+
+**Decision:** Install Podman 5.8.0 from `mgoltzsche/podman-static` (statically linked binary archive, ~5s install). Use `docker/setup-qemu-action@v3` for arm64 emulation. Use the pre-installed skopeo 1.13.3 for manifest publishing and server-side re-tagging. Registry-based `--cache-from`/`--cache-to` for layer caching between builds.
+
+**Alternatives Considered:**
+
+1. **Docker Buildx** (`docker/build-push-action` + `docker/setup-buildx-action`) -- Better caching (`type=gha` integrates with GitHub's cache service), dominant action ecosystem, but inconsistent with local Podman workflow and introduces a second container tool in the project.
+2. **Native ARM64 runners** (`runs-on: ubuntu-24.04-arm`) -- Faster builds (no QEMU), but 2x runner cost, limited availability, requires matrix strategy + manifest merge step.
+3. **Runner's Podman 4.9.3** -- Zero install overhead, but lacks `podman farm build`, older multi-platform `--platform` handling, and diverges from local dev toolchain.
+
+**Consequences:**
+
+- Positive: Consistent toolchain (Podman locally and in CI), `podman farm build` support, pinned version avoids runner update surprises
+- Negative: No `type=gha` cache backend (registry-based caching is slower), Rust arm64 QEMU builds are slow (~15-30 min), `podman-static` is a third-party distribution
+
+### ADR-015: Taskfile-Orchestrated Release Workflow (INFRA-027)
+
+**Date:** 2026-02-22
+**Status:** Accepted
+
+**Context:** Build logic already lives in Taskfile + scripts (`container:build` wraps `build-all.sh`, `container:publish` wraps `publish-containers.sh`). The release workflow could either call these existing targets or duplicate the logic in CI YAML.
+
+**Decision:** Install `go-task` via `go-task/setup-task@v1` (~2s) in the release workflow. The workflow calls `task container:build` and `task container:publish` with `REGISTRY` and `VERSION` variables. CI owns only: tool installation, authentication, pre-build validation (CI gate, changelog check), Trivy scanning, and GitHub Release creation.
+
+**Alternatives Considered:**
+
+1. **Inline shell in YAML** -- No additional tool dependency, but duplicates Taskfile logic, creating two sources of truth that can drift.
+2. **Call scripts directly** (`./scripts/build-all.sh`, `./scripts/publish-containers.sh`) -- Works but bypasses Taskfile's dependency resolution, variable propagation, and precondition checks.
+
+**Consequences:**
+
+- Positive: Single source of truth for build logic, `task container:build` works identically locally and in CI, workflow YAML is concise (~30 lines of steps)
+- Negative: Adds `go-task` as a CI dependency, developers must understand Taskfile indirection
+
+### ADR-016: Publish Script Multi-Tag Extension (FUNC-076)
+
+**Date:** 2026-02-22
+**Status:** Accepted
+
+**Context:** `publish-containers.sh` currently pushes a single `VERSION` tag and conditionally adds `latest`. FUNC-076 requires a full semver tag family: `v1.2.3`, `1.2.3`, `1.2`, `latest`, `sha-<short>` for stable releases, and only `v1.2.3-beta.1` + `sha-<short>` for pre-releases.
+
+**Decision:** Extend `publish-containers.sh` to auto-detect stable vs pre-release from the version string (`[[ "$VERSION" == *-* ]]`). For stable releases, compute and push the full tag family using `skopeo copy --all docker://...source docker://...target` for server-side re-tagging (no re-upload). For pre-releases, push only the full version and SHA tags.
+
+**Alternatives Considered:**
+
+1. **Tag logic in workflow YAML** -- Works but moves domain logic out of the script, making local testing impossible.
+2. **Separate `tag-containers.sh` script** -- Adds a new script for a single concern; better to co-locate with publishing.
+3. **`docker/metadata-action`** -- Docker-specific GitHub Action for tag generation. Not Podman-native, adds Docker dependency.
+
+**Consequences:**
+
+- Positive: All tagging logic co-located with publishing, locally testable, server-side re-tagging avoids re-uploading multi-arch images
+- Negative: Increased script complexity, semver parsing in bash (simple but not robust against malformed input)
+
+### ADR-017: CI Gate via GitHub API Summary Job Check (FUNC-077)
+
+**Date:** 2026-02-22
+**Status:** Accepted
+
+**Context:** The release workflow must verify that CI has passed on the tagged commit before building and pushing images. The CI workflow (`.github/workflows/ci.yml`) has a `summary` aggregation job that depends on all per-service jobs (frontend, api-service, memvid-service, ingest linting, commit standards). If `summary` succeeds, all service checks have passed.
+
+**Decision:** Use `gh api repos/{owner}/{repo}/actions/workflows/ci.yml/runs?head_sha={SHA}` to find the CI run for the tagged commit, then check if the `summary` job concluded with `success`. Fail immediately (no polling or retry) if the `summary` job is not found or did not succeed. Requires `checks: read` permission.
+
+**Alternatives Considered:**
+
+1. **`workflow_run` trigger** -- Release.yml fires automatically after ci.yml completes. Clean separation but unreliable with tag pushes (the tag event and the CI completion event are separate; `workflow_run` may not receive the tag context).
+2. **Check all individual job statuses** -- More thorough but fragile (job names change, new jobs added without updating release.yml).
+3. **Branch protection required checks** -- Robust but requires specific GitHub repo configuration and doesn't apply to tag pushes (only branch pushes and PRs).
+
+**Consequences:**
+
+- Positive: Simple and direct, checks the single aggregation gate, fails fast with clear error message
+- Negative: No polling (if user tags before CI completes, release fails; must re-trigger manually), depends on the `summary` job name not changing

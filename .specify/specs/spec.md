@@ -3031,3 +3031,146 @@ Features planned but not yet started. These use FUNC-NNN identifiers continuing 
 - The SARIF file must be generated even when Trivy finds CRITICAL/HIGH CVEs (format: sarif happens before exit-code evaluation)
 
 **Dependencies:** FUNC-063 (Container Vulnerability Scanning), INFRA-025 (Rust Dependency SBOM)
+
+---
+
+### INFRA-027: GitHub Actions Release Workflow for ghcr.io
+
+**Description:** A GitHub Actions workflow (`.github/workflows/release.yml`) triggered by semantic version tag pushes (`v*.*.*`) that builds all four container images (frontend, api-service, memvid-service, ingest) for `linux/amd64` and `linux/arm64`, pushes them to `ghcr.io/schwichtgit/ai-resume-{service}`, and creates a GitHub Release. Uses Taskfile orchestration (`go-task/setup-task@v1`) to call existing `task container:build` and `task container:publish` targets, keeping build logic in the Taskfile rather than CI YAML. Requires Podman 5.8+ via `mgoltzsche/podman-static` for `podman farm build` support (native multi-arch without QEMU). Uses the pre-installed skopeo for multi-arch manifest publishing. Enforces CI passage on the tagged commit before building.
+
+**Clarify Resolutions:**
+
+- **Ingest container:** Always push all 4 images on release (including ingest). Ingest is ad-hoc per the constitution but still useful as a published artifact for users who want to re-ingest their own resume data.
+- **Multi-tag logic:** Extend `publish-containers.sh` to accept a tag strategy (stable vs prerelease) and generate the full semver tag family. The CI workflow calls the script; it does not own tagging logic.
+- **CI status check:** Query the GitHub API for the `summary` job status in `ci.yml` on the tagged commit SHA. Fail immediately if not found or not succeeded. No polling/retry -- user re-tags after CI passes.
+- **Podman 5.8+ justification:** Required for `podman farm build` (5.0+), which distributes builds to native-arch machines instead of relying solely on QEMU emulation.
+- **Partial build failure:** If any architecture fails for any image, the entire release is aborted. No partial manifests are pushed.
+- **Permissions:** `contents: write`, `packages: write`, `checks: read`, `security-events: write`.
+
+**Acceptance Criteria:**
+
+- [ ] `.github/workflows/release.yml` exists and triggers on `push.tags` matching `v*.*.*`
+- [ ] The workflow installs `go-task` via `go-task/setup-task@v1` and calls `task container:build` and `task container:publish`
+- [ ] The workflow installs Podman 5.8+ from `mgoltzsche/podman-static` (replacing the runner's default 4.9.3)
+- [ ] QEMU is configured via `docker/setup-qemu-action@v3` for arm64 cross-compilation
+- [ ] All 4 images are built for `linux/amd64,linux/arm64` and pushed to `ghcr.io/schwichtgit/ai-resume-{frontend,api,memvid,ingest}`
+- [ ] The workflow has `permissions: contents: write, packages: write, checks: read, security-events: write`
+- [ ] Proto files are synced to `memvid-service/proto/` before the memvid build (matching existing pattern)
+- [ ] A GitHub Release is created with auto-generated release notes; pre-release tags are marked as pre-release
+- [ ] The workflow queries the GitHub API for the `summary` job status in `ci.yml` on the tagged commit; fails with "CI has not passed on commit <SHA>" if not succeeded
+- [ ] If any image build fails for any architecture, the entire release is aborted; no partial manifests are pushed
+
+**Dependencies:** INFRA-021 (GitHub CI Workflows), INFRA-007 (Multi-Arch Container Build Scripts)
+
+---
+
+### INFRA-028: CHANGELOG.md and Version Tracking
+
+**Description:** A `CHANGELOG.md` file at the repository root following the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. Records user-facing changes grouped by version. The release workflow validates that a changelog entry exists for stable release versions. Pre-release tags are exempt from changelog validation.
+
+**Clarify Resolutions:**
+
+- **Validation rule:** Simple `grep -F '## [X.Y.Z]'` substring match. Allows trailing text (e.g., `## [1.0.0] - 2026-02-22`). Passes if any line contains the heading.
+- **Pre-release exemption:** Pre-releases (detected by hyphen in version) skip changelog validation entirely. No requirement to have content under `[Unreleased]` before promoting to stable.
+- **Empty entries:** An existing heading with no content underneath still passes validation. The gate only checks heading existence, not content quality.
+
+**Acceptance Criteria:**
+
+- [ ] `CHANGELOG.md` exists at the repository root following Keep a Changelog format
+- [ ] An `[Unreleased]` section exists at the top for in-progress changes
+- [ ] Standard sections are used: Added, Changed, Deprecated, Removed, Fixed, Security
+- [ ] Version comparison links are included at the bottom per Keep a Changelog convention
+- [ ] The release workflow validates via `grep -F '## [X.Y.Z]'` that a matching entry exists for stable releases
+- [ ] Pre-release versions (detected by `[[ "$VERSION" == *-* ]]`) are exempt from changelog validation
+
+**Dependencies:** None
+
+---
+
+### FUNC-076: Container Image Tagging Strategy
+
+**Description:** A deterministic tagging strategy for container images pushed to ghcr.io. Stable releases receive full semver tags, major.minor shorthand, `latest`, and short SHA. Pre-releases receive only the full version tag and short SHA (no `latest`, no major.minor shorthand). OCI metadata labels are set for all images. Tag computation and multi-tag push logic lives in `publish-containers.sh`, not in CI YAML.
+
+**Clarify Resolutions:**
+
+- **Pre-release detection:** Shell string match `[[ "$VERSION" == *-* ]]` after stripping the `v` prefix. Simple, covers all SemVer pre-release formats.
+- **Tag computation location:** Extend `publish-containers.sh` to compute the full tag family (v1.2.3, 1.2.3, 1.2, latest, sha-abc) based on stable vs prerelease. CI passes the git tag; script determines which tags to push.
+- **OCI annotations:** Dynamic per build -- `version` and `created` are set from the git tag and build timestamp. All tags for a given release share identical annotations (version annotation uses the full semver, not the shorthand).
+
+**Acceptance Criteria:**
+
+- **Given** a git tag `v1.2.3` (stable release)
+  **When** the release workflow runs
+  **Then** images are tagged with `v1.2.3`, `1.2.3`, `1.2`, `latest`, and `sha-<short>` on ghcr.io
+
+- **Given** a git tag `v1.2.3-beta.1` (pre-release)
+  **When** the release workflow runs
+  **Then** images are tagged with `v1.2.3-beta.1` and `sha-<short>` only; `latest` and `1.2` are NOT applied
+
+- **Given** any release build
+  **When** images are pushed to ghcr.io
+  **Then** OCI annotations include: `org.opencontainers.image.source`, `org.opencontainers.image.version`, `org.opencontainers.image.created`, `org.opencontainers.image.revision`, and `org.opencontainers.image.licenses`
+
+**Error Handling:**
+
+| Error Condition                 | Expected Behavior               | User-Facing Message               |
+| ------------------------------- | ------------------------------- | --------------------------------- |
+| Invalid tag format (not semver) | Workflow does not trigger       | N/A (tag pattern mismatch)        |
+| ghcr.io push fails              | Job fails, SARIF still uploaded | "Failed to push image to ghcr.io" |
+
+**Edge Cases:**
+
+- Tag `v0.0.1` (initial release): gets `latest` tag since it has no pre-release suffix
+- Tag `v2.0.0-rc.1`: pre-release, no `latest` tag despite being a major version
+
+**Dependencies:** INFRA-027 (Release Workflow)
+
+---
+
+### FUNC-077: Release Gate Enforcement in CI
+
+**Description:** The release workflow validates release gate criteria before building and pushing container images. For stable releases: verify CI passed on the tagged commit and validate CHANGELOG.md entry. Pre-releases skip the changelog check but still require CI passage. Trivy scans built images inline (after each image build, before push) using the dual-run strategy (SARIF upload + exit-code gate on fixable CRITICAL/HIGH).
+
+**Clarify Resolutions:**
+
+- **Trivy placement:** Inline after build, before push. Each image is scanned immediately after building. If any image has fixable CRITICAL/HIGH, the entire release is aborted before any images reach the registry.
+- **CI check scope:** Query the `summary` job (the aggregation gate in ci.yml) via GitHub API. If the `summary` job succeeded on the tagged SHA, the gate passes. No polling -- fail immediately if CI hasn't completed.
+- **Permissions:** `checks: read` added to query CI status; `security-events: write` for SARIF upload.
+- **Duplicate Trivy runs:** The release Trivy scan is intentionally additional to `security.yml`. Release builds fresh images that may differ from PR-time builds (newer base images, different build cache state).
+
+**Acceptance Criteria:**
+
+- **Given** a stable version tag (no hyphen in version)
+  **When** the release workflow begins
+  **Then** it verifies: (1) CI workflow completed successfully on the tagged commit SHA, (2) `CHANGELOG.md` contains a `## [X.Y.Z]` entry matching the version
+
+- **Given** a pre-release tag (contains hyphen, e.g., `-alpha.1`, `-beta.2`, `-rc.1`)
+  **When** the release workflow begins
+  **Then** it verifies CI passed but skips the changelog validation
+
+- **Given** CI has not passed on the tagged commit
+  **When** the release workflow runs
+  **Then** the build is skipped and the workflow fails with: "CI has not passed on commit <SHA>"
+
+- **Given** a stable release where CHANGELOG.md lacks a version entry
+  **When** the release workflow runs
+  **Then** the build is skipped and the workflow fails with: "CHANGELOG.md missing entry for version X.Y.Z"
+
+- **Given** images are built in the release pipeline
+  **When** Trivy scans run after the build
+  **Then** the dual-run strategy (SARIF upload + CRITICAL/HIGH exit-code gate with `--ignore-unfixed`) is applied per image, matching the pattern from `.github/workflows/security.yml`
+
+**Error Handling:**
+
+| Error Condition                       | Expected Behavior               | User-Facing Message                    |
+| ------------------------------------- | ------------------------------- | -------------------------------------- |
+| GitHub API check-suite query fails    | Workflow fails fast             | "Unable to verify CI status"           |
+| Trivy finds fixable CRITICAL/HIGH CVE | Release blocked, SARIF uploaded | Table output showing affected packages |
+| ghcr.io authentication failure        | Workflow fails at login step    | "Failed to authenticate to ghcr.io"    |
+
+**Edge Cases:**
+
+- Tag pushed before CI completes: release fails, user must re-trigger after CI passes
+- Multiple CI runs on same commit: any successful run satisfies the gate
+
+**Dependencies:** INFRA-027 (Release Workflow), INFRA-028 (CHANGELOG.md), FUNC-075 (Trivy Severity Gate)
