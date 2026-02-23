@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ['v*.*.*']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -583,7 +584,7 @@ jobs:
   # Container builds: 4 images x 2 platforms (native runners)
   container-build:
     needs: changes
-    if: ${{ needs.changes.outputs.containers == 'true' }}
+    if: ${{ needs.changes.outputs.containers == 'true' || startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ${{ matrix.platform == 'amd64' && 'ubuntu-latest' || 'ubuntu-24.04-arm64' }}
     strategy:
       fail-fast: false
@@ -698,7 +699,7 @@ jobs:
           podman rm -f smoke-test || true
 
       - name: Login to ghcr.io
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
         uses: redhat-actions/podman-login@v1
         with:
           registry: ghcr.io
@@ -706,7 +707,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Push arch-specific image
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
         run: |
           chmod +x scripts/publish-ci.sh
           scripts/publish-ci.sh push-arch "$REGISTRY" "$IMAGE_NAME" "$VERSION" "${{ matrix.platform }}"
