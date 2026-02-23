@@ -10,7 +10,7 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
+  pull-requests: write
   packages: write
   security-events: write
   id-token: write
@@ -968,3 +968,76 @@ jobs:
 
           echo ""
           echo "All checks passed (including coverage gates)!"
+
+      - name: Post PR comment
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Map result to status indicator
+          status_icon() {
+            case "$1" in
+              success)  echo "pass" ;;
+              failure)  echo "FAIL" ;;
+              skipped)  echo "skip" ;;
+              *)        echo "$1" ;;
+            esac
+          }
+
+          FRONTEND=$(status_icon "${{ needs.frontend.result || 'skipped' }}")
+          API=$(status_icon "${{ needs.api-service.result || 'skipped' }}")
+          INGEST=$(status_icon "${{ needs.ingest.result || 'skipped' }}")
+          MEMVID=$(status_icon "${{ needs.memvid-service.result || 'skipped' }}")
+          MEMVID_INT=$(status_icon "${{ needs.memvid-integration.result || 'skipped' }}")
+          CROSS=$(status_icon "${{ needs.cross-service.result || 'skipped' }}")
+          E2E=$(status_icon "${{ needs.e2e-real.result || 'skipped' }}")
+          DOCS=$(status_icon "${{ needs.docs.result || 'skipped' }}")
+          COMMITS=$(status_icon "${{ needs.commit-standards.result || 'skipped' }}")
+          CONTAINERS=$(status_icon "${{ needs.container-build.result || 'skipped' }}")
+
+          # Determine overall status
+          OVERALL="All checks passed"
+          if [[ "${{ needs.frontend.result }}" == "failure" ]] || \
+             [[ "${{ needs.api-service.result }}" == "failure" ]] || \
+             [[ "${{ needs.ingest.result }}" == "failure" ]] || \
+             [[ "${{ needs.memvid-service.result }}" == "failure" ]] || \
+             [[ "${{ needs.cross-service.result }}" == "failure" ]] || \
+             [[ "${{ needs.docs.result }}" == "failure" ]] || \
+             [[ "${{ needs.commit-standards.result }}" == "failure" ]] || \
+             [[ "${{ needs.container-build.result }}" == "failure" ]]; then
+            OVERALL="One or more checks failed"
+          fi
+
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          BODY=$(cat <<ENDMD
+          ### CI Summary
+
+          | Job | Status |
+          |-----|--------|
+          | Frontend | ${FRONTEND} |
+          | API Service | ${API} |
+          | Ingest | ${INGEST} |
+          | Memvid Service | ${MEMVID} |
+          | Memvid Integration | ${MEMVID_INT} |
+          | Cross-Service | ${CROSS} |
+          | E2E Real | ${E2E} |
+          | Docs | ${DOCS} |
+          | Commit Standards | ${COMMITS} |
+          | Container Build | ${CONTAINERS} |
+
+          **${OVERALL}** | [Full run details](${RUN_URL})
+          ENDMD
+          )
+
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          if [ -n "$PR_NUMBER" ]; then
+            # Delete previous CI summary comment if exists (sticky comment pattern)
+            PREV_COMMENT=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+              --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | contains("### CI Summary"))) | .id' | tail -1)
+            if [ -n "$PREV_COMMENT" ]; then
+              gh api "repos/${{ github.repository }}/issues/comments/${PREV_COMMENT}" -X DELETE || true
+            fi
+            gh pr comment "$PR_NUMBER" --body "$BODY"
+          fi
+        shell: bash
