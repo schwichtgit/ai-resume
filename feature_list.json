@@ -2809,6 +2809,78 @@
         "sbom-generation"
       ],
       "verified": true
+    },
+    {
+      "id": "service-test-summaries",
+      "category": "infrastructure",
+      "title": "Service Test Result Summaries in Job Summary",
+      "description": "Each service test job (frontend, api-service, ingest, memvid-service) writes a markdown summary to $GITHUB_STEP_SUMMARY with test counts (total, passed, failed, skipped) and failed test names.",
+      "testing_steps": [
+        "Verify frontend job writes to GITHUB_STEP_SUMMARY: grep -c GITHUB_STEP_SUMMARY .github/workflows/ci.yml | check count includes frontend section",
+        "Verify api-service job writes to GITHUB_STEP_SUMMARY: grep for GITHUB_STEP_SUMMARY in api-service job section",
+        "Verify ingest job writes to GITHUB_STEP_SUMMARY: grep for GITHUB_STEP_SUMMARY in ingest job section",
+        "Verify memvid-service job writes to GITHUB_STEP_SUMMARY: grep for GITHUB_STEP_SUMMARY in memvid-service job section",
+        "Verify summary includes test count headers: grep for \"Tests\\|Passed\\|Failed\\|Skipped\" pattern in GITHUB_STEP_SUMMARY write blocks",
+        "Verify summary write is non-blocking: grep for \"|| true\" after GITHUB_STEP_SUMMARY writes"
+      ],
+      "passes": false,
+      "dependencies": [
+        "ci-workflows"
+      ]
+    },
+    {
+      "id": "coverage-summaries",
+      "category": "infrastructure",
+      "title": "Coverage Report Summaries in Job Summary",
+      "description": "Each service test job appends line coverage percentage and threshold pass/fail to $GITHUB_STEP_SUMMARY by parsing existing test runner text output.",
+      "testing_steps": [
+        "Verify frontend job includes coverage in summary: grep for coverage-related GITHUB_STEP_SUMMARY write in frontend section",
+        "Verify Python service jobs include coverage: grep for coverage percentage parsing (grep/awk) in api-service and ingest sections",
+        "Verify memvid-service includes coverage: grep for tarpaulin output parsing in memvid-service section",
+        "Verify coverage threshold is shown: grep for threshold value (85 or service-specific) in summary write blocks",
+        "Verify summary write is non-blocking: all coverage summary writes use || true"
+      ],
+      "passes": false,
+      "dependencies": [
+        "service-test-summaries"
+      ]
+    },
+    {
+      "id": "container-build-summaries",
+      "category": "infrastructure",
+      "title": "Container Build Matrix Summaries in Job Summary",
+      "description": "Each container-build matrix cell writes to $GITHUB_STEP_SUMMARY with image name, platform, image size, Trivy finding counts by severity, smoke test results, and push status.",
+      "testing_steps": [
+        "Verify container-build job writes to GITHUB_STEP_SUMMARY: grep -c GITHUB_STEP_SUMMARY in container-build job section >= 1",
+        "Verify image size is captured: grep for \"podman image inspect\\|image size\\|Size\" in container-build summary block",
+        "Verify Trivy counts are included: grep for \"CRITICAL\\|HIGH\\|MEDIUM\" in GITHUB_STEP_SUMMARY write block of container-build",
+        "Verify smoke test results are in summary: grep for \"health\\|user\\|annotation\" in container-build summary block",
+        "Verify push status is reported: grep for \"digest\\|skipped\\|pushed\" in container-build summary block",
+        "Verify summary write is non-blocking: container-build summary writes use || true"
+      ],
+      "passes": false,
+      "dependencies": [
+        "ci-container-build"
+      ]
+    },
+    {
+      "id": "summary-job-aggregation",
+      "category": "infrastructure",
+      "title": "Aggregated CI Summary in Summary Job",
+      "description": "The summary job writes an aggregated overview to $GITHUB_STEP_SUMMARY with per-job pass/fail status, total test counts, coverage per service, and container build matrix table.",
+      "testing_steps": [
+        "Verify summary job writes to GITHUB_STEP_SUMMARY: grep -c GITHUB_STEP_SUMMARY in summary job section >= 1",
+        "Verify summary includes job result table: grep for \"needs\\..*\\.result\" pattern in summary GITHUB_STEP_SUMMARY block",
+        "Verify summary includes all job categories: grep for frontend, api-service, memvid-service, container-build references in summary block",
+        "Verify container matrix status table: grep for matrix-style table (image x platform) in summary block",
+        "Verify skipped jobs are noted: grep for \"skipped\" handling in summary job GITHUB_STEP_SUMMARY block"
+      ],
+      "passes": false,
+      "dependencies": [
+        "service-test-summaries",
+        "coverage-summaries",
+        "container-build-summaries"
+      ]
     }
   ]
 }

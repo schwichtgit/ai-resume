@@ -891,3 +891,34 @@ A `.trivyignore` file (committed empty with comment header) provides documented 
 
 - Positive: Cryptographic proof of image provenance via Sigstore, digest-pinned releases eliminate TOCTOU, SBOM for compliance (EO 14028, NIST SSDF), OCI 1.1 referrers for scanner discoverability, Rekor transparency log prevents backdating, verification gate prevents unsigned tag promotion, build timestamps prevent dev tag collisions
 - Negative: Adds ~30-45s per matrix cell (syft + cosign attest + cosign sign), requires `id-token: write` permission (OIDC), artifact upload/download between workflows adds complexity, external dependency on Sigstore infrastructure (Fulcio, Rekor), workflow rename requires updating verification commands
+
+---
+
+### ADR-021: PR Check Result Visibility via Job Summaries (INFRA-032)
+
+**Date:** 2026-02-23
+**Status:** Accepted
+
+**Context:** CI runs tests, coverage, container builds, and Trivy scans, but results are buried in job logs. PR reviewers must click into each job and scroll through logs to assess test completeness and scan findings. GitHub Actions `$GITHUB_STEP_SUMMARY` provides a native mechanism to write markdown summaries visible in the Actions run summary page, linked from the PR checks tab.
+
+**Decision:** Add inline bash blocks after each test, coverage, build, and scan step that write structured markdown tables to `$GITHUB_STEP_SUMMARY`. No third-party actions. Parse existing text output from test runners and scanners (no JSON reporter changes). The summary job aggregates results into a single overview table.
+
+**Key Technical Decisions:**
+
+1. **Native bash + `$GITHUB_STEP_SUMMARY`** -- No third-party actions. Inline `cat >> "$GITHUB_STEP_SUMMARY"` blocks write markdown after each step. Full control over format, no version pinning of reporter actions, no extra permissions.
+2. **Parse existing output** -- grep/awk coverage percentages and test counts from existing text output. Avoids changing test commands or adding JSON reporters. Works with vitest terminal output, pytest terminal output, and cargo-tarpaulin terminal output.
+3. **Per-step summaries, not per-job** -- Each step writes its own section to `$GITHUB_STEP_SUMMARY`. Steps append (>>), so multiple sections compose into one job summary. This avoids needing a separate "write summary" step that depends on outputs from all prior steps.
+4. **Summary job aggregation** -- The summary job (which already exists and runs `if: always()`) writes an overview table referencing all job results via `needs.<job>.result`. This provides the at-a-glance view.
+5. **Non-blocking summary writes** -- Summary writes use `|| true` to prevent summary generation failures from failing the actual test/build step. Missing summaries are acceptable; failing tests are not.
+6. **1MB summary limit awareness** -- GitHub caps `$GITHUB_STEP_SUMMARY` at 1MB per job. Truncate individual failure listings to 50 entries. Container build summaries are compact (one table row per cell).
+
+**Alternatives Considered:**
+
+1. **PR comments via actions** -- More visible in PR conversation. Rejected: adds write permission requirements, creates notification noise, sticky-comment actions require maintenance.
+2. **Third-party test reporter actions** -- Richer formatting (collapsible failures, annotations). Rejected: adds action dependencies, version pinning overhead, and the native approach is sufficient.
+3. **JSON reporters** -- More structured data extraction. Rejected: changes test commands, adds complexity, text parsing is sufficient for summary tables.
+
+**Consequences:**
+
+- Positive: PR reviewers see test/coverage/scan results without digging through logs, no new action dependencies, no extra permissions, composable per-step summaries
+- Negative: Text parsing is fragile if output format changes (mitigated by pinned tool versions), limited to what's visible in step output, summary tables are less rich than dedicated reporter actions

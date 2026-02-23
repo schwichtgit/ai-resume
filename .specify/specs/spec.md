@@ -3373,3 +3373,47 @@ The signing chain relies on three Sigstore components:
 - Cosign verification of release manifest lists: The release workflow signs with `release.yml` identity, while CI signs with `ci.yml` identity. The `verify` subcommand must accept both workflow paths.
 
 **Dependencies:** INFRA-030 (Native ARM Runner Multi-Arch Container Builds)
+
+---
+
+### INFRA-032: PR Check Result Visibility via Job Summaries
+
+**Description:** Surface test results, coverage reports, container build matrix status, and Trivy vulnerability findings directly in GitHub Actions job summaries (`$GITHUB_STEP_SUMMARY`). PR reviewers currently must dig through CI logs to assess test completeness and scan results. Job summaries appear in the Actions run summary page, linked from the PR checks tab.
+
+**Acceptance Criteria:**
+
+1. **Test result summaries:** Each service test job (frontend, api-service, ingest, memvid-service) writes a markdown summary to `$GITHUB_STEP_SUMMARY` containing: service name, total tests, passed, failed, skipped, and duration. Failed tests list individual test names.
+
+2. **Coverage summaries:** Each service test job appends coverage data to `$GITHUB_STEP_SUMMARY` containing: service name, line coverage percentage, threshold, and pass/fail status. Coverage is parsed from existing text output (vitest terminal, pytest-cov terminal, cargo-tarpaulin terminal). No JSON reporters.
+
+3. **Container build matrix summary:** Each container-build matrix cell writes to `$GITHUB_STEP_SUMMARY` containing: image name, platform, build duration, image size (compressed), Trivy finding counts (critical/high/medium/low), smoke test results (user, health check, OCI annotation), and push status (digest if pushed, "skipped" for PRs).
+
+4. **Trivy vulnerability summary:** Each container-build matrix cell includes in its `$GITHUB_STEP_SUMMARY` a vulnerability count table broken down by severity. If CRITICAL or HIGH vulnerabilities are found, individual CVE IDs are listed.
+
+5. **Summary job aggregation:** The summary job writes an aggregated overview to `$GITHUB_STEP_SUMMARY` containing: overall pass/fail per job category, total test count across all services, coverage per service, container build matrix status table (8 cells).
+
+**Given/When/Then:**
+
+- Given a PR triggers CI, when service test jobs complete, then each job's Actions summary page shows a markdown table with test counts and any failures
+- Given a PR triggers CI, when coverage collection runs, then each job's summary shows line coverage percentage relative to the threshold
+- Given a PR triggers container-build, when all 8 matrix cells complete, then each cell's summary shows image size, Trivy counts, and smoke test results
+- Given a PR triggers CI, when the summary job runs, then its summary page shows an aggregated overview of all job results
+
+**Error Handling:**
+
+| Condition | Behavior | Visible In |
+| --- | --- | --- |
+| Test framework exits non-zero | Job fails, partial summary still written (summary written before test exit) | Job summary shows "FAILED" badge |
+| Coverage below threshold | Job fails, summary shows actual vs required | Coverage table with red threshold |
+| Trivy finds CRITICAL/HIGH | Severity gate step fails, summary still written (written before gate) | Trivy summary table in cell summary |
+| `$GITHUB_STEP_SUMMARY` write fails | Non-blocking (echo to file failure doesn't fail the job) | Missing summary, job logs contain write error |
+
+**Edge Cases:**
+
+- Skipped jobs (no changes detected): skipped jobs produce no summary. The summary job notes them as "skipped (no changes)".
+- Matrix cell failure with fail-fast: false: other cells still produce summaries.
+- Coverage reporter not installed: fall back to text parsing of test output (grep for coverage line).
+- Very large test suites: truncate individual failure listings to 50 entries (GitHub has a 1MB step summary limit).
+- memvid-integration (continue-on-error: true): summary shows soft gate status, not blocking.
+
+**Dependencies:** INFRA-030 (Native ARM Runner Multi-Arch Container Builds), INFRA-031 (Container Supply Chain Security)
