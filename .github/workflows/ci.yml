@@ -1038,6 +1038,6 @@ jobs:
             if [ -n "$PREV_COMMENT" ]; then
               gh api "repos/${{ github.repository }}/issues/comments/${PREV_COMMENT}" -X DELETE || true
             fi
-            gh pr comment "$PR_NUMBER" --body "$BODY"
+            gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "$BODY"
           fi
         shell: bash
