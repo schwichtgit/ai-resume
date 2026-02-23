@@ -13,7 +13,6 @@ permissions:
 
 env:
   REGISTRY: ghcr.io/schwichtgit
-  PODMAN_VERSION: "5.8.0"
 
 jobs:
   # Gate: verify CI passed and changelog has an entry for this version
@@ -75,133 +74,59 @@ jobs:
           fi
           echo "Changelog entry found for version $VERSION"
 
-  # Build containers, scan for vulnerabilities, publish to ghcr.io
-  build-and-publish:
+  # Merge arch-specific images (built in CI) into multi-arch manifests
+  merge-manifests:
     needs: validate
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image: [ai-resume-frontend, ai-resume-api, ai-resume-memvid, ai-resume-ingest]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Login to ghcr.io
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge arch manifests
+        run: |
+          chmod +x scripts/publish-ci.sh
+          scripts/publish-ci.sh merge "${{ env.REGISTRY }}" "${{ matrix.image }}" "${{ github.ref_name }}"
+
+  # Apply semver tag family (major, major.minor, latest) to all images
+  publish-tags:
+    needs: merge-manifests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
 
-      - name: Setup QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Install Podman ${{ env.PODMAN_VERSION }}
+      - name: Install skopeo
         run: |
-          curl -fsSL "https://github.com/mgoltzsche/podman-static/releases/download/v${PODMAN_VERSION}/podman-linux-amd64.tar.gz" \
-            -o podman.tar.gz
-          tar xzf podman.tar.gz
-          export PATH="$(pwd)/podman-linux-amd64/usr/local/bin:$PATH"
-          echo "$(pwd)/podman-linux-amd64/usr/local/bin" >> "$GITHUB_PATH"
-          podman --version
+          sudo apt-get update
+          sudo apt-get install -y skopeo
 
-      - name: Install go-task
-        uses: go-task/setup-task@v1
-
-      - name: Login to ghcr.io
+      - name: Login to ghcr.io (skopeo)
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io \
+          echo "${{ secrets.GITHUB_TOKEN }}" | skopeo login ghcr.io \
             -u "${{ github.actor }}" --password-stdin
 
-      - name: Sync proto files
+      - name: Apply semver tag family
         run: |
-          mkdir -p memvid-service/proto/memvid/v1
-          cp proto/memvid/v1/memvid.proto memvid-service/proto/memvid/v1/
-
-      - name: Build containers
-        env:
-          VERSION: ${{ github.ref_name }}
-          REGISTRY: localhost
-        run: task container:build
-
-      # -- Trivy SARIF scans (one per image for upload-sarif) --
-      - name: Trivy scan (SARIF) - frontend
-        uses: aquasecurity/trivy-action@0.34.1
-        with:
-          image-ref: 'localhost/ai-resume-frontend:${{ github.ref_name }}'
-          format: 'sarif'
-          output: 'trivy-frontend.sarif'
-          trivyignores: '.trivyignore'
-
-      - name: Upload SARIF - frontend
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        with:
-          sarif_file: 'trivy-frontend.sarif'
-          category: 'trivy-release-ai-resume-frontend'
-
-      - name: Trivy scan (SARIF) - api
-        uses: aquasecurity/trivy-action@0.34.1
-        with:
-          image-ref: 'localhost/ai-resume-api:${{ github.ref_name }}'
-          format: 'sarif'
-          output: 'trivy-api.sarif'
-          trivyignores: '.trivyignore'
-
-      - name: Upload SARIF - api
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        with:
-          sarif_file: 'trivy-api.sarif'
-          category: 'trivy-release-ai-resume-api'
-
-      - name: Trivy scan (SARIF) - memvid
-        uses: aquasecurity/trivy-action@0.34.1
-        with:
-          image-ref: 'localhost/ai-resume-memvid:${{ github.ref_name }}'
-          format: 'sarif'
-          output: 'trivy-memvid.sarif'
-          trivyignores: '.trivyignore'
-
-      - name: Upload SARIF - memvid
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        with:
-          sarif_file: 'trivy-memvid.sarif'
-          category: 'trivy-release-ai-resume-memvid'
-
-      - name: Trivy scan (SARIF) - ingest
-        uses: aquasecurity/trivy-action@0.34.1
-        with:
-          image-ref: 'localhost/ai-resume-ingest:${{ github.ref_name }}'
-          format: 'sarif'
-          output: 'trivy-ingest.sarif'
-          trivyignores: '.trivyignore'
-
-      - name: Upload SARIF - ingest
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        with:
-          sarif_file: 'trivy-ingest.sarif'
-          category: 'trivy-release-ai-resume-ingest'
-
-      # -- Trivy severity gate (CRITICAL/HIGH, all images) --
-      - name: Install Trivy CLI
-        run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
-            | sh -s -- -b /usr/local/bin
-
-      - name: Trivy severity gate (CRITICAL/HIGH)
-        env:
-          TRIVY_SEVERITY: CRITICAL,HIGH
-          TRIVY_IGNORE_UNFIXED: 'true'
-        run: |
-          IMAGES=(
-            ai-resume-frontend
-            ai-resume-api
-            ai-resume-memvid
-            ai-resume-ingest
-          )
+          chmod +x scripts/publish-ci.sh
+          IMAGES=(ai-resume-frontend ai-resume-api ai-resume-memvid ai-resume-ingest)
           for IMG in "${IMAGES[@]}"; do
-            echo "--- Scanning ${IMG} for fixable CRITICAL/HIGH vulnerabilities ---"
-            trivy image \
-              --exit-code 1 \
-              --format table \
-              --ignorefile .trivyignore \
-              "localhost/${IMG}:${{ github.ref_name }}"
+            scripts/publish-ci.sh tag-family "${{ env.REGISTRY }}" "$IMG" "${{ github.ref_name }}"
           done
 
-      - name: Publish containers
-        run: task container:publish -- ${{ env.REGISTRY }} ${{ github.ref_name }}
+  # Create GitHub Release with auto-generated notes
+  create-release:
+    needs: publish-tags
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
 
       - name: Create GitHub Release
         env:
