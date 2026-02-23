@@ -730,20 +730,13 @@ jobs:
           timeout 10 bash -c 'until [ -S /tmp/podman.sock ]; do sleep 0.5; done'
           echo "DOCKER_HOST=unix:///tmp/podman.sock" >> "$GITHUB_ENV"
 
-      - name: Trivy scan (SARIF)
+      - name: Trivy scan (SARIF for summary)
         uses: aquasecurity/trivy-action@0.34.1
         with:
           image-ref: 'localhost/${{ env.IMAGE_NAME }}:${{ env.VERSION }}'
           format: 'sarif'
           output: 'trivy-${{ matrix.image }}-${{ matrix.platform }}.sarif'
           trivyignores: '.trivyignore'
-
-      - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        with:
-          sarif_file: 'trivy-${{ matrix.image }}-${{ matrix.platform }}.sarif'
-          category: 'trivy-release-ai-resume-${{ matrix.image }}-${{ matrix.platform }}'
 
       - name: Trivy severity gate (CRITICAL/HIGH)
         uses: aquasecurity/trivy-action@0.34.1
