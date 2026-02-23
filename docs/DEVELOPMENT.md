@@ -9,12 +9,12 @@ All dependencies are checked by `task deps`. Three tiers:
 
 ### Required (Tier 1 -- hard fail)
 
-| Tool    | Minimum | Install                                                        |
-| ------- | ------- | -------------------------------------------------------------- |
-| Node.js | 22.12.0 | <https://nodejs.org/>                                          |
-| npm     | 10.0.0  | Bundled with Node.js                                           |
-| uv      | 0.4.0   | `curl -LsSf https://astral.sh/uv/install.sh \| sh`             |
-| go-task | 3.0.0   | <https://taskfile.dev/installation/>                           |
+| Tool    | Minimum | Install                                            |
+| ------- | ------- | -------------------------------------------------- |
+| Node.js | 22.14.0 | <https://nodejs.org/>                              |
+| npm     | 10.9.0  | Bundled with Node.js                               |
+| uv      | 0.9.0   | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| go-task | 3.48.0  | <https://taskfile.dev/installation/>               |
 
 [go-task](https://taskfile.dev) is the build orchestrator for the entire
 monorepo. All build, lint, test, and deploy commands go through it.
@@ -26,9 +26,9 @@ environments and pins the Python version in each service's `pyproject.toml`.
 
 | Tool   | Minimum | Notes                                |
 | ------ | ------- | ------------------------------------ |
-| rustc  | 1.92.0  | Required for memvid-service          |
-| cargo  | 1.92.0  | Bundled with Rust                    |
-| protoc | 3.0.0   | Required for gRPC proto regeneration |
+| rustc  | 1.93.0  | Required for memvid-service          |
+| cargo  | 1.93.0  | Bundled with Rust                    |
+| protoc | 32.1    | Required for gRPC proto regeneration |
 
 ### Optional (Tier 3 -- informational)
 
@@ -78,18 +78,18 @@ target.
 
 ### Key Aggregate Tasks
 
-| Task                 | What it does                                         |
-| -------------------- | ---------------------------------------------------- |
-| `task setup`         | Bootstrap all services + git hooks                   |
-| `task lint`          | Lint all services + docs (ESLint, ruff, clippy, md)  |
-| `task lint:fix`      | Lint with auto-fix across all services               |
-| `task test`          | Unit test all services                               |
-| `task test:coverage` | Unit test all services with coverage reporting       |
-| `task build`         | Build frontend (production) + memvid (release)       |
-| `task check`         | Full quality sweep: lint, typecheck, test, build     |
-| `task ci`            | Reproduce CI pipeline locally (check + coverage)     |
-| `task clean`         | Remove build artifacts (preserves Python venvs)      |
-| `task clean:all`     | Remove build artifacts AND Python venvs              |
+| Task                 | What it does                                        |
+| -------------------- | --------------------------------------------------- |
+| `task setup`         | Bootstrap all services + git hooks                  |
+| `task lint`          | Lint all services + docs (ESLint, ruff, clippy, md) |
+| `task lint:fix`      | Lint with auto-fix across all services              |
+| `task test`          | Unit test all services                              |
+| `task test:coverage` | Unit test all services with coverage reporting      |
+| `task build`         | Build frontend (production) + memvid (release)      |
+| `task check`         | Full quality sweep: lint, typecheck, test, build    |
+| `task ci`            | Reproduce CI pipeline locally (check + coverage)    |
+| `task clean`         | Remove build artifacts (preserves Python venvs)     |
+| `task clean:all`     | Remove build artifacts AND Python venvs             |
 
 ### Per-Service Task Prefixes
 
@@ -108,13 +108,13 @@ Common per-service targets: `setup`, `lint`, `lint:fix`, `test`,
 
 ### Other Tasks
 
-| Task                 | What it does                                    |
-| -------------------- | ----------------------------------------------- |
-| `task proto`         | Regenerate gRPC Python stubs from `.proto` file |
-| `task e2e`           | Cross-service integration tests (mock backends) |
-| `task e2e:real`      | True E2E tests (real ingest + real memvid)      |
-| `task docs:lint`     | Lint all Markdown files (markdownlint-cli2)     |
-| `task release-gate`  | Full release quality gate                       |
+| Task                | What it does                                    |
+| ------------------- | ----------------------------------------------- |
+| `task proto`        | Regenerate gRPC Python stubs from `.proto` file |
+| `task e2e`          | Cross-service integration tests (mock backends) |
+| `task e2e:real`     | True E2E tests (real ingest + real memvid)      |
+| `task docs:lint`    | Lint all Markdown files (markdownlint-cli2)     |
+| `task release-gate` | Full release quality gate                       |
 
 ## Per-Service Development
 
@@ -173,7 +173,7 @@ venv activation automatically via `uv run`.
 
 ### Memvid Service (`memvid-service/`)
 
-Rust 1.92+, gRPC (tonic), port 50051.
+Rust 1.93+, gRPC (tonic), port 50051.
 
 ```bash
 task memvid:dev             # cargo run
@@ -250,23 +250,23 @@ Target: 85% line coverage per service.
 
 ### Test Frameworks
 
-| Service  | Framework                     |
-| -------- | ----------------------------- |
-| frontend | Vitest + React Testing Library|
-| api      | pytest                        |
-| ingest   | pytest                        |
-| memvid   | cargo test                    |
+| Service  | Framework                      |
+| -------- | ------------------------------ |
+| frontend | Vitest + React Testing Library |
+| api      | pytest                         |
+| ingest   | pytest                         |
+| memvid   | cargo test                     |
 
 ## Code Quality
 
 ### Linters by Language
 
-| Language   | Tool              | Command                  |
-| ---------- | ----------------- | ------------------------ |
-| TypeScript | ESLint            | `task frontend:lint`     |
-| Python     | ruff              | `task api:lint`          |
-| Rust       | clippy            | `task memvid:lint`       |
-| Markdown   | markdownlint-cli2 | `task docs:lint`         |
+| Language   | Tool              | Command              |
+| ---------- | ----------------- | -------------------- |
+| TypeScript | ESLint            | `task frontend:lint` |
+| Python     | ruff              | `task api:lint`      |
+| Rust       | clippy            | `task memvid:lint`   |
+| Markdown   | markdownlint-cli2 | `task docs:lint`     |
 
 ### Aggregate Commands
 

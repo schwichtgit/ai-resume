@@ -2450,6 +2450,25 @@
       ],
       "passes": false,
       "dependencies": ["release-workflow", "trivy-severity-gate"]
+    },
+    {
+      "id": "ci-uv-python",
+      "category": "infrastructure",
+      "title": "CI Python Management via uv (Drop setup-python)",
+      "description": "Remove actions/setup-python from all 6 Python jobs in ci.yml. Delegate Python version management to uv via per-service .python-version files. Add enable-cache and cache-python to setup-uv@v7. Remove PYTHON_VERSION env var. Fixes latent 3.11 vs 3.12 mismatch in api-service and cross-service jobs.",
+      "testing_steps": [
+        "Run 'grep -c setup-python .github/workflows/ci.yml' and verify the count is 0 (action fully removed)",
+        "Run 'grep -n PYTHON_VERSION .github/workflows/ci.yml' and verify NO top-level env var match exists",
+        "Run 'grep -A4 setup-uv .github/workflows/ci.yml | grep -c cache-python' and verify at least 6 matches (one per Python job)",
+        "Run 'grep -A4 setup-uv .github/workflows/ci.yml | grep -c enable-cache' and verify at least 6 matches",
+        "Run 'test -f api-service/.python-version && cat api-service/.python-version' and verify output is '3.12'",
+        "Run 'test -f ingest/.python-version && cat ingest/.python-version' and verify output is '3.12'",
+        "Run 'grep -rn setup-python .github/workflows/' and verify NO matches in any workflow file (guardrail)",
+        "Run 'grep -c astral-sh/setup-uv .github/workflows/ci.yml' and verify at least 6 occurrences"
+      ],
+      "passes": true,
+      "verified": true,
+      "dependencies": ["ci-workflows"]
     }
   ]
 }

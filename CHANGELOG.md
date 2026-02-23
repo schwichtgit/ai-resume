@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-alpha.1] - 2026-02-22
+
 ### Added
 
-- Release pipeline specifications and feature definitions
+- Multi-arch container release pipeline to ghcr.io (`release.yml`)
 - Trivy container scanning with severity gate and dual-run strategy
 - Manual trigger for Trivy security scan workflow
 - Go-task build orchestration for polyglot monorepo (72 tasks across 6 Taskfiles)
@@ -26,23 +28,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rust SBOM embedding via cargo-auditable in memvid-service
 - Prometheus metrics endpoint
 - Specforge specification-driven development framework (phases 0-7 complete)
-- 124 features implemented and verified
+- 136 features defined, 125 verified
 
 ### Changed
 
+- CI Python management delegated to uv via `.python-version` files (drop `setup-python`)
+- Tool versions bumped: Node 22.14.0, uv 0.9.0, go-task 3.48.0, Rust 1.93.0, podman 5.8.0
 - Memvid-service runtime switched to distroless base image with `--health` flag
 - Memvid-service protobuf compilation uses GitHub releases binary instead of apt
 - Container base images upgraded for security (alpine:3.23, python:3.12-slim, debian:trixie-slim)
 - Dockerfiles optimized with UV best practices and stable base images
 - ESLint upgraded to v10 with aligned peer dependencies
 - Vitest and coverage-v8 upgraded from 3.x to 4.x
-- Rust toolchain pinned to 1.92.0 for reproducible builds
 - Dependabot configured with conventional commit message format
 - README rewritten; DEVELOPMENT.md added as canonical dev guide; EOL docs archived
 - Memvid SDK upgraded to 2.0.157, core to 2.0.137
 
 ### Fixed
 
+- Publish script uses `podman manifest push --all` for macOS manifest list resolution
+- CI Python version mismatch: api-service and cross-service tested on 3.11 despite requiring 3.12
 - Merge commit and dependabot CI compliance gaps
 - Markdown lint pipeline gaps
 - Frontend ProfileContext split to resolve fast refresh warning
@@ -62,4 +67,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/commits/HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.1...HEAD
+[0.1.0-alpha.1]: https://github.com/schwichtgit/ai-resume/releases/tag/v0.1.0-alpha.1
