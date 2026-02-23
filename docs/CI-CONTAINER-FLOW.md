@@ -15,12 +15,12 @@ manual key management.
 
 ## Pipeline Triggers
 
-| Trigger | Condition | Jobs that run |
-| ------- | --------- | ------------- |
-| Push to `main` | Always | `changes`, service jobs, `release-gate`, `container-build` (if container paths changed) |
-| Tag push (`v*.*.*`) | Always | `changes`, `container-build` (all 8 cells), then Release workflow |
-| Pull request to `main` | Always | `changes`, service jobs, `commit-standards` |
-| `workflow_dispatch` | Manual | Same as push to `main` |
+| Trigger                | Condition | Jobs that run                                                                           |
+| ---------------------- | --------- | --------------------------------------------------------------------------------------- |
+| Push to `main`         | Always    | `changes`, service jobs, `release-gate`, `container-build` (if container paths changed) |
+| Tag push (`v*.*.*`)    | Always    | `changes`, `container-build` (all 8 cells), then Release workflow                       |
+| Pull request to `main` | Always    | `changes`, service jobs, `commit-standards`                                             |
+| `workflow_dispatch`    | Manual    | Same as push to `main`                                                                  |
 
 The `container-build` job runs when Dockerfile or service source paths change,
 or unconditionally on tag pushes.
@@ -42,23 +42,23 @@ CI Workflow (ci.yml):
 
 Release Workflow (release.yml):
   validate ──> merge-manifests (4 images)
-                  |
-                  ├── download CI digest artifacts (gh api)
-                  ├── create manifest list (publish-ci.sh merge --digest-*)
-                  └── sign manifest list (cosign sign)
                |
-               ──> verify-signatures (4 images)
-                  |
-                  ├── verify arch image sigs (CI workflow identity)
-                  └── verify manifest list sig (release workflow identity)
+               ├── download CI digest artifacts (gh api)
+               ├── create manifest list (publish-ci.sh merge --digest-*)
+               └── sign manifest list (cosign sign)
                |
-               ──> publish-tags
-                  |
-                  └── apply semver tag family (publish-ci.sh tag-family)
+           ──> verify-signatures (4 images)
                |
-               ──> create-release
-                  |
-                  └── gh release create --generate-notes
+               ├── verify arch image sigs (CI workflow identity)
+               └── verify manifest list sig (release workflow identity)
+               |
+           ──> publish-tags
+               |
+               └── apply semver tag family (publish-ci.sh tag-family)
+               |
+           ──> create-release
+               |
+               └── gh release create --generate-notes
 ```
 
 ## Container Build Job
@@ -93,16 +93,16 @@ stop after smoke tests.
 
 ## Tag Conventions
 
-| Pattern | Example | When |
-| ------- | ------- | ---- |
-| Version tag | `v1.0.0` | Tag push |
-| Version tag (pre-release) | `v1.0.0-alpha.1` | Tag push |
-| Dev tag | `dev-abc1234-B20260223143022` | Push to `main` |
-| Arch suffix | `v1.0.0.amd64` | Per-platform image (CI) |
-| Minor tag | `1.0` | Stable release (tag-family) |
-| Bare version | `1.0.0` | Stable release (tag-family) |
-| SHA tag | `sha-abc1234` | All releases (tag-family) |
-| `latest` | `latest` | Stable release only (tag-family) |
+| Pattern                   | Example                       | When                             |
+| ------------------------- | ----------------------------- | -------------------------------- |
+| Version tag               | `v1.0.0`                      | Tag push                         |
+| Version tag (pre-release) | `v1.0.0-alpha.1`              | Tag push                         |
+| Dev tag                   | `dev-abc1234-B20260223143022` | Push to `main`                   |
+| Arch suffix               | `v1.0.0.amd64`                | Per-platform image (CI)          |
+| Minor tag                 | `1.0`                         | Stable release (tag-family)      |
+| Bare version              | `1.0.0`                       | Stable release (tag-family)      |
+| SHA tag                   | `sha-abc1234`                 | All releases (tag-family)        |
+| `latest`                  | `latest`                      | Stable release only (tag-family) |
 
 Dev tags include a build timestamp (`B<YYYYMMDDHHMMSS>`) to guarantee
 uniqueness across re-runs of the same commit.
@@ -138,12 +138,12 @@ mutable tags.
 
 ## publish-ci.sh Subcommands
 
-| Subcommand | Description | Key tool |
-| ---------- | ----------- | -------- |
-| `push-arch` | Push a single-arch image to registry with `.<arch>` suffix. Captures and outputs `DIGEST=<value>`. | `podman push --digestfile` |
-| `merge` | Create OCI manifest list from arch-specific images. Supports digest-based (`--digest-amd64`, `--digest-arm64`) or tag-based fallback. Outputs `MANIFEST_DIGEST=<value>`. | `podman manifest create/add/push` |
-| `tag-family` | Apply semver tag family via server-side re-tagging. Stable: sha + bare + minor + latest. Pre-release: sha + bare only. | `skopeo copy --all` |
-| `verify` | Verify cosign signatures against GitHub Actions OIDC identities. Tries ci.yml identity first, falls back to release.yml. | `cosign verify` |
+| Subcommand   | Description                                                                                                                                                              | Key tool                          |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------- |
+| `push-arch`  | Push a single-arch image to registry with `.<arch>` suffix. Captures and outputs `DIGEST=<value>`.                                                                       | `podman push --digestfile`        |
+| `merge`      | Create OCI manifest list from arch-specific images. Supports digest-based (`--digest-amd64`, `--digest-arm64`) or tag-based fallback. Outputs `MANIFEST_DIGEST=<value>`. | `podman manifest create/add/push` |
+| `tag-family` | Apply semver tag family via server-side re-tagging. Stable: sha + bare + minor + latest. Pre-release: sha + bare only.                                                   | `skopeo copy --all`               |
+| `verify`     | Verify cosign signatures against GitHub Actions OIDC identities. Tries ci.yml identity first, falls back to release.yml.                                                 | `cosign verify`                   |
 
 All subcommands accept `--dry-run` for safe testing.
 
@@ -175,9 +175,9 @@ are discoverable by security scanners without out-of-band lookups. Use
 
 1. CI builds and pushes arch images, capturing digests via `--digestfile`.
 2. CI generates a CycloneDX SBOM against the pushed image by digest (`syft
-   <registry>/<image>@<digest>`).
+<registry>/<image>@<digest>`).
 3. CI attaches the SBOM as an OCI 1.1 referrer via `cosign attest --type
-   cyclonedx`.
+cyclonedx`.
 4. CI signs the image by digest with `cosign sign` (keyless: Fulcio cert +
    Rekor inclusion proof).
 5. CI uploads a digest JSON artifact per matrix cell.
@@ -188,7 +188,7 @@ are discoverable by security scanners without out-of-band lookups. Use
    workflow-scoped certificate identity for both arch images (CI-signed) and
    manifest lists (release-signed).
 9. Only after verification passes: semver tag family applied via `skopeo copy
-   --all`.
+--all`.
 
 Step ordering (SBOM, then attestation, then signing) follows the Sigstore
 reference workflow convention.
@@ -221,24 +221,24 @@ scripts/publish-ci.sh verify ghcr.io/schwichtgit ai-resume-frontend v1.0.0
 
 ## Attestation Artifacts
 
-| Artifact | Format | Storage | Retention |
-| -------- | ------ | ------- | --------- |
-| Image signature | Sigstore bundle | OCI 1.1 referrer | Permanent |
+| Artifact         | Format              | Storage                             | Retention           |
+| ---------------- | ------------------- | ----------------------------------- | ------------------- |
+| Image signature  | Sigstore bundle     | OCI 1.1 referrer                    | Permanent           |
 | SBOM attestation | in-toto (CycloneDX) | OCI 1.1 referrer + Actions artifact | Permanent / 90 days |
-| Digest metadata | JSON | Actions artifact | 1 day |
-| Trivy SARIF | SARIF | GitHub Code Scanning | Permanent |
+| Digest metadata  | JSON                | Actions artifact                    | 1 day               |
+| Trivy SARIF      | SARIF               | GitHub Code Scanning                | Permanent           |
 
 ## Design Decisions
 
-| Decision | Rationale |
-| -------- | --------- |
-| Digest-based handoff (not tag-based) | Eliminates TOCTOU window between CI push and release manifest creation. Mutable tags could be overwritten between workflows. |
-| CycloneDX (not SPDX) | Broader tooling support in container and DevSecOps ecosystems. Both are valid; CycloneDX has wider adoption in OCI/cosign toolchains. |
-| Workflow-scoped identity (not repo-scoped) | Tighter security: only the designated CI or release workflow can produce valid signatures. Repo-scoped would allow any workflow in the repo to sign. |
-| SBOM against pushed digest (not local image) | Ensures the SBOM describes exactly what is in the registry, not the local build cache. Provably accurate. |
-| Always-blocking failures | `cosign sign`, `cosign attest`, and `syft` all fail the job on error. No soft gates for signing. Sigstore infrastructure (Fulcio, Rekor) has high availability. |
-| Build timestamp dev tags | `dev-<sha>-B<YYYYMMDDHHMMSS>` guarantees uniqueness across re-runs. Plain sha tags would collide. |
-| `COSIGN_YES: "true"` env var | Single declaration at job level instead of `--yes` per invocation. Avoids interactive prompts in CI. |
+| Decision                                     | Rationale                                                                                                                                                       |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Digest-based handoff (not tag-based)         | Eliminates TOCTOU window between CI push and release manifest creation. Mutable tags could be overwritten between workflows.                                    |
+| CycloneDX (not SPDX)                         | Broader tooling support in container and DevSecOps ecosystems. Both are valid; CycloneDX has wider adoption in OCI/cosign toolchains.                           |
+| Workflow-scoped identity (not repo-scoped)   | Tighter security: only the designated CI or release workflow can produce valid signatures. Repo-scoped would allow any workflow in the repo to sign.            |
+| SBOM against pushed digest (not local image) | Ensures the SBOM describes exactly what is in the registry, not the local build cache. Provably accurate.                                                       |
+| Always-blocking failures                     | `cosign sign`, `cosign attest`, and `syft` all fail the job on error. No soft gates for signing. Sigstore infrastructure (Fulcio, Rekor) has high availability. |
+| Build timestamp dev tags                     | `dev-<sha>-B<YYYYMMDDHHMMSS>` guarantees uniqueness across re-runs. Plain sha tags would collide.                                                               |
+| `COSIGN_YES: "true"` env var                 | Single declaration at job level instead of `--yes` per invocation. Avoids interactive prompts in CI.                                                            |
 
 ## Related
 
