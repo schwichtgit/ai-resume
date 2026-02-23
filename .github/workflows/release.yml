@@ -39,18 +39,39 @@ jobs:
             echo "prerelease=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Check CI status
+      - name: Wait for CI to complete
         run: |
           SHA="${{ github.sha }}"
-          echo "Checking CI status for commit ${SHA}..."
+          echo "Waiting for CI to complete on commit ${SHA}..."
 
-          # Find the most recent completed CI run for this commit
-          RUN_ID=$(gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=${SHA}&status=completed" \
-            --jq '.workflow_runs[0].id // empty')
+          MAX_WAIT=1800  # 30 minutes
+          POLL_INTERVAL=30
+          ELAPSED=0
 
-          if [ -z "$RUN_ID" ]; then
-            echo "::error::CI has not passed on commit ${SHA}"
-            echo "No completed CI workflow run found for this commit."
+          while [ "$ELAPSED" -lt "$MAX_WAIT" ]; do
+            RUN_ID=$(gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=${SHA}&status=completed" \
+              --jq '.workflow_runs[0].id // empty')
+
+            if [ -n "$RUN_ID" ]; then
+              # Verify this run has container-build results (not a stale main-push run)
+              BUILD_JOBS=$(gh api "repos/${{ github.repository }}/actions/runs/${RUN_ID}/jobs" \
+                --jq '[.jobs[] | select(.name | startswith("container-build"))] | length')
+
+              if [ "$BUILD_JOBS" -gt 0 ]; then
+                echo "Found CI run ${RUN_ID} with ${BUILD_JOBS} container-build jobs"
+                break
+              else
+                echo "CI run ${RUN_ID} has no container-build jobs, waiting for tag-triggered run..."
+              fi
+            fi
+
+            echo "CI not ready yet (${ELAPSED}s elapsed), polling in ${POLL_INTERVAL}s..."
+            sleep "$POLL_INTERVAL"
+            ELAPSED=$((ELAPSED + POLL_INTERVAL))
+          done
+
+          if [ -z "$RUN_ID" ] || [ "$BUILD_JOBS" -eq 0 ]; then
+            echo "::error::CI did not complete within ${MAX_WAIT}s for commit ${SHA}"
             exit 1
           fi
 

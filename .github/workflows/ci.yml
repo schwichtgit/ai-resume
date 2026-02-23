@@ -649,10 +649,11 @@ jobs:
             -f "${{ steps.ctx.outputs.dir }}/Dockerfile" \
             "${{ steps.ctx.outputs.dir }}/"
 
-      - name: Start podman socket for scanners
+      - name: Start podman API for scanners
         run: |
-          systemctl --user start podman.socket
-          echo "DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock" >> "$GITHUB_ENV"
+          podman system service --time=0 "unix:///tmp/podman.sock" &
+          timeout 10 bash -c 'until [ -S /tmp/podman.sock ]; do sleep 0.5; done'
+          echo "DOCKER_HOST=unix:///tmp/podman.sock" >> "$GITHUB_ENV"
 
       - name: Trivy scan (SARIF)
         uses: aquasecurity/trivy-action@0.34.1
