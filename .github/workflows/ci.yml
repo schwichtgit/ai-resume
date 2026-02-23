@@ -90,7 +90,27 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Test with coverage
-        run: npm test -- --run --coverage
+        run: npm test -- --run --coverage 2>&1 | tee /tmp/test-output.txt
+
+      - name: Write test summary
+        if: always()
+        run: |
+          {
+            echo "## Frontend Tests"
+            echo ""
+            if [ -f /tmp/test-output.txt ]; then
+              TESTS=$(grep -oP 'Tests\s+\K\d+ passed' /tmp/test-output.txt || echo "unknown")
+              DURATION=$(grep -oP 'Duration\s+\K[\d.]+s' /tmp/test-output.txt || echo "unknown")
+              COVERAGE=$(grep -oP 'All files\s*\|\s*\K[\d.]+' /tmp/test-output.txt | head -1 || echo "unknown")
+              echo "| Metric | Value |"
+              echo "|--------|-------|"
+              echo "| Tests | ${TESTS} |"
+              echo "| Duration | ${DURATION} |"
+              echo "| Line Coverage | ${COVERAGE}% |"
+              echo "| Threshold | 10% |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY" || true
+        shell: bash
 
       - name: Build
         run: npm run build
@@ -124,7 +144,26 @@ jobs:
         run: uv run mypy .
 
       - name: Test with pytest
-        run: uv run pytest -v --tb=short
+        run: uv run pytest -v --tb=short 2>&1 | tee /tmp/test-output.txt
+
+      - name: Write test summary
+        if: always()
+        run: |
+          {
+            echo "## API Service Tests"
+            echo ""
+            if [ -f /tmp/test-output.txt ]; then
+              PASSED=$(grep -c "PASSED" /tmp/test-output.txt || echo "0")
+              FAILED=$(grep -c "FAILED" /tmp/test-output.txt || echo "0")
+              TOTAL=$((PASSED + FAILED))
+              echo "| Metric | Value |"
+              echo "|--------|-------|"
+              echo "| Passed | ${PASSED} |"
+              echo "| Failed | ${FAILED} |"
+              echo "| Total | ${TOTAL} |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY" || true
+        shell: bash
 
   # Ingest: Python data pipeline
   ingest:
@@ -163,7 +202,27 @@ jobs:
       - name: Test with coverage
         env:
           HF_HUB_DOWNLOAD_TIMEOUT: '120'
-        run: uv run pytest -v --tb=short -m "not slow" --cov=ingest --cov-report=term-missing --cov-fail-under=85
+        run: uv run pytest -v --tb=short -m "not slow" --cov=ingest --cov-report=term-missing --cov-fail-under=85 2>&1 | tee /tmp/test-output.txt
+
+      - name: Write test summary
+        if: always()
+        run: |
+          {
+            echo "## Ingest Tests"
+            echo ""
+            if [ -f /tmp/test-output.txt ]; then
+              PASSED=$(grep -c "PASSED" /tmp/test-output.txt || echo "0")
+              FAILED=$(grep -c "FAILED" /tmp/test-output.txt || echo "0")
+              COVERAGE=$(grep -oP 'TOTAL\s+\d+\s+\d+\s+\K\d+%' /tmp/test-output.txt || echo "unknown")
+              echo "| Metric | Value |"
+              echo "|--------|-------|"
+              echo "| Passed | ${PASSED} |"
+              echo "| Failed | ${FAILED} |"
+              echo "| Coverage | ${COVERAGE} |"
+              echo "| Threshold | 85% |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY" || true
+        shell: bash
 
   # Memvid Service: Rust/gRPC (unit tests + library coverage, excludes real.rs)
   # real.rs coverage is handled by the memvid-integration job below
@@ -207,7 +266,23 @@ jobs:
         run: cargo install cargo-tarpaulin
 
       - name: Coverage
-        run: cargo tarpaulin --config tarpaulin-unit.toml
+        run: cargo tarpaulin --config tarpaulin-unit.toml 2>&1 | tee /tmp/test-output.txt
+
+      - name: Write test summary
+        if: always()
+        run: |
+          {
+            echo "## Memvid Service Tests"
+            echo ""
+            if [ -f /tmp/test-output.txt ]; then
+              COVERAGE=$(grep -oP '\d+\.\d+% coverage' /tmp/test-output.txt | tail -1 || echo "unknown")
+              echo "| Metric | Value |"
+              echo "|--------|-------|"
+              echo "| Coverage | ${COVERAGE} |"
+              echo "| Threshold | 85% |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY" || true
+        shell: bash
 
   # Memvid Integration: real.rs coverage with actual .mv2 file
   # Runs ingest to produce a .mv2, then cargo tarpaulin on integration tests
@@ -596,7 +671,7 @@ jobs:
       IMAGE_NAME: ai-resume-${{ matrix.image }}
       REGISTRY: ghcr.io/${{ github.repository_owner }}
       VERSION: ${{ github.ref_name }}
-      COSIGN_YES: "true"
+      COSIGN_YES: 'true'
     steps:
       - uses: actions/checkout@v6
 
@@ -779,6 +854,42 @@ jobs:
           path: /tmp/sbom-${{ matrix.image }}-${{ matrix.platform }}.json
           retention-days: 90
 
+      - name: Write build summary
+        if: always()
+        run: |
+          {
+            echo "## Container: ${IMAGE_NAME} (${{ matrix.platform }})"
+            echo ""
+
+            # Image size
+            SIZE=$(podman image inspect "localhost/${IMAGE_NAME}:${VERSION}" --format '{{.Size}}' 2>/dev/null || echo "0")
+            SIZE_MB=$((SIZE / 1024 / 1024))
+
+            # Trivy results from SARIF
+            TRIVY_SARIF="trivy-${{ matrix.image }}-${{ matrix.platform }}.sarif"
+            if [ -f "$TRIVY_SARIF" ]; then
+              CRITICAL=$(jq '[.runs[].results[] | select(.level == "error")] | length' "$TRIVY_SARIF" 2>/dev/null || echo "?")
+              HIGH=$(jq '[.runs[].results[] | select(.level == "warning")] | length' "$TRIVY_SARIF" 2>/dev/null || echo "?")
+            else
+              CRITICAL="?"
+              HIGH="?"
+            fi
+
+            # Push status
+            DIGEST="${{ steps.push.outputs.digest }}"
+            PUSH_STATUS="${DIGEST:-skipped (PR)}"
+
+            echo "| Metric | Value |"
+            echo "|--------|-------|"
+            echo "| Image | ${IMAGE_NAME} |"
+            echo "| Platform | ${{ matrix.platform }} |"
+            echo "| Size | ${SIZE_MB} MB |"
+            echo "| Trivy Critical | ${CRITICAL} |"
+            echo "| Trivy High | ${HIGH} |"
+            echo "| Push | ${PUSH_STATUS} |"
+          } >> "$GITHUB_STEP_SUMMARY" || true
+        shell: bash
+
   # Summary job (always runs, reports overall status)
   summary:
     needs:
@@ -832,6 +943,28 @@ jobs:
             echo "One or more jobs failed!"
             exit 1
           fi
+
+          # Write aggregated summary
+          {
+            echo "## CI Summary"
+            echo ""
+            echo "| Job | Status |"
+            echo "|-----|--------|"
+            echo "| Frontend | ${{ needs.frontend.result || 'skipped' }} |"
+            echo "| API Service | ${{ needs.api-service.result || 'skipped' }} |"
+            echo "| Ingest | ${{ needs.ingest.result || 'skipped' }} |"
+            echo "| Memvid Service | ${{ needs.memvid-service.result || 'skipped' }} |"
+            echo "| Memvid Integration | ${{ needs.memvid-integration.result || 'skipped' }} |"
+            echo "| Cross-Service | ${{ needs.cross-service.result || 'skipped' }} |"
+            echo "| E2E Real | ${{ needs.e2e-real.result || 'skipped' }} |"
+            echo "| Docs | ${{ needs.docs.result || 'skipped' }} |"
+            echo "| Commit Standards | ${{ needs.commit-standards.result || 'skipped' }} |"
+            echo "| Container Build | ${{ needs.container-build.result || 'skipped' }} |"
+            echo ""
+            echo "### Container Build Matrix"
+            echo ""
+            echo "See individual container-build job summaries for image size, Trivy findings, and push status."
+          } >> "$GITHUB_STEP_SUMMARY" || true
 
           echo ""
           echo "All checks passed (including coverage gates)!"
