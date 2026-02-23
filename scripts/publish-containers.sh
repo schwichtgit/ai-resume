@@ -182,16 +182,16 @@ for IMG in "${IMAGES[@]}"; do
     log_info "  ${LOCAL} -> docker://${REMOTE}"
 
     if [ "$DRY_RUN" = true ]; then
-        log_warn "  [dry-run] skopeo copy --all docker://${LOCAL} docker://${REMOTE}"
+        log_warn "  [dry-run] podman manifest push --all ${LOCAL} docker://${REMOTE}"
         PUSHED=$((PUSHED + 1))
         echo ""
         continue
     fi
 
-    # Copy the manifest list (all architectures) to the remote registry
-    if skopeo copy \
+    # Push the manifest list (all architectures) to the remote registry
+    if podman manifest push \
         --all \
-        "containers-storage:${LOCAL}" \
+        "${LOCAL}" \
         "docker://${REMOTE}" 2>&1; then
         log_info "  Pushed successfully"
         PUSHED=$((PUSHED + 1))
