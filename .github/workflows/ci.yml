@@ -153,8 +153,8 @@ jobs:
             echo "## API Service Tests"
             echo ""
             if [ -f /tmp/test-output.txt ]; then
-              PASSED=$(grep -c "PASSED" /tmp/test-output.txt || echo "0")
-              FAILED=$(grep -c "FAILED" /tmp/test-output.txt || echo "0")
+              PASSED=$(grep -c "PASSED" /tmp/test-output.txt || true)
+              FAILED=$(grep -c "FAILED" /tmp/test-output.txt || true)
               TOTAL=$((PASSED + FAILED))
               echo "| Metric | Value |"
               echo "|--------|-------|"
@@ -211,8 +211,8 @@ jobs:
             echo "## Ingest Tests"
             echo ""
             if [ -f /tmp/test-output.txt ]; then
-              PASSED=$(grep -c "PASSED" /tmp/test-output.txt || echo "0")
-              FAILED=$(grep -c "FAILED" /tmp/test-output.txt || echo "0")
+              PASSED=$(grep -c "PASSED" /tmp/test-output.txt || true)
+              FAILED=$(grep -c "FAILED" /tmp/test-output.txt || true)
               COVERAGE=$(grep -oP 'TOTAL\s+\d+\s+\d+\s+\K\d+%' /tmp/test-output.txt || echo "unknown")
               echo "| Metric | Value |"
               echo "|--------|-------|"
