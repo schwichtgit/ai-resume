@@ -121,10 +121,10 @@ tier_required() {
   echo "Checking required tools..."
   echo ""
 
-  check_tool "Node.js"   "node --version"    "22.12.0" "https://nodejs.org/"              || FAIL=$((FAIL + 1))
-  check_tool "npm"       "npm --version"     "10.0.0"  "(bundled with Node.js)"           || FAIL=$((FAIL + 1))
-  check_tool "uv"        "uv --version"      "0.4.0"   "curl -LsSf https://astral.sh/uv/install.sh | sh" || FAIL=$((FAIL + 1))
-  check_tool "go-task"   "task --version"    "3.0.0"   "https://taskfile.dev/installation/" || FAIL=$((FAIL + 1))
+  check_tool "Node.js"   "node --version"    "22.14.0" "https://nodejs.org/"              || FAIL=$((FAIL + 1))
+  check_tool "npm"       "npm --version"     "10.9.0"  "(bundled with Node.js)"           || FAIL=$((FAIL + 1))
+  check_tool "uv"        "uv --version"      "0.9.0"   "curl -LsSf https://astral.sh/uv/install.sh | sh" || FAIL=$((FAIL + 1))
+  check_tool "go-task"   "task --version"    "3.48.0"  "https://taskfile.dev/installation/" || FAIL=$((FAIL + 1))
 
   echo ""
   if (( FAIL > 0 )); then
@@ -138,9 +138,9 @@ tier_service() {
   echo "Checking service-level tools..."
   echo ""
 
-  check_tool_warn "rustc"   "rustc --version"   "1.92.0"  "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
-  check_tool_warn "cargo"   "cargo --version"   "1.92.0"  "(bundled with Rust)"
-  check_tool_warn "protoc"  "protoc --version"  "3.0.0"   "https://github.com/protocolbuffers/protobuf/releases"
+  check_tool_warn "rustc"   "rustc --version"   "1.93.0"  "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+  check_tool_warn "cargo"   "cargo --version"   "1.93.0"  "(bundled with Rust)"
+  check_tool_warn "protoc"  "protoc --version"  "32.1"    "https://github.com/protocolbuffers/protobuf/releases"
 
   echo ""
   echo "Service tool check complete (warnings only)."

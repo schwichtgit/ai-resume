@@ -68,13 +68,13 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system design, dat
 
 ## Prerequisites
 
-| Tool    | Minimum | Required For                        |
-| ------- | ------- | ----------------------------------- |
-| Node.js | 22.12.0 | Frontend build and dev server       |
-| uv      | 0.4.0   | Python package management           |
-| go-task | 3.0.0   | Build orchestration (`task` CLI)    |
-| Rust    | 1.92.0  | memvid-service only                 |
-| podman  | 4.0.0   | Container builds and deployment only|
+| Tool    | Minimum | Required For                         |
+| ------- | ------- | ------------------------------------ |
+| Node.js | 22.14.0 | Frontend build and dev server        |
+| uv      | 0.9.0   | Python package management            |
+| go-task | 3.48.0  | Build orchestration (`task` CLI)     |
+| Rust    | 1.93.0  | memvid-service only                  |
+| podman  | 5.8.0   | Container builds and deployment only |
 
 Python is not a global prerequisite. `uv` manages per-service virtual environments and pins the Python version in each service's `pyproject.toml`.
 
@@ -182,14 +182,14 @@ ai-resume/
 
 ## Documentation
 
-| Document                                                           | Description                                  |
-| ------------------------------------------------------------------ | -------------------------------------------- |
-| [Architecture](docs/ARCHITECTURE.md)                               | System design, data flow, network topology   |
-| [Deployment](docs/DEPLOYMENT.md)                                   | Container builds, ARM64 edge, compose config |
-| [Development](docs/DEVELOPMENT.md)                                 | Build system, per-service commands, testing  |
-| [Security](docs/SECURITY.md)                                       | Threat model, prompt injection, hardening    |
-| [Hook Exit Codes](docs/hook-exit-code-conventions.md)              | Claude Code hook exit code conventions       |
-| [Post-Edit Hook Antipattern](docs/post-edit-hook-antipattern.md)   | Hook design guidance                         |
+| Document                                                         | Description                                  |
+| ---------------------------------------------------------------- | -------------------------------------------- |
+| [Architecture](docs/ARCHITECTURE.md)                             | System design, data flow, network topology   |
+| [Deployment](docs/DEPLOYMENT.md)                                 | Container builds, ARM64 edge, compose config |
+| [Development](docs/DEVELOPMENT.md)                               | Build system, per-service commands, testing  |
+| [Security](docs/SECURITY.md)                                     | Threat model, prompt injection, hardening    |
+| [Hook Exit Codes](docs/hook-exit-code-conventions.md)            | Claude Code hook exit code conventions       |
+| [Post-Edit Hook Antipattern](docs/post-edit-hook-antipattern.md) | Hook design guidance                         |
 
 ## About This Project
 
