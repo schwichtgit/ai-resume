@@ -3,6 +3,7 @@
 import json
 import time
 from collections import defaultdict
+from typing import Any
 
 import structlog
 from fastapi import APIRouter, HTTPException, Request
@@ -228,7 +229,7 @@ async def get_suggested_questions_resource() -> str:
 # =============================================================================
 
 
-def create_mcp_app():
+def create_mcp_app() -> Any:
     """Create the MCP ASGI app for mounting at /mcp.
 
     Uses Streamable HTTP transport with stateless mode (no server-side session
