@@ -5,7 +5,7 @@
 **Project:** ai-resume
 **Spec Version:** 1.0.0
 **Plan Version:** 1.0.0
-**Last Updated:** 2026-02-19
+**Last Updated:** 2026-02-24
 **Status:** Approved
 
 ---
@@ -954,3 +954,93 @@ A `.trivyignore` file (committed empty with comment header) provides documented 
 
 - Positive: Near-zero CVE surface (no shell, no package manager, no unnecessary packages), RHEL 10 support through 2035, aligns with memvid-service's distroless philosophy, Trivy severity gate at CRITICAL/HIGH=0
 - Negative: 3-stage builds are more complex to maintain, missing .so errors require manual diagnosis and addition to the copy list, UBI 10 images are larger than Alpine base layers
+
+### ADR-023: MCP Server Integration (Remote + WebMCP)
+
+**Date:** 2026-02-24
+**Status:** Accepted
+
+**Context:** The resume API exposes REST endpoints for chat, fit assessment, profile, and suggested questions. MCP (Model Context Protocol) is an emerging standard for exposing AI tool capabilities to LLM clients (Claude Desktop, browser agents, IDE extensions). Adding MCP support makes the resume queryable from any MCP-compatible client without custom integration code. Chrome 146+ introduces WebMCP via `navigator.modelContext`, enabling browser-native AI agents to discover and invoke tools.
+
+**Decision:** Mount a FastMCP sub-application at `/mcp` on the existing FastAPI app using Streamable HTTP transport. Expose `ask_question` and `assess_fit` as MCP tools (wrapping the existing chat and fit assessment pipelines), and `profile://current` and `questions://suggested` as MCP resources. Add a `<meta name="model-context" content="/mcp">` tag to `index.html` for declarative discovery. Register tools client-side via the Imperative API (`navigator.modelContext.addTool()`) with feature detection for browser compatibility. Add an nginx `/mcp` location block proxying to the API service (same pattern as `/api/`).
+
+**Key Technical Decisions:**
+
+1. **FastMCP >= 3.0.0** -- The fastmcp library provides a high-level Python API for MCP server creation. Version 3+ supports Streamable HTTP transport (the current MCP standard, replacing SSE transport). Mounts as an ASGI sub-app on the existing FastAPI instance.
+2. **Stateless tools** -- `ask_question` and `assess_fit` are full pipeline wrappers (guardrails, semantic search, LLM call), not thin proxies to REST endpoints. Tools are stateless: no session_id, no conversation history. Each invocation is independent. MCP clients manage their own context. This ensures MCP clients get the same quality guarantees as browser users without server-side state coupling.
+3. **Resources for read-only data** -- Profile and suggested questions are MCP resources (not tools) because they are read-only, cacheable, and don't involve LLM calls.
+4. **No MCP authentication, separate rate limit** -- Public portfolio site; the same content is available via the REST API without auth. MCP tools are rate-limited at 60 requests/minute per client IP via a programmatic rate check (6x the REST limit of 10/min). MCP resources are exempt (read-only, no LLM cost). The higher limit accommodates programmatic agent usage patterns.
+5. **Feature-detected WebMCP** -- `navigator.modelContext` only exists in Chrome 146+. The client-side code checks for its existence before registering tools. Silent no-op on unsupported browsers.
+6. **Nginx regex merge** -- The existing `/api/` location block regex is extended to `^/(api|mcp)/` to match both paths in a single block. Both proxy to the same API service backend on port 3000. No separate location block, no code duplication.
+7. **Config endpoints inside FastMCP sub-app** -- The `/api/v1/mcp/clients` and `/api/v1/mcp/config/{client_id}` endpoints for MCP client configuration display are defined within the FastMCP sub-app (`mcp_server.py`), not as separate FastAPI routes. They share the MCP mount lifecycle: when `mcp_enabled=False`, all MCP endpoints (tools, resources, and config) return 404. This keeps all MCP knowledge in one module and ensures the frontend's "MCP Config" menu item naturally greys out when MCP is disabled.
+
+**Alternatives Considered:**
+
+1. **Standalone MCP server (separate container)** -- Full isolation. Rejected: adds a fourth production container, increases deployment complexity, duplicates the chat/fit pipelines or requires inter-service calls.
+2. **SSE transport** -- Older MCP transport. Rejected: Streamable HTTP is the current standard, better suited for request-response tool patterns, and doesn't require long-lived connections.
+3. **Tools-only (no resources)** -- Simpler API surface. Rejected: profile and suggested questions are natural read-only resources; exposing them as tools would require unnecessary LLM-style invocation semantics.
+
+**Consequences:**
+
+- Positive: Resume is queryable from Claude Desktop, Chrome AI, and any MCP client without custom integration; declarative meta tag enables automatic discovery; no new containers or services
+- Negative: fastmcp dependency added to api-service; MCP protocol evolves rapidly (may require updates); WebMCP is Chrome-only and experimental (requires feature detection)
+
+### ADR-024: Build-Time Version Injection
+
+**Date:** 2026-02-24
+**Status:** Accepted
+
+**Context:** The API service has a hardcoded `__version__ = "1.0.0"` in `__init__.py`. The frontend About dialog and footer need to display the actual deployed version (SemVer tag + git commit SHA). Container images are built in CI with version information available from git tags and `$GITHUB_SHA`, but this information is not currently injected into the runtime images.
+
+**Decision:** Use Docker build args (`BUILD_VERSION`, `BUILD_COMMIT`) to write a `/app/VERSION` JSON file during the builder stage of Python service Dockerfiles. A new `GET /api/v1/version` endpoint reads this file at request time and returns the version metadata. Local development (no `/app/VERSION` file) falls back to `{"version":"dev","commit":"unknown"}`. CI passes `--build-arg BUILD_VERSION=${VERSION} --build-arg BUILD_COMMIT=${{ github.sha }}` to podman build.
+
+**Key Technical Decisions:**
+
+1. **File-based, not env-var-based** -- Writing `/app/VERSION` in the builder stage avoids exposing version metadata as environment variables (which appear in container inspect output and may leak). The file is baked into the image, immutable, and read-only.
+2. **JSON format, minimal fields** -- A structured JSON file (`{"version":"...","commit":"..."}`) is directly parseable by Python without string splitting. The version endpoint returns only `version` and `commit` -- no `base_url` or other derived fields. URL derivation is owned exclusively by the MCP config endpoints, which extract it from request headers at call time.
+3. **Fallback to dev defaults** -- If `/app/VERSION` is missing or unreadable, the endpoint returns `{"version":"dev","commit":"unknown"}`. This makes local development work without any setup.
+4. **Applied to all 4 service Dockerfiles** -- All services (frontend, api-service, ingest, memvid-service) accept `ARG BUILD_VERSION=dev` and `ARG BUILD_COMMIT=unknown`. CI passes these args unconditionally. Services without a version endpoint ignore the values, but the args are available for OCI annotations or future use.
+5. **Standard rate limiting on version endpoint** -- Rate-limited at 10 requests/minute per client IP, consistent with the constitution requirement that all API endpoints are rate-limited. The health endpoint exemption (`@limiter.exempt`) is a legacy exception; the version endpoint follows the standard pattern.
+6. **Shared `get_version()` helper** -- A single `get_version()` function in `ai_resume_api/` reads `/app/VERSION` with dev fallback. Used by the version endpoint, health endpoint, FastAPI metadata, and startup log. Replaces the hardcoded `__version__ = "1.0.0"` in `__init__.py` with a single source of truth.
+
+**Alternatives Considered:**
+
+1. **Environment variables** -- Simpler to implement. Rejected: visible in `docker inspect`, mutable at runtime, and env vars are already used for secrets (mixing concerns).
+2. **Python package metadata (`importlib.metadata`)** -- Standard Python approach. Rejected: requires the version to be in `pyproject.toml` which is a source file, not build-time injectable. Would need setuptools-scm or similar, adding complexity.
+3. **Hardcoded in source code** -- Update `__version__` before each release. Rejected: requires source code changes for every release, easy to forget, not automatable in CI.
+
+**Consequences:**
+
+- Positive: Automated version injection with zero manual steps, works identically in CI and local dev, version endpoint available for frontend and monitoring
+- Negative: Adds a build arg dependency (forgotten args fall back to dev defaults, not an error), `/app/VERSION` file must survive multi-stage COPY chains, `get_version()` replaces a simple string constant with a file read (mitigated by reading once at startup or caching)
+
+### ADR-025: UI Navigation and About System
+
+**Date:** 2026-02-24
+**Status:** Accepted
+
+**Context:** The header has navigation links and a theme toggle but no application metadata or external links. The footer has a broken GitHub URL (`https://github.com` instead of the actual repo URL) and no Medium blog link. Users and recruiters have no way to learn about the application version, view the source code, or read the accompanying blog series.
+
+**Decision:** Add a MoreVertical icon with dropdown menu to the desktop header (after the theme toggle) containing "About" and "MCP Config" items. Create a shared `AboutDialog` component (shadcn/ui Dialog) displaying version info, GitHub link, and Medium link. Create a `McpConfigDialog` component that fetches MCP client configurations from the API and renders tabbed code blocks with copy-to-clipboard. Add both items to the mobile hamburger menu. Redesign the footer with corrected GitHub URL, Medium icon (BookOpen from lucide-react), version display, and About trigger. Create `useAppVersion` and `useMcpConfig` hooks.
+
+**Key Technical Decisions:**
+
+1. **MoreVertical, not hamburger** -- The MoreVertical icon (three dots) is the conventional "more actions" affordance in desktop UIs. It sits alongside the theme toggle without replacing it, keeping the most-used action (theme switch) directly accessible.
+2. **Shared AboutDialog** -- A single `AboutDialog.tsx` component is triggered from both the header menu and footer "About" link. Shared state via a controlled open/onOpenChange pattern avoids duplication.
+3. **useAppVersion hook** -- Fetches `/api/v1/version` once and caches with `staleTime: Infinity` (version doesn't change at runtime). Used by both `AboutDialog` and `Footer` without duplicate requests.
+4. **BookOpen for Medium** -- lucide-react doesn't have a Medium brand icon. BookOpen is a reasonable semantic match (blog/reading) and is already available in the icon set.
+5. **Footer two-column layout** -- Left: name + title + version. Right: social icons (GitHub, LinkedIn, Email, Medium) + About link. Stacks vertically on mobile. Matches the existing responsive pattern.
+6. **McpConfigDialog with API-driven tabs** -- The frontend has zero MCP client knowledge. Tab names, config formats, filled templates, and setup instructions all come from `GET /api/v1/mcp/clients` and `GET /api/v1/mcp/config/{client_id}`. Adding a new MCP client is a backend-only change.
+7. **Lazy prefetch on menu open** -- The MCP clients list is fetched when the MoreVertical menu opens, not on page load. This avoids adding an API call to the critical render path. Results are cached with `staleTime: Infinity`. Individual config templates are fetched per tab selection and cached per client_id.
+8. **Greyed-out disabled state** -- When the MCP clients API is unreachable (MCP disabled, network error), the "MCP Config" menu item is visible but greyed out and not clickable. This communicates the feature exists without breaking the menu.
+
+**Alternatives Considered:**
+
+1. **Settings gear icon** -- Alternative to MoreVertical. Rejected: implies configurable settings, which this app doesn't have. MoreVertical better signals "more information/actions."
+2. **Separate About page** -- Full route for about content. Rejected: overengineered for 4 lines of information. A dialog keeps the user in context.
+3. **Version in meta tags only** -- Inject version into HTML meta tags at build time. Rejected: requires build-time HTML transformation, doesn't provide runtime access for the dialog, and doesn't work with SPA client-side rendering.
+
+**Consequences:**
+
+- Positive: Version visibility for debugging and support, corrected GitHub URL drives repo traffic, Medium link connects to project blog series, consistent About experience across header and footer
+- Negative: Adds dropdown menu complexity to header, BookOpen icon is not immediately recognizable as "Medium" (mitigated by tooltip/label), version display depends on API availability

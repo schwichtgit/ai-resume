@@ -211,10 +211,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "pydantic-models",
-        "toml-config-schema"
-      ]
+      "dependencies": ["pydantic-models", "toml-config-schema"]
     },
     {
       "id": "memvid-service-container",
@@ -229,10 +226,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "proto-definition",
-        "real-memvid-searcher"
-      ]
+      "dependencies": ["proto-definition", "real-memvid-searcher"]
     },
     {
       "id": "readonly-containers",
@@ -491,9 +485,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "markdown-frontmatter-parsing"
-      ]
+      "dependencies": ["markdown-frontmatter-parsing"]
     },
     {
       "id": "experience-chunk-parsing",
@@ -510,9 +502,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "section-extraction"
-      ]
+      "dependencies": ["section-extraction"]
     },
     {
       "id": "skills-parsing",
@@ -527,9 +517,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "section-extraction"
-      ]
+      "dependencies": ["section-extraction"]
     },
     {
       "id": "faq-parsing",
@@ -544,9 +532,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "section-extraction"
-      ]
+      "dependencies": ["section-extraction"]
     },
     {
       "id": "failure-story-parsing",
@@ -560,9 +546,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "section-extraction"
-      ]
+      "dependencies": ["section-extraction"]
     },
     {
       "id": "fit-assessment-parsing",
@@ -579,9 +563,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "section-extraction"
-      ]
+      "dependencies": ["section-extraction"]
     },
     {
       "id": "semantic-embedding",
@@ -620,9 +602,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "semantic-embedding"
-      ]
+      "dependencies": ["semantic-embedding"]
     },
     {
       "id": "ingest-retrieval-verification",
@@ -637,9 +617,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "mv2-file-creation"
-      ]
+      "dependencies": ["mv2-file-creation"]
     },
     {
       "id": "ingest-edge-cases",
@@ -682,9 +660,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "mv2-file-creation"
-      ]
+      "dependencies": ["mv2-file-creation"]
     },
     {
       "id": "profile-api",
@@ -708,9 +684,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-in-memvid"
-      ]
+      "dependencies": ["profile-in-memvid"]
     },
     {
       "id": "suggested-questions-api",
@@ -727,9 +701,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-api"
-      ]
+      "dependencies": ["profile-api"]
     },
     {
       "id": "chat-endpoint",
@@ -774,10 +746,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "chat-endpoint",
-        "openrouter-client"
-      ]
+      "dependencies": ["chat-endpoint", "openrouter-client"]
     },
     {
       "id": "mock-streaming",
@@ -793,9 +762,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "streaming-sse"
-      ]
+      "dependencies": ["streaming-sse"]
     },
     {
       "id": "openrouter-client",
@@ -841,9 +808,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "pydantic-models"
-      ]
+      "dependencies": ["pydantic-models"]
     },
     {
       "id": "rate-limiting",
@@ -906,10 +871,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "mock-searcher",
-        "real-memvid-searcher"
-      ]
+      "dependencies": ["mock-searcher", "real-memvid-searcher"]
     },
     {
       "id": "mock-searcher",
@@ -943,9 +905,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "mv2-file-creation"
-      ]
+      "dependencies": ["mv2-file-creation"]
     },
     {
       "id": "prometheus-metrics-api",
@@ -991,9 +951,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "trace-id-propagation"
-      ]
+      "dependencies": ["trace-id-propagation"]
     },
     {
       "id": "structured-logging-memvid",
@@ -1039,9 +997,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "prometheus-metrics-api"
-      ]
+      "dependencies": ["prometheus-metrics-api"]
     },
     {
       "id": "input-guardrails",
@@ -1063,9 +1019,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "chat-endpoint"
-      ]
+      "dependencies": ["chat-endpoint"]
     },
     {
       "id": "output-guardrails",
@@ -1089,9 +1043,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "chat-endpoint"
-      ]
+      "dependencies": ["chat-endpoint"]
     },
     {
       "id": "system-prompt-hardening",
@@ -1107,10 +1059,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-in-memvid",
-        "profile-api"
-      ]
+      "dependencies": ["profile-in-memvid", "profile-api"]
     },
     {
       "id": "api-client-frontend",
@@ -1148,9 +1097,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "api-client-frontend"
-      ]
+      "dependencies": ["api-client-frontend"]
     },
     {
       "id": "profile-hook",
@@ -1167,9 +1114,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "api-client-frontend"
-      ]
+      "dependencies": ["api-client-frontend"]
     },
     {
       "id": "ai-chat-component",
@@ -1218,9 +1163,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-hook"
-      ]
+      "dependencies": ["profile-hook"]
     },
     {
       "id": "experience-component",
@@ -1241,9 +1184,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-hook"
-      ]
+      "dependencies": ["profile-hook"]
     },
     {
       "id": "fit-assessment-component",
@@ -1267,10 +1208,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-hook",
-        "assess-fit-endpoint"
-      ]
+      "dependencies": ["profile-hook", "assess-fit-endpoint"]
     },
     {
       "id": "header-component",
@@ -1286,9 +1224,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-hook"
-      ]
+      "dependencies": ["profile-hook"]
     },
     {
       "id": "footer-component",
@@ -1304,9 +1240,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-hook"
-      ]
+      "dependencies": ["profile-hook"]
     },
     {
       "id": "dynamic-meta-tags",
@@ -1324,9 +1258,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-hook"
-      ]
+      "dependencies": ["profile-hook"]
     },
     {
       "id": "seo-lua-handler",
@@ -1347,9 +1279,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-api"
-      ]
+      "dependencies": ["profile-api"]
     },
     {
       "id": "assess-fit-endpoint",
@@ -1370,11 +1300,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "chat-endpoint",
-        "role-classifier",
-        "grpc-memvid-client"
-      ]
+      "dependencies": ["chat-endpoint", "role-classifier", "grpc-memvid-client"]
     },
     {
       "id": "role-classifier",
@@ -1410,9 +1336,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "openrouter-client"
-      ]
+      "dependencies": ["openrouter-client"]
     },
     {
       "id": "pydantic-models",
@@ -1454,11 +1378,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-in-memvid",
-        "profile-api",
-        "profile-hook"
-      ]
+      "dependencies": ["profile-in-memvid", "profile-api", "profile-hook"]
     },
     {
       "id": "fit-assessment-ui-tabs",
@@ -1475,10 +1395,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "fit-assessment-component",
-        "assess-fit-endpoint"
-      ]
+      "dependencies": ["fit-assessment-component", "assess-fit-endpoint"]
     },
     {
       "id": "error-display-retry",
@@ -1494,9 +1411,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "streaming-chat-hook"
-      ]
+      "dependencies": ["streaming-chat-hook"]
     },
     {
       "id": "loading-states",
@@ -1512,10 +1427,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-hook",
-        "streaming-chat-hook"
-      ]
+      "dependencies": ["profile-hook", "streaming-chat-hook"]
     },
     {
       "id": "cancel-streaming",
@@ -1531,9 +1443,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "streaming-chat-hook"
-      ]
+      "dependencies": ["streaming-chat-hook"]
     },
     {
       "id": "clear-conversation",
@@ -1550,9 +1460,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "streaming-chat-hook"
-      ]
+      "dependencies": ["streaming-chat-hook"]
     },
     {
       "id": "suggested-questions-ui",
@@ -1569,10 +1477,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "api-client-frontend",
-        "suggested-questions-api"
-      ]
+      "dependencies": ["api-client-frontend", "suggested-questions-api"]
     },
     {
       "id": "backend-health-indicator",
@@ -1588,9 +1493,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "api-client-frontend"
-      ]
+      "dependencies": ["api-client-frontend"]
     },
     {
       "id": "ask-mode-reranking",
@@ -1635,9 +1538,7 @@
         "Run 'grep -rn \"arm64\\|aarch64\\|multi-arch\" scripts/build-all.sh' and verify multi-architecture build support for edge devices"
       ],
       "passes": true,
-      "dependencies": [
-        "mv2-file-creation"
-      ]
+      "dependencies": ["mv2-file-creation"]
     },
     {
       "id": "error-boundaries",
@@ -1719,10 +1620,7 @@
         "Verify page layout adjusts without blank space when a section is hidden"
       ],
       "passes": true,
-      "dependencies": [
-        "profile-api",
-        "profile-hook"
-      ]
+      "dependencies": ["profile-api", "profile-hook"]
     },
     {
       "id": "vulnerability-scanning",
@@ -1738,9 +1636,7 @@
         "Grep .github/workflows/ for 'grype' or 'trivy' to verify scanner integration in CI"
       ],
       "passes": true,
-      "dependencies": [
-        "mv2-file-creation"
-      ]
+      "dependencies": ["mv2-file-creation"]
     },
     {
       "id": "load-testing",
@@ -1758,10 +1654,7 @@
         "Verify OpenRouter rate limits are handled gracefully with queuing or backoff, not 5xx errors"
       ],
       "passes": true,
-      "dependencies": [
-        "chat-endpoint",
-        "rate-limiting"
-      ]
+      "dependencies": ["chat-endpoint", "rate-limiting"]
     },
     {
       "id": "performance-profiling",
@@ -1777,10 +1670,7 @@
         "Verify profiling report highlights specific bottleneck with recommendation when P95 exceeds PRD targets"
       ],
       "passes": true,
-      "dependencies": [
-        "chat-endpoint",
-        "grpc-memvid-server"
-      ]
+      "dependencies": ["chat-endpoint", "grpc-memvid-server"]
     },
     {
       "id": "injection-test-scenarios",
@@ -1819,11 +1709,7 @@
         "Run regex scan on collected responses for patterns like 'Frame \\d+', 'chunk', 'embedding', 'vector' in structural context"
       ],
       "passes": true,
-      "dependencies": [
-        "output-guardrails",
-        "streaming-sse",
-        "chat-endpoint"
-      ]
+      "dependencies": ["output-guardrails", "streaming-sse", "chat-endpoint"]
     },
     {
       "id": "documentation-audit",
@@ -1953,10 +1839,7 @@
         "Grep frontend/src/components/AIChat.tsx for 'memvid_connected' or 'degraded' to verify status propagation handling"
       ],
       "passes": true,
-      "dependencies": [
-        "backend-health-indicator",
-        "profile-api"
-      ]
+      "dependencies": ["backend-health-indicator", "profile-api"]
     },
     {
       "id": "session-clear-endpoint",
@@ -1973,10 +1856,7 @@
         "Grep api-service/ai_resume_api/main.py for 'session' and 'clear' to verify route definition"
       ],
       "passes": true,
-      "dependencies": [
-        "session-management",
-        "clear-conversation"
-      ]
+      "dependencies": ["session-management", "clear-conversation"]
     },
     {
       "id": "ingest-container",
@@ -1996,9 +1876,7 @@
         "Run 'grep -n \"ENTRYPOINT\\|CMD\" ingest/Dockerfile' and verify the container has a proper entrypoint for the ingest pipeline"
       ],
       "passes": true,
-      "dependencies": [
-        "mv2-file-creation"
-      ]
+      "dependencies": ["mv2-file-creation"]
     },
     {
       "id": "tailwind-design-tokens",
@@ -2026,9 +1904,7 @@
         "Verify stagger utilities .stagger-1 through .stagger-4 apply animation-delay from 0.1s to 0.4s"
       ],
       "passes": true,
-      "dependencies": [
-        "tailwind-design-tokens"
-      ],
+      "dependencies": ["tailwind-design-tokens"],
       "verified": true
     },
     {
@@ -2042,9 +1918,7 @@
         "Verify tailwindcss-animate plugin is registered in tailwind.config.ts for shadcn animation support"
       ],
       "passes": true,
-      "dependencies": [
-        "tailwind-design-tokens"
-      ],
+      "dependencies": ["tailwind-design-tokens"],
       "verified": true
     },
     {
@@ -2058,10 +1932,7 @@
         "Verify frontend/src/App.tsx defines / as the sole content route with a * catch-all for 404"
       ],
       "passes": true,
-      "dependencies": [
-        "tailwind-design-tokens",
-        "shadcn-ui-components"
-      ],
+      "dependencies": ["tailwind-design-tokens", "shadcn-ui-components"],
       "verified": true
     },
     {
@@ -2167,10 +2038,7 @@
         "Verify script reports individual check pass/fail status to stdout"
       ],
       "passes": true,
-      "dependencies": [
-        "mv2-file-creation",
-        "profile-in-memvid"
-      ],
+      "dependencies": ["mv2-file-creation", "profile-in-memvid"],
       "verified": true
     },
     {
@@ -2209,10 +2077,7 @@
         "If any category scores FAIL, the overall test fails with a non-zero exit code"
       ],
       "passes": true,
-      "dependencies": [
-        "mv2-file-creation",
-        "ingest-retrieval-verification"
-      ]
+      "dependencies": ["mv2-file-creation", "ingest-retrieval-verification"]
     },
     {
       "id": "outcome-factual-accuracy",
@@ -2229,10 +2094,7 @@
         "Test fails with non-zero exit code if hallucination count > 0"
       ],
       "passes": true,
-      "dependencies": [
-        "chat-endpoint",
-        "profile-api"
-      ]
+      "dependencies": ["chat-endpoint", "profile-api"]
     },
     {
       "id": "outcome-negative-testing",
@@ -2248,11 +2110,7 @@
         "Test fails with non-zero exit code if any out-of-scope query receives a fabricated answer"
       ],
       "passes": true,
-      "dependencies": [
-        "input-guardrails",
-        "output-guardrails",
-        "chat-endpoint"
-      ]
+      "dependencies": ["input-guardrails", "output-guardrails", "chat-endpoint"]
     },
     {
       "id": "outcome-latency-nfr",
@@ -2288,10 +2146,7 @@
         "Replace the .mv2 file with a different candidate's data, restart API, and verify the profile endpoint reflects the new candidate (not cached old data)"
       ],
       "passes": true,
-      "dependencies": [
-        "data-portability",
-        "mv2-file-creation"
-      ]
+      "dependencies": ["data-portability", "mv2-file-creation"]
     },
     {
       "id": "outcome-container-deployment",
@@ -2348,10 +2203,7 @@
         "Generate an honesty report: limitation queried, response summary, acknowledged (Y/N), fabricated compensation (Y/N)"
       ],
       "passes": true,
-      "dependencies": [
-        "chat-endpoint",
-        "skills-parsing"
-      ]
+      "dependencies": ["chat-endpoint", "skills-parsing"]
     },
     {
       "id": "outcome-security-guardrails",
@@ -2411,9 +2263,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "toml-config-schema"
-      ]
+      "dependencies": ["toml-config-schema"]
     },
     {
       "id": "grpc-correlation-metadata",
@@ -2433,9 +2283,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "upstream-proxy-ips"
-      ]
+      "dependencies": ["upstream-proxy-ips"]
     },
     {
       "id": "os-independent-protoc",
@@ -2452,9 +2300,7 @@
         "Run 'docker build --target builder -t memvid-builder memvid-service/' from the repo root (with proto/ copied) and verify the build succeeds including tonic-build code generation"
       ],
       "passes": false,
-      "dependencies": [
-        "memvid-service-container"
-      ]
+      "dependencies": ["memvid-service-container"]
     },
     {
       "id": "memvid-distroless-runtime",
@@ -2474,10 +2320,7 @@
         "Run 'docker run --rm memvid-test --health; echo $?' and verify exit code is 1 (no server running, expected failure proves the flag works)"
       ],
       "passes": false,
-      "dependencies": [
-        "memvid-service-container",
-        "os-independent-protoc"
-      ]
+      "dependencies": ["memvid-service-container", "os-independent-protoc"]
     },
     {
       "id": "cargo-auditable-sbom",
@@ -2495,9 +2338,7 @@
         "Run 'rm -f /tmp/memvid-binary' to clean up the extracted binary"
       ],
       "passes": false,
-      "dependencies": [
-        "memvid-service-container"
-      ]
+      "dependencies": ["memvid-service-container"]
     },
     {
       "id": "trivy-severity-gate",
@@ -2517,10 +2358,7 @@
         "Run 'grep -n trivyignore .github/workflows/security.yml' and verify the Trivy action references the .trivyignore file"
       ],
       "passes": false,
-      "dependencies": [
-        "vulnerability-scanning",
-        "cargo-auditable-sbom"
-      ]
+      "dependencies": ["vulnerability-scanning", "cargo-auditable-sbom"]
     },
     {
       "id": "release-workflow",
@@ -2543,10 +2381,7 @@
         "Run 'grep -n \"gh release create\" .github/workflows/release.yml' and verify a GitHub Release is created"
       ],
       "passes": false,
-      "dependencies": [
-        "ci-workflows",
-        "build-automation"
-      ]
+      "dependencies": ["ci-workflows", "build-automation"]
     },
     {
       "id": "changelog-tracking",
@@ -2579,9 +2414,7 @@
         "Run 'grep -n \"ai-resume-frontend\\|ai-resume-api\\|ai-resume-memvid\\|ai-resume-ingest\" scripts/publish-containers.sh' and verify all 4 image names are handled"
       ],
       "passes": false,
-      "dependencies": [
-        "release-workflow"
-      ]
+      "dependencies": ["release-workflow"]
     },
     {
       "id": "release-gate-ci-enforcement",
@@ -2598,10 +2431,7 @@
         "Run 'grep -n \"CHANGELOG.md missing\\|changelog.*missing\\|missing.*entry\" .github/workflows/release.yml' and verify a clear error message for missing changelog entries"
       ],
       "passes": false,
-      "dependencies": [
-        "release-workflow",
-        "changelog-tracking"
-      ]
+      "dependencies": ["release-workflow", "changelog-tracking"]
     },
     {
       "id": "release-trivy-scan",
@@ -2619,10 +2449,7 @@
         "Run 'grep -n \"security-events: write\" .github/workflows/release.yml' and verify the permission for SARIF upload is present"
       ],
       "passes": false,
-      "dependencies": [
-        "release-workflow",
-        "trivy-severity-gate"
-      ]
+      "dependencies": ["release-workflow", "trivy-severity-gate"]
     },
     {
       "id": "ci-uv-python",
@@ -2641,9 +2468,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "ci-workflows"
-      ]
+      "dependencies": ["ci-workflows"]
     },
     {
       "id": "publish-ci-script",
@@ -2663,9 +2488,7 @@
         "Verify the script uses skopeo copy --all for server-side re-tagging (no re-push of layers)"
       ],
       "passes": false,
-      "dependencies": [
-        "ci-workflows"
-      ]
+      "dependencies": ["ci-workflows"]
     },
     {
       "id": "ci-container-build",
@@ -2687,10 +2510,7 @@
         "Verify OCI annotations (org.opencontainers.image.*) are set in the podman build command"
       ],
       "passes": false,
-      "dependencies": [
-        "ci-workflows",
-        "publish-ci-script"
-      ]
+      "dependencies": ["ci-workflows", "publish-ci-script"]
     },
     {
       "id": "release-native-runners",
@@ -2761,9 +2581,7 @@
         "Verify publish-ci.sh verify checks both ci.yml and release.yml workflow identities"
       ],
       "passes": true,
-      "dependencies": [
-        "digest-handoff"
-      ],
+      "dependencies": ["digest-handoff"],
       "verified": true
     },
     {
@@ -2781,10 +2599,7 @@
         "Verify syft SBOM generation failure is blocking (no continue-on-error)"
       ],
       "passes": true,
-      "dependencies": [
-        "ci-container-build",
-        "digest-handoff"
-      ],
+      "dependencies": ["ci-container-build", "digest-handoff"],
       "verified": true
     },
     {
@@ -2804,10 +2619,7 @@
         "Run 'grep -c verify-signatures docs/CI-CONTAINER-FLOW.md' and verify at least 1 match (verification gate documented)"
       ],
       "passes": true,
-      "dependencies": [
-        "cosign-signing",
-        "sbom-generation"
-      ],
+      "dependencies": ["cosign-signing", "sbom-generation"],
       "verified": true
     },
     {
@@ -2824,9 +2636,7 @@
         "Verify summary write is non-blocking: grep for \"|| true\" after GITHUB_STEP_SUMMARY writes"
       ],
       "passes": false,
-      "dependencies": [
-        "ci-workflows"
-      ]
+      "dependencies": ["ci-workflows"]
     },
     {
       "id": "coverage-summaries",
@@ -2841,9 +2651,7 @@
         "Verify summary write is non-blocking: all coverage summary writes use || true"
       ],
       "passes": false,
-      "dependencies": [
-        "service-test-summaries"
-      ]
+      "dependencies": ["service-test-summaries"]
     },
     {
       "id": "container-build-summaries",
@@ -2859,9 +2667,7 @@
         "Verify summary write is non-blocking: container-build summary writes use || true"
       ],
       "passes": false,
-      "dependencies": [
-        "ci-container-build"
-      ]
+      "dependencies": ["ci-container-build"]
     },
     {
       "id": "summary-job-aggregation",
@@ -2881,6 +2687,135 @@
         "coverage-summaries",
         "container-build-summaries"
       ]
+    },
+    {
+      "id": "mcp-server-remote",
+      "category": "functional",
+      "title": "MCP Server Remote Transport",
+      "description": "FastMCP sub-application mounted at /mcp on existing FastAPI app, exposing ask_question and assess_fit as MCP tools, and profile and suggested-questions as MCP resources via Streamable HTTP transport.",
+      "testing_steps": [
+        "Verify fastmcp is in api-service dependencies: grep -c 'fastmcp' api-service/pyproject.toml >= 1",
+        "Verify mcp_enabled setting exists: grep -c 'mcp_enabled' api-service/ai_resume_api/config.py >= 1",
+        "Verify MCP server module exists: test -f api-service/ai_resume_api/mcp_server.py",
+        "Verify MCP app is mounted in main.py: grep -c '/mcp' api-service/ai_resume_api/main.py >= 1",
+        "Verify ask_question tool is defined: grep -c 'ask_question' api-service/ai_resume_api/mcp_server.py >= 1",
+        "Verify assess_fit tool is defined: grep -c 'assess_fit' api-service/ai_resume_api/mcp_server.py >= 1",
+        "Verify profile resource is defined: grep -c 'profile' api-service/ai_resume_api/mcp_server.py >= 1",
+        "Verify questions resource is defined: grep -c 'questions' api-service/ai_resume_api/mcp_server.py >= 1",
+        "Verify MCP clients endpoint in mcp_server.py: grep -c 'clients' api-service/ai_resume_api/mcp_server.py >= 1",
+        "Verify MCP config endpoint in mcp_server.py: grep -c 'config' api-service/ai_resume_api/mcp_server.py >= 1",
+        "Verify MCP config templates include claude-desktop: grep -c 'claude-desktop' api-service/ai_resume_api/mcp_server.py >= 1",
+        "Verify base_url derived from request headers: grep -c 'x-forwarded' api-service/ai_resume_api/mcp_server.py >= 1",
+        "Verify MCP tests exist: test -f api-service/tests/test_mcp_server.py",
+        "Verify MCP tools are stateless (no session_id): grep -cE 'session_id|session_store' api-service/ai_resume_api/mcp_server.py == 0 || grep -c 'stateless' api-service/tests/test_mcp_server.py >= 1",
+        "Verify MCP rate limit configuration (60/min): grep -cE '60/minute|rate_limit' api-service/ai_resume_api/mcp_server.py >= 1",
+        "Verify nginx merged regex for api and mcp: grep -cE 'api\\|mcp' frontend/nginx-default.conf >= 1",
+        "Run api-service MCP tests: cd api-service && source .venv/bin/activate && python -m pytest tests/test_mcp_server.py -v"
+      ],
+      "passes": false,
+      "dependencies": [
+        "chat-endpoint",
+        "assess-fit-endpoint",
+        "profile-api",
+        "suggested-questions-api"
+      ]
+    },
+    {
+      "id": "webmcp-browser-registration",
+      "category": "functional",
+      "title": "WebMCP Browser Tool Registration",
+      "description": "Client-side WebMCP integration that registers resume AI tools with the browser's navigator.modelContext API (Chrome 146+) and adds a declarative meta tag in index.html for MCP endpoint discovery.",
+      "testing_steps": [
+        "Verify webmcp module exists: test -f frontend/src/lib/webmcp.ts",
+        "Verify meta tag in index.html: grep -c 'model-context' frontend/index.html >= 1",
+        "Verify navigator.modelContext feature detection: grep -c 'modelContext' frontend/src/lib/webmcp.ts >= 1",
+        "Verify ask_question tool registration: grep -c 'ask_question' frontend/src/lib/webmcp.ts >= 1",
+        "Verify assess_fit tool registration: grep -c 'assess_fit' frontend/src/lib/webmcp.ts >= 1",
+        "Verify webmcp is called from hooks: grep -rn 'webmcp' frontend/src/hooks/ | wc -l >= 1",
+        "Verify webmcp tests exist: test -f frontend/src/lib/__tests__/webmcp.test.ts",
+        "Run webmcp tests: cd frontend && npm test -- src/lib/__tests__/webmcp.test.ts"
+      ],
+      "passes": false,
+      "dependencies": ["mcp-server-remote"]
+    },
+    {
+      "id": "version-injection-api",
+      "category": "functional",
+      "title": "Build-Time Version Injection and Version API",
+      "description": "Build-time version and commit SHA injection into container images via Docker build args, persisted as /app/VERSION JSON file, exposed via GET /api/v1/version endpoint with dev fallback for local development.",
+      "testing_steps": [
+        "Verify Dockerfile has BUILD_VERSION ARG: grep -c 'BUILD_VERSION' api-service/Dockerfile >= 1",
+        "Verify Dockerfile has BUILD_COMMIT ARG: grep -c 'BUILD_COMMIT' api-service/Dockerfile >= 1",
+        "Verify Dockerfile writes VERSION file: grep -c 'VERSION' api-service/Dockerfile >= 2",
+        "Verify ingest Dockerfile has BUILD_VERSION ARG: grep -c 'BUILD_VERSION' ingest/Dockerfile >= 1",
+        "Verify frontend Dockerfile has BUILD_VERSION ARG: grep -c 'BUILD_VERSION' frontend/Dockerfile >= 1",
+        "Verify memvid-service Dockerfile has BUILD_VERSION ARG: grep -c 'BUILD_VERSION' memvid-service/Dockerfile >= 1",
+        "Verify get_version helper exists: grep -c 'get_version' api-service/ai_resume_api/main.py >= 1",
+        "Verify __version__ removed from __init__.py: ! grep -q '__version__' api-service/ai_resume_api/__init__.py",
+        "Verify version endpoint has rate limiting: grep -A5 'version' api-service/ai_resume_api/main.py | grep -c 'limiter' >= 1",
+        "Verify version endpoint exists in main.py: grep -c 'version' api-service/ai_resume_api/main.py >= 1",
+        "Verify version tests pass: cd api-service && source .venv/bin/activate && python -m pytest tests/ -k 'version' -v",
+        "Verify CI passes build args: grep -c 'BUILD_VERSION' .github/workflows/ci.yml >= 1",
+        "Verify CI passes commit SHA: grep -c 'BUILD_COMMIT' .github/workflows/ci.yml >= 1",
+        "Verify dev fallback logic: grep -c 'dev' api-service/ai_resume_api/main.py >= 1"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "header-about-dialog",
+      "category": "functional",
+      "title": "Header Menu with About Dialog",
+      "description": "MoreVertical icon dropdown menu in desktop header with About dialog showing application version, GitHub link, and Medium link. Mobile hamburger menu includes About item. Shared AboutDialog component and useAppVersion hook.",
+      "testing_steps": [
+        "Verify AboutDialog component exists: test -f frontend/src/components/AboutDialog.tsx",
+        "Verify useAppVersion hook exists: test -f frontend/src/hooks/useAppVersion.ts",
+        "Verify MoreVertical icon in Header: grep -c 'MoreVertical' frontend/src/components/Header.tsx >= 1",
+        "Verify DropdownMenu in Header: grep -c 'DropdownMenu' frontend/src/components/Header.tsx >= 1",
+        "Verify About dialog shows version: grep -c 'version' frontend/src/components/AboutDialog.tsx >= 1",
+        "Verify GitHub link in dialog: grep -c 'schwichtgit/ai-resume' frontend/src/components/AboutDialog.tsx >= 1",
+        "Verify Medium link in dialog: grep -c 'medium.com' frontend/src/components/AboutDialog.tsx >= 1",
+        "Verify mobile About menu item: grep -c 'About' frontend/src/components/Header.tsx >= 1",
+        "Verify McpConfigDialog component exists: test -f frontend/src/components/McpConfigDialog.tsx",
+        "Verify MCP Config menu item in Header: grep -c 'MCP Config' frontend/src/components/Header.tsx >= 1",
+        "Verify McpConfigDialog has copy-to-clipboard: grep -c 'clipboard' frontend/src/components/McpConfigDialog.tsx >= 1",
+        "Verify McpConfigDialog has tabs: grep -c 'Tab' frontend/src/components/McpConfigDialog.tsx >= 1",
+        "Verify MCP Config greyed out when unavailable: grep -c 'disabled' frontend/src/components/Header.tsx >= 1",
+        "Verify McpConfigDialog tests exist: test -f frontend/src/components/__tests__/McpConfigDialog.test.tsx",
+        "Run McpConfigDialog tests: cd frontend && npm test -- src/components/__tests__/McpConfigDialog.test.tsx",
+        "Verify AboutDialog tests exist: test -f frontend/src/components/__tests__/AboutDialog.test.tsx",
+        "Run About dialog tests: cd frontend && npm test -- src/components/__tests__/AboutDialog.test.tsx",
+        "Verify useAppVersion tests: test -f frontend/src/hooks/__tests__/useAppVersion.test.ts",
+        "Run useAppVersion tests: cd frontend && npm test -- src/hooks/__tests__/useAppVersion.test.ts",
+        "Verify useMcpConfig hook exists: test -f frontend/src/hooks/useMcpConfig.ts",
+        "Verify useMcpConfig tests exist: test -f frontend/src/hooks/__tests__/useMcpConfig.test.ts",
+        "Run useMcpConfig tests: cd frontend && npm test -- src/hooks/__tests__/useMcpConfig.test.ts"
+      ],
+      "passes": false,
+      "dependencies": [
+        "version-injection-api",
+        "header-component",
+        "mcp-server-remote"
+      ]
+    },
+    {
+      "id": "footer-redesign",
+      "category": "functional",
+      "title": "Footer Redesign",
+      "description": "Redesigned footer with corrected GitHub URL, Medium icon (BookOpen), version display from useAppVersion, About trigger opening shared AboutDialog, and professional two-column responsive layout.",
+      "testing_steps": [
+        "Verify GitHub URL is corrected: grep -c 'schwichtgit/ai-resume' frontend/src/components/Footer.tsx >= 1",
+        "Verify old broken GitHub URL is removed: ! grep -q 'href=\"https://github.com\"' frontend/src/components/Footer.tsx",
+        "Verify Medium/BookOpen icon added: grep -c 'BookOpen' frontend/src/components/Footer.tsx >= 1",
+        "Verify Medium link URL: grep -c 'medium.com' frontend/src/components/Footer.tsx >= 1",
+        "Verify version display: grep -c 'useAppVersion\\|version' frontend/src/components/Footer.tsx >= 1",
+        "Verify AboutDialog integration: grep -c 'AboutDialog' frontend/src/components/Footer.tsx >= 1",
+        "Verify Footer tests exist: test -f frontend/src/components/__tests__/Footer.test.tsx",
+        "Run Footer tests: cd frontend && npm test -- src/components/__tests__/Footer.test.tsx",
+        "Verify responsive layout classes: grep -c 'md:flex-row\\|md:text-left\\|flex-col' frontend/src/components/Footer.tsx >= 1"
+      ],
+      "passes": false,
+      "dependencies": ["header-about-dialog", "footer-component"]
     }
   ]
 }
