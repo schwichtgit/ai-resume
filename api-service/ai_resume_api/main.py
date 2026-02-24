@@ -175,6 +175,18 @@ Instrumentator().instrument(app).expose(app)
 
 
 # =============================================================================
+# MCP Server (conditional)
+# =============================================================================
+
+if settings.mcp_enabled:
+    from ai_resume_api.mcp_server import create_mcp_app, mcp_config_router
+
+    app.mount("/mcp", create_mcp_app())
+    app.include_router(mcp_config_router)
+    logger.info("MCP server enabled, mounted at /mcp")
+
+
+# =============================================================================
 # Health Endpoints
 # =============================================================================
 

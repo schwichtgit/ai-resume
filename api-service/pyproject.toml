@@ -25,6 +25,7 @@ dependencies = [
     "structlog>=24.4.0",
     "cachetools>=5.5.0",
     "slowapi>=0.1.9",
+    "fastmcp>=3.0.0",
 ]
 
 [project.optional-dependencies]
