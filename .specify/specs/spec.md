@@ -4,7 +4,7 @@
 
 **Project:** ai-resume
 **Version:** 1.0.0
-**Last Updated:** 2026-02-19
+**Last Updated:** 2026-02-24
 **Status:** Draft
 
 ### Summary
@@ -3303,11 +3303,11 @@ The signing chain relies on three Sigstore components:
 
 **Minimum Tool Versions:**
 
-| Tool | Min Version | Role |
-| --- | --- | --- |
-| cosign | v2.4.0+ | Signing, verification, OCI 1.1 attachment, SBOM attestation |
-| syft | v1.0.0+ | SBOM generation (CycloneDX JSON, OCI 1.1 format support) |
-| OCI Registry | ghcr.io | Must support the Referrers API (ghcr.io supports OCI 1.1) |
+| Tool         | Min Version | Role                                                        |
+| ------------ | ----------- | ----------------------------------------------------------- |
+| cosign       | v2.4.0+     | Signing, verification, OCI 1.1 attachment, SBOM attestation |
+| syft         | v1.0.0+     | SBOM generation (CycloneDX JSON, OCI 1.1 format support)    |
+| OCI Registry | ghcr.io     | Must support the Referrers API (ghcr.io supports OCI 1.1)   |
 
 **Scope:**
 
@@ -3348,17 +3348,17 @@ The signing chain relies on three Sigstore components:
 
 **Error Handling:**
 
-| Error Condition | Expected Behavior | User-Facing Message |
-| --- | --- | --- |
-| Cosign signing fails (OIDC token issue) | CI job fails, release blocked | cosign error with Fulcio/OIDC details |
-| Fulcio certificate expired during long build | cosign retries OIDC token exchange | Transparent retry, Rekor timestamp covers the gap |
-| Digest mismatch (tag overwritten between push and merge) | `podman manifest add @digest` fails | podman error: manifest not found |
-| Syft SBOM generation fails | CI job fails, release blocked | syft error in job logs |
-| `cosign attest` fails | CI job fails, release blocked | cosign attest error in job logs |
-| Rekor transparency log unreachable | cosign sign fails (Rekor is mandatory in keyless mode) | cosign error: failed to upload to tlog |
-| Signature verification fails before tag promotion | `verify-signatures` fails, tags not promoted | cosign verify error listing failed images |
-| CI digest artifacts not found in release | `validate` job fails | Artifact download error with CI run ID |
-| Build timestamp collision (sub-second re-trigger) | Effectively impossible (YYYYMMDDHHMMSS granularity) | N/A |
+| Error Condition                                          | Expected Behavior                                      | User-Facing Message                               |
+| -------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------- |
+| Cosign signing fails (OIDC token issue)                  | CI job fails, release blocked                          | cosign error with Fulcio/OIDC details             |
+| Fulcio certificate expired during long build             | cosign retries OIDC token exchange                     | Transparent retry, Rekor timestamp covers the gap |
+| Digest mismatch (tag overwritten between push and merge) | `podman manifest add @digest` fails                    | podman error: manifest not found                  |
+| Syft SBOM generation fails                               | CI job fails, release blocked                          | syft error in job logs                            |
+| `cosign attest` fails                                    | CI job fails, release blocked                          | cosign attest error in job logs                   |
+| Rekor transparency log unreachable                       | cosign sign fails (Rekor is mandatory in keyless mode) | cosign error: failed to upload to tlog            |
+| Signature verification fails before tag promotion        | `verify-signatures` fails, tags not promoted           | cosign verify error listing failed images         |
+| CI digest artifacts not found in release                 | `validate` job fails                                   | Artifact download error with CI run ID            |
+| Build timestamp collision (sub-second re-trigger)        | Effectively impossible (YYYYMMDDHHMMSS granularity)    | N/A                                               |
 
 **Edge Cases:**
 
@@ -3401,12 +3401,12 @@ The signing chain relies on three Sigstore components:
 
 **Error Handling:**
 
-| Condition | Behavior | Visible In |
-| --- | --- | --- |
-| Test framework exits non-zero | Job fails, partial summary still written (summary written before test exit) | Job summary shows "FAILED" badge |
-| Coverage below threshold | Job fails, summary shows actual vs required | Coverage table with red threshold |
-| Trivy finds CRITICAL/HIGH | Severity gate step fails, summary still written (written before gate) | Trivy summary table in cell summary |
-| `$GITHUB_STEP_SUMMARY` write fails | Non-blocking (echo to file failure doesn't fail the job) | Missing summary, job logs contain write error |
+| Condition                          | Behavior                                                                    | Visible In                                    |
+| ---------------------------------- | --------------------------------------------------------------------------- | --------------------------------------------- |
+| Test framework exits non-zero      | Job fails, partial summary still written (summary written before test exit) | Job summary shows "FAILED" badge              |
+| Coverage below threshold           | Job fails, summary shows actual vs required                                 | Coverage table with red threshold             |
+| Trivy finds CRITICAL/HIGH          | Severity gate step fails, summary still written (written before gate)       | Trivy summary table in cell summary           |
+| `$GITHUB_STEP_SUMMARY` write fails | Non-blocking (echo to file failure doesn't fail the job)                    | Missing summary, job logs contain write error |
 
 **Edge Cases:**
 
@@ -3417,3 +3417,308 @@ The signing chain relies on three Sigstore components:
 - memvid-integration (continue-on-error: true): summary shows soft gate status, not blocking.
 
 **Dependencies:** INFRA-030 (Native ARM Runner Multi-Arch Container Builds), INFRA-031 (Container Supply Chain Security)
+
+---
+
+### FUNC-079: MCP Server Remote Transport
+
+**Description:** FastMCP sub-application mounted at `/mcp` on the existing FastAPI app, exposing the resume AI capabilities as MCP (Model Context Protocol) tools and resources. Enables Claude Desktop and other MCP-compatible clients to interact with the resume via Streamable HTTP transport.
+
+MCP API surface:
+
+| MCP Type | Name                                 | Maps to                         | Behavior                                                                                     |
+| -------- | ------------------------------------ | ------------------------------- | -------------------------------------------------------------------------------------------- |
+| Tool     | `ask_question(question: str)`        | POST /api/v1/chat               | Full pipeline: guardrails, semantic search, LLM, grounded answer                             |
+| Tool     | `assess_fit(job_description: str)`   | POST /api/v1/assess-fit         | Full pipeline: role classification, semantic search, structured assessment                   |
+| Resource | `profile://current`                  | GET /api/v1/profile             | Read-only profile metadata JSON                                                              |
+| Resource | `questions://suggested`              | GET /api/v1/suggested-questions | Read-only suggested questions list                                                           |
+| Config   | `GET /api/v1/mcp/clients`            | List of supported MCP clients   | Returns `[{"id":"claude-desktop","label":"Claude Desktop"}, ...]`                            |
+| Config   | `GET /api/v1/mcp/config/{client_id}` | Filled config template          | Returns `{"client":"...","label":"...","format":"json","config":"...","instructions":"..."}` |
+
+Gated by `mcp_enabled: bool = True` in Settings. New file: `api-service/ai_resume_api/mcp_server.py`. Nginx `/mcp` location block proxies to the API service (same pattern as `/api/`).
+
+**Clarify Resolutions:**
+
+- **Session management:** MCP tools are stateless -- no session_id, no conversation history. Each tool invocation is independent. MCP clients (Claude Desktop, IDE extensions) manage their own conversation context and send full context with each call. Streamable HTTP is request-response; there is no persistent connection to bind a session to.
+- **Rate limiting:** MCP tools are rate-limited at 60 requests/minute per client IP via a programmatic rate check (separate from the REST `@limiter.limit()` decorators). MCP resources (`profile://current`, `questions://suggested`) are exempt (read-only, no LLM cost). The `get_remote_address` function extracts client IP from `X-Forwarded-For`/`X-Real-IP` headers identically to REST endpoints.
+- **Nginx routing:** The existing `/api/` location block regex is extended to `^/(api|mcp)/` to match both paths in a single block. Both proxy to the same API service backend on port 3000. No separate `/mcp` location block.
+- **Config endpoint ownership:** The `/api/v1/mcp/clients` and `/api/v1/mcp/config/{client_id}` endpoints are defined within the FastMCP sub-app (in `mcp_server.py`), not as separate FastAPI routes. They share the MCP mount lifecycle: when `mcp_enabled=False`, all MCP endpoints (tools, resources, and config) return 404. The frontend handles this by greying out the "MCP Config" menu item.
+
+**Acceptance Criteria:**
+
+- **Given** the API service is running with `mcp_enabled=True`
+  **When** an MCP client connects to `/mcp`
+  **Then** the server responds with a valid MCP capabilities response listing `ask_question`, `assess_fit` tools and `profile://current`, `questions://suggested` resources
+
+- **Given** an MCP client sends a tool invocation for `ask_question` with `question: "What is your experience with Python?"`
+  **When** the tool executes
+  **Then** the response contains a text result from the full chat pipeline (semantic search + LLM) grounded in resume content
+
+- **Given** an MCP client sends a tool invocation for `assess_fit` with a job description
+  **When** the tool executes
+  **Then** the response contains a structured fit assessment with verdict, key_matches, gaps, and recommendation fields
+
+- **Given** an MCP client reads the `profile://current` resource
+  **When** the resource is fetched
+  **Then** the response contains the same profile JSON as `GET /api/v1/profile`
+
+- **Given** an MCP client reads the `questions://suggested` resource
+  **When** the resource is fetched
+  **Then** the response contains the same suggested questions as `GET /api/v1/suggested-questions`
+
+- **Given** the API service is running
+  **When** `GET /api/v1/mcp/clients` is called
+  **Then** the response is a JSON array of objects, each with `id` (kebab-case string) and `label` (display string), listing all supported MCP client configurations (e.g., claude-desktop, claude-web, cursor)
+
+- **Given** the API service is running and the request arrives via a reverse proxy
+  **When** `GET /api/v1/mcp/config/claude-desktop` is called
+  **Then** the response contains `client`, `label`, `format` (json|text), `config` (the filled template string with profile name and base URL derived from `X-Forwarded-Host`/`X-Forwarded-Proto` request headers), and `instructions` (human-readable setup instructions for that client)
+
+- **Given** `mcp_enabled=False` in settings
+  **When** a client requests `/mcp`
+  **Then** the MCP sub-app is not mounted, and the path returns 404
+
+**Error Handling:**
+
+| Condition                                    | Behavior                                      | User-Facing Message                                |
+| -------------------------------------------- | --------------------------------------------- | -------------------------------------------------- |
+| memvid service unavailable during tool call  | Tool returns error result with service status | "Semantic search service is currently unavailable" |
+| LLM API key not configured                   | Tool returns error result                     | "LLM service is not configured"                    |
+| Invalid tool arguments                       | MCP protocol error response                   | MCP InvalidParams error                            |
+| Rate limit exceeded (60/min per client IP)   | Tool returns error result                     | "Rate limit exceeded, try again later"             |
+| Unknown client_id in /mcp/config/{client_id} | 404 response                                  | `{"detail":"Unknown MCP client: {client_id}"}`     |
+| Missing Host/X-Forwarded-Host headers        | Config uses fallback `http://localhost:8080`  | Config contains localhost URL (local dev behavior) |
+
+**Edge Cases:**
+
+- MCP tools are stateless (no session). Each invocation is independent with no conversation history carried between calls.
+- MCP tools are rate-limited at 60/min per client IP (6x the REST endpoint limit of 10/min) via programmatic check
+- Long-running LLM responses: MCP tools block until completion (no streaming within MCP tool results)
+- Empty question string: input guardrails apply identically to the REST chat endpoint
+- MCP resource reads are not rate-limited (read-only, no LLM calls)
+- MCP config endpoints (`/api/v1/mcp/clients`, `/api/v1/mcp/config/{id}`) are not rate-limited (read-only, static metadata)
+- Config templates are defined in the API, not the frontend. Adding a new MCP client requires only a backend change.
+- The `base_url` in config templates is derived from request headers at call time (`X-Forwarded-Proto` + `X-Forwarded-Host`), with fallback to `http://localhost:8080` for local development
+- Profile name in config templates comes from the loaded profile data (same source as `GET /api/v1/profile`)
+
+**Dependencies:** FUNC-015 (chat-endpoint), FUNC-045 (assess-fit-endpoint), FUNC-013 (profile-api), FUNC-014 (suggested-questions-api)
+
+---
+
+### FUNC-080: WebMCP Browser Tool Registration
+
+**Description:** Client-side WebMCP integration that registers resume AI tools with the browser's model context using the Imperative API (`navigator.modelContext`). Enables Chrome 146+ built-in AI and other WebMCP-aware agents to discover and invoke the resume's ask and assess capabilities directly from the browser. Includes declarative meta tag in `index.html` for server-side MCP endpoint discovery.
+
+**Acceptance Criteria:**
+
+- **Given** a browser supporting `navigator.modelContext` (Chrome 146+)
+  **When** the page loads and profile data is available
+  **Then** `ask_question` and `assess_fit` tools are registered via `navigator.modelContext.addTool()`
+
+- **Given** a registered `ask_question` tool is invoked by the browser agent
+  **When** the tool executes
+  **Then** it sends a POST to `/api/v1/chat` and returns the assistant's response text
+
+- **Given** a registered `assess_fit` tool is invoked by the browser agent
+  **When** the tool executes
+  **Then** it sends a POST to `/api/v1/assess-fit` and returns the structured fit assessment
+
+- **Given** `index.html` is served
+  **When** an MCP-aware agent or crawler inspects the page
+  **Then** a `<meta name="model-context" content="/mcp">` tag is present, advertising the server-side MCP endpoint
+
+- **Given** a browser that does NOT support `navigator.modelContext`
+  **When** the page loads
+  **Then** the registration is silently skipped with no console errors or user-visible impact
+
+**Error Handling:**
+
+| Condition                              | Behavior                                         | User-Facing Message              |
+| -------------------------------------- | ------------------------------------------------ | -------------------------------- |
+| `navigator.modelContext` undefined     | Registration skipped silently                    | None (feature detection)         |
+| `addTool()` throws                     | Error logged to console, page continues normally | None                             |
+| Proxied API call fails (network error) | Tool returns error to browser agent              | Error message from fetch failure |
+| API returns 429                        | Tool returns rate limit error to browser agent   | "Rate limit exceeded"            |
+
+**Edge Cases:**
+
+- Tools should be registered only once per page load (guard against hot module replacement re-registration in dev)
+- Tool schemas must match the MCP tool schema format expected by `navigator.modelContext`
+- If the profile API is unreachable, tool registration is deferred (no tools without backend connectivity)
+
+**Dependencies:** FUNC-079 (MCP Server Remote Transport)
+
+---
+
+### FUNC-081: Build-Time Version Injection and Version API
+
+**Description:** Inject build version and git commit SHA into container images at build time via Docker build args, persisted as a `/app/VERSION` JSON file. A new `GET /api/v1/version` endpoint reads this file and returns the version metadata. Local development falls back to `{"version":"dev","commit":"unknown"}`. Removes the hardcoded `__version__ = "1.0.0"` in `__init__.py` and replaces all usages (startup log, FastAPI metadata, health endpoint) with a shared `get_version()` helper that reads `/app/VERSION`. Single source of truth for version information. Applied to both api-service and ingest Dockerfiles for consistency.
+
+**Acceptance Criteria:**
+
+- **Given** the api-service Dockerfile
+  **When** built with `--build-arg BUILD_VERSION=v0.1.0-alpha.5 --build-arg BUILD_COMMIT=abc1234`
+  **Then** the runtime image contains `/app/VERSION` with `{"version":"v0.1.0-alpha.5","commit":"abc1234"}`
+
+- **Given** the api-service Dockerfile
+  **When** built without build args
+  **Then** `/app/VERSION` defaults to `{"version":"dev","commit":"unknown"}`
+
+- **Given** the API service is running with a valid `/app/VERSION` file
+  **When** `GET /api/v1/version` is called
+  **Then** the response is `200` with JSON body `{"version":"v0.1.0-alpha.5","commit":"abc1234"}`
+
+- **Given** the API service is running without a `/app/VERSION` file (local development)
+  **When** `GET /api/v1/version` is called
+  **Then** the response is `200` with JSON body `{"version":"dev","commit":"unknown"}`
+
+- **Given** CI builds container images
+  **When** the container-build job runs
+  **Then** `--build-arg BUILD_VERSION=${VERSION}` and `--build-arg BUILD_COMMIT=${{ github.sha }}` are passed to podman build
+
+- **Given** any service Dockerfile (frontend, api-service, ingest, memvid-service)
+  **When** built with version build args
+  **Then** all Dockerfiles accept `ARG BUILD_VERSION=dev` and `ARG BUILD_COMMIT=unknown` for consistency, even if the service does not expose a version endpoint
+
+**Error Handling:**
+
+| Condition                                    | Behavior                                    | User-Facing Message                    |
+| -------------------------------------------- | ------------------------------------------- | -------------------------------------- |
+| `/app/VERSION` file missing                  | Endpoint returns dev fallback               | `{"version":"dev","commit":"unknown"}` |
+| `/app/VERSION` contains invalid JSON         | Endpoint returns dev fallback, logs warning | `{"version":"dev","commit":"unknown"}` |
+| `/app/VERSION` file unreadable (permissions) | Endpoint returns dev fallback, logs warning | `{"version":"dev","commit":"unknown"}` |
+
+**Edge Cases:**
+
+- The version endpoint is rate-limited at the standard 10 requests/minute per client IP (consistent with constitution requirement for all API endpoints)
+- The version endpoint does not require memvid or LLM services to be healthy
+- Version strings follow SemVer with optional pre-release tags (e.g., `v0.1.0-alpha.5`)
+- The version endpoint response contains only `version` and `commit` fields. It does not include `base_url` -- URL derivation is owned exclusively by the MCP config endpoints (`/api/v1/mcp/config/{id}`)
+- All 4 service Dockerfiles receive BUILD_VERSION/BUILD_COMMIT build args in CI. Services without a version endpoint ignore the values but the args are available for OCI annotations or future use.
+
+**Dependencies:** None (foundational)
+
+---
+
+### FUNC-082: Header Menu with About Dialog
+
+**Description:** Add a MoreVertical icon button to the desktop header nav (alongside the existing theme toggle) that opens a dropdown menu with "About" and "MCP Config" items. The About item opens a shadcn/ui Dialog displaying the application version (from `GET /api/v1/version`), a GitHub repository link, and a Medium blog link. The MCP Config item opens a McpConfigDialog that fetches MCP client configurations from the API and renders them as tabbed code blocks with copy-to-clipboard. Mobile: add both "About" and "MCP Config" items to the existing hamburger menu. Introduces `useAppVersion` hook, `useMcpConfig` hook, shared `AboutDialog` component, and `McpConfigDialog` component.
+
+**Acceptance Criteria:**
+
+- **Given** the desktop header is rendered (viewport >= 768px)
+  **When** the user views the navigation bar
+  **Then** a MoreVertical icon button appears after the theme toggle, styled consistently with the toggle
+
+- **Given** the MoreVertical button is clicked
+  **When** the dropdown menu opens
+  **Then** it contains an "About" menu item
+
+- **Given** the "About" menu item is clicked (desktop or mobile)
+  **When** the About dialog opens
+  **Then** it displays: application version (e.g., "v0.1.0-alpha.5"), git commit short SHA, a clickable GitHub link to `https://github.com/schwichtgit/ai-resume`, and a clickable Medium link to `https://medium.com/@schwicht/list/the-information-latency-of-the-professional-history-27520369c074`
+
+- **Given** the mobile hamburger menu is open
+  **When** the user views the menu items
+  **Then** an "About" item appears in the menu list
+
+- **Given** the version API returns `{"version":"dev","commit":"unknown"}`
+  **When** the About dialog is displayed
+  **Then** the version shows "dev" and commit shows "unknown" (local development indication)
+
+- **Given** the version API is unreachable
+  **When** the About dialog is opened
+  **Then** the version field shows a loading state or fallback text, not an error
+
+- **Given** the `GET /api/v1/mcp/clients` endpoint is unreachable or returns an error
+  **When** the MoreVertical menu opens (desktop) or the hamburger menu renders (mobile)
+  **Then** the "MCP Config" menu item is visible but greyed out (disabled) and cannot be clicked
+
+- **Given** the "MCP Config" menu item is clicked (desktop or mobile)
+  **When** the McpConfigDialog opens
+  **Then** it fetches `GET /api/v1/mcp/clients` and renders a tab for each client
+
+- **Given** the McpConfigDialog is open and a tab is selected
+  **When** the tab content loads
+  **Then** it fetches `GET /api/v1/mcp/config/{client_id}` and displays the filled config template in a formatted code block with syntax highlighting appropriate to the format (json, text)
+
+- **Given** the McpConfigDialog shows a config code block
+  **When** the user clicks the copy-to-clipboard icon
+  **Then** the config text is copied to the clipboard and a toast notification confirms "Copied to clipboard"
+
+- **Given** the McpConfigDialog is open on a browser without `navigator.clipboard`
+  **When** the user clicks the copy icon
+  **Then** the code block text is selected (fallback behavior)
+
+**Error Handling:**
+
+| Condition                        | Behavior                                                                    | User-Facing Message                                      |
+| -------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Version API returns error        | Dialog shows fallback version text                                          | "Version unavailable"                                    |
+| Version API slow response        | Dialog shows loading indicator                                              | Spinner or skeleton text                                 |
+| External links unreachable       | Standard browser behavior (new tab opens, browser handles error)            | Browser's default error page                             |
+| MCP clients API unreachable      | "MCP Config" menu item is visible but greyed out (disabled), not selectable | Greyed-out menu item, no dialog opens                    |
+| MCP config API returns error/404 | Tab content shows inline error message                                      | "MCP config for '{label}' is not available at this time" |
+| Clipboard API unavailable        | Falls back to text selection                                                | Text visually selected in code block                     |
+
+**Edge Cases:**
+
+- About dialog must respect dark/light theme
+- Dialog should be accessible: focus trap, escape to close, proper ARIA attributes (provided by shadcn/ui Dialog)
+- MoreVertical button touch target must be at least 44x44px for accessibility
+- useAppVersion hook caches the result (staleTime: Infinity) since version doesn't change at runtime
+- MCP clients list is fetched when the MoreVertical menu opens (not on page load). Result is cached with staleTime: Infinity. Individual config templates are fetched on tab selection and cached per client_id. No MCP API calls are made during initial page render.
+- The frontend contains zero MCP client knowledge -- all tab names, config formats, templates, and instructions come from the API
+- Code block should use a monospace font with appropriate syntax highlighting (JSON formatting for json format, plain text for text format)
+- Copy-to-clipboard toast uses the existing toast system (shadcn/ui Sonner or use-toast)
+- McpConfigDialog must respect dark/light theme
+
+**Dependencies:** FUNC-079 (MCP Server Remote Transport), FUNC-081 (Build-Time Version Injection and Version API), FUNC-041 (header-component)
+
+---
+
+### FUNC-083: Footer Redesign
+
+**Description:** Redesign the footer with corrected links, additional social icons, version display, and an About trigger. Fix the broken GitHub URL (`https://github.com` to `https://github.com/schwichtgit/ai-resume`). Add a Medium icon (BookOpen from lucide-react) linking to the blog. Display the application version from `useAppVersion`. Add an "About" text link that opens the shared `AboutDialog`. Professional two-column responsive layout.
+
+**Acceptance Criteria:**
+
+- **Given** the footer is rendered
+  **When** the user clicks the GitHub icon
+  **Then** it navigates to `https://github.com/schwichtgit/ai-resume` (not `https://github.com`)
+
+- **Given** the footer is rendered
+  **When** the user views the social icons row
+  **Then** a Medium icon (BookOpen) appears linking to `https://medium.com/@schwicht/list/the-information-latency-of-the-professional-history-27520369c074`
+
+- **Given** the footer is rendered and the version API has responded
+  **When** the user views the footer
+  **Then** the application version is displayed (e.g., "v0.1.0-alpha.5")
+
+- **Given** the footer is rendered
+  **When** the user clicks the "About" text link
+  **Then** the shared `AboutDialog` opens (same dialog as the header menu triggers)
+
+- **Given** the footer is viewed on a mobile viewport (< 768px)
+  **When** the layout adjusts
+  **Then** content stacks vertically with centered alignment, maintaining readable spacing
+
+- **Given** the footer is viewed on a desktop viewport (>= 768px)
+  **When** the layout renders
+  **Then** a two-column layout displays: left column with name/title, right column with social icons
+
+**Error Handling:**
+
+| Condition                | Behavior                                          | User-Facing Message             |
+| ------------------------ | ------------------------------------------------- | ------------------------------- |
+| Version API unavailable  | Version text hidden or shows fallback             | "Version unavailable" or hidden |
+| Profile data unavailable | Footer not rendered (existing behavior preserved) | None (no footer shown)          |
+
+**Edge Cases:**
+
+- BookOpen icon must be visually consistent in size and styling with existing social icons (Github, Linkedin, Mail)
+- Footer must respect dark/light theme
+- Version text should use muted-foreground color to avoid visual prominence
+- "About" link and version are supplementary -- footer remains functional without them if version API is down
+
+**Dependencies:** FUNC-082 (Header Menu with About Dialog), FUNC-042 (footer-component)

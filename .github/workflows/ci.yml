@@ -708,6 +708,8 @@ jobs:
         run: |
           podman build \
             --tag "localhost/${IMAGE_NAME}:${VERSION}" \
+            --build-arg "BUILD_VERSION=${VERSION}" \
+            --build-arg "BUILD_COMMIT=${{ github.sha }}" \
             --annotation "org.opencontainers.image.title=${IMAGE_NAME}" \
             --annotation "org.opencontainers.image.source=https://github.com/${{ github.repository }}" \
             --annotation "org.opencontainers.image.version=${VERSION}" \

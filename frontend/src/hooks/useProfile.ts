@@ -7,6 +7,7 @@ import {
   type FitAssessmentExample,
   type UIConfig,
 } from '@/lib/api-client';
+import { registerWebMcpTools } from '@/lib/webmcp';
 
 export interface Profile {
   name: string;
@@ -78,6 +79,9 @@ export function useProfile(): UseProfileResult {
           config: data.config ?? undefined,
         });
         setError(null);
+
+        // Register WebMCP tools once profile loads (Chrome 146+ only)
+        registerWebMcpTools();
       } catch (err) {
         if (!mounted) return;
 

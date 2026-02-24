@@ -5,3 +5,4 @@ ignores:
   - "**/.venv/**"
   - "**/target/**"
   - "dist/**"
+  - ".claude/restart-*.md"

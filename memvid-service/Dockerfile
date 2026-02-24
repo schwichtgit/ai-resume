@@ -1,3 +1,6 @@
+ARG BUILD_VERSION=dev
+ARG BUILD_COMMIT=unknown
+
 # Multi-stage Dockerfile for Rust memvid service
 # Supports amd64 and arm64 architectures
 
@@ -51,11 +54,16 @@ COPY build.rs ./
 # Build for target architecture (auto-detected by --platform)
 RUN cargo auditable build -j $(nproc) --release
 
+ARG BUILD_VERSION
+ARG BUILD_COMMIT
+RUN printf '{"version":"%s","commit":"%s"}\n' "${BUILD_VERSION}" "${BUILD_COMMIT}" > /app/VERSION
+
 # Stage 2: Distroless runtime (glibc 2.36, UID 65534 nonroot)
 FROM gcr.io/distroless/cc-debian12:nonroot
 
 # Copy binary from builder
 COPY --from=builder /app/target/release/memvid-service /usr/local/bin/memvid-service
+COPY --from=builder /app/VERSION /usr/local/bin/VERSION
 
 # Expose gRPC port
 EXPOSE 50051

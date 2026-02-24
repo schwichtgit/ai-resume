@@ -95,11 +95,21 @@ if [[ -d "$PROJECT_ROOT/ingest" ]]; then
     if [[ -d "$PROJECT_ROOT/ingest/.venv" ]]; then
         VENV_RUFF="$PROJECT_ROOT/ingest/.venv/bin/ruff"
 
+        # Fall back to system ruff if not in venv
+        if [[ ! -x "$VENV_RUFF" ]]; then
+            for candidate in "$HOME/.local/bin/ruff" "$(command -v ruff 2>/dev/null)"; do
+                if [[ -x "$candidate" ]]; then
+                    VENV_RUFF="$candidate"
+                    break
+                fi
+            done
+        fi
+
         if [[ -x "$VENV_RUFF" ]]; then
             run_check "Ruff lint" "$VENV_RUFF check ." "$PROJECT_ROOT/ingest" || FAILED=$((FAILED + 1))
             run_check "Ruff format" "$VENV_RUFF format --check ." "$PROJECT_ROOT/ingest" || FAILED=$((FAILED + 1))
         else
-            echo "  Skipping ruff: not installed in venv"
+            echo "  Skipping ruff: not installed in venv or system"
         fi
     else
         echo "  Skipping: .venv not found"
@@ -111,9 +121,13 @@ fi
 echo ""
 echo "=== Memvid Service Checks (memvid-service/) ==="
 if [[ -d "$PROJECT_ROOT/memvid-service" ]] && [[ -f "$PROJECT_ROOT/memvid-service/Cargo.toml" ]]; then
+    # Ensure cargo is on PATH (rustup default location)
+    if [[ -d "$HOME/.cargo/bin" ]]; then
+        export PATH="$HOME/.cargo/bin:$PATH"
+    fi
     if command -v cargo &> /dev/null; then
         run_check "Cargo check" "cargo check" "$PROJECT_ROOT/memvid-service" || FAILED=$((FAILED + 1))
-        run_check "Cargo clippy" "cargo clippy -- -D warnings" "$PROJECT_ROOT/memvid-service" || WARNINGS=$((WARNINGS + 1))
+        run_optional_check "Cargo clippy" "cargo clippy -- -D warnings" "$PROJECT_ROOT/memvid-service" || WARNINGS=$((WARNINGS + 1))
         run_optional_check "Cargo test" "cargo test --no-run" "$PROJECT_ROOT/memvid-service" || WARNINGS=$((WARNINGS + 1))
     else
         echo "  Skipping: cargo not found"
@@ -124,13 +138,8 @@ fi
 
 echo ""
 echo "=== Markdown Lint Checks ==="
-if [[ -d "$PROJECT_ROOT/frontend/node_modules/.bin" ]]; then
-    MDLINT="$PROJECT_ROOT/frontend/node_modules/.bin/markdownlint-cli2"
-    if [[ -x "$MDLINT" ]]; then
-        run_check "Markdown lint" "$MDLINT '**/*.md'" "$PROJECT_ROOT" || FAILED=$((FAILED + 1))
-    else
-        echo "  Skipping: markdownlint-cli2 not installed"
-    fi
+if [[ -d "$PROJECT_ROOT/frontend/node_modules" ]]; then
+    run_check "Markdown lint" "npx --prefix '$PROJECT_ROOT/frontend' markdownlint-cli2 '**/*.md'" "$PROJECT_ROOT" || FAILED=$((FAILED + 1))
 else
     echo "  Skipping: frontend/node_modules not found"
 fi
