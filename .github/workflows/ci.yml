@@ -130,7 +130,6 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-          cache-python: true
 
       - name: Install dependencies
         run: uv sync --extra test --extra lint
@@ -180,7 +179,6 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-          cache-python: true
 
       - name: Install dependencies
         run: uv sync --extra test --extra lint
@@ -302,7 +300,6 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-          cache-python: true
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
@@ -374,7 +371,6 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-          cache-python: true
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
@@ -422,7 +418,6 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-          cache-python: true
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
@@ -598,7 +593,6 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-          cache-python: true
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
