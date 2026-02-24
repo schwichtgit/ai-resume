@@ -3216,7 +3216,7 @@ Features planned but not yet started. These use FUNC-NNN identifiers continuing 
 
 ### INFRA-030: Native ARM Runner Multi-Arch Container Builds
 
-**Description:** Replace the static podman binary approach in `release.yml` (which fails with `failed to reexec: Permission denied`) and the QEMU-emulated builds with native architecture runners. Use a matrix strategy of 4 images x 2 platforms (8 parallel jobs) on `ubuntu-latest` (amd64) and `ubuntu-24.04-arm64` (arm64). Each job builds a single-arch image using the runner's pre-installed podman, pushes it to ghcr.io with an arch-specific tag, then a merge job creates OCI manifest lists combining both architectures. The same native runner pattern applies to any container build steps in `ci.yml`. Local development (`build-all.sh`) remains unchanged (podman + QEMU).
+**Description:** Replace the static podman binary approach in `release.yml` (which fails with `failed to reexec: Permission denied`) and the QEMU-emulated builds with native architecture runners. Use a matrix strategy of 4 images x 2 platforms (8 parallel jobs) on `ubuntu-latest` (amd64) and `ubuntu-24.04-arm` (arm64). Each job builds a single-arch image using the runner's pre-installed podman, pushes it to ghcr.io with an arch-specific tag, then a merge job creates OCI manifest lists combining both architectures. The same native runner pattern applies to any container build steps in `ci.yml`. Local development (`build-all.sh`) remains unchanged (podman + QEMU).
 
 A new CI-optimized publish script (`scripts/publish-ci.sh`) handles single-arch push, manifest creation, manifest push, and semver tag family application. The existing `publish-containers.sh` (which uses skopeo and local manifest lists) remains for local/manual use.
 
@@ -3236,7 +3236,7 @@ A new CI-optimized publish script (`scripts/publish-ci.sh`) handles single-arch 
 
 **Acceptance Criteria:**
 
-- [ ] `ci.yml` includes matrixed container build jobs using `ubuntu-latest` for `linux/amd64` and `ubuntu-24.04-arm64` for `linux/arm64`
+- [ ] `ci.yml` includes matrixed container build jobs using `ubuntu-latest` for `linux/amd64` and `ubuntu-24.04-arm` for `linux/arm64`
 - [ ] CI container build jobs push arch-specific images to ghcr.io with dot-separated tags (e.g., `ai-resume-frontend:v0.1.0-alpha.1.amd64`)
 - [ ] CI runs container smoke tests on built images before the build is considered passing
 - [ ] The static podman binary download step (`mgoltzsche/podman-static`) is removed from `release.yml`
@@ -3272,7 +3272,7 @@ A new CI-optimized publish script (`scripts/publish-ci.sh`) handles single-arch 
 - First release after migration: no ghcr.io cache exists, all layers pushed fresh (~5-10 min per image)
 - ARM64 Rust compilation (memvid-service): significantly slower than amd64 (~15-20 min), may dominate total build time
 - Pre-release tags (e.g., `v0.1.0-alpha.1`): changelog validation skipped, `--prerelease` flag on GitHub Release, semver tag family limited to sha + bare version
-- Runner OS differences: `ubuntu-latest` (currently 24.04) vs `ubuntu-24.04-arm64` may have different podman versions; workflow should not pin podman version
+- Runner OS differences: `ubuntu-latest` (currently 24.04) vs `ubuntu-24.04-arm` may have different podman versions; workflow should not pin podman version
 - Manifest list format: must use OCI index (not Docker manifest list v2) for ghcr.io compatibility
 - Concurrent tag pushes: if two releases are triggered simultaneously, arch-specific tags may collide; mitigated by GitHub's single-run-per-tag guarantee
 

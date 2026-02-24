@@ -2671,9 +2671,9 @@
       "id": "ci-container-build",
       "category": "infrastructure",
       "title": "CI Matrixed Container Build on Native ARM Runners",
-      "description": "Add container build jobs to ci.yml using a 4-image x 2-platform matrix on ubuntu-latest (amd64) and ubuntu-24.04-arm64 (arm64). Each job builds a single-arch image with the runner's native podman, runs Trivy SARIF scan + severity gate, and runs container smoke tests. On main branch pushes, arch-specific images are pushed to ghcr.io with dot-separated tags (<version>.<arch>). PR builds verify the image builds but do not push. Proto sync is conditional on matrix.image (memvid-service and api-service only). New containers paths filter triggers builds.",
+      "description": "Add container build jobs to ci.yml using a 4-image x 2-platform matrix on ubuntu-latest (amd64) and ubuntu-24.04-arm (arm64). Each job builds a single-arch image with the runner's native podman, runs Trivy SARIF scan + severity gate, and runs container smoke tests. On main branch pushes, arch-specific images are pushed to ghcr.io with dot-separated tags (<version>.<arch>). PR builds verify the image builds but do not push. Proto sync is conditional on matrix.image (memvid-service and api-service only). New containers paths filter triggers builds.",
       "testing_steps": [
-        "Run 'grep -c ubuntu-24.04-arm64 .github/workflows/ci.yml' and verify at least 1 match (ARM64 runner configured)",
+        "Run 'grep -c ubuntu-24.04-arm .github/workflows/ci.yml' and verify at least 1 match (ARM64 runner configured)",
         "Run 'grep -c matrix.image .github/workflows/ci.yml' and verify at least 1 match (image matrix dimension exists)",
         "Run 'grep -c matrix.platform .github/workflows/ci.yml' and verify at least 1 match (platform matrix dimension exists)",
         "Verify the ci.yml paths filter includes a 'containers' entry that matches '**/Dockerfile' and service source directories",

@@ -813,7 +813,7 @@ A `.trivyignore` file (committed empty with comment header) provides documented 
 **Date:** 2026-02-22
 **Status:** Accepted
 
-**Context:** The release pipeline (`release.yml`) uses a static podman binary (`mgoltzsche/podman-static`) for container builds, which fails on GitHub Actions runners with `failed to reexec: Permission denied`. The existing approach also uses QEMU emulation for cross-platform builds (amd64 + arm64), which is slow. GitHub now provides free native ARM64 runners (`ubuntu-24.04-arm64`) for public repositories, enabling native compilation on both architectures.
+**Context:** The release pipeline (`release.yml`) uses a static podman binary (`mgoltzsche/podman-static`) for container builds, which fails on GitHub Actions runners with `failed to reexec: Permission denied`. The existing approach also uses QEMU emulation for cross-platform builds (amd64 + arm64), which is slow. GitHub now provides free native ARM64 runners (`ubuntu-24.04-arm`) for public repositories, enabling native compilation on both architectures.
 
 **Decision:** Split the container pipeline across `ci.yml` (build + test) and `release.yml` (merge manifests + publish + release). Use a matrix strategy of 4 images x 2 platforms (8 parallel jobs) on native runners. CI pushes arch-specific images to ghcr.io on main branch pushes only (PRs verify build but don't push). Release workflow pulls tested arch-specific images and creates OCI manifest lists.
 
