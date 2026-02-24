@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-alpha.4] - 2026-02-23
+
+### Changed
+
+- API and ingest container runtimes migrated from `python:3.12-slim-bookworm` to UBI 10 micro (3-stage build: `ubi` -> `ubi-minimal` -> `ubi-micro`)
+- Container runtime has no shell, no package manager -- only explicitly staged shared libraries
+- Release notes now include container image table with pull and cosign verify commands
+- Removed `cache-python: true` from all `setup-uv` CI steps (system Python used, cache was a no-op)
+- ARM runner label references corrected from `ubuntu-24.04-arm64` to `ubuntu-24.04-arm` across docs
+
+### Fixed
+
+- Release workflow race condition: validate step now iterates all completed CI runs to find the one with container-build jobs (previously selected the wrong run when tag push and main push shared the same SHA)
+- CI smoke tests use `podman exec /healthcheck` for api container (no wget in ubi-micro)
+- Shebangs in healthcheck and start.py changed to `/app/.venv/bin/python` (no `/usr/bin/env` in ubi-micro)
+
+### Security
+
+- Eliminated 53 Debian CVEs (51 unfixable in stable) from api-service and ingest containers
+- Remaining: 2 gnutls CVEs per Python service (awaiting upstream RHEL 10 patch)
+
+## [0.1.0-alpha.3] - 2026-02-23
+
+### Changed
+
+- Container builds run on native ARM runners (`ubuntu-24.04-arm`) instead of QEMU emulation
+- Container supply chain security: cosign keyless signing, SBOM attestation via syft, signature verification in release pipeline
+
+### Fixed
+
+- Release workflow authentication: cosign identity matching for tag-triggered CI runs
+- Code scanning alert remediation
+
 ## [0.1.0-alpha.1] - 2026-02-22
 
 ### Added
@@ -67,5 +100,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.1...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.4...HEAD
+[0.1.0-alpha.4]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.3...v0.1.0-alpha.4
+[0.1.0-alpha.3]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.1...v0.1.0-alpha.3
 [0.1.0-alpha.1]: https://github.com/schwichtgit/ai-resume/releases/tag/v0.1.0-alpha.1
