@@ -258,15 +258,11 @@ MCP_CLIENTS = [
 def _derive_base_url(request: Request) -> str:
     """Derive the public base URL from forwarded headers or request."""
     proto = request.headers.get("x-forwarded-proto", "https")
-    host = request.headers.get(
-        "x-forwarded-host", request.headers.get("host", "localhost")
-    )
+    host = request.headers.get("x-forwarded-host", request.headers.get("host", "localhost"))
     return f"{proto}://{host}"
 
 
-def _get_config_template(
-    client_id: str, base_url: str, profile_name: str
-) -> dict | None:
+def _get_config_template(client_id: str, base_url: str, profile_name: str) -> dict | None:
     """Return MCP config template for a given client."""
     mcp_url = f"{base_url}/mcp"
     server_name = profile_name.lower().replace(" ", "-") + "-resume"
@@ -275,8 +271,7 @@ def _get_config_template(
         "claude-desktop": {
             "label": "Claude Desktop",
             "instructions": (
-                "Add this to your Claude Desktop MCP settings "
-                "(Settings > Developer > MCP Servers):"
+                "Add this to your Claude Desktop MCP settings (Settings > Developer > MCP Servers):"
             ),
             "config": {
                 "mcpServers": {
@@ -289,8 +284,7 @@ def _get_config_template(
         "claude-web": {
             "label": "Claude Web",
             "instructions": (
-                "Add this MCP server URL in Claude.ai "
-                "(Settings > Integrations > Add MCP Server):"
+                "Add this MCP server URL in Claude.ai (Settings > Integrations > Add MCP Server):"
             ),
             "config": {
                 "url": mcp_url,
@@ -298,9 +292,7 @@ def _get_config_template(
         },
         "cursor": {
             "label": "Cursor",
-            "instructions": (
-                "Add this to your Cursor MCP settings (.cursor/mcp.json):"
-            ),
+            "instructions": ("Add this to your Cursor MCP settings (.cursor/mcp.json):"),
             "config": {
                 "mcpServers": {
                     server_name: {

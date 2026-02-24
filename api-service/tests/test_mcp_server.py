@@ -135,9 +135,7 @@ class TestGetConfigTemplate:
 
     def test_claude_desktop(self) -> None:
         """Should return config with mcpServers containing the MCP URL."""
-        template = _get_config_template(
-            "claude-desktop", "https://example.com", "John Doe"
-        )
+        template = _get_config_template("claude-desktop", "https://example.com", "John Doe")
 
         assert template is not None
         assert template["label"] == "Claude Desktop"
@@ -150,9 +148,7 @@ class TestGetConfigTemplate:
 
     def test_claude_web(self) -> None:
         """Should return a flat URL config for Claude Web."""
-        template = _get_config_template(
-            "claude-web", "https://example.com", "John Doe"
-        )
+        template = _get_config_template("claude-web", "https://example.com", "John Doe")
 
         assert template is not None
         assert template["label"] == "Claude Web"
@@ -160,9 +156,7 @@ class TestGetConfigTemplate:
 
     def test_cursor(self) -> None:
         """Should return config with mcpServers for Cursor."""
-        template = _get_config_template(
-            "cursor", "https://example.com", "John Doe"
-        )
+        template = _get_config_template("cursor", "https://example.com", "John Doe")
 
         assert template is not None
         assert template["label"] == "Cursor"
@@ -170,16 +164,12 @@ class TestGetConfigTemplate:
 
     def test_unknown_client_returns_none(self) -> None:
         """Unknown client ID should return None."""
-        result = _get_config_template(
-            "unknown-client", "https://example.com", "John Doe"
-        )
+        result = _get_config_template("unknown-client", "https://example.com", "John Doe")
         assert result is None
 
     def test_server_name_derived_from_profile_name(self) -> None:
         """Server name should be lowercase-hyphenated profile name + '-resume'."""
-        template = _get_config_template(
-            "claude-desktop", "https://example.com", "Jane Smith"
-        )
+        template = _get_config_template("claude-desktop", "https://example.com", "Jane Smith")
 
         assert template is not None
         assert "jane-smith-resume" in template["config"]["mcpServers"]
@@ -309,9 +299,7 @@ class TestGetMcpConfig:
         mock_settings.load_profile_from_memvid = AsyncMock(return_value=None)
         mock_settings.load_profile.return_value = None
 
-        with patch(
-            "ai_resume_api.mcp_server.get_settings", return_value=mock_settings
-        ):
+        with patch("ai_resume_api.mcp_server.get_settings", return_value=mock_settings):
             response = mcp_config_client.get(
                 "/api/v1/mcp/config/claude-desktop",
                 headers={"x-forwarded-host": "example.com"},

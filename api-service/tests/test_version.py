@@ -25,7 +25,9 @@ MOCK_PROFILE = {
 }
 
 
-def _mock_version_file(read_text_rv: str | None = None, read_text_se: type[Exception] | None = None) -> MagicMock:
+def _mock_version_file(
+    read_text_rv: str | None = None, read_text_se: type[Exception] | None = None
+) -> MagicMock:
     """Create a mock Path object for _VERSION_FILE."""
     mock_path = MagicMock()
     if read_text_se is not None:
@@ -45,21 +47,28 @@ class TestGetVersion:
     def test_get_version_reads_file(self) -> None:
         """get_version returns parsed JSON when VERSION file exists."""
         fake_json = json.dumps({"version": "1.2.3", "commit": "abc123"})
-        with patch("ai_resume_api.version._VERSION_FILE", _mock_version_file(read_text_rv=fake_json)):
+        with patch(
+            "ai_resume_api.version._VERSION_FILE", _mock_version_file(read_text_rv=fake_json)
+        ):
             result = version_mod.get_version()
 
         assert result == {"version": "1.2.3", "commit": "abc123"}
 
     def test_get_version_file_not_found(self) -> None:
         """get_version returns dev fallback when VERSION file is missing."""
-        with patch("ai_resume_api.version._VERSION_FILE", _mock_version_file(read_text_se=FileNotFoundError)):
+        with patch(
+            "ai_resume_api.version._VERSION_FILE",
+            _mock_version_file(read_text_se=FileNotFoundError),
+        ):
             result = version_mod.get_version()
 
         assert result == {"version": "dev", "commit": "unknown"}
 
     def test_get_version_invalid_json(self) -> None:
         """get_version returns dev fallback when VERSION file has invalid JSON."""
-        with patch("ai_resume_api.version._VERSION_FILE", _mock_version_file(read_text_rv="not json")):
+        with patch(
+            "ai_resume_api.version._VERSION_FILE", _mock_version_file(read_text_rv="not json")
+        ):
             result = version_mod.get_version()
 
         assert result == {"version": "dev", "commit": "unknown"}
@@ -77,7 +86,9 @@ class TestGetVersion:
     def test_get_version_partial_json(self) -> None:
         """get_version defaults commit to 'unknown' when key is missing."""
         fake_json = json.dumps({"version": "1.0.0"})
-        with patch("ai_resume_api.version._VERSION_FILE", _mock_version_file(read_text_rv=fake_json)):
+        with patch(
+            "ai_resume_api.version._VERSION_FILE", _mock_version_file(read_text_rv=fake_json)
+        ):
             result = version_mod.get_version()
 
         assert result == {"version": "1.0.0", "commit": "unknown"}
