@@ -1,3 +1,6 @@
+ARG BUILD_VERSION=dev
+ARG BUILD_COMMIT=unknown
+
 # --- Stage 1: Builder ---
 # Full UBI 10 with dnf, compilers, and uv for building the production venv
 FROM registry.access.redhat.com/ubi10/ubi AS builder
@@ -30,6 +33,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 ENV HF_HOME=/app/.hf
 RUN /app/.venv/bin/python -c \
     "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-small-en-v1.5')"
+
+ARG BUILD_VERSION
+ARG BUILD_COMMIT
+RUN printf '{"version":"%s","commit":"%s"}\n' "${BUILD_VERSION}" "${BUILD_COMMIT}" > /app/VERSION
 
 # --- Stage 2: Python runtime staging ---
 # ubi-minimal has microdnf to install Python + shared libraries, then we
@@ -101,6 +108,7 @@ COPY --from=builder /app/.hf /app/.hf
 
 # Application source
 COPY ingest.py ./ingest.py
+COPY --from=builder /app/VERSION ./VERSION
 
 # Non-root: numeric UID (no shadow-utils in micro, UBI convention)
 USER 1001

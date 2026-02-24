@@ -1,3 +1,5 @@
 """AI Resume API Server - Python FastAPI service for orchestration and LLM integration."""
 
-__version__ = "1.0.0"
+from ai_resume_api.version import get_version
+
+__version__ = get_version()["version"]

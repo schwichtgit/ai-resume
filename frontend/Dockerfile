@@ -1,3 +1,6 @@
+ARG BUILD_VERSION=dev
+ARG BUILD_COMMIT=unknown
+
 # Multi-stage build for AI Resume Frontend
 # Builds React SPA and serves with OpenResty (Alpine package)
 
@@ -27,6 +30,10 @@ COPY src/ ./src/
 
 # Build production bundle
 RUN npm run build
+
+ARG BUILD_VERSION
+ARG BUILD_COMMIT
+RUN printf '{"version":"%s","commit":"%s"}\n' "${BUILD_VERSION}" "${BUILD_COMMIT}" > /app/VERSION
 
 # =============================================================================
 # Stage 2: Production OpenResty server (Alpine package)
@@ -62,6 +69,7 @@ COPY seo-template.html /etc/nginx/html/seo-template.html
 
 # Copy built React assets
 COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /app/VERSION /usr/share/nginx/html/VERSION
 
 # Switch to non-root user
 USER nginx

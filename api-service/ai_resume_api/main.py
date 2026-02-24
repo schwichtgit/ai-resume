@@ -16,7 +16,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-from ai_resume_api import __version__
+from ai_resume_api.version import get_version
 from ai_resume_api.role_classifier import classify_job_description
 from ai_resume_api.config import get_settings
 from ai_resume_api.memvid_client import (
@@ -86,7 +86,7 @@ limiter = Limiter(key_func=get_remote_address)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Application lifespan handler for startup/shutdown."""
-    logger.info("Starting AI Resume API", version=__version__)
+    logger.info("Starting AI Resume API", version=get_version()["version"])
 
     # Initialize clients on startup
     try:
@@ -113,7 +113,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="AI Resume API",
     description="AI-powered resume chat API with semantic search",
-    version=__version__,
+    version=get_version()["version"],
     lifespan=lifespan,
 )
 
@@ -210,8 +210,20 @@ async def health_check() -> HealthResponse:
         memvid_connected=memvid_connected,
         memvid_frame_count=frame_count,
         active_sessions=session_store.count(),
-        version=__version__,
+        version=get_version()["version"],
     )
+
+
+# =============================================================================
+# Version Endpoint
+# =============================================================================
+
+
+@app.get("/api/v1/version")
+@limiter.limit(lambda: f"{get_settings().rate_limit_per_minute}/minute")
+async def version(request: Request) -> dict:
+    """Return build version and commit SHA."""
+    return get_version()
 
 
 # =============================================================================

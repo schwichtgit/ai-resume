@@ -96,6 +96,8 @@ elif [ -f "frontend/Dockerfile" ]; then
         ${NO_CACHE} \
         --platform linux/amd64,linux/arm64 \
         --manifest "${REGISTRY}/ai-resume-frontend:${VERSION}" \
+        --build-arg "BUILD_VERSION=${VERSION}" \
+        --build-arg "BUILD_COMMIT=${GIT_REVISION}" \
         --annotation "org.opencontainers.image.title=ai-resume-frontend" \
         --annotation "org.opencontainers.image.description=React SPA with OpenResty reverse proxy" \
         --annotation "org.opencontainers.image.url=https://github.com/schwichtgit/ai-resume/pkgs/container/ai-resume-frontend" \
@@ -124,6 +126,8 @@ if [ -f "memvid-service/Dockerfile" ]; then
         ${NO_CACHE} \
         --platform linux/amd64,linux/arm64 \
         --manifest "${REGISTRY}/ai-resume-memvid:${VERSION}" \
+        --build-arg "BUILD_VERSION=${VERSION}" \
+        --build-arg "BUILD_COMMIT=${GIT_REVISION}" \
         --annotation "org.opencontainers.image.title=ai-resume-memvid" \
         --annotation "org.opencontainers.image.description=Rust gRPC service for semantic search over resume data" \
         --annotation "org.opencontainers.image.url=https://github.com/schwichtgit/ai-resume/pkgs/container/ai-resume-memvid" \
@@ -152,6 +156,8 @@ if [ -f "api-service/Dockerfile" ]; then
         ${NO_CACHE} \
         --platform linux/amd64,linux/arm64 \
         --manifest "${REGISTRY}/ai-resume-api:${VERSION}" \
+        --build-arg "BUILD_VERSION=${VERSION}" \
+        --build-arg "BUILD_COMMIT=${GIT_REVISION}" \
         --annotation "org.opencontainers.image.title=ai-resume-api" \
         --annotation "org.opencontainers.image.description=FastAPI backend for profile API and gRPC client" \
         --annotation "org.opencontainers.image.url=https://github.com/schwichtgit/ai-resume/pkgs/container/ai-resume-api" \
@@ -180,6 +186,8 @@ if [ -f "ingest/Dockerfile" ]; then
         ${NO_CACHE} \
         --platform linux/amd64,linux/arm64 \
         --manifest "${REGISTRY}/ai-resume-ingest:${VERSION}" \
+        --build-arg "BUILD_VERSION=${VERSION}" \
+        --build-arg "BUILD_COMMIT=${GIT_REVISION}" \
         --annotation "org.opencontainers.image.title=ai-resume-ingest" \
         --annotation "org.opencontainers.image.description=Data ingestion pipeline for .mv2 file creation" \
         --annotation "org.opencontainers.image.url=https://github.com/schwichtgit/ai-resume/pkgs/container/ai-resume-ingest" \
