@@ -44,8 +44,9 @@ COPY --from=builder /app/.hf /app/.hf
 # Copy application source
 COPY ingest.py ./ingest.py
 
-# Remove pip to eliminate CVE-2025-8869, then create unprivileged user
-RUN pip uninstall -y pip setuptools && \
+# Upgrade OS packages for security fixes (libgnutls30), remove pip, create user
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/* && \
+    pip uninstall -y pip setuptools && \
     useradd -r -u 1000 -s /bin/false appuser
 
 USER appuser

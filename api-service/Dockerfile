@@ -37,8 +37,9 @@ COPY ai_resume_api/ ./ai_resume_api/
 COPY --chmod=755 healthcheck /healthcheck
 COPY --chmod=755 start.py /start.py
 
-# Remove pip to eliminate CVE-2025-8869, then create unprivileged user
-RUN pip uninstall -y pip setuptools && \
+# Upgrade OS packages for security fixes (libgnutls30), remove pip, create user
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/* && \
+    pip uninstall -y pip setuptools && \
     useradd -r -u 1000 -s /bin/false appuser
 
 USER appuser

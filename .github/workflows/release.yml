@@ -15,7 +15,7 @@ permissions:
 
 env:
   REGISTRY: ghcr.io/schwichtgit
-  COSIGN_YES: "true"
+  COSIGN_YES: 'true'
 
 jobs:
   # Gate: verify CI passed and changelog has an entry for this version
@@ -104,7 +104,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        image: [ai-resume-frontend, ai-resume-api, ai-resume-memvid, ai-resume-ingest]
+        image:
+          [
+            ai-resume-frontend,
+            ai-resume-api,
+            ai-resume-memvid,
+            ai-resume-ingest,
+          ]
     steps:
       - uses: actions/checkout@v6
 
@@ -208,12 +214,25 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        image: [ai-resume-frontend, ai-resume-api, ai-resume-memvid, ai-resume-ingest]
+        image:
+          [
+            ai-resume-frontend,
+            ai-resume-api,
+            ai-resume-memvid,
+            ai-resume-ingest,
+          ]
     steps:
       - uses: actions/checkout@v6
 
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
+
+      - name: Login to ghcr.io
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify arch image signatures (CI-signed)
         run: |
