@@ -1,8 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Menu, X, Sun, Moon } from 'lucide-react';
+import { Menu, X, Sun, Moon, MoreVertical } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 import { useProfileContext } from '@/hooks/useProfileContext';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { AboutDialog } from '@/components/AboutDialog';
+import { McpConfigDialog } from '@/components/McpConfigDialog';
+import { useMcpConfig } from '@/hooks/useMcpConfig';
 
 interface HeaderProps {
   onOpenChat?: () => void;
@@ -11,8 +20,11 @@ interface HeaderProps {
 const Header = ({ onOpenChat }: HeaderProps) => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [mcpConfigOpen, setMcpConfigOpen] = useState(false);
   const { profile, isLoading } = useProfileContext();
   const { theme, setTheme } = useTheme();
+  const { available: mcpAvailable, fetchClients } = useMcpConfig();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -25,6 +37,12 @@ const Header = ({ onOpenChat }: HeaderProps) => {
   const scrollToSection = (id: string) => {
     setMobileMenuOpen(false);
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleMenuOpen = (open: boolean) => {
+    if (open && mcpAvailable === null) {
+      fetchClients();
+    }
   };
 
   const handleAskAI = () => {
@@ -96,6 +114,28 @@ const Header = ({ onOpenChat }: HeaderProps) => {
               <Moon className="w-5 h-5" />
             )}
           </button>
+          <DropdownMenu onOpenChange={handleMenuOpen}>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                aria-label="More options"
+              >
+                <MoreVertical className="w-5 h-5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => setAboutOpen(true)}>
+                About
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => setMcpConfigOpen(true)}
+                disabled={mcpAvailable === false}
+                className={mcpAvailable === false ? 'opacity-50' : ''}
+              >
+                MCP Config
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Mobile menu button */}
@@ -151,9 +191,27 @@ const Header = ({ onOpenChat }: HeaderProps) => {
               )}
               {theme === 'dark' ? 'Light mode' : 'Dark mode'}
             </button>
+            <button
+              onClick={() => { setAboutOpen(true); setMobileMenuOpen(false); }}
+              className="w-full text-left px-4 py-3 min-h-[44px] text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
+            >
+              About
+            </button>
+            <button
+              onClick={() => { setMcpConfigOpen(true); setMobileMenuOpen(false); }}
+              disabled={mcpAvailable === false}
+              className={cn(
+                "w-full text-left px-4 py-3 min-h-[44px] text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors",
+                mcpAvailable === false && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              MCP Config
+            </button>
           </div>
         </div>
       )}
+      <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
+      <McpConfigDialog open={mcpConfigOpen} onOpenChange={setMcpConfigOpen} />
     </header>
   );
 };
