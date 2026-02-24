@@ -287,7 +287,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Create GitHub Release
+      - name: Generate release notes with container images
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -296,7 +296,44 @@ jobs:
           if [[ "$VERSION" == *-* ]]; then
             PRERELEASE_FLAG="--prerelease"
           fi
+
+          # Generate auto-notes into a temp file
+          gh api "repos/${{ github.repository }}/releases/generate-notes" \
+            -f tag_name="$GITHUB_REF_NAME" \
+            --jq '.body' > /tmp/release-notes.md
+
+          # Append container image references
+          REG="${{ env.REGISTRY }}"
+          REPO="${{ github.repository }}"
+          TAG="${GITHUB_REF_NAME}"
+          {
+            echo ""
+            echo "## Container Images"
+            echo ""
+            echo "All images are multi-arch (linux/amd64, linux/arm64) and signed with cosign."
+            echo ""
+            echo "| Service | Image |"
+            echo "|---------|-------|"
+            echo "| Frontend | \`${REG}/ai-resume-frontend:${TAG}\` |"
+            echo "| API | \`${REG}/ai-resume-api:${TAG}\` |"
+            echo "| Memvid | \`${REG}/ai-resume-memvid:${TAG}\` |"
+            echo "| Ingest | \`${REG}/ai-resume-ingest:${TAG}\` |"
+            echo ""
+            echo '```bash'
+            echo "podman pull ${REG}/ai-resume-frontend:${TAG}"
+            echo "podman pull ${REG}/ai-resume-api:${TAG}"
+            echo "podman pull ${REG}/ai-resume-memvid:${TAG}"
+            echo "podman pull ${REG}/ai-resume-ingest:${TAG}"
+            echo ""
+            echo "# Verify signatures"
+            echo "cosign verify \\"
+            echo "  --certificate-identity \"https://github.com/${REPO}/.github/workflows/release.yml@refs/tags/${TAG}\" \\"
+            echo "  --certificate-oidc-issuer \"https://token.actions.githubusercontent.com\" \\"
+            echo "  ${REG}/ai-resume-frontend:${TAG}"
+            echo '```'
+          } >> /tmp/release-notes.md
+
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \
-            --generate-notes \
+            --notes-file /tmp/release-notes.md \
             $PRERELEASE_FLAG

@@ -773,8 +773,17 @@ jobs:
           # Test 3: Health check (if applicable)
           if [ -n "$PORT" ] && [ -n "$HEALTH_PATH" ]; then
             sleep 3
-            STATUS=$(podman exec "$CID" wget -q -O /dev/null -S "http://localhost:${PORT}${HEALTH_PATH}" 2>&1 | grep "HTTP/" | tail -1 | awk '{print $2}') || true
-            echo "Health check status: ${STATUS:-no response}"
+            case "${{ matrix.image }}" in
+              api)
+                # ubi-micro has no wget/curl; use the healthcheck script
+                podman exec "$CID" /healthcheck && echo "Health check: OK" || echo "Health check: FAIL"
+                ;;
+              frontend)
+                # Alpine has wget
+                STATUS=$(podman exec "$CID" wget -q -O /dev/null -S "http://localhost:${PORT}${HEALTH_PATH}" 2>&1 | grep "HTTP/" | tail -1 | awk '{print $2}') || true
+                echo "Health check status: ${STATUS:-no response}"
+                ;;
+            esac
           fi
 
           # Test 4: OCI annotations (stored in manifest, not Docker labels)
