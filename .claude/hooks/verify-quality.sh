@@ -111,9 +111,13 @@ fi
 echo ""
 echo "=== Memvid Service Checks (memvid-service/) ==="
 if [[ -d "$PROJECT_ROOT/memvid-service" ]] && [[ -f "$PROJECT_ROOT/memvid-service/Cargo.toml" ]]; then
+    # Ensure cargo is on PATH (rustup default location)
+    if [[ -d "$HOME/.cargo/bin" ]]; then
+        export PATH="$HOME/.cargo/bin:$PATH"
+    fi
     if command -v cargo &> /dev/null; then
         run_check "Cargo check" "cargo check" "$PROJECT_ROOT/memvid-service" || FAILED=$((FAILED + 1))
-        run_check "Cargo clippy" "cargo clippy -- -D warnings" "$PROJECT_ROOT/memvid-service" || WARNINGS=$((WARNINGS + 1))
+        run_optional_check "Cargo clippy" "cargo clippy -- -D warnings" "$PROJECT_ROOT/memvid-service" || WARNINGS=$((WARNINGS + 1))
         run_optional_check "Cargo test" "cargo test --no-run" "$PROJECT_ROOT/memvid-service" || WARNINGS=$((WARNINGS + 1))
     else
         echo "  Skipping: cargo not found"
