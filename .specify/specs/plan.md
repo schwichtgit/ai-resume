@@ -922,3 +922,35 @@ A `.trivyignore` file (committed empty with comment header) provides documented 
 
 - Positive: PR reviewers see test/coverage/scan results without digging through logs, no new action dependencies, no extra permissions, composable per-step summaries
 - Negative: Text parsing is fragile if output format changes (mitigated by pinned tool versions), limited to what's visible in step output, summary tables are less rich than dedicated reporter actions
+
+### ADR-022: UBI 10 Micro Runtime for Python Containers
+
+**Date:** 2026-02-23
+**Status:** Accepted
+
+**Context:** The api-service and ingest containers used `python:3.12-slim-bookworm` (Debian 12) as their runtime base, carrying 53 CVEs with 51 unfixable in Debian stable. The memvid-service already uses distroless (gcr.io/distroless/cc-debian12). RHEL 10 (GA May 2025) has aggressive CVE patching and support through 2035.
+
+**Decision:** Migrate Python container runtimes from `python:3.12-slim-bookworm` to a 3-stage build pattern using Red Hat UBI 10 images: Stage 1 (ubi10/ubi) as the builder with full dnf, compilers, and uv; Stage 2 (ubi10/ubi-minimal) to install Python + shared libraries via microdnf and stage them into `/python-runtime/`; Stage 3 (ubi10/ubi-micro) as the final runtime with only explicitly copied dependencies -- no shell, no package manager.
+
+**Key Technical Decisions:**
+
+1. **3 stages (not 2)** -- ubi-micro has no package manager, so a ubi-minimal intermediate stage resolves .so dependencies via microdnf and stages them into a clean tree for a single COPY layer into micro.
+2. **Explicit .so staging** -- All shared libraries (libpython, libffi, libssl, libcrypto, libz, libbz2, liblzma, libsqlite3, libuuid, libstdc++, libgcc_s) are copied from ubi-minimal into `/python-runtime/usr/lib64/`. Missing .so errors at runtime are resolved by adding to the copy list.
+3. **libstdc++ for api-service** -- grpcio's C++ core requires the C++ standard library at runtime.
+4. **libgomp for ingest** -- PyTorch uses OpenMP for threading; libgomp provides the GNU OpenMP runtime.
+5. **USER 1001 (numeric)** -- ubi-micro has no shadow-utils for useradd. Numeric UIDs follow UBI convention and work without /etc/passwd.
+6. **Absolute CMD paths** -- `CMD ["/app/.venv/bin/python", ...]` avoids PATH ambiguity in a shell-less container.
+7. **Shebang fix** -- healthcheck and start.py shebangs changed from `#!/usr/bin/env python3` to `#!/app/.venv/bin/python` since ubi-micro has no `/usr/bin/env`.
+8. **UV_PYTHON=/usr/bin/python3.12** -- RHEL installs Python to `/usr/bin/` (not Debian's `/usr/local/bin/`), so uv needs the explicit path.
+
+**Alternatives Considered:**
+
+1. **Debian bookworm-slim (status quo)** -- Familiar, wide ecosystem. Rejected: 53 CVEs, 51 unfixable in stable, no aggressive patching cadence.
+2. **Google distroless (python3-debian12)** -- Minimal attack surface. Rejected: Debian base shares the same CVE backlog, less flexible for .so staging, no microdnf intermediate.
+3. **Alpine** -- Smallest image size. Rejected: musl libc incompatible with pre-built wheels for grpcio and PyTorch, requiring compilation from source.
+4. **Chainguard** -- Excellent CVE posture. Rejected: commercial licensing for production use, smaller community.
+
+**Consequences:**
+
+- Positive: Near-zero CVE surface (no shell, no package manager, no unnecessary packages), RHEL 10 support through 2035, aligns with memvid-service's distroless philosophy, Trivy severity gate at CRITICAL/HIGH=0
+- Negative: 3-stage builds are more complex to maintain, missing .so errors require manual diagnosis and addition to the copy list, UBI 10 images are larger than Alpine base layers

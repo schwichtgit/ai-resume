@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/app/.venv/bin/python
 """Health check for AI Resume API.
 
 This script is used by container orchestration systems (Docker Compose, Kubernetes)

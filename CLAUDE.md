@@ -314,7 +314,8 @@ The application expects to be served at `frank-resume.schwichtenberg.us` when de
 
 - **Frontend base**: alpine:3.23 with OpenResty (runs as nginx user)
 - **Frontend build stage**: node:24-bookworm-slim for npm build
-- **API base**: python:3.12-slim-bookworm
+- **API base**: ubi10/ubi-micro (3-stage build)
+- **Ingest base**: ubi10/ubi-micro (3-stage build)
 - **Memvid base**: debian:trixie-slim (runs as memvid user)
 - **Frontend port**: 8080 (unprivileged)
 - **API port**: 3000

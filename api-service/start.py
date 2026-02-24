@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/app/.venv/bin/python
 """
 Startup wrapper for AI Resume API with IPv4/IPv6 auto-detection.
 
