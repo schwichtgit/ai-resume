@@ -49,20 +49,26 @@ jobs:
           ELAPSED=0
 
           while [ "$ELAPSED" -lt "$MAX_WAIT" ]; do
-            RUN_ID=$(gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=${SHA}&status=completed" \
-              --jq '.workflow_runs[0].id // empty')
+            # Check ALL completed runs for this SHA (not just [0]) to avoid
+            # selecting a main-push run that completed before the tag-push run.
+            FOUND=""
+            for RUN_ID in $(gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=${SHA}&status=completed" \
+              --jq '.workflow_runs[].id'); do
 
-            if [ -n "$RUN_ID" ]; then
-              # Verify this run has container-build results (not a stale main-push run)
               BUILD_JOBS=$(gh api "repos/${{ github.repository }}/actions/runs/${RUN_ID}/jobs" \
                 --jq '[.jobs[] | select(.name | startswith("container-build"))] | length')
 
               if [ "$BUILD_JOBS" -gt 0 ]; then
                 echo "Found CI run ${RUN_ID} with ${BUILD_JOBS} container-build jobs"
+                FOUND=1
                 break
               else
-                echo "CI run ${RUN_ID} has no container-build jobs, waiting for tag-triggered run..."
+                echo "CI run ${RUN_ID} has no container-build jobs, skipping..."
               fi
+            done
+
+            if [ -n "$FOUND" ]; then
+              break
             fi
 
             echo "CI not ready yet (${ELAPSED}s elapsed), polling in ${POLL_INTERVAL}s..."
