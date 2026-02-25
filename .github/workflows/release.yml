@@ -21,6 +21,8 @@ jobs:
   # Gate: verify CI passed and changelog has an entry for this version
   validate:
     runs-on: ubuntu-latest
+    outputs:
+      ci_run_id: ${{ steps.ci.outputs.run_id }}
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -40,6 +42,7 @@ jobs:
           fi
 
       - name: Wait for CI to complete
+        id: ci
         run: |
           SHA="${{ github.sha }}"
           echo "Waiting for CI to complete on commit ${SHA}..."
@@ -55,15 +58,18 @@ jobs:
             for RUN_ID in $(gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=${SHA}&status=completed" \
               --jq '.workflow_runs[].id'); do
 
+              # Count container-build jobs that actually succeeded (not skipped).
+              # A docs-only main-push CI run may list skipped container-build jobs
+              # which would pass the old existence check but have no pushed images.
               BUILD_JOBS=$(gh api "repos/${{ github.repository }}/actions/runs/${RUN_ID}/jobs" \
-                --jq '[.jobs[] | select(.name | startswith("container-build"))] | length')
+                --jq '[.jobs[] | select(.name | startswith("container-build")) | select(.conclusion == "success")] | length')
 
               if [ "$BUILD_JOBS" -gt 0 ]; then
-                echo "Found CI run ${RUN_ID} with ${BUILD_JOBS} container-build jobs"
+                echo "Found CI run ${RUN_ID} with ${BUILD_JOBS} successful container-build jobs"
                 FOUND=1
                 break
               else
-                echo "CI run ${RUN_ID} has no container-build jobs, skipping..."
+                echo "CI run ${RUN_ID} has no successful container-build jobs, skipping..."
               fi
             done
 
@@ -92,6 +98,7 @@ jobs:
           fi
 
           echo "CI passed (run ${RUN_ID}, summary: ${SUMMARY_CONCLUSION})"
+          echo "run_id=${RUN_ID}" >> "$GITHUB_OUTPUT"
 
       - name: Validate changelog entry
         if: steps.version.outputs.prerelease == 'false'
@@ -134,18 +141,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          SHA="${{ github.sha }}"
-
-          # Find completed CI run for this commit
-          RUN_ID=$(gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=${SHA}&status=completed" \
-            --jq '.workflow_runs[0].id // empty')
+          # Use the validated CI run ID from the validate job (avoids picking
+          # a docs-only main-push run with skipped container-build jobs).
+          RUN_ID="${{ needs.validate.outputs.ci_run_id }}"
 
           if [ -z "$RUN_ID" ]; then
-            echo "::warning::No CI run found for ${SHA}, falling back to tag-based merge"
+            echo "::warning::No CI run ID from validate, falling back to tag-based merge"
             exit 0
           fi
 
-          echo "Found CI run: ${RUN_ID}"
+          echo "Using validated CI run: ${RUN_ID}"
 
           # Map matrix image name to CI short name
           case "${{ matrix.image }}" in
