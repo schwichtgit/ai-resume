@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-alpha.5] - 2026-02-25
+
+### Added
+
+- MCP server with Streamable HTTP transport (FastMCP), mounted at `/mcp` with stateless tool invocation
+- MCP tools: `ask_question` (semantic resume search + LLM) and `assess_fit` (job fit evaluation)
+- MCP resources: `profile://current` and `questions://suggested`
+- MCP config endpoint (`/api/v1/mcp/config/{client_id}`) with templates for desktop app, Claude Code CLI, web interface, and Cursor IDE
+- WebMCP browser tool registration using Chrome `registerTool()` API with execute handlers
+- Header menu with About dialog (version, commit SHA, links) and MCP Config dialog
+- Footer redesign with version display and corrected links
+- Build-time version injection (`/api/v1/version` endpoint, `VERSION` file in frontend)
+- Vite dev proxy for `/mcp` path (matches nginx production routing)
+
+### Changed
+
+- MCP enabled by default (opt-out via `MCP_ENABLED=false`)
+- Hero section layout: reduced gap between header and content
+- Frontend container: OpenResty lua-resty-http installed via direct download instead of apk (avoids Alpine nginx 1.28 / openresty 1.27 package conflict)
+
+### Fixed
+
+- OpenRouter client crashes on HTTP 200 error responses (missing `choices` key)
+- MCP mount 307 redirect: path rewrite middleware replaces complex ASGI forwarding
+- MCP lifespan resilient to StreamableHTTPSessionManager reuse across test sessions
+- Nginx regex routes `/mcp` (no trailing slash) to API backend
+- MCP config dialog loads first tab config on open (no tab switch required)
+- MCP config URL uses frontend origin instead of API backend address
+- Blog URLs corrected in Footer and About dialog
+- Quality hook finds system ruff and uses npx for markdownlint
+
+### Security
+
+- Upgraded cryptography 46.0.4 to 46.0.5 (CVE-2026-26007)
+
 ## [0.1.0-alpha.4] - 2026-02-23
 
 ### Changed
@@ -100,7 +135,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.4...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.5...HEAD
+[0.1.0-alpha.5]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.4...v0.1.0-alpha.5
 [0.1.0-alpha.4]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.3...v0.1.0-alpha.4
 [0.1.0-alpha.3]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.1...v0.1.0-alpha.3
 [0.1.0-alpha.1]: https://github.com/schwichtgit/ai-resume/releases/tag/v0.1.0-alpha.1
