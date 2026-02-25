@@ -101,12 +101,29 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception as e:
         logger.warning("Failed to initialize OpenRouter client", error=str(e))
 
-    yield
+    # Initialize MCP sub-app lifespan if enabled
+    mcp_app = getattr(app.state, "mcp_app", None)
+    mcp_ctx = None
+    if mcp_app is not None:
+        mcp_ctx = mcp_app.router.lifespan_context(mcp_app)
+        try:
+            await mcp_ctx.__aenter__()
+        except RuntimeError:
+            # StreamableHTTPSessionManager can only be .run() once per instance.
+            # This happens when tests reuse the module-level MCP app.
+            logger.warning("MCP lifespan skipped (session manager already active)")
+            mcp_ctx = None
 
-    # Cleanup on shutdown
-    logger.info("Shutting down AI Resume API")
-    await close_memvid_client()
-    await close_openrouter_client()
+    try:
+        yield
+    finally:
+        if mcp_ctx is not None:
+            await mcp_ctx.__aexit__(None, None, None)
+
+        # Cleanup on shutdown
+        logger.info("Shutting down AI Resume API")
+        await close_memvid_client()
+        await close_openrouter_client()
 
 
 # Create FastAPI app
@@ -181,7 +198,19 @@ Instrumentator().instrument(app).expose(app)
 if settings.mcp_enabled:
     from ai_resume_api.mcp_server import create_mcp_app, mcp_config_router
 
-    app.mount("/mcp", create_mcp_app())
+    _mcp_app = create_mcp_app()
+    app.state.mcp_app = _mcp_app  # Stored for lifespan initialization
+
+    # Rewrite /mcp -> /mcp/ so the Mount handles it directly.
+    # Without this, Starlette sends a 307 redirect that MCP clients
+    # (e.g. mcp-remote) don't follow.
+    @app.middleware("http")
+    async def mcp_slash_rewrite(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        if request.url.path == "/mcp":
+            request.scope["path"] = "/mcp/"
+        return await call_next(request)
+
+    app.mount("/mcp", _mcp_app)
     app.include_router(mcp_config_router)
     logger.info("MCP server enabled, mounted at /mcp")
 
@@ -424,7 +453,6 @@ async def chat(request: Request, chat_request: ChatRequest) -> Any:
             history=history,
         )
 
-        logger.info("🔴 ABOUT TO CALL OPENROUTER - THIS IS THE NEW CODE PATH")
         try:
             response = await openrouter_client.chat(
                 system_prompt=system_prompt,

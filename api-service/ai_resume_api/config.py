@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     upstream_proxy_ips: str = ""
 
     # MCP server
-    mcp_enabled: bool = False
+    mcp_enabled: bool = True
 
     # Server configuration
     port: int = 3000

@@ -16,7 +16,6 @@ from ai_resume_api.mcp_server import (
     _get_config_template,
     mcp_config_router,
 )
-from app.main import app
 
 
 # ---------------------------------------------------------------------------
@@ -134,7 +133,7 @@ class TestGetConfigTemplate:
     """Tests for the _get_config_template function."""
 
     def test_claude_desktop(self) -> None:
-        """Should return config with mcpServers containing the MCP URL."""
+        """Should return config with mcpServers using mcp-remote bridge."""
         template = _get_config_template("claude-desktop", "https://example.com", "John Doe")
 
         assert template is not None
@@ -144,7 +143,10 @@ class TestGetConfigTemplate:
         assert "mcpServers" in config
         server_name = "john-doe-resume"
         assert server_name in config["mcpServers"]
-        assert config["mcpServers"][server_name]["url"] == "https://example.com/mcp"
+        server_config = config["mcpServers"][server_name]
+        assert server_config["command"] == "npx"
+        assert "mcp-remote" in server_config["args"]
+        assert "https://example.com/mcp" in server_config["args"]
 
     def test_claude_web(self) -> None:
         """Should return a flat URL config for Claude Web."""
@@ -209,10 +211,10 @@ class TestListMcpClients:
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
-        assert len(data) == 3
+        assert len(data) == 4
 
         ids = {item["id"] for item in data}
-        assert ids == {"claude-desktop", "claude-web", "cursor"}
+        assert ids == {"claude-desktop", "claude-code", "claude-web", "cursor"}
 
         for item in data:
             assert "id" in item
@@ -258,7 +260,7 @@ class TestGetMcpConfig:
     ) -> None:
         """The URL in the config should end with /mcp."""
         response = mcp_config_client.get(
-            "/api/v1/mcp/config/claude-desktop",
+            "/api/v1/mcp/config/claude-web",
             headers={
                 "x-forwarded-proto": "https",
                 "x-forwarded-host": "resume.example.com",
@@ -267,12 +269,7 @@ class TestGetMcpConfig:
 
         assert response.status_code == 200
         data = response.json()
-        config = data["config"]
-        # claude-desktop has mcpServers -> server_name -> url
-        server_configs = config.get("mcpServers", {})
-        urls = [v["url"] for v in server_configs.values()]
-        assert len(urls) == 1
-        assert urls[0] == "https://resume.example.com/mcp"
+        assert data["config"]["url"] == "https://resume.example.com/mcp"
 
     def test_config_uses_profile_name_for_server_key(
         self,
@@ -316,21 +313,18 @@ class TestGetMcpConfig:
 # ---------------------------------------------------------------------------
 
 
-class TestMcpDisabledInMainApp:
-    """Verify that MCP config endpoints return 404 when mcp_enabled=False."""
+class TestMcpEnabledInMainApp:
+    """Verify MCP config endpoints via isolated router (main app mount depends on import-time config)."""
 
-    @pytest.fixture
-    def client(self) -> Generator[TestClient, None, None]:
-        """Default test client (mcp_enabled=False by default)."""
-        with TestClient(app) as c:
-            yield c
+    def test_mcp_clients_via_isolated_router(self, mcp_config_client: TestClient) -> None:
+        """GET /api/v1/mcp/clients should return 200."""
+        response = mcp_config_client.get("/api/v1/mcp/clients")
+        assert response.status_code == 200
+        assert len(response.json()) == 4
 
-    def test_mcp_clients_404_when_disabled(self, client: TestClient) -> None:
-        """GET /api/v1/mcp/clients should 404 when MCP is disabled."""
-        response = client.get("/api/v1/mcp/clients")
-        assert response.status_code == 404
-
-    def test_mcp_config_404_when_disabled(self, client: TestClient) -> None:
-        """GET /api/v1/mcp/config/claude-desktop should 404 when MCP is disabled."""
-        response = client.get("/api/v1/mcp/config/claude-desktop")
-        assert response.status_code == 404
+    def test_mcp_config_via_isolated_router(
+        self, mcp_config_client: TestClient, mock_profile_for_mcp: Any
+    ) -> None:
+        """GET /api/v1/mcp/config/claude-desktop should return 200."""
+        response = mcp_config_client.get("/api/v1/mcp/config/claude-desktop")
+        assert response.status_code == 200

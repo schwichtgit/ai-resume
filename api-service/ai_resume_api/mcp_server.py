@@ -230,13 +230,17 @@ async def get_suggested_questions_resource() -> str:
 
 
 def create_mcp_app() -> Any:
-    """Create the MCP ASGI app for mounting at /mcp.
+    """Create the MCP ASGI app with Streamable HTTP transport.
 
-    Uses Streamable HTTP transport with stateless mode (no server-side session
-    persistence). Each MCP tool invocation is independent.
+    Uses stateless mode (no server-side session persistence).
+    Each MCP tool invocation is independent.
+
+    Mounted at /mcp in main app; internal path is "/" so the
+    endpoint responds at /mcp/ (Starlette strips the mount prefix).
+    A redirect middleware handles /mcp -> /mcp/ transparently.
     """
     return mcp.http_app(
-        path="/mcp",
+        path="/",
         transport="streamable-http",
         stateless_http=True,
     )
@@ -251,6 +255,7 @@ mcp_config_router = APIRouter(prefix="/api/v1/mcp", tags=["mcp-config"])
 # Supported MCP clients
 MCP_CLIENTS = [
     {"id": "claude-desktop", "label": "Claude Desktop"},
+    {"id": "claude-code", "label": "Claude Code"},
     {"id": "claude-web", "label": "Claude Web"},
     {"id": "cursor", "label": "Cursor"},
 ]
@@ -272,14 +277,24 @@ def _get_config_template(client_id: str, base_url: str, profile_name: str) -> di
         "claude-desktop": {
             "label": "Claude Desktop",
             "instructions": (
-                "Add this to your Claude Desktop MCP settings (Settings > Developer > MCP Servers):"
+                "Claude Desktop does not support remote URLs directly. "
+                "Add this to claude_desktop_config.json "
+                "(Settings > Developer > Edit Config):"
             ),
             "config": {
                 "mcpServers": {
                     server_name: {
-                        "url": mcp_url,
+                        "command": "npx",
+                        "args": ["-y", "mcp-remote", mcp_url],
                     }
                 }
+            },
+        },
+        "claude-code": {
+            "label": "Claude Code",
+            "instructions": "Run this command in your terminal:",
+            "config": {
+                "command": (f"claude mcp add --transport http {server_name} {mcp_url}"),
             },
         },
         "claude-web": {
@@ -293,7 +308,7 @@ def _get_config_template(client_id: str, base_url: str, profile_name: str) -> di
         },
         "cursor": {
             "label": "Cursor",
-            "instructions": ("Add this to your Cursor MCP settings (.cursor/mcp.json):"),
+            "instructions": "Add this to your Cursor MCP settings (.cursor/mcp.json):",
             "config": {
                 "mcpServers": {
                     server_name: {
@@ -314,13 +329,13 @@ async def list_mcp_clients() -> list[dict]:
 
 
 @mcp_config_router.get("/config/{client_id}")
-async def get_mcp_config(client_id: str, request: Request) -> dict:
+async def get_mcp_config(client_id: str, request: Request, origin: str | None = None) -> dict:
     """Get MCP configuration template for a specific client."""
     settings = get_settings()
     profile = await settings.load_profile_from_memvid() or settings.load_profile()
     profile_name = profile.get("name", "candidate") if profile else "candidate"
 
-    base_url = _derive_base_url(request)
+    base_url = origin if origin else _derive_base_url(request)
     template = _get_config_template(client_id, base_url, profile_name)
 
     if template is None:
