@@ -15,8 +15,12 @@ export function useMcpConfig() {
   const [clients, setClients] = useState<McpClient[]>([]);
   const [available, setAvailable] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
-  const [configs, setConfigs] = useState<Record<string, McpConfigTemplate | null>>({});
-  const [configLoading, setConfigLoading] = useState<Record<string, boolean>>({});
+  const [configs, setConfigs] = useState<
+    Record<string, McpConfigTemplate | null>
+  >({});
+  const [configLoading, setConfigLoading] = useState<Record<string, boolean>>(
+    {},
+  );
 
   const fetchClients = useCallback(async () => {
     setLoading(true);
@@ -40,7 +44,10 @@ export function useMcpConfig() {
 
       setConfigLoading((prev) => ({ ...prev, [clientId]: true }));
       try {
-        const res = await fetch(`/api/v1/mcp/config/${clientId}`);
+        const origin = encodeURIComponent(window.location.origin);
+        const res = await fetch(
+          `/api/v1/mcp/config/${clientId}?origin=${origin}`,
+        );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data: McpConfigTemplate = await res.json();
         setConfigs((prev) => ({ ...prev, [clientId]: data }));
