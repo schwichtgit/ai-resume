@@ -13,7 +13,7 @@ const Hero = ({ onOpenChat }: HeroProps) => {
     return (
       <section
         id="hero"
-        className="min-h-screen flex flex-col justify-center px-6 pt-20"
+        className="relative min-h-screen flex flex-col justify-start px-6 pt-[max(6rem,12vh)]"
       >
         <div className="max-w-4xl mx-auto w-full">
           <div className="h-10 w-64 bg-secondary rounded-full mb-8 animate-pulse" />
@@ -32,7 +32,7 @@ const Hero = ({ onOpenChat }: HeroProps) => {
   return (
     <section
       id="hero"
-      className="min-h-screen flex flex-col justify-center px-4 sm:px-6 pt-20"
+      className="relative min-h-screen flex flex-col justify-start px-4 sm:px-6 pt-[max(6rem,12vh)]"
     >
       <div className="max-w-4xl mx-auto w-full">
         {/* Status badge */}

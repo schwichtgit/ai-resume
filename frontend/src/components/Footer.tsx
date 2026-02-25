@@ -58,7 +58,7 @@ const Footer = () => {
               <Mail className="w-5 h-5" />
             </a>
             <a
-              href="https://medium.com/@frank.schwichtenberg"
+              href="https://medium.com/@schwicht/list/the-information-latency-of-the-professional-history-27520369c074"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Medium"
