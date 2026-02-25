@@ -28,6 +28,13 @@ export function McpConfigDialog({ open, onOpenChange }: McpConfigDialogProps) {
     }
   }, [open, clients.length, fetchClients]);
 
+  // Fetch config for the default (first) tab when clients are loaded
+  useEffect(() => {
+    if (open && clients.length > 0 && !configs[clients[0].id]) {
+      fetchConfig(clients[0].id);
+    }
+  }, [open, clients, configs, fetchConfig]);
+
   const handleTabChange = (clientId: string) => {
     if (!configs[clientId]) {
       fetchConfig(clientId);
@@ -98,11 +105,7 @@ export function McpConfigDialog({ open, onOpenChange }: McpConfigDialogProps) {
                         onClick={() =>
                           handleCopy(
                             client.id,
-                            JSON.stringify(
-                              configs[client.id]!.config,
-                              null,
-                              2,
-                            ),
+                            JSON.stringify(configs[client.id]!.config, null, 2),
                           )
                         }
                         className="absolute top-2 right-2 p-1.5 rounded-md bg-background/80 hover:bg-background text-muted-foreground hover:text-foreground transition-colors"

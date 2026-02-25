@@ -223,10 +223,26 @@ Use the context above to answer the user's question. If the context doesn't cont
             response.raise_for_status()
             data = response.json()
 
-            content = data["choices"][0]["message"]["content"]
+            # OpenRouter may return HTTP 200 with an error body (no choices)
+            choices = data.get("choices")
+            if not choices:
+                error_detail = data.get("error", {})
+                error_msg = (
+                    error_detail.get("message", "")
+                    if isinstance(error_detail, dict)
+                    else str(error_detail)
+                ) or "No choices in response"
+                logger.error(
+                    "OpenRouter returned no choices",
+                    response_keys=list(data.keys()),
+                    error=error_msg,
+                )
+                raise OpenRouterError(f"OpenRouter API error: {error_msg}")
+
+            content = choices[0]["message"]["content"]
             usage = data.get("usage", {})
             tokens_used = usage.get("total_tokens", 0)
-            finish_reason = data["choices"][0].get("finish_reason")
+            finish_reason = choices[0].get("finish_reason")
 
             logger.info(
                 "LLM response received",

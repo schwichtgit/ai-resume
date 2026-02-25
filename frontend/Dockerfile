@@ -40,13 +40,17 @@ RUN printf '{"version":"%s","commit":"%s"}\n' "${BUILD_VERSION}" "${BUILD_COMMIT
 # =============================================================================
 FROM alpine:3.23.3
 
-# Install OpenResty, lua-resty-dns for dynamic DNS, and create directories
+# Install OpenResty and lua-resty-http, then create directories
 # Note: openresty package creates 'nginx' user and group automatically
-# lua-resty-dns brings in all dependencies: lua-resty-core, nginx-mod-http-lua, luajit
-RUN apk add --no-cache \
-        openresty \
-        lua-resty-http \
-        lua-resty-dns && \
+# OpenResty bundles lua-resty-dns, lua-resty-core, cjson, and LuaJIT.
+# lua-resty-http is installed via opm (not apk) to avoid the Alpine
+# nginx 1.28 / openresty nginx 1.27 package conflict.
+RUN apk add --no-cache openresty curl && \
+    curl -fsSL -o /usr/lib/nginx/lualib/resty/http.lua \
+      https://raw.githubusercontent.com/ledgetech/lua-resty-http/v0.17.2/lib/resty/http.lua && \
+    curl -fsSL -o /usr/lib/nginx/lualib/resty/http_headers.lua \
+      https://raw.githubusercontent.com/ledgetech/lua-resty-http/v0.17.2/lib/resty/http_headers.lua && \
+    apk del curl && \
     mkdir -p /etc/nginx/conf.d /etc/nginx/lua /etc/nginx/html /var/log/nginx /var/run/nginx /usr/share/nginx/html && \
     ln -sf /dev/stdout /var/log/nginx/access.log && \
     ln -sf /dev/stderr /var/log/nginx/error.log && \
