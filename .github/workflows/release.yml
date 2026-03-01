@@ -51,27 +51,45 @@ jobs:
           POLL_INTERVAL=30
           ELAPSED=0
 
+          TAG_NAME="${{ github.ref_name }}"
+
           while [ "$ELAPSED" -lt "$MAX_WAIT" ]; do
-            # Check ALL completed runs for this SHA (not just [0]) to avoid
-            # selecting a main-push run that completed before the tag-push run.
+            # Prefer the tag-triggered CI run over a main-push run that shares
+            # the same SHA. The tag-triggered run builds images with versioned
+            # tags (v1.0.0.amd64), while the main-push run uses dev-* tags.
+            # When both exist, the main-push run often completes first and would
+            # be selected incorrectly without this filter.
             FOUND=""
             for RUN_ID in $(gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=${SHA}&status=completed" \
-              --jq '.workflow_runs[].id'); do
+              --jq ".workflow_runs[] | select(.head_branch == \"${TAG_NAME}\") | .id"); do
 
-              # Count container-build jobs that actually succeeded (not skipped).
-              # A docs-only main-push CI run may list skipped container-build jobs
-              # which would pass the old existence check but have no pushed images.
               BUILD_JOBS=$(gh api "repos/${{ github.repository }}/actions/runs/${RUN_ID}/jobs" \
                 --jq '[.jobs[] | select(.name | startswith("container-build")) | select(.conclusion == "success")] | length')
 
               if [ "$BUILD_JOBS" -gt 0 ]; then
-                echo "Found CI run ${RUN_ID} with ${BUILD_JOBS} successful container-build jobs"
+                echo "Found tag-triggered CI run ${RUN_ID} with ${BUILD_JOBS} successful container-build jobs"
                 FOUND=1
                 break
               else
                 echo "CI run ${RUN_ID} has no successful container-build jobs, skipping..."
               fi
             done
+
+            # Fallback: if no tag-triggered run found, accept any run with builds
+            if [ -z "$FOUND" ]; then
+              for RUN_ID in $(gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=${SHA}&status=completed" \
+                --jq '.workflow_runs[].id'); do
+
+                BUILD_JOBS=$(gh api "repos/${{ github.repository }}/actions/runs/${RUN_ID}/jobs" \
+                  --jq '[.jobs[] | select(.name | startswith("container-build")) | select(.conclusion == "success")] | length')
+
+                if [ "$BUILD_JOBS" -gt 0 ]; then
+                  echo "::warning::No tag-triggered CI run found, using run ${RUN_ID} with ${BUILD_JOBS} successful container-build jobs"
+                  FOUND=1
+                  break
+                fi
+              done
+            fi
 
             if [ -n "$FOUND" ]; then
               break
