@@ -26,8 +26,8 @@ where
 {
     let endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok()?;
 
-    let service_name = std::env::var("OTEL_SERVICE_NAME")
-        .unwrap_or_else(|_| "ai-resume-memvid".to_string());
+    let service_name =
+        std::env::var("OTEL_SERVICE_NAME").unwrap_or_else(|_| "ai-resume-memvid".to_string());
 
     info!(
         endpoint = %endpoint,
@@ -47,9 +47,7 @@ where
         }
     };
 
-    let resource = Resource::new(vec![
-        KeyValue::new("service.name", service_name),
-    ]);
+    let resource = Resource::new(vec![KeyValue::new("service.name", service_name)]);
 
     let provider = TracerProvider::builder()
         .with_batch_exporter(exporter, opentelemetry_sdk::runtime::Tokio)
@@ -81,7 +79,10 @@ mod tests {
         let layer: Option<
             OpenTelemetryLayer<tracing_subscriber::Registry, opentelemetry_sdk::trace::Tracer>,
         > = init_otel_layer();
-        assert!(layer.is_none(), "Layer should be None when env var is unset");
+        assert!(
+            layer.is_none(),
+            "Layer should be None when env var is unset"
+        );
     }
 
     #[tokio::test]
@@ -95,10 +96,7 @@ mod tests {
         let layer: Option<
             OpenTelemetryLayer<tracing_subscriber::Registry, opentelemetry_sdk::trace::Tracer>,
         > = init_otel_layer();
-        assert!(
-            layer.is_some(),
-            "Layer should be Some when endpoint is set"
-        );
+        assert!(layer.is_some(), "Layer should be Some when endpoint is set");
 
         // Clean up
         std::env::remove_var("OTEL_EXPORTER_OTLP_ENDPOINT");
@@ -129,9 +127,7 @@ mod tests {
         let fmt_layer = tracing_subscriber::fmt::layer().json();
         let registry = tracing_subscriber::registry().with(fmt_layer);
 
-        let otel_layer: Option<
-            OpenTelemetryLayer<_, opentelemetry_sdk::trace::Tracer>,
-        > = None;
+        let otel_layer: Option<OpenTelemetryLayer<_, opentelemetry_sdk::trace::Tracer>> = None;
 
         // This should compile and work -- the None case means no OTel layer
         let _subscriber = registry.with(otel_layer);

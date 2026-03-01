@@ -55,7 +55,18 @@ impl MemvidGrpcService {
 
 #[tonic::async_trait]
 impl MemvidService for MemvidGrpcService {
-    #[instrument(skip(self, request), fields(query, trace_id, session_id, client_ip, traceparent, chunks_retrieved, retrieval_ms))]
+    #[instrument(
+        skip(self, request),
+        fields(
+            query,
+            trace_id,
+            session_id,
+            client_ip,
+            traceparent,
+            chunks_retrieved,
+            retrieval_ms
+        )
+    )]
     async fn search(
         &self,
         request: Request<SearchRequest>,
@@ -122,7 +133,19 @@ impl MemvidService for MemvidGrpcService {
         Ok(Response::new(response))
     }
 
-    #[instrument(skip(self, request), fields(question, trace_id, session_id, client_ip, traceparent, chunks_retrieved, retrieval_ms, reranking_ms))]
+    #[instrument(
+        skip(self, request),
+        fields(
+            question,
+            trace_id,
+            session_id,
+            client_ip,
+            traceparent,
+            chunks_retrieved,
+            retrieval_ms,
+            reranking_ms
+        )
+    )]
     async fn ask(&self, request: Request<AskRequest>) -> Result<Response<AskResponse>, Status> {
         let cor = extract_correlation(&request);
         let req = request.into_inner();
@@ -218,7 +241,10 @@ impl MemvidService for MemvidGrpcService {
         Ok(Response::new(response))
     }
 
-    #[instrument(skip(self, request), fields(entity, trace_id, session_id, client_ip, traceparent))]
+    #[instrument(
+        skip(self, request),
+        fields(entity, trace_id, session_id, client_ip, traceparent)
+    )]
     async fn get_state(
         &self,
         request: Request<GetStateRequest>,

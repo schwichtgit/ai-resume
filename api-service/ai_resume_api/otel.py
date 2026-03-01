@@ -7,6 +7,7 @@ OpenTelemetry NoOp tracer is used and zero overhead is added to request paths.
 """
 
 import os
+from typing import Any
 
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
@@ -19,7 +20,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 _otel_initialized = False
 
 
-def init_otel(app=None) -> None:
+def init_otel(app: Any = None) -> None:
     """Initialize OpenTelemetry if OTEL_EXPORTER_OTLP_ENDPOINT is set.
 
     Safe to call multiple times -- subsequent calls are no-ops.
