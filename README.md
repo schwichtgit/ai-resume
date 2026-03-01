@@ -56,7 +56,7 @@ Key technical decisions:
 - **Single-file portability**: One `.mv2` file contains all embeddings, metadata, and profile data
 - **Read-only containers**: All services run rootless with read-only filesystems
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system design, data flow, and network topology.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system design, data flow, and network topology. The system includes end-to-end distributed tracing with OpenTelemetry across all three languages, a Grafana/Tempo/Prometheus/Loki observability stack, and pre-built dashboards for request waterfalls, latency breakdowns, and LLM cost tracking -- see [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md).
 
 ## What It Does
 
@@ -187,6 +187,7 @@ ai-resume/
 | [Architecture](docs/ARCHITECTURE.md)                             | System design, data flow, network topology   |
 | [Deployment](docs/DEPLOYMENT.md)                                 | Container builds, ARM64 edge, compose config |
 | [Development](docs/DEVELOPMENT.md)                               | Build system, per-service commands, testing  |
+| [Observability](docs/OBSERVABILITY.md)                           | Distributed tracing, dashboards, runbooks    |
 | [Security](docs/SECURITY.md)                                     | Threat model, prompt injection, hardening    |
 | [Hook Exit Codes](docs/hook-exit-code-conventions.md)            | Claude Code hook exit code conventions       |
 | [Post-Edit Hook Antipattern](docs/post-edit-hook-antipattern.md) | Hook design guidance                         |

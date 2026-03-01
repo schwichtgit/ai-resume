@@ -20,6 +20,7 @@ mod error;
 mod grpc;
 mod memvid;
 mod metrics;
+mod otel;
 
 // Include generated proto code from build script
 mod generated {
@@ -72,9 +73,14 @@ async fn run_healthcheck() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing (use RUST_LOG env var to control log level)
+    // Conditionally add an OpenTelemetry layer when OTEL_EXPORTER_OTLP_ENDPOINT is set.
+    // When unset, the subscriber stack is identical to the previous console-only setup.
+    let otel_layer = otel::init_otel_layer();
+
     tracing_subscriber::registry()
         .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
         .with(tracing_subscriber::fmt::layer().json())
+        .with(otel_layer)
         .init();
 
     // Check if running in healthcheck mode

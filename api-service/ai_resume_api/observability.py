@@ -12,6 +12,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 
 import structlog
+from opentelemetry import trace as otel_trace
 from prometheus_client import Counter, Histogram, Gauge
 
 logger = structlog.get_logger()
@@ -32,7 +33,18 @@ def generate_trace_id() -> str:
 
 
 def get_trace_id() -> str:
-    """Get current trace ID from context, or empty string if not set."""
+    """Get current trace ID from context, or empty string if not set.
+
+    When OpenTelemetry is active (non-zero trace ID), returns the OTel trace ID
+    for cross-service correlation. Falls back to the custom trace ID when OTel
+    is disabled.
+    """
+    # Prefer OTel trace_id when an active span exists
+    otel_span = otel_trace.get_current_span()
+    otel_ctx = otel_span.get_span_context()
+    if otel_ctx and otel_ctx.trace_id != otel_trace.INVALID_TRACE_ID:
+        return otel_trace.format_trace_id(otel_ctx.trace_id)
+
     return trace_id_ctx.get()
 
 
@@ -59,6 +71,15 @@ def get_client_ip() -> str:
 def set_client_ip(client_ip: str) -> None:
     """Set client IP in context."""
     client_ip_ctx.set(client_ip)
+
+
+def get_otel_span_id() -> str:
+    """Get current OTel span ID if an active span exists, else empty string."""
+    otel_span = otel_trace.get_current_span()
+    otel_ctx = otel_span.get_span_context()
+    if otel_ctx and otel_ctx.span_id != otel_trace.INVALID_SPAN_ID:
+        return otel_trace.format_span_id(otel_ctx.span_id)
+    return ""
 
 
 # =============================================================================
@@ -174,17 +195,20 @@ def log_llm_request(
     )
 
     # Structured log for Loki/Grafana correlation
-    logger.info(
-        "llm_request",
-        trace_id=log_data.trace_id,
-        model=log_data.model,
-        stream=log_data.stream,
-        system_prompt_chars=log_data.system_prompt_chars,
-        context_chars=log_data.context_chars,
-        context_chunks=log_data.context_chunks,
-        user_message_preview=log_data.user_message_preview,
-        history_messages=log_data.history_messages,
-    )
+    log_kwargs: dict = {
+        "trace_id": log_data.trace_id,
+        "model": log_data.model,
+        "stream": log_data.stream,
+        "system_prompt_chars": log_data.system_prompt_chars,
+        "context_chars": log_data.context_chars,
+        "context_chunks": log_data.context_chunks,
+        "user_message_preview": log_data.user_message_preview,
+        "history_messages": log_data.history_messages,
+    }
+    span_id = get_otel_span_id()
+    if span_id:
+        log_kwargs["span_id"] = span_id
+    logger.info("llm_request", **log_kwargs)
 
     # Update Prometheus metrics
     llm_active_requests.labels(model=model).inc()

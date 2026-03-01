@@ -182,6 +182,45 @@ curl -X POST http://192.168.100.10:8080/api/v1/chat \
 
 4. **Configure host nginx and firewall** (see [docs/SETUP.md](../docs/SETUP.md))
 
+## Development Stack with Observability
+
+`compose.dev.yaml` is a **standalone** compose file (not a merge of production composes) that runs all 9 services on a single `dev-net` bridge network. Services discover each other via container DNS -- no static IPs or external network setup required.
+
+**Start the dev stack:**
+
+```bash
+cd deployment
+task dev:observability
+
+# Or directly:
+podman compose -f compose.dev.yaml up -d
+```
+
+**Services and ports:**
+
+| Service            | Port  | Description                     |
+| ------------------ | ----- | ------------------------------- |
+| ai-resume-frontend | 8080  | SPA frontend                    |
+| ai-resume-api      | 3000  | FastAPI backend                 |
+| ai-resume-memvid   | 50051 | memvid gRPC server              |
+| fluent-bit         | --    | Log shipper (Loki)              |
+| otel-collector     | 4317  | OTLP gRPC receiver              |
+| otel-collector     | 4318  | OTLP HTTP receiver              |
+| grafana            | 3001  | Dashboards (remapped from 3000) |
+| tempo              | 3200  | Distributed tracing backend     |
+| prometheus         | 9090  | Metrics collection              |
+| loki               | 3100  | Log aggregation                 |
+
+**Access Grafana:** <http://localhost:3001> (anonymous admin, no login required)
+
+For comprehensive observability documentation including architecture, dashboards, runbooks, and troubleshooting, see [`docs/OBSERVABILITY.md`](../docs/OBSERVABILITY.md).
+
+**Stop the dev stack:**
+
+```bash
+podman compose -f compose.dev.yaml down
+```
+
 ## Troubleshooting
 
 **Host nginx can't reach frontend:**

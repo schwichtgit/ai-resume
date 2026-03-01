@@ -6,6 +6,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { getProfile, getSuggestedQuestions, assessFit, checkHealth, ApiError } from '../api-client';
 
+// Mock the otel module to prevent any real OTel initialization
+vi.mock('../otel', () => ({
+  getTraceparent: () => null,
+  initOtel: vi.fn(),
+  getTracer: vi.fn(),
+  _resetForTesting: vi.fn(),
+}));
+
 // Mock fetch globally
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -37,7 +45,9 @@ describe('api-client', () => {
       const result = await checkHealth();
 
       expect(result).toEqual(mockHealthData);
-      expect(mockFetch).toHaveBeenCalledWith('/api/v1/health');
+      expect(mockFetch).toHaveBeenCalledWith('/api/v1/health', {
+        headers: {},
+      });
     });
 
     it('should throw ApiError on failure', async () => {

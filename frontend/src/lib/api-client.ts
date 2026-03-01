@@ -3,8 +3,23 @@
  * Handles chat requests, health checks, and configuration.
  */
 
+import { getTraceparent } from './otel';
+
 // API base URL - in development, Vite proxies /api to the backend
 const API_BASE_URL = '/api/v1';
+
+/**
+ * Build common headers for API requests, including traceparent
+ * when OpenTelemetry tracing is active.
+ */
+function traceHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const tp = getTraceparent();
+  if (tp) {
+    headers['traceparent'] = tp;
+  }
+  return headers;
+}
 
 /**
  * Chat request payload
@@ -172,7 +187,9 @@ export class RateLimitError extends ApiError {
  * Check if the backend is healthy
  */
 export async function checkHealth(): Promise<HealthResponse> {
-  const response = await fetch(`${API_BASE_URL}/health`);
+  const response = await fetch(`${API_BASE_URL}/health`, {
+    headers: traceHeaders(),
+  });
 
   if (!response.ok) {
     throw new ApiError('Health check failed', response.status);
@@ -225,7 +242,9 @@ function transformExperience(apiExp: ApiExperience): Experience {
  * Get profile metadata from the backend
  */
 export async function getProfile(): Promise<ProfileResponse> {
-  const response = await fetch(`${API_BASE_URL}/profile`);
+  const response = await fetch(`${API_BASE_URL}/profile`, {
+    headers: traceHeaders(),
+  });
 
   if (!response.ok) {
     throw new ApiError('Failed to get profile', response.status);
@@ -245,7 +264,9 @@ export async function getProfile(): Promise<ProfileResponse> {
  * Get suggested questions from the backend
  */
 export async function getSuggestedQuestions(): Promise<string[]> {
-  const response = await fetch(`${API_BASE_URL}/suggested-questions`);
+  const response = await fetch(`${API_BASE_URL}/suggested-questions`, {
+    headers: traceHeaders(),
+  });
 
   if (!response.ok) {
     throw new ApiError('Failed to get suggested questions', response.status);
@@ -290,6 +311,7 @@ export async function streamChat(
     headers: {
       'Content-Type': 'application/json',
       Accept: 'text/event-stream',
+      ...traceHeaders(),
     },
     body: JSON.stringify({
       ...request,
@@ -415,6 +437,7 @@ export async function chat(request: ChatRequest): Promise<string> {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...traceHeaders(),
     },
     body: JSON.stringify({
       ...request,
@@ -465,6 +488,7 @@ export async function chat(request: ChatRequest): Promise<string> {
 export async function deleteSession(sessionId: string): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}`, {
     method: 'DELETE',
+    headers: traceHeaders(),
   });
 
   if (response.status === 204) {
@@ -491,6 +515,7 @@ export async function assessFit(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...traceHeaders(),
     },
     body: JSON.stringify({
       job_description: jobDescription,

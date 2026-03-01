@@ -11,6 +11,7 @@ from prometheus_client import Histogram
 from ai_resume_api.config import get_settings
 from ai_resume_api.models import MemvidHealthResponse, MemvidSearchHit, MemvidSearchResponse
 from ai_resume_api.observability import get_trace_id, get_session_id, get_client_ip
+from opentelemetry.propagate import inject
 
 logger = structlog.get_logger()
 
@@ -46,6 +47,9 @@ class CorrelationInterceptor(grpc.aio.UnaryUnaryClientInterceptor):  # type: ign
 
     Reads trace_id, session_id, and client_ip from context vars
     and attaches them as gRPC metadata headers for cross-service correlation.
+    Also propagates the W3C traceparent header when OpenTelemetry is active,
+    enabling distributed trace continuity across the Python API and Rust
+    memvid service.
     """
 
     async def intercept_unary_unary(
@@ -67,6 +71,12 @@ class CorrelationInterceptor(grpc.aio.UnaryUnaryClientInterceptor):  # type: ign
         client_ip = get_client_ip()
         if client_ip:
             metadata.append(("x-client-ip", client_ip))
+
+        # Inject W3C traceparent from active OTel context for distributed tracing
+        carrier: dict[str, str] = {}
+        inject(carrier)
+        for key, value in carrier.items():
+            metadata.append((key, value))
 
         if metadata:
             # Merge with existing metadata if any
