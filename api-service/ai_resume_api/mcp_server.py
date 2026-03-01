@@ -13,6 +13,7 @@ from ai_resume_api.config import get_settings
 from ai_resume_api.guardrails import check_input, check_output
 from ai_resume_api.memvid_client import get_memvid_client
 from ai_resume_api.openrouter_client import get_openrouter_client
+from ai_resume_api.otel import get_tracer
 
 logger = structlog.get_logger(__name__)
 
@@ -60,6 +61,8 @@ async def ask_question(question: str) -> str:
 
     Returns an AI-generated answer based on semantic search of the candidate's resume.
     """
+    tracer = get_tracer()
+
     # Rate limit check (placeholder IP -- FastMCP doesn't expose client IP easily)
     if not _check_rate_limit("mcp-client"):
         return "Rate limit exceeded. Please wait a moment before trying again."
@@ -67,29 +70,38 @@ async def ask_question(question: str) -> str:
     settings = get_settings()
 
     # Input guardrail
-    profile = await settings.load_profile_from_memvid() or settings.load_profile()
-    profile_name = profile.get("name") if profile else None
-    suggested_questions = profile.get("suggested_questions", []) if profile else []
-    is_safe, blocked_response = check_input(question, profile_name, suggested_questions)
+    with tracer.start_as_current_span("guardrail.check_input") as guard_span:
+        guard_span.set_attribute("message.length", len(question))
+        profile = await settings.load_profile_from_memvid() or settings.load_profile()
+        profile_name = profile.get("name") if profile else None
+        suggested_questions = profile.get("suggested_questions", []) if profile else []
+        is_safe, blocked_response = check_input(question, profile_name, suggested_questions)
+        guard_span.set_attribute("guardrail.passed", is_safe)
     if not is_safe:
         return blocked_response
 
     # Semantic search via memvid
-    memvid_client = await get_memvid_client()
-    try:
-        ask_response = await memvid_client.ask(
-            question=question,
-            use_llm=False,
-            top_k=5,
-            snippet_chars=300,
-            mode="hybrid",
-        )
-    except Exception as e:
-        logger.error("MCP ask_question memvid error", error=str(e))
-        return "Unable to search resume data at this time."
+    with tracer.start_as_current_span("memvid.search") as search_span:
+        search_span.set_attribute("search.query_length", len(question))
+        search_span.set_attribute("search.top_k", 5)
+        search_span.set_attribute("search.mode", "hybrid")
 
-    context = ask_response.get("answer", "")
-    chunks = ask_response.get("stats", {}).get("results_returned", 0)
+        memvid_client = await get_memvid_client()
+        try:
+            ask_response = await memvid_client.ask(
+                question=question,
+                use_llm=False,
+                top_k=5,
+                snippet_chars=300,
+                mode="hybrid",
+            )
+        except Exception as e:
+            logger.error("MCP ask_question memvid error", error=str(e))
+            return "Unable to search resume data at this time."
+
+        context = ask_response.get("answer", "")
+        chunks = ask_response.get("stats", {}).get("results_returned", 0)
+        search_span.set_attribute("search.chunks_retrieved", chunks)
 
     if chunks == 0:
         return "I don't have specific information about that in the resume data."
@@ -98,20 +110,28 @@ async def ask_question(question: str) -> str:
     system_prompt = settings.get_system_prompt_from_profile() or settings.system_prompt
 
     # LLM call (non-streaming, stateless -- no history)
-    openrouter_client = await get_openrouter_client()
-    try:
-        response = await openrouter_client.chat(
-            system_prompt=system_prompt,
-            context=context,
-            user_message=question,
-            history=[],
-        )
-    except Exception as e:
-        logger.error("MCP ask_question LLM error", error=str(e))
-        return "Unable to generate a response at this time."
+    with tracer.start_as_current_span("llm.openrouter_call") as llm_span:
+        llm_span.set_attribute("llm.model", settings.llm_model)
+        llm_span.set_attribute("llm.stream", False)
+        llm_span.set_attribute("llm.context_chunks", chunks)
+
+        openrouter_client = await get_openrouter_client()
+        try:
+            response = await openrouter_client.chat(
+                system_prompt=system_prompt,
+                context=context,
+                user_message=question,
+                history=[],
+            )
+        except Exception as e:
+            logger.error("MCP ask_question LLM error", error=str(e))
+            return "Unable to generate a response at this time."
+
+        llm_span.set_attribute("llm.tokens_used", response.tokens_used)
 
     # Output guardrail
-    safe_content = check_output(response.content)
+    with tracer.start_as_current_span("guardrail.check_output"):
+        safe_content = check_output(response.content)
     return safe_content
 
 
@@ -122,29 +142,37 @@ async def assess_fit(job_description: str) -> str:
     Provide the full job description text. Returns a structured assessment with
     verdict, key matches, gaps, and recommendation.
     """
+    tracer = get_tracer()
+
     # Rate limit check
     if not _check_rate_limit("mcp-client"):
         return "Rate limit exceeded. Please wait a moment before trying again."
 
     # Search memvid for relevant context
-    memvid_client = await get_memvid_client()
-    try:
-        ask_response = await memvid_client.ask(
-            question=(
-                "What relevant experience, skills, and qualifications does the "
-                f"candidate have for this role? {job_description[:300]}"
-            ),
-            use_llm=False,
-            top_k=10,
-            snippet_chars=500,
-            mode="hybrid",
-        )
-    except Exception as e:
-        logger.error("MCP assess_fit memvid error", error=str(e))
-        return "Unable to search resume data at this time."
+    with tracer.start_as_current_span("memvid.search") as search_span:
+        search_span.set_attribute("search.query_length", len(job_description))
+        search_span.set_attribute("search.top_k", 10)
+        search_span.set_attribute("search.mode", "hybrid")
 
-    context = ask_response.get("answer", "")
-    chunks = ask_response.get("stats", {}).get("results_returned", 0)
+        memvid_client = await get_memvid_client()
+        try:
+            ask_response = await memvid_client.ask(
+                question=(
+                    "What relevant experience, skills, and qualifications does the "
+                    f"candidate have for this role? {job_description[:300]}"
+                ),
+                use_llm=False,
+                top_k=10,
+                snippet_chars=500,
+                mode="hybrid",
+            )
+        except Exception as e:
+            logger.error("MCP assess_fit memvid error", error=str(e))
+            return "Unable to search resume data at this time."
+
+        context = ask_response.get("answer", "")
+        chunks = ask_response.get("stats", {}).get("results_returned", 0)
+        search_span.set_attribute("search.chunks_retrieved", chunks)
 
     if chunks == 0:
         return "Unable to find relevant resume data for this assessment."
@@ -180,22 +208,30 @@ GAPS:
 RECOMMENDATION:
 [Your recommendation paragraph]"""
 
-    openrouter_client = await get_openrouter_client()
-    try:
-        response = await openrouter_client.chat(
-            system_prompt=role_info.get(
-                "persona", "You are a technical recruiter evaluating candidate fit."
-            ),
-            context="",
-            user_message=fit_assessment_prompt,
-            history=[],
-            max_tokens=2048,
-        )
-    except Exception as e:
-        logger.error("MCP assess_fit LLM error", error=str(e))
-        return "Unable to generate fit assessment at this time."
+    with tracer.start_as_current_span("llm.openrouter_call") as llm_span:
+        llm_span.set_attribute("llm.model", get_settings().llm_model)
+        llm_span.set_attribute("llm.stream", False)
+        llm_span.set_attribute("llm.context_chunks", chunks)
 
-    return check_output(response.content)
+        openrouter_client = await get_openrouter_client()
+        try:
+            response = await openrouter_client.chat(
+                system_prompt=role_info.get(
+                    "persona", "You are a technical recruiter evaluating candidate fit."
+                ),
+                context="",
+                user_message=fit_assessment_prompt,
+                history=[],
+                max_tokens=2048,
+            )
+        except Exception as e:
+            logger.error("MCP assess_fit LLM error", error=str(e))
+            return "Unable to generate fit assessment at this time."
+
+        llm_span.set_attribute("llm.tokens_used", response.tokens_used)
+
+    with tracer.start_as_current_span("guardrail.check_output"):
+        return check_output(response.content)
 
 
 # =============================================================================

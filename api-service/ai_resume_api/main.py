@@ -50,6 +50,7 @@ from ai_resume_api.models import (
     SuggestedQuestionsResponse,
     UIConfig,
 )
+from ai_resume_api.otel import init_otel, get_tracer
 from ai_resume_api.openrouter_client import (
     OpenRouterAuthError,
     OpenRouterError,
@@ -133,6 +134,9 @@ app = FastAPI(
     version=get_version()["version"],
     lifespan=lifespan,
 )
+
+# Initialize OpenTelemetry (no-op when OTEL_EXPORTER_OTLP_ENDPOINT is unset)
+init_otel(app)
 
 # Add CORS middleware
 app.add_middleware(
@@ -308,11 +312,15 @@ async def chat(request: Request, chat_request: ChatRequest) -> Any:
         suggested_questions = []
 
     # Input guardrail: Check for prompt injection attempts
-    is_safe, blocked_response = check_input(
-        chat_request.message,
-        profile_name=profile_name,
-        suggested_questions=suggested_questions,
-    )
+    tracer = get_tracer()
+    with tracer.start_as_current_span("guardrail.check_input") as guard_span:
+        guard_span.set_attribute("message.length", len(chat_request.message))
+        is_safe, blocked_response = check_input(
+            chat_request.message,
+            profile_name=profile_name,
+            suggested_questions=suggested_questions,
+        )
+        guard_span.set_attribute("guardrail.passed", is_safe)
     if not is_safe:
         logger.warning(
             "Chat blocked by guardrail",
@@ -363,18 +371,27 @@ async def chat(request: Request, chat_request: ChatRequest) -> Any:
 
     # Get context from memvid using Ask mode (with re-ranking)
     try:
-        memvid_client = await get_memvid_client()
-        ask_response = await memvid_client.ask(
-            question=chat_request.message,  # Pass full question (not transformed)
-            use_llm=False,  # Get context only, we'll use OpenRouter for generation
-            top_k=5,
-            snippet_chars=300,
-            mode="hybrid",  # Use hybrid search (BM25 + vector)
-        )
+        with tracer.start_as_current_span("memvid.search") as search_span:
+            search_span.set_attribute("search.query_length", len(chat_request.message))
+            search_span.set_attribute("search.top_k", 5)
+            search_span.set_attribute("search.mode", "hybrid")
 
-        # Extract context from Ask response
-        context = ask_response["answer"]  # Pre-formatted context from Ask mode
-        chunks_retrieved = ask_response["stats"]["results_returned"]
+            memvid_client = await get_memvid_client()
+            ask_response = await memvid_client.ask(
+                question=chat_request.message,  # Pass full question (not transformed)
+                use_llm=False,  # Get context only, we'll use OpenRouter for generation
+                top_k=5,
+                snippet_chars=300,
+                mode="hybrid",  # Use hybrid search (BM25 + vector)
+            )
+
+            # Extract context from Ask response
+            context = ask_response["answer"]  # Pre-formatted context from Ask mode
+            chunks_retrieved = ask_response["stats"]["results_returned"]
+
+            search_span.set_attribute("search.chunks_retrieved", chunks_retrieved)
+            search_span.set_attribute("search.retrieval_ms", ask_response["stats"]["retrieval_ms"])
+            search_span.set_attribute("search.reranking_ms", ask_response["stats"]["reranking_ms"])
 
         logger.info(
             "Memvid ask completed",
@@ -454,18 +471,31 @@ async def chat(request: Request, chat_request: ChatRequest) -> Any:
         )
 
         try:
-            response = await openrouter_client.chat(
-                system_prompt=system_prompt,
-                context=context,
-                user_message=chat_request.message,
-                history=history,
-            )
+            with tracer.start_as_current_span("llm.openrouter_call") as llm_span:
+                llm_span.set_attribute("llm.model", settings.llm_model)
+                llm_span.set_attribute("llm.stream", False)
+                llm_span.set_attribute("llm.context_chunks", chunks_retrieved)
+
+                response = await openrouter_client.chat(
+                    system_prompt=system_prompt,
+                    context=context,
+                    user_message=chat_request.message,
+                    history=history,
+                )
+
+                llm_span.set_attribute("llm.tokens_used", response.tokens_used)
+                llm_span.set_attribute(
+                    "llm.finish_reason", response.finish_reason or "stop"
+                )
 
             # Output guardrail: Filter any internal structure leakage
-            safe_content = check_output(response.content)
+            with tracer.start_as_current_span("guardrail.check_output") as out_span:
+                safe_content = check_output(response.content)
+                out_span.set_attribute("output.length", len(safe_content))
 
-            session.add_message("assistant", safe_content)
-            session_store.set(session.id, session)
+            with tracer.start_as_current_span("session.store"):
+                session.add_message("assistant", safe_content)
+                session_store.set(session.id, session)
 
             log_llm_response(
                 request_log=request_log,
@@ -506,6 +536,8 @@ async def _stream_chat_response(
     chunks_retrieved: int,
 ) -> AsyncIterator[str]:
     """Generate streaming SSE response with proper cancellation handling."""
+    tracer = get_tracer()
+
     # Log LLM request for observability
     system_prompt = settings.get_system_prompt_from_profile()
     request_log = log_llm_request(
@@ -525,6 +557,8 @@ async def _stream_chat_response(
     full_response = ""
     tokens_used = 0
     finish_reason = "unknown"
+    stream_start = time.monotonic()
+    first_token_time = None
 
     try:
         async for chunk in openrouter_client.chat_stream(
@@ -534,6 +568,8 @@ async def _stream_chat_response(
             history=history,
         ):
             if chunk.content:
+                if first_token_time is None:
+                    first_token_time = time.monotonic()
                 full_response += chunk.content
                 event = ChatStreamEvent(type="token", content=chunk.content)
                 yield f"data: {event.model_dump_json()}\n\n"
@@ -545,9 +581,34 @@ async def _stream_chat_response(
                 finish_reason = chunk.finish_reason
                 break
 
+        stream_end = time.monotonic()
+
+        # Record streaming timing on an OTel span
+        with tracer.start_as_current_span("llm.openrouter_call") as llm_span:
+            llm_span.set_attribute("llm.model", settings.llm_model)
+            llm_span.set_attribute("llm.stream", True)
+            llm_span.set_attribute("llm.context_chunks", chunks_retrieved)
+            llm_span.set_attribute("llm.tokens_used", tokens_used)
+            llm_span.set_attribute("llm.finish_reason", finish_reason)
+            llm_span.set_attribute("llm.response_length", len(full_response))
+            if first_token_time is not None:
+                llm_span.set_attribute(
+                    "time_to_first_token_ms",
+                    round((first_token_time - stream_start) * 1000, 1),
+                )
+            llm_span.set_attribute(
+                "total_streaming_duration_ms",
+                round((stream_end - stream_start) * 1000, 1),
+            )
+
+        # Output guardrail on streamed response
+        with tracer.start_as_current_span("guardrail.check_output"):
+            full_response = check_output(full_response)
+
         # Save response to session
-        session.add_message("assistant", full_response)
-        session_store.set(session.id, session)
+        with tracer.start_as_current_span("session.store"):
+            session.add_message("assistant", full_response)
+            session_store.set(session.id, session)
 
         # Log LLM response with metrics
         log_llm_response(
@@ -795,22 +856,31 @@ async def assess_fit(request: Request, assess_request: AssessFitRequest) -> Asse
         job_description_length=len(assess_request.job_description),
     )
 
+    tracer = get_tracer()
+
     # Get OpenRouter client
     openrouter_client = await get_openrouter_client()
 
     # Query memvid for relevant context about candidate using Ask mode (with re-ranking)
     # Search for: experience, skills, failures, fit assessment guidance
     try:
-        memvid_client = await get_memvid_client()
-        ask_response = await memvid_client.ask(
-            question=f"What relevant experience, skills, and qualifications does the candidate have for this role: {assess_request.job_description[:300]}",
-            use_llm=False,  # Get context only, we'll use OpenRouter for generation
-            top_k=10,
-            snippet_chars=500,
-            mode="hybrid",  # Use hybrid search (BM25 + vector) with re-ranking
-        )
-        context = ask_response["answer"]  # Pre-formatted context from Ask mode
-        chunks_retrieved = ask_response["stats"]["results_returned"]
+        with tracer.start_as_current_span("memvid.search") as search_span:
+            search_span.set_attribute("search.query_length", len(assess_request.job_description))
+            search_span.set_attribute("search.top_k", 10)
+            search_span.set_attribute("search.mode", "hybrid")
+
+            memvid_client = await get_memvid_client()
+            ask_response = await memvid_client.ask(
+                question=f"What relevant experience, skills, and qualifications does the candidate have for this role: {assess_request.job_description[:300]}",
+                use_llm=False,  # Get context only, we'll use OpenRouter for generation
+                top_k=10,
+                snippet_chars=500,
+                mode="hybrid",  # Use hybrid search (BM25 + vector) with re-ranking
+            )
+            context = ask_response["answer"]  # Pre-formatted context from Ask mode
+            chunks_retrieved = ask_response["stats"]["results_returned"]
+
+            search_span.set_attribute("search.chunks_retrieved", chunks_retrieved)
 
         logger.info(
             "Memvid ask completed for fit assessment",
@@ -935,17 +1005,26 @@ RECOMMENDATION: [2-3 sentences. Address whether the candidate should be consider
 
     # Call OpenRouter LLM
     try:
-        response = await openrouter_client.chat(
-            system_prompt=role_info["persona"],
-            context="",  # Context already in user message
-            user_message=fit_assessment_prompt,
-            history=[],
-            max_tokens=2048,  # Structured output needs more room than chat
-        )
+        with tracer.start_as_current_span("llm.openrouter_call") as llm_span:
+            llm_span.set_attribute("llm.model", settings.llm_model)
+            llm_span.set_attribute("llm.stream", False)
+            llm_span.set_attribute("llm.context_chunks", chunks_retrieved)
+
+            response = await openrouter_client.chat(
+                system_prompt=role_info["persona"],
+                context="",  # Context already in user message
+                user_message=fit_assessment_prompt,
+                history=[],
+                max_tokens=2048,  # Structured output needs more room than chat
+            )
+
+            llm_span.set_attribute("llm.tokens_used", response.tokens_used)
 
         # Parse structured response
-        content = response.content
-        tokens_used = response.tokens_used
+        with tracer.start_as_current_span("response.parse") as parse_span:
+            content = response.content
+            tokens_used = response.tokens_used
+            parse_span.set_attribute("response.content_length", len(content))
 
         # Extract sections using state-machine parser
         # Sections: VERDICT, ROLE LEVEL, KEY MATCHES, GAPS, RECOMMENDATION
