@@ -48,6 +48,8 @@ FROM alpine:3.23.3
 RUN apk add --no-cache openresty curl && \
     curl -fsSL -o /usr/lib/nginx/lualib/resty/http.lua \
       https://raw.githubusercontent.com/ledgetech/lua-resty-http/v0.17.2/lib/resty/http.lua && \
+    curl -fsSL -o /usr/lib/nginx/lualib/resty/http_connect.lua \
+      https://raw.githubusercontent.com/ledgetech/lua-resty-http/v0.17.2/lib/resty/http_connect.lua && \
     curl -fsSL -o /usr/lib/nginx/lualib/resty/http_headers.lua \
       https://raw.githubusercontent.com/ledgetech/lua-resty-http/v0.17.2/lib/resty/http_headers.lua && \
     apk del curl && \
