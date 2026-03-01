@@ -348,9 +348,7 @@ class TestMemvidSearchSpanAttributes:
 class TestOtelTraceIdIntegration:
     """Test that observability.get_trace_id uses OTel when active."""
 
-    def test_get_trace_id_uses_otel_when_active(
-        self, otel_exporter: InMemorySpanExporter
-    ) -> None:
+    def test_get_trace_id_uses_otel_when_active(self, otel_exporter: InMemorySpanExporter) -> None:
         """get_trace_id returns OTel trace_id when a span is active."""
         from ai_resume_api.observability import get_trace_id
         from ai_resume_api.otel import get_tracer
@@ -427,9 +425,7 @@ class TestTraceparentPropagation:
                 captured_details = details
                 return AsyncMock()
 
-            await interceptor.intercept_unary_unary(
-                mock_continuation, mock_details, None
-            )
+            await interceptor.intercept_unary_unary(mock_continuation, mock_details, None)
 
             # Check that traceparent was injected
             assert captured_details is not None

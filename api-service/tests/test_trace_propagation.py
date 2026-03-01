@@ -185,6 +185,7 @@ class TestTraceparentExtraction:
 
         # Extract via baggage-aware context - use non_recording_span
         from opentelemetry.trace.propagation import get_current_span as get_ctx_span
+
         extracted_span = get_ctx_span(ctx)
         span_ctx = extracted_span.get_span_context()
         actual_trace_id = trace.format_trace_id(span_ctx.trace_id)
@@ -260,9 +261,7 @@ class TestTraceparentGrpcPropagation:
                 captured_details = details
                 return AsyncMock()
 
-            await interceptor.intercept_unary_unary(
-                mock_continuation, mock_details, None
-            )
+            await interceptor.intercept_unary_unary(mock_continuation, mock_details, None)
 
             # Verify traceparent was injected into gRPC metadata
             assert captured_details is not None
@@ -306,9 +305,7 @@ class TestTraceparentGrpcPropagation:
             captured_details = details
             return AsyncMock()
 
-        await interceptor.intercept_unary_unary(
-            mock_continuation, mock_details, None
-        )
+        await interceptor.intercept_unary_unary(mock_continuation, mock_details, None)
 
         assert captured_details is not None
         metadata_dict = dict(captured_details.metadata)
@@ -331,6 +328,7 @@ class TestSseStatsTraceId:
         mock_profile_loader: None,
     ) -> None:
         """SSE stats event includes the trace_id field for client correlation."""
+
         # Mock the openrouter streaming to yield a single chunk then finish
         async def mock_stream(*args: Any, **kwargs: Any) -> Any:
             mock_chunk = AsyncMock()
@@ -424,9 +422,7 @@ class TestFallbackTraceId:
 class TestOtelTraceIdPrecedence:
     """Verify OTel trace_id is preferred over custom X-Trace-ID."""
 
-    def test_otel_trace_id_takes_precedence(
-        self, otel_exporter: InMemorySpanExporter
-    ) -> None:
+    def test_otel_trace_id_takes_precedence(self, otel_exporter: InMemorySpanExporter) -> None:
         """When OTel is active, get_trace_id returns the OTel trace_id."""
         from ai_resume_api.observability import get_trace_id, set_trace_id
         from ai_resume_api.otel import get_tracer
@@ -465,9 +461,7 @@ class TestNginxTraceparentConfig:
         """nginx-default.conf includes proxy_set_header for traceparent."""
         from pathlib import Path
 
-        nginx_conf = (
-            Path(__file__).parent.parent.parent / "frontend" / "nginx-default.conf"
-        )
+        nginx_conf = Path(__file__).parent.parent.parent / "frontend" / "nginx-default.conf"
         assert nginx_conf.exists(), f"nginx config not found at {nginx_conf}"
 
         content = nginx_conf.read_text()

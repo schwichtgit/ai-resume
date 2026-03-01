@@ -484,9 +484,7 @@ async def chat(request: Request, chat_request: ChatRequest) -> Any:
                 )
 
                 llm_span.set_attribute("llm.tokens_used", response.tokens_used)
-                llm_span.set_attribute(
-                    "llm.finish_reason", response.finish_reason or "stop"
-                )
+                llm_span.set_attribute("llm.finish_reason", response.finish_reason or "stop")
 
             # Output guardrail: Filter any internal structure leakage
             with tracer.start_as_current_span("guardrail.check_output") as out_span:
