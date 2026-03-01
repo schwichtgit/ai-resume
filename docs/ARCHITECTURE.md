@@ -66,7 +66,7 @@ The system uses a **three-container architecture**:
 
 ### Frontend (React SPA + nginx)
 
-- **Technology:** React 18 + TypeScript + Vite + nginx 1.28.1-alpine
+- **Technology:** React 19 + TypeScript + Vite + nginx 1.28.1-alpine
 - **Container Size:** ~35MB
 - **Responsibilities:**
   - Serve static files

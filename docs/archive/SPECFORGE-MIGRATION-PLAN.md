@@ -525,7 +525,7 @@ Dependencies: `outcome-data-coverage`, `outcome-factual-accuracy`, `outcome-nega
 
 - Project Name: ai-resume -- AI-powered interactive resume agent
 - One-Line Description: Polyglot web application enabling recruiters to query a candidate's experience via AI chat with semantic search retrieval
-- Primary Languages: TypeScript (React 18), Python 3.12 (FastAPI), Rust 1.84 (memvid gRPC)
+- Primary Languages: TypeScript (React 19), Python 3.12 (FastAPI), Rust 1.84 (memvid gRPC)
 - Target Platforms: Linux (amd64, arm64), macOS (amd64, arm64 -- development only)
 
 **Non-Negotiable Principles:**
