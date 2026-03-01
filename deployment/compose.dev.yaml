@@ -1,0 +1,263 @@
+# Combined development compose -- all 9 services on a single bridge network
+#
+# This is a STANDALONE file (not a merge of production composes).
+# All application and observability services share a single dev-net network
+# using container DNS for service discovery (no static IPs).
+#
+# Usage:
+#   cd deployment && podman compose -f compose.dev.yaml up -d
+#
+# Prerequisites:
+#   Copy .env.example to .env and set OPENROUTER_API_KEY
+#
+# Ports:
+#   8080  - Frontend (SPA)
+#   3000  - API service
+#   3001  - Grafana (remapped from 3000 to avoid API conflict)
+#   3100  - Loki
+#   3200  - Tempo
+#   4317  - OTLP gRPC receiver
+#   4318  - OTLP HTTP receiver
+#   9090  - Prometheus
+#   50051 - memvid gRPC
+
+services:
+  # ---------------------------------------------------------------------------
+  # Application services
+  # ---------------------------------------------------------------------------
+
+  # Rust memvid service (internal gRPC)
+  ai-resume-memvid:
+    image: ${REGISTRY:-localhost}/ai-resume-memvid:${VERSION:-latest}
+    container_name: ai-resume-memvid
+    networks:
+      - dev-net
+    ports:
+      - "50051:50051"
+    environment:
+      - MEMVID_FILE_PATH=/data/.memvid/${MEMVID_FILENAME:-resume.mv2}
+      - GRPC_PORT=50051
+      - GRPC_URL=http://ai-resume-memvid:50051
+      - METRICS_PORT=9090
+      - BIND_ADDRESS=${BIND_ADDRESS:-auto}
+      - RUST_LOG=${LOG_LEVEL:-info}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+    volumes:
+      - ${PROJECT_BASE_DIR:-/opt/ai-resume}/data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=128M,mode=1777
+      - /run:size=64M,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 200M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/memvid-service", "--health"]
+      interval: 45s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Python FastAPI service (internal HTTP API)
+  ai-resume-api:
+    image: ${REGISTRY:-localhost}/ai-resume-api:${VERSION:-latest}
+    container_name: ai-resume-api
+    networks:
+      - dev-net
+    ports:
+      - "3000:3000"
+    depends_on:
+      ai-resume-memvid:
+        condition: service_healthy
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:?OPENROUTER_API_KEY is required}
+      - MEMVID_GRPC_HOST=${MEMVID_GRPC_HOST:-ai-resume-memvid}
+      - MEMVID_GRPC_PORT=${MEMVID_GRPC_PORT:-50051}
+      - LLM_MODEL=${LLM_MODEL:-nvidia/nemotron-nano-9b-v2:free}
+      - SESSION_TTL=${SESSION_TTL:-1800}
+      - RATE_LIMIT_PER_MINUTE=${RATE_LIMIT:-10}
+      - PORT=3000
+      - BIND_ADDRESS=${BIND_ADDRESS:-auto}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - UPSTREAM_PROXY_IPS=${UPSTREAM_PROXY_IPS:-}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+    volumes:
+      - ${PROJECT_BASE_DIR:-/opt/ai-resume}/data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=256M,mode=1777
+      - /var/tmp:size=128M,mode=1777
+      - /run:size=64M,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 200M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # Frontend: OpenResty (Alpine) serving React SPA + Lua-based SEO endpoint
+  ai-resume-frontend:
+    image: ${REGISTRY:-localhost}/ai-resume-frontend:${VERSION:-latest}
+    container_name: ai-resume-frontend
+    networks:
+      - dev-net
+    ports:
+      - "8080:8080"
+    depends_on:
+      ai-resume-api:
+        condition: service_healthy
+    environment:
+      - API_BACKEND_HOST=${API_BACKEND_HOST:-ai-resume-api}
+      - API_BACKEND_PORT=${API_BACKEND_PORT:-3000}
+    volumes:
+      - ${PROJECT_BASE_DIR:-/opt/ai-resume}/data:/data:ro
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:size=128M,mode=0777
+      - /var/run/nginx:size=64M,mode=0777
+      - /tmp:size=64M,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 200M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  # ---------------------------------------------------------------------------
+  # Sidecar
+  # ---------------------------------------------------------------------------
+
+  # Fluent Bit log shipper - tails container logs and forwards to Loki
+  fluent-bit:
+    image: cr.fluentbit.io/fluent/fluent-bit:latest
+    container_name: fluent-bit
+    networks:
+      - dev-net
+    environment:
+      - LOKI_HOST=loki
+      - LOKI_PORT=${LOKI_PORT:-3100}
+    volumes:
+      - ${PODMAN_LOG_ROOT:-/var/log/containers}:/var/log/containers:ro
+      - ./observability/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Observability stack
+  # ---------------------------------------------------------------------------
+
+  # OpenTelemetry Collector -- receives OTLP from app services, exports to Tempo/Loki
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    networks:
+      - dev-net
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    volumes:
+      - ./observability/otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+    depends_on:
+      - tempo
+      - loki
+    restart: unless-stopped
+
+  # Grafana -- dashboards and data source exploration
+  # Remapped to port 3001 to avoid conflict with ai-resume-api on 3000
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    networks:
+      - dev-net
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    volumes:
+      - ./observability/provisioning:/etc/grafana/provisioning:ro
+      - grafana-dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - tempo
+      - prometheus
+      - loki
+    restart: unless-stopped
+
+  # Tempo -- distributed tracing backend
+  tempo:
+    image: grafana/tempo:latest
+    container_name: tempo
+    networks:
+      - dev-net
+    ports:
+      - "3200:3200"
+    volumes:
+      - ./observability/tempo.yaml:/etc/tempo/config.yaml:ro
+      - tempo-data:/var/tempo
+    command: ["-config.file=/etc/tempo/config.yaml"]
+    restart: unless-stopped
+
+  # Prometheus -- metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    networks:
+      - dev-net
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.dev.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    restart: unless-stopped
+
+  # Loki -- log aggregation
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    networks:
+      - dev-net
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./observability/loki.yaml:/etc/loki/config.yaml:ro
+      - loki-data:/loki
+    command: ["-config.file=/etc/loki/config.yaml"]
+    restart: unless-stopped
+
+# ---------------------------------------------------------------------------
+# Volumes and networks
+# ---------------------------------------------------------------------------
+
+volumes:
+  grafana-dashboards:
+  tempo-data:
+  prometheus-data:
+  loki-data:
+
+networks:
+  dev-net:
+    driver: bridge

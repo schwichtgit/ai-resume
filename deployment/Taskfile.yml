@@ -50,3 +50,8 @@ tasks:
     desc: Show service logs
     cmds:
       - podman compose logs -f {{.CLI_ARGS}}
+
+  dev:observability:
+    desc: Start full dev stack with observability (all 9 services)
+    cmds:
+      - podman compose -f compose.dev.yaml up -d

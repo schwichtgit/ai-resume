@@ -1,0 +1,16 @@
+# Prometheus scrape config for dev compose (container DNS targets)
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: api-service
+    static_configs:
+      - targets: ["ai-resume-api:3000"]
+
+  - job_name: memvid-service
+    static_configs:
+      - targets: ["ai-resume-memvid:9090"]
+
+  - job_name: tempo-metrics
+    static_configs:
+      - targets: ["tempo:3200"]
