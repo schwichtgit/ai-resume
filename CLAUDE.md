@@ -127,6 +127,10 @@ Each venv is **isolated** with its own dependencies. Do not run Python scripts w
 
 ## Architecture
 
+### Observability & Distributed Tracing
+
+Full OpenTelemetry instrumentation across all three services (Python, Rust, TypeScript) with W3C trace context propagation. Grafana/Tempo/Prometheus/Loki stack on a separate observer host. See [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) for architecture, dashboards, runbooks, and configuration.
+
 ### Data-Driven Content Architecture (Phase 4 Complete ✅)
 
 **Single-File Portability:** ALL content comes from a single `.mv2` file generated from markdown:

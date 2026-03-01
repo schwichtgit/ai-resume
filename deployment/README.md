@@ -213,6 +213,8 @@ podman compose -f compose.dev.yaml up -d
 
 **Access Grafana:** <http://localhost:3001> (anonymous admin, no login required)
 
+For comprehensive observability documentation including architecture, dashboards, runbooks, and troubleshooting, see [`docs/OBSERVABILITY.md`](../docs/OBSERVABILITY.md).
+
 **Stop the dev stack:**
 
 ```bash
