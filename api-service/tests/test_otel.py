@@ -84,15 +84,15 @@ def otel_exporter() -> Generator[InMemorySpanExporter, None, None]:
     provider.add_span_processor(SimpleSpanProcessor(exporter))
 
     # Reset the once-guard so set_tracer_provider works again
-    _trace_mod._TRACER_PROVIDER_SET_ONCE._done = False  # type: ignore[attr-defined]
+    _trace_mod._TRACER_PROVIDER_SET_ONCE._done = False
     trace.set_tracer_provider(provider)
 
     yield exporter
 
     # Shutdown and reset for next test
     provider.shutdown()
-    _trace_mod._TRACER_PROVIDER_SET_ONCE._done = False  # type: ignore[attr-defined]
-    _trace_mod._TRACER_PROVIDER = None  # type: ignore[attr-defined]
+    _trace_mod._TRACER_PROVIDER_SET_ONCE._done = False
+    _trace_mod._TRACER_PROVIDER = None
 
 
 @pytest.fixture
@@ -203,7 +203,7 @@ class TestOtelSpans:
         spans = otel_exporter.get_finished_spans()
         assert len(spans) == 1
         assert spans[0].name == "test-span"
-        assert dict(spans[0].attributes)["test.key"] == "value"
+        assert dict(spans[0].attributes or {})["test.key"] == "value"
 
     def test_nested_spans(self, otel_exporter: InMemorySpanExporter) -> None:
         """Nested spans are created with correct parent-child relationships."""
@@ -218,6 +218,7 @@ class TestOtelSpans:
         assert len(spans) == 2
         child_span = next(s for s in spans if s.name == "child")
         parent_span = next(s for s in spans if s.name == "parent")
+        assert child_span.parent is not None
         assert child_span.parent.span_id == parent_span.context.span_id
 
 
@@ -305,7 +306,7 @@ class TestGuardrailSpanAttributes:
 
         spans = otel_exporter.get_finished_spans()
         guard_span = next(s for s in spans if s.name == "guardrail.check_input")
-        attrs = dict(guard_span.attributes)
+        attrs = dict(guard_span.attributes or {})
         assert attrs["guardrail.passed"] is True
         assert "message.length" in attrs
 
@@ -334,7 +335,7 @@ class TestMemvidSearchSpanAttributes:
 
         spans = otel_exporter.get_finished_spans()
         search_span = next(s for s in spans if s.name == "memvid.search")
-        attrs = dict(search_span.attributes)
+        attrs = dict(search_span.attributes or {})
         assert attrs["search.chunks_retrieved"] == 1
         assert attrs["search.mode"] == "hybrid"
         assert attrs["search.top_k"] == 5

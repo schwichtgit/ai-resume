@@ -91,15 +91,15 @@ def otel_exporter() -> Generator[InMemorySpanExporter, None, None]:
     provider.add_span_processor(SimpleSpanProcessor(exporter))
 
     # Reset the once-guard so set_tracer_provider works again
-    _trace_mod._TRACER_PROVIDER_SET_ONCE._done = False  # type: ignore[attr-defined]
+    _trace_mod._TRACER_PROVIDER_SET_ONCE._done = False
     trace.set_tracer_provider(provider)
 
     yield exporter
 
     # Shutdown and reset for next test
     provider.shutdown()
-    _trace_mod._TRACER_PROVIDER_SET_ONCE._done = False  # type: ignore[attr-defined]
-    _trace_mod._TRACER_PROVIDER = None  # type: ignore[attr-defined]
+    _trace_mod._TRACER_PROVIDER_SET_ONCE._done = False
+    _trace_mod._TRACER_PROVIDER = None
 
 
 @pytest.fixture
