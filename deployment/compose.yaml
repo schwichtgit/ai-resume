@@ -133,3 +133,24 @@ services:
       timeout: 10s
       retries: 3
       start_period: 5s
+
+  # Fluent Bit log shipper - tails container logs and forwards to Loki
+  fluent-bit:
+    image: cr.fluentbit.io/fluent/fluent-bit:latest
+    container_name: fluent-bit
+    networks:
+      yellow-net: {}
+    environment:
+      - LOKI_HOST=${LOKI_HOST:-observer}
+      - LOKI_PORT=${LOKI_PORT:-3100}
+    volumes:
+      - ${PODMAN_LOG_ROOT:-/var/log/containers}:/var/log/containers:ro
+      - ./observability/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    restart: unless-stopped
