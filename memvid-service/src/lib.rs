@@ -8,6 +8,7 @@ pub mod error;
 pub mod grpc;
 pub mod memvid;
 pub mod metrics;
+pub mod otel;
 
 // Include generated proto code from build script
 pub mod generated {

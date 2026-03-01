@@ -22,6 +22,10 @@ serde_json = "1.0"
 # Observability
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-opentelemetry = "0.28"
+opentelemetry = "0.27"
+opentelemetry_sdk = { version = "0.27", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.27", features = ["tonic"] }
 metrics = "0.24"
 metrics-exporter-prometheus = "0.18"
 
@@ -52,6 +56,8 @@ hyper-util = { version = "0.1", features = ["client-legacy", "http1", "tokio"] }
 http-body-util = "0.1"
 # Serialize env-mutating tests to prevent race conditions
 serial_test = "3"
+# OTel test utilities
+tracing-test = "0.2"
 
 [features]
 default = []

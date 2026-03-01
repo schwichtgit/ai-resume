@@ -18,10 +18,13 @@ struct Correlation {
     trace_id: String,
     session_id: String,
     client_ip: String,
+    /// W3C Trace Context traceparent header, if present.
+    traceparent: String,
 }
 
 /// Extract correlation metadata from a gRPC request.
 /// Returns owned strings; defaults to empty if header is missing.
+/// Checks both W3C `traceparent` and the legacy `x-trace-id` header.
 fn extract_correlation<T>(request: &Request<T>) -> Correlation {
     let md = request.metadata();
     let get = |key: &str| -> String {
@@ -34,6 +37,7 @@ fn extract_correlation<T>(request: &Request<T>) -> Correlation {
         trace_id: get("x-trace-id"),
         session_id: get("x-session-id"),
         client_ip: get("x-client-ip"),
+        traceparent: get("traceparent"),
     }
 }
 
@@ -51,7 +55,7 @@ impl MemvidGrpcService {
 
 #[tonic::async_trait]
 impl MemvidService for MemvidGrpcService {
-    #[instrument(skip(self, request), fields(query, trace_id, session_id, client_ip))]
+    #[instrument(skip(self, request), fields(query, trace_id, session_id, client_ip, traceparent, chunks_retrieved, retrieval_ms))]
     async fn search(
         &self,
         request: Request<SearchRequest>,
@@ -65,6 +69,7 @@ impl MemvidService for MemvidGrpcService {
         span.record("trace_id", &cor.trace_id);
         span.record("session_id", &cor.session_id);
         span.record("client_ip", &cor.client_ip);
+        span.record("traceparent", &cor.traceparent);
 
         info!(
             query = %req.query,
@@ -87,6 +92,10 @@ impl MemvidService for MemvidGrpcService {
             .search(&req.query, top_k, snippet_chars)
             .await
             .map_err(Status::from)?;
+
+        // Record OTel span attributes for retrieval stats
+        span.record("chunks_retrieved", result.total_hits);
+        span.record("retrieval_ms", result.took_ms);
 
         // Record metrics
         metrics::record_search_latency(result.took_ms as f64);
@@ -113,7 +122,7 @@ impl MemvidService for MemvidGrpcService {
         Ok(Response::new(response))
     }
 
-    #[instrument(skip(self, request), fields(question, trace_id, session_id, client_ip))]
+    #[instrument(skip(self, request), fields(question, trace_id, session_id, client_ip, traceparent, chunks_retrieved, retrieval_ms, reranking_ms))]
     async fn ask(&self, request: Request<AskRequest>) -> Result<Response<AskResponse>, Status> {
         let cor = extract_correlation(&request);
         let req = request.into_inner();
@@ -124,6 +133,7 @@ impl MemvidService for MemvidGrpcService {
         span.record("trace_id", &cor.trace_id);
         span.record("session_id", &cor.session_id);
         span.record("client_ip", &cor.client_ip);
+        span.record("traceparent", &cor.traceparent);
 
         info!(
             question = %req.question,
@@ -176,6 +186,11 @@ impl MemvidService for MemvidGrpcService {
         // Perform ask operation
         let result = self.searcher.ask(ask_request).await.map_err(Status::from)?;
 
+        // Record OTel span attributes for retrieval stats
+        span.record("chunks_retrieved", result.stats.candidates_retrieved);
+        span.record("retrieval_ms", result.stats.retrieval_ms);
+        span.record("reranking_ms", result.stats.reranking_ms);
+
         // Convert to gRPC response
         let evidence: Vec<SearchHit> = result
             .evidence
@@ -203,7 +218,7 @@ impl MemvidService for MemvidGrpcService {
         Ok(Response::new(response))
     }
 
-    #[instrument(skip(self, request), fields(entity, trace_id, session_id, client_ip))]
+    #[instrument(skip(self, request), fields(entity, trace_id, session_id, client_ip, traceparent))]
     async fn get_state(
         &self,
         request: Request<GetStateRequest>,
@@ -217,6 +232,7 @@ impl MemvidService for MemvidGrpcService {
         span.record("trace_id", &cor.trace_id);
         span.record("session_id", &cor.session_id);
         span.record("client_ip", &cor.client_ip);
+        span.record("traceparent", &cor.traceparent);
 
         info!(
             entity = %req.entity,
