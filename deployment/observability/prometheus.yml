@@ -1,0 +1,22 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: api-service
+    static_configs:
+      - targets:
+          # Replace with actual api-service host:port
+          # e.g., "api-service:3000" or use host.containers.internal
+          - "host.containers.internal:3000"
+
+  - job_name: memvid-service
+    static_configs:
+      - targets:
+          # Replace with actual memvid-service host:port
+          # e.g., "memvid-service:50051"
+          - "host.containers.internal:50051"
+
+  - job_name: tempo-metrics
+    static_configs:
+      - targets:
+          - "tempo:3200"
