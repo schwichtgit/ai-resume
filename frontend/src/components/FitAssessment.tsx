@@ -9,6 +9,8 @@ import {
 import { cn } from '@/lib/utils';
 import { useProfile } from '@/hooks/useProfile';
 import { assessFit, type AssessFitResponse } from '@/lib/api-client';
+import { getTracer } from '@/lib/otel';
+import { SpanStatusCode } from '@opentelemetry/api';
 
 type TabType = 'example1' | 'example2' | 'custom';
 
@@ -39,12 +41,22 @@ const FitAssessment = () => {
     setError(null);
     setCustomResult(null);
 
+    const span = getTracer().startSpan('fit.assess');
+    const start = performance.now();
+
     try {
       const result = await assessFit(customJD);
       setCustomResult(result);
+      span.setAttribute('response_time_ms', Math.round(performance.now() - start));
+      span.setStatus({ code: SpanStatusCode.OK });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to assess fit');
+      span.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: err instanceof Error ? err.message : 'unknown',
+      });
     } finally {
+      span.end();
       setAnalyzing(false);
     }
   };

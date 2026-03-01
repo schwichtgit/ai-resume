@@ -8,6 +8,8 @@ import {
   type UIConfig,
 } from '@/lib/api-client';
 import { registerWebMcpTools } from '@/lib/webmcp';
+import { getTracer } from '@/lib/otel';
+import { SpanStatusCode } from '@opentelemetry/api';
 
 export interface Profile {
   name: string;
@@ -61,6 +63,9 @@ export function useProfile(): UseProfileResult {
     let mounted = true;
 
     async function loadProfile() {
+      const span = getTracer().startSpan('profile.fetch');
+      const start = performance.now();
+
       try {
         setIsLoading(true);
         const data = await getProfile();
@@ -80,6 +85,9 @@ export function useProfile(): UseProfileResult {
         });
         setError(null);
 
+        span.setAttribute('response_time_ms', Math.round(performance.now() - start));
+        span.setStatus({ code: SpanStatusCode.OK });
+
         // Register WebMCP tools once profile loads (Chrome 146+ only)
         registerWebMcpTools();
       } catch (err) {
@@ -88,7 +96,12 @@ export function useProfile(): UseProfileResult {
         setError(
           err instanceof Error ? err : new Error('Failed to load profile'),
         );
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          message: err instanceof Error ? err.message : 'unknown',
+        });
       } finally {
+        span.end();
         if (mounted) {
           setIsLoading(false);
         }

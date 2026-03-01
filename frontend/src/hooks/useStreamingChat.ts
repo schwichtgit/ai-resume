@@ -10,6 +10,8 @@ import {
   ApiError,
   RateLimitError,
 } from '@/lib/api-client';
+import { getTracer } from '@/lib/otel';
+import { SpanStatusCode } from '@opentelemetry/api';
 
 export interface Message {
   role: 'user' | 'assistant';
@@ -135,6 +137,11 @@ export function useStreamingChat(
       // Create abort controller
       abortControllerRef.current = new AbortController();
 
+      // OTel span for the full send-receive cycle
+      const span = getTracer().startSpan('chat.send_message');
+      const sendStart = performance.now();
+      let firstTokenTime: number | null = null;
+
       try {
         let fullContent = '';
 
@@ -149,6 +156,13 @@ export function useStreamingChat(
               setIsLoading(false);
               setIsStreaming(true);
               onStreamStart?.();
+              if (firstTokenTime === null) {
+                firstTokenTime = performance.now();
+                span.setAttribute(
+                  'time_to_first_token_ms',
+                  Math.round(firstTokenTime - sendStart),
+                );
+              }
             }
             fullContent += token;
             setStreamingContent(fullContent);
@@ -156,6 +170,9 @@ export function useStreamingChat(
           // onStats
           (newStats) => {
             setStats(newStats);
+            if (newStats.tokens_used != null) {
+              span.setAttribute('total_tokens', newStats.tokens_used);
+            }
           },
           // onError
           (errorMessage) => {
@@ -173,6 +190,12 @@ export function useStreamingChat(
             { role: 'assistant', content: fullContent },
           ]);
         }
+
+        span.setAttribute(
+          'streaming_duration_ms',
+          Math.round(performance.now() - sendStart),
+        );
+        span.setStatus({ code: SpanStatusCode.OK });
         onStreamComplete?.(stats || undefined);
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {
@@ -184,17 +207,21 @@ export function useStreamingChat(
               { role: 'assistant', content: streamingContent + ' [cancelled]' },
             ]);
           }
+          span.setAttribute('cancelled', true);
         } else if (err instanceof RateLimitError) {
           setRateLimitedUntil(Date.now() + err.retryAfter * 1000);
           const error = err as Error;
           setError(error);
           onError?.(error);
+          span.setStatus({ code: SpanStatusCode.ERROR, message: 'rate_limited' });
         } else {
           const error = err instanceof Error ? err : new Error('Unknown error');
           setError(error);
           onError?.(error);
+          span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
         }
       } finally {
+        span.end();
         setIsStreaming(false);
         setIsLoading(false);
         setStreamingContent('');

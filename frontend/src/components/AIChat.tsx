@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils';
 import { useStreamingChat } from '@/hooks/useStreamingChat';
 import { getSuggestedQuestions, checkHealth } from '@/lib/api-client';
 import { useProfileContext } from '@/hooks/useProfileContext';
+import { getTracer } from '@/lib/otel';
+import { SpanStatusCode } from '@opentelemetry/api';
 
 interface AIChatProps {
   isOpen: boolean;
@@ -91,14 +93,22 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
       });
 
     // Load suggested questions
+    const sqSpan = getTracer().startSpan('suggested_questions.fetch');
+    const sqStart = performance.now();
     getSuggestedQuestions()
       .then((questions) => {
         if (questions.length > 0) {
           setSuggestedQuestions(questions);
         }
+        sqSpan.setAttribute('response_time_ms', Math.round(performance.now() - sqStart));
+        sqSpan.setStatus({ code: SpanStatusCode.OK });
       })
       .catch(() => {
         // Keep default questions on error
+        sqSpan.setStatus({ code: SpanStatusCode.ERROR, message: 'fetch_failed' });
+      })
+      .finally(() => {
+        sqSpan.end();
       });
   }, [isOpen]);
 
