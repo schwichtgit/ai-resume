@@ -14,7 +14,7 @@
 
 ```text
 ai-resume/
-├── frontend/                        # React 18 SPA (Vite + TypeScript + shadcn/ui)
+├── frontend/                        # React 19 SPA (Vite + TypeScript + shadcn/ui)
 │   ├── src/
 │   │   ├── components/              # Section + UI components
 │   │   │   ├── AIChat.tsx           # SSE streaming chat interface

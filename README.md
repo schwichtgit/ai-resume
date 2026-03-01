@@ -4,7 +4,7 @@
 
 **Turn a static resume into an AI-powered conversation.**
 
-TypeScript (React 18) | Python 3.12 (FastAPI) | Rust (memvid gRPC)
+TypeScript (React 19) | Python 3.12 (FastAPI) | Rust (memvid gRPC)
 
 AI-Resume is a containerized web application that acts as your digital professional proxy. It provides a "30-second scan" layout for speed, backed by a semantic AI agent that recruiters can "interview" in real-time. Using natural language, they can query specific experience (e.g., "How has she handled MLOps at scale?") and receive a synthesized, evidence-based summary derived from your personal semantic knowledge base.
 
@@ -167,7 +167,7 @@ See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for multi-arch builds, ARM64 edge d
 
 ```text
 ai-resume/
-  frontend/           # React 18 + TypeScript + Vite + Tailwind + shadcn/ui
+  frontend/           # React 19 + TypeScript + Vite + Tailwind + shadcn/ui
   api-service/        # Python 3.12 FastAPI -- LLM orchestration, SSE streaming
   memvid-service/     # Rust -- gRPC semantic search (<5ms retrieval)
   ingest/             # Python -- resume markdown -> .mv2 vector database

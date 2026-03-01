@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-alpha.6] - 2026-03-01
+
+### Added
+
+- End-to-end distributed tracing with OpenTelemetry across all three services (Python, Rust, TypeScript)
+- W3C trace context propagation (`traceparent` header) through the full request chain
+- Browser tracing via `@opentelemetry/sdk-trace-web` with fetch instrumentation
+- OpenTelemetry trace export in memvid-service via `tracing-opentelemetry`
+- Observability stack: Grafana, Tempo, Prometheus, Loki, OTEL Collector (`deployment/observability/`)
+- Fluent Bit log shipper for production host log forwarding
+- Pre-provisioned Grafana dashboards (request waterfall, latency breakdown, endpoint overview, LLM cost)
+- Combined dev compose (`compose.dev.yaml`) for single-host observability testing
+- Comprehensive observability guide with runbooks (`docs/OBSERVABILITY.md`)
+
+### Changed
+
+- React upgraded from 18.3 to 19.2 (`react`, `react-dom`, `@types/react`, `@types/react-dom`)
+- `vaul` upgraded from 0.9.9 to 1.1.2 (React 19 peer dependency compatibility)
+- Documentation references updated from React 18 to React 19 across all project files
+- Dependency bumps: rollup 4.59.0, minimatch 9.0.9, react-day-picker 9.14.0, chrono (memvid-service minor/patch group), actions/upload-artifact v7, frontend minor/patch batch
+
+### Fixed
+
+- Release validate step waits for successful container builds (#81)
+- Missing `lua-resty-http` `http_connect.lua` module in frontend container
+- Cargo fmt and mypy type annotation failures in CI
+- Removed unused `type: ignore` comments; fixed mypy `arg-type`/`union-attr` errors
+
 ## [0.1.0-alpha.5] - 2026-02-25
 
 ### Added
@@ -135,7 +163,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.5...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.6...HEAD
+[0.1.0-alpha.6]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.5...v0.1.0-alpha.6
 [0.1.0-alpha.5]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.4...v0.1.0-alpha.5
 [0.1.0-alpha.4]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.3...v0.1.0-alpha.4
 [0.1.0-alpha.3]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.1...v0.1.0-alpha.3
