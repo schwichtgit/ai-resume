@@ -14,7 +14,7 @@ if [[ -z "$INPUT" ]]; then
 fi
 
 # Parse the command from the JSON input using python3
-COMMAND=$(echo "$INPUT" | python3 -c "
+COMMAND=$(printf '%s\n' "$INPUT" | python3 -c "
 import sys, json
 try:
     data = json.load(sys.stdin)
@@ -28,7 +28,7 @@ if [[ -z "$COMMAND" ]]; then
 fi
 
 # Only check commands that contain "gh pr create" -- pass through everything else
-if ! echo "$COMMAND" | grep -q "gh pr create"; then
+if ! printf '%s\n' "$COMMAND" | grep -q "gh pr create"; then
     exit 0
 fi
 

@@ -15,7 +15,7 @@ if [[ -z "$INPUT" ]]; then
 fi
 
 # Parse the command from the JSON input using python3
-COMMAND=$(echo "$INPUT" | python3 -c "
+COMMAND=$(printf '%s\n' "$INPUT" | python3 -c "
 import sys, json
 try:
     data = json.load(sys.stdin)
@@ -29,25 +29,20 @@ if [[ -z "$COMMAND" ]]; then
     exit 0
 fi
 
-# Define dangerous patterns to block
-DANGEROUS_PATTERNS=(
+# Define dangerous literal patterns (checked with grep -F, fixed-string)
+LITERAL_PATTERNS=(
     # Destructive file operations
     "rm -rf /"
     "rm -rf /*"
     "rm -rf ~"
-    "rm -rf \$HOME"
 
     # Force push operations
     "git push --force"
     "git push -f"
-    "git push origin.*--force"
-    "git push origin.*-f"
 
     # Hard reset operations
     "git reset --hard"
     "git clean -fd"
-    "git checkout \."
-    "git restore \."
 
     # Dangerous permissions
     "chmod -R 777"
@@ -55,7 +50,6 @@ DANGEROUS_PATTERNS=(
 
     # Disk operations
     "> /dev/sd"
-    "mkfs\."
     "dd if=/dev/zero"
     "dd if=/dev/random"
 
@@ -64,18 +58,36 @@ DANGEROUS_PATTERNS=(
 
     # Environment variable manipulation
     "unset PATH"
-    "PATH="
 
-    # Dangerous downloads and execution
-    "curl.*\| sh"
-    "curl.*\| bash"
-    "wget.*\| sh"
-    "wget.*\| bash"
+    # Variable reassignment (literal prefix)
+    "PATH="
 )
 
-# Check for dangerous patterns
-for pattern in "${DANGEROUS_PATTERNS[@]}"; do
-    if echo "$COMMAND" | grep -qE "$pattern"; then
+# Define dangerous regex patterns (checked with grep -E, extended regex)
+REGEX_PATTERNS=(
+    'rm -rf \$HOME'
+    'git push origin .*(--force|-f[[:space:]]|-f$)'
+    'git checkout \.$'
+    'git restore \.$'
+    'mkfs\.'
+    'curl.*\| sh'
+    'curl.*\| bash'
+    'wget.*\| sh'
+    'wget.*\| bash'
+)
+
+# Check literal patterns (safe, no ERE interpretation)
+for pattern in "${LITERAL_PATTERNS[@]}"; do
+    if printf '%s\n' "$COMMAND" | grep -qF "$pattern"; then
+        echo "BLOCKED: Command matches dangerous pattern: $pattern" >&2
+        echo "Command: $COMMAND" >&2
+        exit 2
+    fi
+done
+
+# Check regex patterns
+for pattern in "${REGEX_PATTERNS[@]}"; do
+    if printf '%s\n' "$COMMAND" | grep -qE "$pattern"; then
         echo "BLOCKED: Command matches dangerous pattern: $pattern" >&2
         echo "Command: $COMMAND" >&2
         exit 2
@@ -83,7 +95,7 @@ for pattern in "${DANGEROUS_PATTERNS[@]}"; do
 done
 
 # Check for main/master force push specifically
-if echo "$COMMAND" | grep -qE "git push.*(--force|-f).*main|git push.*(--force|-f).*master"; then
+if printf '%s\n' "$COMMAND" | grep -qE 'git push.*(--force|-f).*\b(main|master)\b'; then
     echo "BLOCKED: Force push to main/master is not allowed" >&2
     echo "Command: $COMMAND" >&2
     exit 2
