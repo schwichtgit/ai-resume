@@ -10,8 +10,8 @@ import {
   ApiError,
   RateLimitError,
 } from '@/lib/api-client';
-import { getTracer } from '@/lib/otel';
-import { SpanStatusCode } from '@opentelemetry/api';
+import { getTracer, isOtelInitialized } from '@/lib/otel';
+import { SpanStatusCode, type Span } from '@opentelemetry/api';
 
 export interface Message {
   role: 'user' | 'assistant';
@@ -137,9 +137,12 @@ export function useStreamingChat(
       // Create abort controller
       abortControllerRef.current = new AbortController();
 
-      // OTel span for the full send-receive cycle
-      const span = getTracer().startSpan('chat.send_message');
-      const sendStart = performance.now();
+      // OTel span for the full send-receive cycle (no-op when SDK absent)
+      const otelActive = isOtelInitialized();
+      const span: Span | null = otelActive
+        ? getTracer().startSpan('chat.send_message')
+        : null;
+      const fetchResolvedAt = performance.now();
       let firstTokenTime: number | null = null;
 
       try {
@@ -158,9 +161,9 @@ export function useStreamingChat(
               onStreamStart?.();
               if (firstTokenTime === null) {
                 firstTokenTime = performance.now();
-                span.setAttribute(
-                  'time_to_first_token_ms',
-                  Math.round(firstTokenTime - sendStart),
+                span?.setAttribute(
+                  'chat.time_to_first_token_ms',
+                  Math.round(firstTokenTime - fetchResolvedAt),
                 );
               }
             }
@@ -171,7 +174,7 @@ export function useStreamingChat(
           (newStats) => {
             setStats(newStats);
             if (newStats.tokens_used != null) {
-              span.setAttribute('total_tokens', newStats.tokens_used);
+              span?.setAttribute('chat.total_tokens', newStats.tokens_used);
             }
           },
           // onError
@@ -191,11 +194,13 @@ export function useStreamingChat(
           ]);
         }
 
-        span.setAttribute(
-          'streaming_duration_ms',
-          Math.round(performance.now() - sendStart),
-        );
-        span.setStatus({ code: SpanStatusCode.OK });
+        if (firstTokenTime !== null) {
+          span?.setAttribute(
+            'chat.streaming_duration_ms',
+            Math.round(performance.now() - firstTokenTime),
+          );
+        }
+        span?.setStatus({ code: SpanStatusCode.OK });
         onStreamComplete?.(stats || undefined);
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {
@@ -207,21 +212,28 @@ export function useStreamingChat(
               { role: 'assistant', content: streamingContent + ' [cancelled]' },
             ]);
           }
-          span.setAttribute('cancelled', true);
+          span?.setAttribute('chat.user_cancelled', true);
+          if (firstTokenTime !== null) {
+            span?.setAttribute(
+              'chat.streaming_duration_ms',
+              Math.round(performance.now() - firstTokenTime),
+            );
+          }
+          span?.setStatus({ code: SpanStatusCode.UNSET });
         } else if (err instanceof RateLimitError) {
           setRateLimitedUntil(Date.now() + err.retryAfter * 1000);
           const error = err as Error;
           setError(error);
           onError?.(error);
-          span.setStatus({ code: SpanStatusCode.ERROR, message: 'rate_limited' });
+          span?.setStatus({ code: SpanStatusCode.ERROR, message: 'rate_limited' });
         } else {
           const error = err instanceof Error ? err : new Error('Unknown error');
           setError(error);
           onError?.(error);
-          span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+          span?.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
         }
       } finally {
-        span.end();
+        span?.end();
         setIsStreaming(false);
         setIsLoading(false);
         setStreamingContent('');

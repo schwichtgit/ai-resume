@@ -137,6 +137,14 @@ class FitAssessmentExample(BaseModel):
     recommendation: str = Field(..., description="Final recommendation")
 
 
+class FeedbackRequest(BaseModel):
+    """Request body for submitting chat feedback."""
+
+    message_id: str = Field(..., description="ID of the message being rated")
+    rating: Literal["up", "down"] = Field(..., description="Feedback rating")
+    comment: str | None = Field(None, max_length=500, description="Optional feedback comment")
+
+
 class AssessFitRequest(BaseModel):
     """Request for real-time fit assessment."""
 

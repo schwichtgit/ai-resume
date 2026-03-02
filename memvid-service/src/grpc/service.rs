@@ -64,7 +64,11 @@ impl MemvidService for MemvidGrpcService {
             client_ip,
             traceparent,
             chunks_retrieved,
-            retrieval_ms
+            retrieval_ms,
+            search.max_relevance,
+            search.min_relevance,
+            search.avg_relevance,
+            search.chunks_returned
         )
     )]
     async fn search(
@@ -108,9 +112,29 @@ impl MemvidService for MemvidGrpcService {
         span.record("chunks_retrieved", result.total_hits);
         span.record("retrieval_ms", result.took_ms);
 
-        // Record metrics
-        metrics::record_search_latency(result.took_ms as f64);
+        // Record latency metric with method label
+        metrics::record_search_latency(result.took_ms as f64, "search");
         metrics::increment_search_count();
+
+        // Record search relevance metrics
+        let chunk_count = result.hits.len();
+        metrics::record_chunks_returned(chunk_count as f64);
+        span.record("search.chunks_returned", chunk_count as i64);
+
+        if !result.hits.is_empty() {
+            let scores: Vec<f64> = result.hits.iter().map(|h| h.score as f64).collect();
+            let max_rel = scores.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+            let min_rel = scores.iter().cloned().fold(f64::INFINITY, f64::min);
+            let avg_rel = scores.iter().sum::<f64>() / scores.len() as f64;
+
+            for &score in &scores {
+                metrics::record_relevance_score(score);
+            }
+
+            span.record("search.max_relevance", max_rel);
+            span.record("search.min_relevance", min_rel);
+            span.record("search.avg_relevance", avg_rel);
+        }
 
         // Convert to gRPC response
         let hits: Vec<SearchHit> = result
@@ -143,7 +167,11 @@ impl MemvidService for MemvidGrpcService {
             traceparent,
             chunks_retrieved,
             retrieval_ms,
-            reranking_ms
+            reranking_ms,
+            search.max_relevance,
+            search.min_relevance,
+            search.avg_relevance,
+            search.chunks_returned
         )
     )]
     async fn ask(&self, request: Request<AskRequest>) -> Result<Response<AskResponse>, Status> {
@@ -214,6 +242,29 @@ impl MemvidService for MemvidGrpcService {
         span.record("retrieval_ms", result.stats.retrieval_ms);
         span.record("reranking_ms", result.stats.reranking_ms);
 
+        // Record latency metric with method label
+        metrics::record_search_latency(result.stats.retrieval_ms as f64, "ask");
+
+        // Record search relevance metrics from evidence
+        let chunk_count = result.evidence.len();
+        metrics::record_chunks_returned(chunk_count as f64);
+        span.record("search.chunks_returned", chunk_count as i64);
+
+        if !result.evidence.is_empty() {
+            let scores: Vec<f64> = result.evidence.iter().map(|e| e.score as f64).collect();
+            let max_rel = scores.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+            let min_rel = scores.iter().cloned().fold(f64::INFINITY, f64::min);
+            let avg_rel = scores.iter().sum::<f64>() / scores.len() as f64;
+
+            for &score in &scores {
+                metrics::record_relevance_score(score);
+            }
+
+            span.record("search.max_relevance", max_rel);
+            span.record("search.min_relevance", min_rel);
+            span.record("search.avg_relevance", avg_rel);
+        }
+
         // Convert to gRPC response
         let evidence: Vec<SearchHit> = result
             .evidence
@@ -251,6 +302,7 @@ impl MemvidService for MemvidGrpcService {
     ) -> Result<Response<GetStateResponse>, Status> {
         let cor = extract_correlation(&request);
         let req = request.into_inner();
+        let start = std::time::Instant::now();
 
         // Record fields in span
         let span = tracing::Span::current();
@@ -280,6 +332,10 @@ impl MemvidService for MemvidGrpcService {
             .get_state(&req.entity, slot)
             .await
             .map_err(Status::from)?;
+
+        // Record latency metric with method label
+        let elapsed_ms = start.elapsed().as_millis() as f64;
+        metrics::record_search_latency(elapsed_ms, "get_state");
 
         // Convert to gRPC response
         let response = GetStateResponse {

@@ -160,7 +160,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.50, sum(rate(memvid_search_latency_seconds_bucket[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.50, sum(rate(memvid_search_latency_ms_bucket{method=~\"$method\"}[$__rate_interval])) by (le))",
           "legendFormat": "p50"
         },
         {
@@ -169,7 +169,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(memvid_search_latency_seconds_bucket[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(memvid_search_latency_ms_bucket{method=~\"$method\"}[$__rate_interval])) by (le))",
           "legendFormat": "p95"
         },
         {
@@ -178,7 +178,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(memvid_search_latency_seconds_bucket[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(rate(memvid_search_latency_ms_bucket{method=~\"$method\"}[$__rate_interval])) by (le))",
           "legendFormat": "p99"
         }
       ],
@@ -195,13 +195,13 @@
             "axisPlacement": "auto",
             "thresholdsStyle": { "mode": "dashed" }
           },
-          "unit": "s",
+          "unit": "ms",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               { "color": "green", "value": null },
-              { "color": "yellow", "value": 0.005 },
-              { "color": "red", "value": 0.02 }
+              { "color": "yellow", "value": 5 },
+              { "color": "red", "value": 20 }
             ]
           }
         },
@@ -281,10 +281,82 @@
       }
     },
     {
+      "id": 6,
+      "title": "Memvid gRPC Method Latency (p50 / p95 / p99)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 18 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "p50",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.50, sum(rate(memvid_search_latency_ms_bucket{method=~\"$method\"}[$__rate_interval])) by (le, method))",
+          "legendFormat": "p50 - {{method}}"
+        },
+        {
+          "refId": "p95",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum(rate(memvid_search_latency_ms_bucket{method=~\"$method\"}[$__rate_interval])) by (le, method))",
+          "legendFormat": "p95 - {{method}}"
+        },
+        {
+          "refId": "p99",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum(rate(memvid_search_latency_ms_bucket{method=~\"$method\"}[$__rate_interval])) by (le, method))",
+          "legendFormat": "p99 - {{method}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 15,
+            "gradientMode": "scheme",
+            "showPoints": "never",
+            "stacking": { "mode": "none" },
+            "axisPlacement": "auto",
+            "thresholdsStyle": { "mode": "dashed" }
+          },
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 5 },
+              { "color": "red", "value": 20 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": ["mean", "max"]
+        }
+      }
+    },
+    {
       "id": 5,
       "title": "Overall Request Duration Distribution",
       "type": "histogram",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 18 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 26 },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -309,6 +381,96 @@
             "gradientMode": "scheme"
           },
           "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "bucketOffset": 0,
+        "combine": false,
+        "fillOpacity": 80,
+        "gradientMode": "scheme",
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 6,
+      "title": "SSE Streaming",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 26 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 7,
+      "title": "Time to First Token (TTFT)",
+      "description": "Distribution of time between fetch response and first SSE data event, measured client-side",
+      "type": "histogram",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 27 },
+      "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "queryType": "traceql",
+          "query": "{ resource.service.name = \"ai-resume-frontend\" && name = \"chat.send_message\" && span.chat.time_to_first_token_ms > 0 } | select(span.chat.time_to_first_token_ms)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "scheme", "schemeName": "Blues" },
+          "custom": {
+            "fillOpacity": 80,
+            "gradientMode": "scheme"
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "options": {
+        "bucketOffset": 0,
+        "combine": false,
+        "fillOpacity": 80,
+        "gradientMode": "scheme",
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Streaming Duration",
+      "description": "Distribution of SSE stream duration from first token to stream end, measured client-side",
+      "type": "histogram",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 27 },
+      "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "queryType": "traceql",
+          "query": "{ resource.service.name = \"ai-resume-frontend\" && name = \"chat.send_message\" && span.chat.streaming_duration_ms > 0 } | select(span.chat.streaming_duration_ms)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "scheme", "schemeName": "Greens" },
+          "custom": {
+            "fillOpacity": 80,
+            "gradientMode": "scheme"
+          },
+          "unit": "ms"
         },
         "overrides": []
       },
@@ -371,6 +533,25 @@
           "uid": "prometheus"
         },
         "query": "label_values(http_request_duration_seconds_bucket, handler)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": {
+          "selected": true,
+          "text": ["All"],
+          "value": ["$__all"]
+        },
+        "sort": 1
+      },
+      {
+        "name": "method",
+        "type": "query",
+        "label": "gRPC Method",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": "label_values(memvid_search_latency_ms_bucket, method)",
         "refresh": 2,
         "includeAll": true,
         "multi": true,

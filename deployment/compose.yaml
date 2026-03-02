@@ -135,6 +135,30 @@ services:
       start_period: 5s
 
   # Fluent Bit log shipper - tails container logs and forwards to Loki
+  #
+  # PODMAN_LOG_ROOT: path to container log files for Fluent Bit to tail.
+  #
+  #   Linux:  /var/log/containers (usually works out of the box)
+  #
+  #   macOS:  Container logs live inside the podman VM, not on the macOS host.
+  #           The host path /var/log/containers does not exist (resolves to
+  #           /private/var/log/containers and fails with statfs error).
+  #           Fluent Bit runs in the same VM, so it CAN access VM-internal paths.
+  #
+  #           GraphRoot is typically /var/home/core/.local/share/containers/storage
+  #           Discover it with:
+  #             podman machine ssh -- podman info --format '{{.Store.GraphRoot}}'
+  #
+  #           Container logs are at:
+  #             <GraphRoot>/overlay-containers/*/userdata/ctr.log
+  #           Verify with:
+  #             podman machine ssh -- find $(podman info --format '{{.Store.GraphRoot}}') -name 'ctr.log' 2>/dev/null | head -5
+  #
+  #           To use explicit log paths, start containers with:
+  #             --log-driver=k8s-file --log-opt path=/var/log/containers/<name>.log
+  #
+  #           When PODMAN_LOG_ROOT is unset, falls back to an empty named volume
+  #           so the container starts with no inputs (graceful degradation).
   fluent-bit:
     image: cr.fluentbit.io/fluent/fluent-bit:latest
     container_name: fluent-bit
@@ -144,7 +168,11 @@ services:
       - LOKI_HOST=${LOKI_HOST:-observer}
       - LOKI_PORT=${LOKI_PORT:-3100}
     volumes:
-      - ${PODMAN_LOG_ROOT:-/var/log/containers}:/var/log/containers:ro
+      # When PODMAN_LOG_ROOT is set to a host path (e.g. /var/log/containers),
+      # compose creates a bind mount.  When unset, the named volume fallback
+      # "fluent-bit-logs" is used -- an empty volume that lets Fluent Bit start
+      # without error on macOS or any host lacking a container log directory.
+      - ${PODMAN_LOG_ROOT:-fluent-bit-logs}:/var/log/containers:ro
       - ./observability/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
     read_only: true
     security_opt:
@@ -154,3 +182,9 @@ services:
         limits:
           memory: 128M
     restart: unless-stopped
+
+volumes:
+  # Fallback volume for Fluent Bit when PODMAN_LOG_ROOT is not set.
+  # On Linux production hosts, set PODMAN_LOG_ROOT=/var/log/containers in .env
+  # to use a bind mount instead.
+  fluent-bit-logs:

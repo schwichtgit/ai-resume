@@ -12,10 +12,106 @@
   "links": [],
   "panels": [
     {
+      "id": 10,
+      "title": "Success Rate",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 12, "x": 0, "y": 0 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(http_requests_total{status=~\"2..\"}[5m])) / sum(rate(http_requests_total{path!~\"/health|/api/v1/health\"}[5m])) * 100",
+          "legendFormat": "Success Rate"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 95 },
+              { "color": "green", "value": 99 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 11,
+      "title": "Total Errors",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 0 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(http_requests_total{status=~\"[45]..\"}[1h]))",
+          "legendFormat": "Errors"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 10 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
       "id": 1,
       "title": "Request Rate per Endpoint",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 4 },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -62,7 +158,7 @@
       "id": 2,
       "title": "Error Rate per Endpoint",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 8 },
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 12 },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -137,7 +233,7 @@
       "id": 3,
       "title": "Error Rate %",
       "type": "stat",
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 12 },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -185,7 +281,7 @@
       "id": 4,
       "title": "p50 Latency per Endpoint",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 20 },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -231,7 +327,7 @@
       "id": 5,
       "title": "p95 Latency per Endpoint",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 16 },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 20 },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -277,7 +373,7 @@
       "id": 6,
       "title": "p99 Latency per Endpoint",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 20 },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -331,7 +427,7 @@
       "id": 7,
       "title": "Total Requests (24h)",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 24 },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 28 },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -374,7 +470,7 @@
       "id": 8,
       "title": "Avg Response Time",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 24 },
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 28 },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -422,7 +518,7 @@
       "id": 9,
       "title": "Active Endpoints",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 24 },
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 28 },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"

@@ -262,28 +262,28 @@ graph LR
 
 ### Component Table
 
-| Component | Image | Exposed Ports | Config File | Role |
-| --- | --- | --- | --- | --- |
-| ai-resume-frontend | `ai-resume-frontend` | 8080 | `frontend/nginx-default.conf` | OpenResty SPA server, proxies API, injects OTel endpoint |
-| ai-resume-api | `ai-resume-api` | 3000 | `api-service/ai_resume_api/main.py` | FastAPI backend, LLM orchestration, Prometheus `/metrics` |
-| ai-resume-memvid | `ai-resume-memvid` | 50051 (gRPC), 9090 (metrics) | `memvid-service/src/main.rs` | Rust semantic search over .mv2 files |
-| fluent-bit | `cr.fluentbit.io/fluent/fluent-bit` | (none) | `deployment/observability/fluent-bit.conf` | Tails container logs, ships to Loki |
-| otel-collector | `otel/opentelemetry-collector-contrib` | 4317 (gRPC), 4318 (HTTP) | `deployment/observability/otel-collector.yaml` | Receives OTLP, exports to Tempo and Loki |
-| tempo | `grafana/tempo` | 3200, 4317 (internal) | `deployment/observability/tempo.yaml` | Trace storage, TraceQL queries, metrics generation |
-| prometheus | `prom/prometheus` | 9090 | `deployment/observability/prometheus.yml` | Scrapes metrics, stores time series |
-| loki | `grafana/loki` | 3100 | `deployment/observability/loki.yaml` | Log aggregation, LogQL queries |
-| grafana | `grafana/grafana` | 3000 (prod) / 3001 (dev) | `deployment/observability/provisioning/` | Dashboards, data source exploration |
+| Component          | Image                                  | Exposed Ports                | Config File                                    | Role                                                      |
+| ------------------ | -------------------------------------- | ---------------------------- | ---------------------------------------------- | --------------------------------------------------------- |
+| ai-resume-frontend | `ai-resume-frontend`                   | 8080                         | `frontend/nginx-default.conf`                  | OpenResty SPA server, proxies API, injects OTel endpoint  |
+| ai-resume-api      | `ai-resume-api`                        | 3000                         | `api-service/ai_resume_api/main.py`            | FastAPI backend, LLM orchestration, Prometheus `/metrics` |
+| ai-resume-memvid   | `ai-resume-memvid`                     | 50051 (gRPC), 9090 (metrics) | `memvid-service/src/main.rs`                   | Rust semantic search over .mv2 files                      |
+| fluent-bit         | `cr.fluentbit.io/fluent/fluent-bit`    | (none)                       | `deployment/observability/fluent-bit.conf`     | Tails container logs, ships to Loki                       |
+| otel-collector     | `otel/opentelemetry-collector-contrib` | 4317 (gRPC), 4318 (HTTP)     | `deployment/observability/otel-collector.yaml` | Receives OTLP, exports to Tempo and Loki                  |
+| tempo              | `grafana/tempo`                        | 3200, 4317 (internal)        | `deployment/observability/tempo.yaml`          | Trace storage, TraceQL queries, metrics generation        |
+| prometheus         | `prom/prometheus`                      | 9090                         | `deployment/observability/prometheus.yml`      | Scrapes metrics, stores time series                       |
+| loki               | `grafana/loki`                         | 3100                         | `deployment/observability/loki.yaml`           | Log aggregation, LogQL queries                            |
+| grafana            | `grafana/grafana`                      | 3000 (prod) / 3001 (dev)     | `deployment/observability/provisioning/`       | Dashboards, data source exploration                       |
 
 ### Production vs Development Differences
 
-| Aspect | Production | Development |
-| --- | --- | --- |
-| Network | `yellow-net` (static IPs) + `podman` bridge | `dev-net` (container DNS) |
-| Grafana port | 3000 | 3001 (remapped) |
-| Prometheus config | `deployment/observability/prometheus.yml` (uses `host.containers.internal`) | `deployment/prometheus.dev.yml` (uses container names) |
-| Service discovery | Static IP targets | DNS-based container names |
-| OTEL_EXPORTER_OTLP_ENDPOINT | Points to observer host | `http://otel-collector:4317` |
-| LOKI_HOST (fluent-bit) | `observer` (observer hostname) | `loki` (container name) |
+| Aspect                      | Production                                                                  | Development                                            |
+| --------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Network                     | `yellow-net` (static IPs) + `podman` bridge                                 | `dev-net` (container DNS)                              |
+| Grafana port                | 3000                                                                        | 3001 (remapped)                                        |
+| Prometheus config           | `deployment/observability/prometheus.yml` (uses `host.containers.internal`) | `deployment/prometheus.dev.yml` (uses container names) |
+| Service discovery           | Static IP targets                                                           | DNS-based container names                              |
+| OTEL_EXPORTER_OTLP_ENDPOINT | Points to observer host                                                     | `http://otel-collector:4317`                           |
+| LOKI_HOST (fluent-bit)      | `observer` (observer hostname)                                              | `loki` (container name)                                |
 
 ### macOS Podman Notes
 
@@ -324,14 +324,14 @@ This produces spans with names like `POST /api/v1/chat` and
 The following spans are created manually in the request handlers to provide
 fine-grained timing for each processing stage:
 
-| Span Name | Location | Attributes |
-| --- | --- | --- |
-| `guardrail.check_input` | `main.py` (chat, assess-fit) | `message.length`, `guardrail.passed` |
-| `memvid.search` | `main.py` (chat, assess-fit) | `search.query_length`, `search.top_k`, `search.mode`, `search.chunks_retrieved`, `search.retrieval_ms`, `search.reranking_ms` |
-| `llm.openrouter_call` | `main.py` (chat, assess-fit) | `llm.model`, `llm.stream`, `llm.context_chunks`, `llm.tokens_used`, `llm.finish_reason`, `llm.response_length`, `time_to_first_token_ms`, `total_streaming_duration_ms` |
-| `guardrail.check_output` | `main.py` (chat) | (timing only) |
-| `session.store` | `main.py` (chat) | (timing only) |
-| `response.parse` | `main.py` (assess-fit) | `response.content_length` |
+| Span Name                | Location                     | Attributes                                                                                                                                                              |
+| ------------------------ | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `guardrail.check_input`  | `main.py` (chat, assess-fit) | `message.length`, `guardrail.passed`                                                                                                                                    |
+| `memvid.search`          | `main.py` (chat, assess-fit) | `search.query_length`, `search.top_k`, `search.mode`, `search.chunks_retrieved`, `search.retrieval_ms`, `search.reranking_ms`                                           |
+| `llm.openrouter_call`    | `main.py` (chat, assess-fit) | `llm.model`, `llm.stream`, `llm.context_chunks`, `llm.tokens_used`, `llm.finish_reason`, `llm.response_length`, `time_to_first_token_ms`, `total_streaming_duration_ms` |
+| `guardrail.check_output` | `main.py` (chat)             | (timing only)                                                                                                                                                           |
+| `session.store`          | `main.py` (chat)             | (timing only)                                                                                                                                                           |
+| `response.parse`         | `main.py` (assess-fit)       | `response.content_length`                                                                                                                                               |
 
 #### Structured Logging with Trace Correlation
 
@@ -366,14 +366,20 @@ correct source.
 
 The API exposes these application-level metrics on its `/metrics` endpoint:
 
-| Metric | Type | Labels | Description |
-| --- | --- | --- | --- |
-| `llm_requests_total` | Counter | `model`, `status`, `stream` | Total LLM API requests |
-| `llm_tokens_total` | Counter | `model`, `type` (prompt/completion/total) | Token usage for cost tracking |
-| `llm_latency_seconds` | Histogram | `model`, `stream` | LLM response latency (buckets: 0.5s-120s) |
-| `memvid_retrieval_chunks` | Histogram | (none) | Chunks retrieved per request (buckets: 0-20) |
-| `memvid_context_chars` | Histogram | (none) | Total characters in retrieved context |
-| `llm_active_requests` | Gauge | `model` | Currently in-flight LLM requests |
+| Metric                    | Type      | Labels                                    | Description                                                                                          |
+| ------------------------- | --------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `llm_requests_total`      | Counter   | `model`, `status`, `stream`               | Total LLM API requests                                                                               |
+| `llm_tokens_total`        | Counter   | `model`, `type` (prompt/completion/total) | Token usage for cost tracking                                                                        |
+| `llm_latency_seconds`     | Histogram | `model`, `stream`                         | LLM response latency (buckets: 0.5s-120s)                                                            |
+| `memvid_retrieval_chunks` | Histogram | (none)                                    | Chunks retrieved per request (buckets: 0-20)                                                         |
+| `memvid_context_chars`    | Histogram | (none)                                    | Total characters in retrieved context                                                                |
+| `llm_active_requests`     | Gauge     | `model`                                   | Currently in-flight LLM requests                                                                     |
+| `chat_feedback_total`     | Counter   | `rating` (`up`, `down`)                   | Total chat feedback submissions. Idempotent: only increments once per (session_id, message_id) pair. |
+
+The `POST /api/v1/chat/{session_id}/feedback` endpoint accepts a
+`FeedbackRequest` body (`message_id`, `rating: "up"|"down"`,
+`comment: str|None max 500`). Each submission emits a structured log with
+`session_id`, `message_id`, `rating`, and `comment` fields for Loki queries.
 
 Additionally, `FastAPIInstrumentor` auto-generates
 `http_server_request_duration_seconds` histograms with labels for `handler`,
@@ -404,11 +410,11 @@ Every gRPC method is annotated with `#[instrument]`, which automatically
 creates an OTel span for each call. The span fields are declared at the
 annotation and recorded during execution:
 
-| Method | Span Fields |
-| --- | --- |
-| `search` | `query`, `trace_id`, `session_id`, `client_ip`, `traceparent`, `chunks_retrieved`, `retrieval_ms` |
-| `ask` | `question`, `trace_id`, `session_id`, `client_ip`, `traceparent`, `chunks_retrieved`, `retrieval_ms`, `reranking_ms` |
-| `get_state` | `entity`, `trace_id`, `session_id`, `client_ip`, `traceparent` |
+| Method      | Span Fields                                                                                                                                                                                                            |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `search`    | `query`, `trace_id`, `session_id`, `client_ip`, `traceparent`, `chunks_retrieved`, `retrieval_ms`, `search.max_relevance`, `search.min_relevance`, `search.avg_relevance`, `search.chunks_returned`                    |
+| `ask`       | `question`, `trace_id`, `session_id`, `client_ip`, `traceparent`, `chunks_retrieved`, `retrieval_ms`, `reranking_ms`, `search.max_relevance`, `search.min_relevance`, `search.avg_relevance`, `search.chunks_returned` |
+| `get_state` | `entity`, `trace_id`, `session_id`, `client_ip`, `traceparent`                                                                                                                                                         |
 
 #### Traceparent Extraction
 
@@ -417,6 +423,19 @@ establishing parent-child span relationships with the calling Python service.
 This is handled by the `extract_correlation()` function in
 `memvid-service/src/grpc/service.rs`, which reads both `traceparent` and
 legacy `x-trace-id` headers from request metadata.
+
+#### Prometheus Metrics
+
+The memvid service exposes these application-level metrics on its `/metrics`
+endpoint (port 9090):
+
+| Metric                          | Type      | Labels                                             | Description                                                                            |
+| ------------------------------- | --------- | -------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `memvid_search_latency_ms`      | Histogram | `method` (`search`, `ask`, `get_state`, `unknown`) | Time taken for memvid operations in milliseconds, labeled by gRPC method               |
+| `memvid_search_total`           | Counter   | (none)                                             | Total number of search requests processed                                              |
+| `memvid_search_errors_total`    | Counter   | (none)                                             | Total number of search errors                                                          |
+| `memvid_search_relevance_score` | Histogram | (none)                                             | Cosine similarity scores for search results (buckets: 0.0 to 1.0 in 0.1 increments)    |
+| `memvid_search_chunks_returned` | Histogram | (none)                                             | Number of chunks returned per search operation (buckets: 0, 1, 2, 3, 4, 5, 10, 15, 20) |
 
 ### Frontend (TypeScript/React)
 
@@ -442,12 +461,22 @@ async operations.
 
 #### Frontend Spans
 
-| Span Name | Component | Trigger |
-| --- | --- | --- |
-| `chat.send_message` | `useStreamingChat.ts` | User sends a chat message |
-| `fit.assess` | `FitAssessment.tsx` | User submits a job description for assessment |
-| `profile.fetch` | `useProfile.ts` | Profile data loaded on mount |
-| `suggested_questions.fetch` | `AIChat.tsx` | Suggested questions loaded on mount |
+| Span Name                   | Component             | Trigger                                       | Attributes                                                                                                                                                                                                                                        |
+| --------------------------- | --------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `chat.send_message`         | `useStreamingChat.ts` | User sends a chat message                     | `chat.time_to_first_token_ms` (time from fetch resolve to first SSE data event), `chat.streaming_duration_ms` (first token to stream end), `chat.user_cancelled` (boolean, true if cancelled mid-stream), `chat.total_tokens` (total token count) |
+| `fit.assess`                | `FitAssessment.tsx`   | User submits a job description for assessment |                                                                                                                                                                                                                                                   |
+| `profile.fetch`             | `useProfile.ts`       | Profile data loaded on mount                  |                                                                                                                                                                                                                                                   |
+| `suggested_questions.fetch` | `AIChat.tsx`          | Suggested questions loaded on mount           |                                                                                                                                                                                                                                                   |
+
+**Cancel handling**: When the user cancels a streaming response mid-stream, the
+span status is set to UNSET (not ERROR). If the first token was already received,
+`chat.time_to_first_token_ms` is preserved. The `chat.streaming_duration_ms`
+records the time from first token to the point of cancellation.
+
+**Instrumentation guard**: The `isOtelInitialized()` function in `otel.ts`
+returns whether the OTel SDK was successfully initialized. The streaming chat
+hook checks this before creating spans, ensuring zero overhead when OTel is
+disabled.
 
 #### Traceparent Propagation
 
@@ -498,7 +527,7 @@ not require OTel infrastructure.
 
 ## 4. Dashboard Reference
 
-Four pre-provisioned dashboards are included in
+Six pre-provisioned dashboards are included in
 `deployment/observability/dashboards/`. They are auto-loaded by Grafana via
 the file-based dashboard provider.
 
@@ -514,19 +543,19 @@ when a user reports a problem and you have a time window or trace ID.
 
 **Variables**:
 
-| Variable | Type | Description |
-| --- | --- | --- |
+| Variable   | Type                 | Description                                                           |
+| ---------- | -------------------- | --------------------------------------------------------------------- |
 | `$service` | Query (multi-select) | Filter by service name. Values from `traces_spanmetrics_calls_total`. |
-| `$traceId` | Textbox | Paste a trace ID to look up a specific trace. |
+| `$traceId` | Textbox              | Paste a trace ID to look up a specific trace.                         |
 
 **Panels**:
 
-| Panel | Type | Data Source | Query/Metric | What It Shows |
-| --- | --- | --- | --- | --- |
-| Trace Search | Traces | Tempo | TraceQL search with filters: `service.name`, `name`, `duration`, `status` | Interactive trace search with configurable filters for service name, span name, minimum duration, and status. Results appear as a list of matching traces with their durations. Click any trace to expand its waterfall view. |
-| Trace by ID | Traces | Tempo | `${traceId}` (TraceQL by ID) | Displays the full waterfall for a single trace when you paste its ID into the `traceId` variable. Shows every span in the trace as a horizontal bar with parent-child nesting. |
-| Service Graph - Request Rate | Time series | Prometheus | `sum(rate(traces_spanmetrics_calls_total{service_name=~"$service"}[$__rate_interval])) by (service_name, span_name)` | Request rate (ops/sec) per service and span name derived from Tempo's span metrics. Shows how traffic distributes across operations over time. Legend table includes mean and max. |
-| Service Graph - Error Rate | Time series | Prometheus | `sum(rate(traces_spanmetrics_calls_total{service_name=~"$service", status_code="STATUS_CODE_ERROR"}[$__rate_interval])) by (service_name, span_name)` | Error rate (ops/sec) per service and span name. Only counts spans with error status. Spikes here indicate failing operations. Legend table includes mean and max. |
+| Panel                        | Type        | Data Source | Query/Metric                                                                                                                                          | What It Shows                                                                                                                                                                                                                 |
+| ---------------------------- | ----------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Trace Search                 | Traces      | Tempo       | TraceQL search with filters: `service.name`, `name`, `duration`, `status`                                                                             | Interactive trace search with configurable filters for service name, span name, minimum duration, and status. Results appear as a list of matching traces with their durations. Click any trace to expand its waterfall view. |
+| Trace by ID                  | Traces      | Tempo       | `${traceId}` (TraceQL by ID)                                                                                                                          | Displays the full waterfall for a single trace when you paste its ID into the `traceId` variable. Shows every span in the trace as a horizontal bar with parent-child nesting.                                                |
+| Service Graph - Request Rate | Time series | Prometheus  | `sum(rate(traces_spanmetrics_calls_total{service_name=~"$service"}[$__rate_interval])) by (service_name, span_name)`                                  | Request rate (ops/sec) per service and span name derived from Tempo's span metrics. Shows how traffic distributes across operations over time. Legend table includes mean and max.                                            |
+| Service Graph - Error Rate   | Time series | Prometheus  | `sum(rate(traces_spanmetrics_calls_total{service_name=~"$service", status_code="STATUS_CODE_ERROR"}[$__rate_interval])) by (service_name, span_name)` | Error rate (ops/sec) per service and span name. Only counts spans with error status. Spikes here indicate failing operations. Legend table includes mean and max.                                                             |
 
 **Default time range**: Last 1 hour, auto-refresh every 30 seconds.
 
@@ -542,21 +571,26 @@ the problem is in input validation, retrieval, or LLM inference.
 
 **Variables**:
 
-| Variable | Type | Description |
-| --- | --- | --- |
-| `$service` | Query (multi-select) | Filter by service name. Values from `traces_spanmetrics_calls_total`. |
-| `$operation` | Query (multi-select) | Filter by span name within the selected service. Values from `traces_spanmetrics_latency_bucket`. |
-| `$endpoint` | Query (multi-select) | Filter HTTP endpoint for the duration distribution panel. Values from `http_server_request_duration_seconds_bucket`. |
+| Variable     | Type                 | Description                                                                                                          |
+| ------------ | -------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `$service`   | Query (multi-select) | Filter by service name. Values from `traces_spanmetrics_calls_total`.                                                |
+| `$operation` | Query (multi-select) | Filter by span name within the selected service. Values from `traces_spanmetrics_latency_bucket`.                    |
+| `$endpoint`  | Query (multi-select) | Filter HTTP endpoint for the duration distribution panel. Values from `http_server_request_duration_seconds_bucket`. |
+| `$method`    | Query (multi-select) | Filter by gRPC method label on `memvid_search_latency_ms_bucket`. Values: `search`, `ask`, `get_state`, `unknown`.   |
 
 **Panels**:
 
-| Panel | Type | Data Source | Query/Metric | What It Shows |
-| --- | --- | --- | --- | --- |
-| p50 / p95 / p99 Latency by Operation | Bar chart | Prometheus | `histogram_quantile(0.50/0.95/0.99, sum(rate(traces_spanmetrics_latency_bucket{service_name=~"$service", span_name=~"$operation"}[$__rate_interval])) by (le, span_name))` | Side-by-side comparison of latency percentiles for each operation (span name). Horizontal bars grouped by operation, with p50/p95/p99 series. Unit: milliseconds. Legend table with mean and max. |
-| Guardrail Latency Trend | Time series | Prometheus | `histogram_quantile(0.50/0.95/0.99, sum(rate(traces_spanmetrics_latency_bucket{span_name=~".*guardrail.*"}[$__rate_interval])) by (le))` | p50/p95/p99 latency trend for guardrail spans over time. Thresholds: green (<100ms), yellow (100-500ms), red (>500ms). Dashed threshold lines on chart. |
-| Memvid Search Latency Trend | Time series | Prometheus | `histogram_quantile(0.50/0.95/0.99, sum(rate(traces_spanmetrics_latency_bucket{span_name=~".*memvid.*\|.*search.*\|.*semantic.*"}[$__rate_interval])) by (le))` | p50/p95/p99 latency trend for memvid search spans. Thresholds: green (<5ms), yellow (5-20ms), red (>20ms). Memvid searches are expected to be sub-10ms. |
-| LLM Inference Latency Trend | Time series | Prometheus | `histogram_quantile(0.50/0.95/0.99, sum(rate(traces_spanmetrics_latency_bucket{span_name=~".*llm.*\|.*openrouter.*\|.*chat_completion.*"}[$__rate_interval])) by (le))` | p50/p95/p99 latency trend for LLM inference spans. Thresholds: green (<1000ms), yellow (1-5s), red (>5s). LLM calls are typically the dominant latency contributor. |
-| Overall Request Duration Distribution | Histogram | Prometheus | `sum(increase(http_server_request_duration_seconds_bucket{handler=~"$endpoint"}[$__rate_interval])) by (le)` | Heatmap/histogram of overall HTTP request durations across endpoints. Shows the distribution shape -- whether most requests are fast with a long tail, or uniformly slow. Unit: seconds. |
+| Panel                                    | Type        | Data Source | Query/Metric                                                                                                                                                               | What It Shows                                                                                                                                                                                                                     |
+| ---------------------------------------- | ----------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| p50 / p95 / p99 Latency by Operation     | Bar chart   | Prometheus  | `histogram_quantile(0.50/0.95/0.99, sum(rate(traces_spanmetrics_latency_bucket{service_name=~"$service", span_name=~"$operation"}[$__rate_interval])) by (le, span_name))` | Side-by-side comparison of latency percentiles for each operation (span name). Horizontal bars grouped by operation, with p50/p95/p99 series. Unit: milliseconds. Legend table with mean and max.                                 |
+| Guardrail Latency Trend                  | Time series | Prometheus  | `histogram_quantile(0.50/0.95/0.99, sum(rate(traces_spanmetrics_latency_bucket{span_name=~".*guardrail.*"}[$__rate_interval])) by (le))`                                   | p50/p95/p99 latency trend for guardrail spans over time. Thresholds: green (<100ms), yellow (100-500ms), red (>500ms). Dashed threshold lines on chart.                                                                           |
+| Memvid Search Latency Trend              | Time series | Prometheus  | `histogram_quantile(0.50/0.95/0.99, sum(rate(traces_spanmetrics_latency_bucket{span_name=~".*memvid.*\|.*search.*\|.*semantic.*"}[$__rate_interval])) by (le))`            | p50/p95/p99 latency trend for memvid search spans. Filters by `method=~"$method"` when the `$method` variable is set. Thresholds: green (<5ms), yellow (5-20ms), red (>20ms). Memvid searches are expected to be sub-10ms.        |
+| Memvid gRPC Method Latency (p50/p95/p99) | Time series | Prometheus  | `histogram_quantile(0.50/0.95/0.99, sum(rate(memvid_search_latency_ms_bucket{method=~"$method"}[$__rate_interval])) by (le, method))`                                      | Per-method latency breakdown for the memvid service. Shows p50/p95/p99 for each gRPC method (`search`, `ask`, `get_state`) independently. Unit: milliseconds.                                                                     |
+| LLM Inference Latency Trend              | Time series | Prometheus  | `histogram_quantile(0.50/0.95/0.99, sum(rate(traces_spanmetrics_latency_bucket{span_name=~".*llm.*\|.*openrouter.*\|.*chat_completion.*"}[$__rate_interval])) by (le))`    | p50/p95/p99 latency trend for LLM inference spans. Thresholds: green (<1000ms), yellow (1-5s), red (>5s). LLM calls are typically the dominant latency contributor.                                                               |
+| Overall Request Duration Distribution    | Histogram   | Prometheus  | `sum(increase(http_server_request_duration_seconds_bucket{handler=~"$endpoint"}[$__rate_interval])) by (le)`                                                               | Heatmap/histogram of overall HTTP request durations across endpoints. Shows the distribution shape -- whether most requests are fast with a long tail, or uniformly slow. Unit: seconds.                                          |
+| **SSE Streaming** (row)                  |             |             |                                                                                                                                                                            |                                                                                                                                                                                                                                   |
+| TTFT Histogram                           | Histogram   | Tempo       | TraceQL: `{span.chat.time_to_first_token_ms > 0}`                                                                                                                          | Distribution of time-to-first-token values for SSE streaming chat responses. Shows how long users wait before seeing the first token. Sourced from the `chat.time_to_first_token_ms` span attribute on `chat.send_message` spans. |
+| Streaming Duration Histogram             | Histogram   | Tempo       | TraceQL: `{span.chat.streaming_duration_ms > 0}`                                                                                                                           | Distribution of total streaming duration from first token to stream end. Shows how long the full SSE stream takes to complete. Sourced from the `chat.streaming_duration_ms` span attribute on `chat.send_message` spans.         |
 
 **Default time range**: Last 1 hour, auto-refresh every 30 seconds.
 
@@ -571,23 +605,25 @@ at-a-glance view of API health using RED metrics.
 
 **Variables**:
 
-| Variable | Type | Description |
-| --- | --- | --- |
+| Variable    | Type                 | Description                                                                               |
+| ----------- | -------------------- | ----------------------------------------------------------------------------------------- |
 | `$endpoint` | Query (multi-select) | Filter by HTTP handler (route). Values from `http_server_request_duration_seconds_count`. |
 
 **Panels**:
 
-| Panel | Type | Data Source | Query/Metric | What It Shows |
-| --- | --- | --- | --- | --- |
-| Request Rate per Endpoint | Time series | Prometheus | `sum(rate(http_server_request_duration_seconds_count{handler=~"$endpoint"}[$__rate_interval])) by (handler, method)` | Requests per second for each endpoint, split by HTTP method. Shows traffic distribution and patterns. Unit: req/s. Legend table with mean, max, and last value. |
-| Error Rate per Endpoint | Time series | Prometheus | 5xx: `sum(rate(http_server_request_duration_seconds_count{handler=~"$endpoint", status_code=~"5.."}[$__rate_interval])) by (handler, method)` / 4xx: same with `status_code=~"4.."` | Stacked area chart of error rates. 5xx errors in red, 4xx errors in orange. Stacked to show cumulative error volume. Unit: req/s. |
-| Error Rate % | Stat | Prometheus | `100 * sum(rate(http_server_request_duration_seconds_count{status_code=~"5.."}[$__rate_interval])) / sum(rate(http_server_request_duration_seconds_count[$__rate_interval]))` | Single-value display of the current 5xx error percentage across all endpoints. Background color: green (<1%), yellow (1-5%), red (>5%). |
-| p50 Latency per Endpoint | Time series | Prometheus | `histogram_quantile(0.50, sum(rate(http_server_request_duration_seconds_bucket{handler=~"$endpoint"}[$__rate_interval])) by (le, handler))` | Median (p50) response time per endpoint over time. Shows what the typical user experience is. Unit: seconds. |
-| p95 Latency per Endpoint | Time series | Prometheus | `histogram_quantile(0.95, sum(rate(http_server_request_duration_seconds_bucket{handler=~"$endpoint"}[$__rate_interval])) by (le, handler))` | 95th percentile response time per endpoint. Represents the experience of the slowest 5% of requests. Unit: seconds. |
-| p99 Latency per Endpoint | Time series | Prometheus | `histogram_quantile(0.99, sum(rate(http_server_request_duration_seconds_bucket{handler=~"$endpoint"}[$__rate_interval])) by (le, handler))` | 99th percentile response time per endpoint. Tail latency indicator. Thresholds: green (<1s), yellow (1-5s), red (>5s). Unit: seconds. |
-| Total Requests (24h) | Stat | Prometheus | `sum(increase(http_server_request_duration_seconds_count[24h]))` | Total number of requests across all endpoints in the last 24 hours. Colored blue. |
-| Avg Response Time | Stat | Prometheus | `sum(rate(http_server_request_duration_seconds_sum[$__rate_interval])) / sum(rate(http_server_request_duration_seconds_count[$__rate_interval]))` | Average response time across all endpoints. Background color: green (<0.5s), yellow (0.5-2s), red (>2s). Unit: seconds. |
-| Active Endpoints | Stat | Prometheus | `count(count by (handler) (http_server_request_duration_seconds_count{handler=~"$endpoint"}))` | Count of distinct endpoint handlers that have received traffic. Colored purple. |
+| Panel                     | Type        | Data Source | Query/Metric                                                                                                                                                                        | What It Shows                                                                                                                                                   |
+| ------------------------- | ----------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Request Rate per Endpoint | Time series | Prometheus  | `sum(rate(http_server_request_duration_seconds_count{handler=~"$endpoint"}[$__rate_interval])) by (handler, method)`                                                                | Requests per second for each endpoint, split by HTTP method. Shows traffic distribution and patterns. Unit: req/s. Legend table with mean, max, and last value. |
+| Error Rate per Endpoint   | Time series | Prometheus  | 5xx: `sum(rate(http_server_request_duration_seconds_count{handler=~"$endpoint", status_code=~"5.."}[$__rate_interval])) by (handler, method)` / 4xx: same with `status_code=~"4.."` | Stacked area chart of error rates. 5xx errors in red, 4xx errors in orange. Stacked to show cumulative error volume. Unit: req/s.                               |
+| Error Rate %              | Stat        | Prometheus  | `100 * sum(rate(http_server_request_duration_seconds_count{status_code=~"5.."}[$__rate_interval])) / sum(rate(http_server_request_duration_seconds_count[$__rate_interval]))`       | Single-value display of the current 5xx error percentage across all endpoints. Background color: green (<1%), yellow (1-5%), red (>5%).                         |
+| p50 Latency per Endpoint  | Time series | Prometheus  | `histogram_quantile(0.50, sum(rate(http_server_request_duration_seconds_bucket{handler=~"$endpoint"}[$__rate_interval])) by (le, handler))`                                         | Median (p50) response time per endpoint over time. Shows what the typical user experience is. Unit: seconds.                                                    |
+| p95 Latency per Endpoint  | Time series | Prometheus  | `histogram_quantile(0.95, sum(rate(http_server_request_duration_seconds_bucket{handler=~"$endpoint"}[$__rate_interval])) by (le, handler))`                                         | 95th percentile response time per endpoint. Represents the experience of the slowest 5% of requests. Unit: seconds.                                             |
+| p99 Latency per Endpoint  | Time series | Prometheus  | `histogram_quantile(0.99, sum(rate(http_server_request_duration_seconds_bucket{handler=~"$endpoint"}[$__rate_interval])) by (le, handler))`                                         | 99th percentile response time per endpoint. Tail latency indicator. Thresholds: green (<1s), yellow (1-5s), red (>5s). Unit: seconds.                           |
+| Total Requests (24h)      | Stat        | Prometheus  | `sum(increase(http_server_request_duration_seconds_count[24h]))`                                                                                                                    | Total number of requests across all endpoints in the last 24 hours. Colored blue.                                                                               |
+| Avg Response Time         | Stat        | Prometheus  | `sum(rate(http_server_request_duration_seconds_sum[$__rate_interval])) / sum(rate(http_server_request_duration_seconds_count[$__rate_interval]))`                                   | Average response time across all endpoints. Background color: green (<0.5s), yellow (0.5-2s), red (>2s). Unit: seconds.                                         |
+| Active Endpoints          | Stat        | Prometheus  | `count(count by (handler) (http_server_request_duration_seconds_count{handler=~"$endpoint"}))`                                                                                      | Count of distinct endpoint handlers that have received traffic. Colored purple.                                                                                 |
+| Success Rate              | Stat        | Prometheus  | `sum(rate(http_requests_total{status=~"2.."}[5m])) / sum(rate(http_requests_total{path!~"/health\|/api/v1/health"}[5m])) * 100`                                                     | Percentage of successful (2xx) requests, excluding health checks. Thresholds: green (>=99%), yellow (>=95%), red (<95%).                                        |
+| Total Errors              | Stat        | Prometheus  | `sum(increase(http_requests_total{status=~"[45].."}[1h]))`                                                                                                                          | Total 4xx and 5xx errors in the last hour. Thresholds: green (0), yellow (>=1), red (>=10).                                                                     |
 
 **Default time range**: Last 1 hour, auto-refresh every 30 seconds.
 
@@ -602,26 +638,83 @@ comparing model efficiency.
 
 **Variables**:
 
-| Variable | Type | Description |
-| --- | --- | --- |
-| `$model` | Query (multi-select) | Filter by LLM model name. Values from `llm_tokens_total`. |
-| `$cost_per_input_token` | Textbox | Cost per 1K input tokens in USD. Default: `0.003`. |
-| `$cost_per_output_token` | Textbox | Cost per 1K output tokens in USD. Default: `0.015`. |
+| Variable                 | Type                 | Description                                               |
+| ------------------------ | -------------------- | --------------------------------------------------------- |
+| `$model`                 | Query (multi-select) | Filter by LLM model name. Values from `llm_tokens_total`. |
+| `$cost_per_input_token`  | Textbox              | Cost per 1K input tokens in USD. Default: `0.003`.        |
+| `$cost_per_output_token` | Textbox              | Cost per 1K output tokens in USD. Default: `0.015`.       |
 
 **Panels**:
 
-| Panel | Type | Data Source | Query/Metric | What It Shows |
-| --- | --- | --- | --- | --- |
-| Token Usage Over Time | Time series | Prometheus | Input: `sum(rate(llm_tokens_total{type="input", model=~"$model"}[$__rate_interval])) by (model)` / Output: same with `type="output"` | Stacked area chart of token consumption rate (tokens/sec) split by input and output for each model. Shows usage patterns and spikes over time. Legend table with mean, max, and sum. |
-| Total Tokens (24h) | Stat | Prometheus | `sum(increase(llm_tokens_total[24h]))` | Total token consumption in the last 24 hours. Background color: green (<100K), yellow (100K-1M), red (>1M). |
-| LLM Requests (24h) | Stat | Prometheus | `sum(increase(llm_requests_total[24h]))` | Total LLM request count in the last 24 hours. Colored blue. |
-| Token Usage per Model | Table | Prometheus | Input: `sum(increase(llm_tokens_total{type="input"}[$__range])) by (model)` / Output: same with `type="output"` / Requests: `sum(increase(llm_requests_total[$__range])) by (model)` | Table with one row per model showing input tokens, output tokens, and request count for the selected time range. Sorted by input tokens descending. Footer row shows totals. |
-| Estimated Cost per Model | Table | Prometheus | Input cost: `sum(increase(llm_tokens_total{type="input"}[$__range])) by (model) * $cost_per_input_token / 1000` / Output cost: same with `type="output"` and `$cost_per_output_token` | Table with estimated USD cost per model, split into input and output cost. Uses the configurable cost-per-token variables. Footer shows total cost. Thresholds: green (<$1), yellow ($1-$10), red (>$10). |
-| Request Count per Model | Time series (bars) | Prometheus | `sum(rate(llm_requests_total{model=~"$model"}[$__rate_interval])) by (model)` | Stacked bar chart of request rate per model over time. Shows which models handle the most traffic. Unit: req/s. |
-| Cumulative Cost Over Time | Time series | Prometheus | `(sum(increase(llm_tokens_total{type="input"}[$__rate_interval])) * $cost_per_input_token / 1000) + (sum(increase(llm_tokens_total{type="output"}[$__rate_interval])) * $cost_per_output_token / 1000)` | Running estimated cost over the selected time window. Dark green line with area fill. Unit: USD. Legend shows cumulative sum. |
-| Input vs Output Token Ratio | Pie chart (donut) | Prometheus | Input: `sum(increase(llm_tokens_total{type="input"}[$__range]))` / Output: `sum(increase(llm_tokens_total{type="output"}[$__range]))` | Donut chart showing the proportion of input vs output tokens. Legend table with percentage and absolute values. A high output ratio may indicate verbose responses. |
-| Avg Tokens per Request | Stat | Prometheus | `sum(increase(llm_tokens_total[$__range])) / sum(increase(llm_requests_total[$__range]))` | Average total tokens consumed per LLM request. Background color: green (<2000), yellow (2000-4000), red (>4000). |
-| Avg Cost per Request | Stat | Prometheus | `((sum(increase(llm_tokens_total{type="input"}[$__range])) * $cost_per_input_token / 1000) + (sum(increase(llm_tokens_total{type="output"}[$__range])) * $cost_per_output_token / 1000)) / sum(increase(llm_requests_total[$__range]))` | Average estimated cost per LLM request in USD. Background color: green (<$0.01), yellow ($0.01-$0.10), red (>$0.10). |
+| Panel                       | Type               | Data Source | Query/Metric                                                                                                                                                                                                                            | What It Shows                                                                                                                                                                                             |
+| --------------------------- | ------------------ | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Token Usage Over Time       | Time series        | Prometheus  | Input: `sum(rate(llm_tokens_total{type="input", model=~"$model"}[$__rate_interval])) by (model)` / Output: same with `type="output"`                                                                                                    | Stacked area chart of token consumption rate (tokens/sec) split by input and output for each model. Shows usage patterns and spikes over time. Legend table with mean, max, and sum.                      |
+| Total Tokens (24h)          | Stat               | Prometheus  | `sum(increase(llm_tokens_total[24h]))`                                                                                                                                                                                                  | Total token consumption in the last 24 hours. Background color: green (<100K), yellow (100K-1M), red (>1M).                                                                                               |
+| LLM Requests (24h)          | Stat               | Prometheus  | `sum(increase(llm_requests_total[24h]))`                                                                                                                                                                                                | Total LLM request count in the last 24 hours. Colored blue.                                                                                                                                               |
+| Token Usage per Model       | Table              | Prometheus  | Input: `sum(increase(llm_tokens_total{type="input"}[$__range])) by (model)` / Output: same with `type="output"` / Requests: `sum(increase(llm_requests_total[$__range])) by (model)`                                                    | Table with one row per model showing input tokens, output tokens, and request count for the selected time range. Sorted by input tokens descending. Footer row shows totals.                              |
+| Estimated Cost per Model    | Table              | Prometheus  | Input cost: `sum(increase(llm_tokens_total{type="input"}[$__range])) by (model) * $cost_per_input_token / 1000` / Output cost: same with `type="output"` and `$cost_per_output_token`                                                   | Table with estimated USD cost per model, split into input and output cost. Uses the configurable cost-per-token variables. Footer shows total cost. Thresholds: green (<$1), yellow ($1-$10), red (>$10). |
+| Request Count per Model     | Time series (bars) | Prometheus  | `sum(rate(llm_requests_total{model=~"$model"}[$__rate_interval])) by (model)`                                                                                                                                                           | Stacked bar chart of request rate per model over time. Shows which models handle the most traffic. Unit: req/s.                                                                                           |
+| Cumulative Cost Over Time   | Time series        | Prometheus  | `(sum(increase(llm_tokens_total{type="input"}[$__rate_interval])) * $cost_per_input_token / 1000) + (sum(increase(llm_tokens_total{type="output"}[$__rate_interval])) * $cost_per_output_token / 1000)`                                 | Running estimated cost over the selected time window. Dark green line with area fill. Unit: USD. Legend shows cumulative sum.                                                                             |
+| Input vs Output Token Ratio | Pie chart (donut)  | Prometheus  | Input: `sum(increase(llm_tokens_total{type="input"}[$__range]))` / Output: `sum(increase(llm_tokens_total{type="output"}[$__range]))`                                                                                                   | Donut chart showing the proportion of input vs output tokens. Legend table with percentage and absolute values. A high output ratio may indicate verbose responses.                                       |
+| Avg Tokens per Request      | Stat               | Prometheus  | `sum(increase(llm_tokens_total[$__range])) / sum(increase(llm_requests_total[$__range]))`                                                                                                                                               | Average total tokens consumed per LLM request. Background color: green (<2000), yellow (2000-4000), red (>4000).                                                                                          |
+| Avg Cost per Request        | Stat               | Prometheus  | `((sum(increase(llm_tokens_total{type="input"}[$__range])) * $cost_per_input_token / 1000) + (sum(increase(llm_tokens_total{type="output"}[$__range])) * $cost_per_output_token / 1000)) / sum(increase(llm_requests_total[$__range]))` | Average estimated cost per LLM request in USD. Background color: green (<$0.01), yellow ($0.01-$0.10), red (>$0.10).                                                                                      |
+
+**Default time range**: Last 24 hours, auto-refresh every 1 minute.
+
+### 4.5 Retrieval Quality
+
+**UID**: `retrieval-quality`
+**Purpose**: Monitor the quality and volume of memvid semantic search results.
+Tracks relevance scores, chunk counts, and low-relevance query rates to detect
+retrieval degradation before it affects chat quality.
+
+**When to use**: When chat answers seem irrelevant or shallow, or after updating
+the .mv2 file (re-ingestion). Also useful for tuning the `top_k` parameter or
+evaluating resume content coverage.
+
+**Variables**:
+
+| Variable     | Type                 | Description                                                                                                                                                  |
+| ------------ | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `$threshold` | Custom (multi-value) | Low Relevance Threshold. Values: 0.3, 0.4, 0.5, 0.6, 0.7, 0.8. Default: 0.5. Queries with max relevance below this threshold are counted as "low relevance." |
+
+**Panels**:
+
+| Panel                         | Type        | Data Source | Query/Metric                                                                                                                        | What It Shows                                                                                                                                 |
+| ----------------------------- | ----------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Search Volume                 | Time series | Prometheus  | `sum(rate(memvid_search_total[$__rate_interval]))`                                                                                  | Search request rate over time. Shows traffic patterns to the memvid service.                                                                  |
+| Low Relevance Rate            | Stat        | Prometheus  | Derived from `memvid_search_relevance_score` histogram buckets below `$threshold`                                                   | Percentage of search queries whose max relevance score falls below the configured threshold. High values indicate poor retrieval quality.     |
+| Total Searches 24h            | Stat        | Prometheus  | `sum(increase(memvid_search_total[24h]))`                                                                                           | Total search operations in the last 24 hours.                                                                                                 |
+| Relevance Score Percentiles   | Time series | Prometheus  | `histogram_quantile(0.50/0.95/0.99, sum(rate(memvid_search_relevance_score_bucket[$__rate_interval])) by (le))`                     | p50/p95/p99 relevance scores over time. Dropping percentiles indicate degrading retrieval quality.                                            |
+| Relevance Score Distribution  | Heatmap     | Prometheus  | `sum(increase(memvid_search_relevance_score_bucket[$__rate_interval])) by (le)`                                                     | Heatmap of relevance score distribution across buckets (0.0-1.0). Shows whether scores cluster near 1.0 (good) or spread across lower values. |
+| Chunks per Query Percentiles  | Time series | Prometheus  | `histogram_quantile(0.50/0.95/0.99, sum(rate(memvid_search_chunks_returned_bucket[$__rate_interval])) by (le))`                     | p50/p95/p99 chunk counts returned per query over time.                                                                                        |
+| Chunks per Query Distribution | Histogram   | Prometheus  | `sum(increase(memvid_search_chunks_returned_bucket[$__rate_interval])) by (le)`                                                     | Distribution of chunk counts per query. Shows whether most queries return a healthy number of chunks.                                         |
+| Low Relevance Rate Over Time  | Time series | Prometheus  | Derived from `memvid_search_relevance_score` histogram buckets below `$threshold` over `$__rate_interval`                           | Trend of low-relevance query rate. Useful for spotting gradual degradation.                                                                   |
+| Avg Relevance Score           | Stat        | Prometheus  | `sum(rate(memvid_search_relevance_score_sum[$__rate_interval])) / sum(rate(memvid_search_relevance_score_count[$__rate_interval]))` | Average relevance score across all search queries.                                                                                            |
+| Avg Chunks per Query          | Stat        | Prometheus  | `sum(rate(memvid_search_chunks_returned_sum[$__rate_interval])) / sum(rate(memvid_search_chunks_returned_count[$__rate_interval]))` | Average number of chunks returned per query.                                                                                                  |
+| p99 Relevance                 | Stat        | Prometheus  | `histogram_quantile(0.99, sum(rate(memvid_search_relevance_score_bucket[$__rate_interval])) by (le))`                               | 99th percentile relevance score.                                                                                                              |
+| p50 Chunks                    | Stat        | Prometheus  | `histogram_quantile(0.50, sum(rate(memvid_search_chunks_returned_bucket[$__rate_interval])) by (le))`                               | Median chunks returned per query.                                                                                                             |
+
+**Default time range**: Last 1 hour, auto-refresh every 30 seconds.
+
+### 4.6 Quality Evals
+
+**UID**: `quality-evals`
+**Purpose**: Track user feedback (thumbs up/down) on chat responses. Provides
+visibility into perceived answer quality and links feedback events to traces
+for root-cause analysis.
+
+**When to use**: Monitoring user satisfaction trends, investigating clusters of
+negative feedback, and correlating poor ratings with retrieval quality or LLM
+behavior.
+
+**Panels**:
+
+| Panel                   | Type        | Data Source | Query/Metric                                                                                                                 | What It Shows                                                                                                                                                                                                          |
+| ----------------------- | ----------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Feedback Rate           | Time series | Prometheus  | `sum(rate(chat_feedback_total[$__rate_interval])) by (rating)`                                                               | Feedback submission rate over time, split by rating (`up` / `down`). Shows engagement and satisfaction trends.                                                                                                         |
+| Positive/Negative Ratio | Stat or Pie | Prometheus  | `sum(increase(chat_feedback_total{rating="up"}[$__range]))` vs `sum(increase(chat_feedback_total{rating="down"}[$__range]))` | Ratio of positive to negative feedback over the selected time range. A declining ratio warrants investigation.                                                                                                         |
+| Feedback Log            | Log panel   | Loki        | `{service="ai-resume"} \| json \| event="Chat feedback received"`                                                            | Structured log entries for each feedback submission showing session_id, message_id, rating, and comment. Data Links to Tempo allow clicking a log entry to open the corresponding chat trace for full request context. |
 
 **Default time range**: Last 24 hours, auto-refresh every 1 minute.
 
@@ -644,6 +737,7 @@ dashboard shows p95 latency exceeding 5 seconds on `POST /api/v1/chat`.
    trace ID (e.g., from SSE stats sent to the browser), paste it into the
    `traceId` variable. Otherwise, use the Trace Search panel with these
    filters:
+
    - `service.name` = `ai-resume-api`
    - `name` = `POST /api/v1/chat`
    - `duration` > `5s`
@@ -843,11 +937,14 @@ operational.
    (<http://localhost:3001/explore>) and search for traces from the last 5
    minutes. The test request trace should appear within 10 seconds.
 
-4. **Verify all 4 dashboards show data:**
+4. **Verify all 6 dashboards show data:**
+
    - Endpoint Overview: Request Rate panel should show recent traffic.
    - Latency Breakdown: At least one operation should have data.
    - Request Waterfall: Trace Search should return results.
    - LLM Cost Tracker: Token Usage should show recent activity.
+   - Retrieval Quality: Search Volume and Relevance Score panels should have data.
+   - Quality Evals: Feedback Rate panel will show data once users submit feedback.
 
 5. **Check Loki for recent logs:**
 
@@ -950,39 +1047,60 @@ setup can handle projected traffic growth.
 **Scenario**: Chat answers seem irrelevant, shallow, or the system returns
 "I couldn't find relevant information" too frequently.
 
-**Dashboards**: Latency Breakdown (memvid panels), Request Waterfall.
+**Dashboards**: Retrieval Quality, Latency Breakdown (memvid panels), Request
+Waterfall.
 
 **Steps**:
 
-1. **Find chat traces.** Open the Request Waterfall and search for recent chat
+1. **Check the Retrieval Quality dashboard first.** Open the Retrieval Quality
+   dashboard (`retrieval-quality`) and review:
+
+   - **Low Relevance Rate**: If this stat is high (e.g., >20%), many queries
+     are returning poor results. Adjust the `$threshold` variable to tune the
+     sensitivity.
+   - **Relevance Score Percentiles**: If p50 is below 0.5, most queries are
+     getting mediocre results. If p95 is also low, the index may be degraded.
+   - **Avg Chunks per Query**: If this is consistently 0-1, the index may be
+     corrupt or the resume content is too sparse for the query types.
+   - **Low Relevance Rate Over Time**: Check for a sudden drop correlated with
+     a deployment or re-ingestion.
+
+2. **Find chat traces.** Open the Request Waterfall and search for recent chat
    traces:
 
    ```traceql
    {resource.service.name="ai-resume-api" && name="POST /api/v1/chat"}
    ```
 
-2. **Inspect the `memvid.search` span attributes:**
+3. **Inspect the `memvid.search` span attributes:**
+
    - `search.chunks_retrieved`: Expected 3-10 for a typical query. If 0, the
      index may be corrupt or the query did not match any content.
    - `search.retrieval_ms`: Expected under 10ms. If slow, the memvid service
      may be under memory pressure.
    - `search.reranking_ms`: Time spent re-ranking results. Should be minimal.
+   - `search.max_relevance`: Highest cosine similarity among returned chunks.
+     Values below 0.5 indicate weak semantic matches.
+   - `search.avg_relevance`: Average cosine similarity. Consistently low values
+     suggest the query topic is not well-covered in the resume.
+   - `search.chunks_returned`: Number of chunks returned by the Rust service.
 
-3. **Check for zero-chunk responses.** If `chunks_retrieved=0` appears
+4. **Check for zero-chunk responses.** If `chunks_retrieved=0` appears
    frequently, look for patterns:
 
    ```traceql
    {resource.service.name="ai-resume-api" && name="memvid.search" && span.search.chunks_retrieved=0}
    ```
 
-4. **Check memvid service logs** in Loki for errors:
+5. **Check memvid service logs** in Loki for errors:
 
    ```logql
    {container_name="ai-resume-memvid"} |= "error"
    ```
 
-5. **Inspect the Rust-side span** in the waterfall. The `search` or `ask` span
-   from `ai-resume-memvid` will show `chunks_retrieved` and `retrieval_ms`
+6. **Inspect the Rust-side span** in the waterfall. The `search` or `ask` span
+   from `ai-resume-memvid` will show `chunks_retrieved`, `retrieval_ms`,
+   `search.max_relevance`, `search.min_relevance`, and `search.avg_relevance`
    from the Rust perspective.
 
 **Resolution**:
@@ -991,16 +1109,80 @@ setup can handle projected traffic growth.
   `python ingest.py` and restart the memvid service.
 - **Low chunk counts**: The resume content may not cover the topic. Check the
   source markdown file.
+- **Low relevance scores**: The resume content may need more detail on the
+  topics users are querying. Review the Relevance Score Distribution heatmap
+  to identify score clustering patterns.
 - **Slow retrieval**: Check memvid container memory usage (`podman stats`).
   The 200MB memory limit may be insufficient for large .mv2 files.
 
 **Self-escalation**: If chunk retrieval consistently returns 0 for queries that
 should match, re-run the ingestion pipeline and verify the .mv2 file contains
-the expected content.
+the expected content. If the Low Relevance Rate exceeds 30% sustained, review
+the resume markdown for content gaps.
 
 **If you see no data**: Verify the memvid service has
 `OTEL_EXPORTER_OTLP_ENDPOINT` set and the collector is reachable. In dev, this
-should be `http://otel-collector:4317`.
+should be `http://otel-collector:4317`. For Prometheus metrics
+(`memvid_search_relevance_score`, `memvid_search_chunks_returned`), verify
+Prometheus is scraping the memvid service on port 9090.
+
+### Runbook 8: Monitoring Chat Feedback
+
+**Scenario**: You want to track user satisfaction with chat responses, investigate
+clusters of negative feedback, or correlate poor ratings with specific retrieval
+or LLM issues.
+
+**Dashboard**: Quality Evals.
+
+**Steps**:
+
+1. **Check the Feedback Rate panel.** Open the Quality Evals dashboard
+   (`quality-evals`). The Feedback Rate time series shows thumbs-up and
+   thumbs-down submissions over time. A spike in negative feedback warrants
+   investigation.
+
+2. **Review the Positive/Negative Ratio.** If the ratio is declining over a
+   recent time window, something changed in answer quality. Correlate the
+   timing with deployments, model changes, or re-ingestion events.
+
+3. **Inspect the Feedback Log panel.** Each log entry shows the `session_id`,
+   `message_id`, `rating`, and optional `comment`. Use the Data Links to click
+   through to the corresponding trace in Tempo. This reveals the full request
+   context: what the user asked, which chunks were retrieved, and how the LLM
+   responded.
+
+4. **Correlate with retrieval quality.** If negative feedback correlates with
+   low relevance scores, check the Retrieval Quality dashboard (Runbook 7).
+   Poor chunk retrieval is the most common cause of bad answers.
+
+5. **Correlate with LLM behavior.** If retrieval looks fine but answers are
+   poor, check the `llm.openrouter_call` span in the trace for:
+
+   - `llm.model`: Was a different model used?
+   - `llm.tokens_used`: Was the response truncated due to token limits?
+   - `llm.finish_reason`: Did the model stop normally or hit a limit?
+
+6. **Search for specific feedback in Loki:**
+
+   ```logql
+   {service="ai-resume"} | json | event="Chat feedback received" | rating="down"
+   ```
+
+   Add `| comment != ""` to filter for entries with user comments.
+
+**Resolution**:
+
+- **Retrieval-related**: Improve resume content coverage or re-ingest with
+  better chunking. See Runbook 7.
+- **LLM-related**: Adjust the system prompt, switch to a better model, or
+  increase `max_tokens` if responses are being truncated.
+- **Systematic negative feedback**: Review the feedback comments for patterns.
+  Users may be asking about topics not covered in the resume.
+
+**If you see no data**: Verify the `chat_feedback_total` metric appears on the
+Prometheus targets page. The metric is emitted by the Python API service. Also
+verify Loki is receiving logs from the API service (check the Feedback Log panel
+for recent entries).
 
 ---
 
@@ -1051,13 +1233,15 @@ hierarchy: `POST /api/v1/chat` as the root span, with child spans for
 
 ### View Dashboards
 
-Navigate to Dashboards in the Grafana sidebar. Four dashboards are
+Navigate to Dashboards in the Grafana sidebar. Six dashboards are
 pre-provisioned:
 
 - **Endpoint Overview** -- start here for overall API health
 - **Latency Breakdown** -- drill into per-stage timing
 - **Request Waterfall** -- trace search and waterfall views
 - **LLM Cost Tracker** -- token usage and estimated cost
+- **Retrieval Quality** -- memvid search relevance and chunk metrics
+- **Quality Evals** -- user feedback (thumbs up/down) tracking
 
 ---
 
@@ -1066,54 +1250,54 @@ pre-provisioned:
 All observability features are gated on environment variables. When a variable
 is unset, the corresponding feature is disabled with zero overhead.
 
-| Variable | Service | Default | Description |
-| --- | --- | --- | --- |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | api-service, memvid-service | (unset = OTel disabled) | OTLP collector gRPC endpoint. Set to `http://otel-collector:4317` in dev. When unset, all tracing calls are no-ops. |
-| `OTEL_SERVICE_NAME` | api-service | `ai-resume-api` | Service name that appears in traces and span metrics. |
-| `OTEL_SERVICE_NAME` | memvid-service | `ai-resume-memvid` | Service name for the Rust service in traces. |
-| `OTEL_COLLECTOR_HTTP` | frontend (nginx) | (unset = browser OTel disabled) | OTLP collector HTTP endpoint for the browser SDK. Injected into `window.__OTEL_ENDPOINT__` by nginx/lua. Set to `http://<collector-host>:4318` to enable. |
-| `LOKI_HOST` | fluent-bit | `observer` (prod) / `loki` (dev) | Hostname of the Loki instance for log shipping. |
-| `LOKI_PORT` | fluent-bit | `3100` | Loki HTTP port. |
-| `PODMAN_LOG_ROOT` | fluent-bit | `/var/log/containers` | Container log directory on the host. Must be discovered via `podman info` on macOS. |
-| `RUST_LOG` | memvid-service | `info` | Rust log level filter. Set to `debug` for verbose span logging. |
-| `LOG_LEVEL` | api-service | `INFO` | Python log level. Set to `DEBUG` for verbose logging. |
+| Variable                      | Service                     | Default                          | Description                                                                                                                                               |
+| ----------------------------- | --------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | api-service, memvid-service | (unset = OTel disabled)          | OTLP collector gRPC endpoint. Set to `http://otel-collector:4317` in dev. When unset, all tracing calls are no-ops.                                       |
+| `OTEL_SERVICE_NAME`           | api-service                 | `ai-resume-api`                  | Service name that appears in traces and span metrics.                                                                                                     |
+| `OTEL_SERVICE_NAME`           | memvid-service              | `ai-resume-memvid`               | Service name for the Rust service in traces.                                                                                                              |
+| `OTEL_COLLECTOR_HTTP`         | frontend (nginx)            | (unset = browser OTel disabled)  | OTLP collector HTTP endpoint for the browser SDK. Injected into `window.__OTEL_ENDPOINT__` by nginx/lua. Set to `http://<collector-host>:4318` to enable. |
+| `LOKI_HOST`                   | fluent-bit                  | `observer` (prod) / `loki` (dev) | Hostname of the Loki instance for log shipping.                                                                                                           |
+| `LOKI_PORT`                   | fluent-bit                  | `3100`                           | Loki HTTP port.                                                                                                                                           |
+| `PODMAN_LOG_ROOT`             | fluent-bit                  | `/var/log/containers`            | Container log directory on the host. Must be discovered via `podman info` on macOS.                                                                       |
+| `RUST_LOG`                    | memvid-service              | `info`                           | Rust log level filter. Set to `debug` for verbose span logging.                                                                                           |
+| `LOG_LEVEL`                   | api-service                 | `INFO`                           | Python log level. Set to `DEBUG` for verbose logging.                                                                                                     |
 
 ### Retention Periods
 
-| Component | Retention | Config Location |
-| --- | --- | --- |
-| Tempo (traces) | 7 days | `deployment/observability/tempo.yaml` (`block_retention: 168h`) |
-| Loki (logs) | 7 days | `deployment/observability/loki.yaml` (`retention_period: 168h`) |
-| Prometheus (metrics) | Default (15 days) | `deployment/observability/prometheus.yml` |
+| Component            | Retention         | Config Location                                                 |
+| -------------------- | ----------------- | --------------------------------------------------------------- |
+| Tempo (traces)       | 7 days            | `deployment/observability/tempo.yaml` (`block_retention: 168h`) |
+| Loki (logs)          | 7 days            | `deployment/observability/loki.yaml` (`retention_period: 168h`) |
+| Prometheus (metrics) | Default (15 days) | `deployment/observability/prometheus.yml`                       |
 
 ### Scrape Targets
 
 Prometheus scrapes three targets every 15 seconds:
 
-| Job | Target (dev) | Target (prod) | Metrics Endpoint |
-| --- | --- | --- | --- |
-| `api-service` | `ai-resume-api:3000` | `host.containers.internal:3000` | `/metrics` |
-| `memvid-service` | `ai-resume-memvid:9090` | `host.containers.internal:50051` | `/metrics` |
-| `tempo-metrics` | `tempo:3200` | `tempo:3200` | `/metrics` |
+| Job              | Target (dev)            | Target (prod)                    | Metrics Endpoint |
+| ---------------- | ----------------------- | -------------------------------- | ---------------- |
+| `api-service`    | `ai-resume-api:3000`    | `host.containers.internal:3000`  | `/metrics`       |
+| `memvid-service` | `ai-resume-memvid:9090` | `host.containers.internal:50051` | `/metrics`       |
+| `tempo-metrics`  | `tempo:3200`            | `tempo:3200`                     | `/metrics`       |
 
 ### Grafana Data Sources
 
 Pre-provisioned in `deployment/observability/provisioning/datasources.yaml`:
 
-| Name | Type | UID | URL | Default |
-| --- | --- | --- | --- | --- |
-| Tempo | `tempo` | `tempo` | `http://tempo:3200` | Yes |
-| Prometheus | `prometheus` | `prometheus` | `http://prometheus:9090` | No |
-| Loki | `loki` | `loki` | `http://loki:3100` | No |
+| Name       | Type         | UID          | URL                      | Default |
+| ---------- | ------------ | ------------ | ------------------------ | ------- |
+| Tempo      | `tempo`      | `tempo`      | `http://tempo:3200`      | Yes     |
+| Prometheus | `prometheus` | `prometheus` | `http://prometheus:9090` | No      |
+| Loki       | `loki`       | `loki`       | `http://loki:3100`       | No      |
 
 ### OTel Collector Pipelines
 
 Configured in `deployment/observability/otel-collector.yaml`:
 
-| Pipeline | Receiver | Exporter | Description |
-| --- | --- | --- | --- |
+| Pipeline | Receiver                      | Exporter                            | Description                                        |
+| -------- | ----------------------------- | ----------------------------------- | -------------------------------------------------- |
 | `traces` | OTLP (gRPC :4317, HTTP :4318) | `otlp/tempo` (gRPC to `tempo:4317`) | Forwards traces from application services to Tempo |
-| `logs` | OTLP (gRPC :4317, HTTP :4318) | `loki` (HTTP push to `loki:3100`) | Forwards OTLP logs to Loki |
+| `logs`   | OTLP (gRPC :4317, HTTP :4318) | `loki` (HTTP push to `loki:3100`)   | Forwards OTLP logs to Loki                         |
 
 The HTTP receiver has CORS enabled (`allowed_origins: ["*"]`) to support
 browser-based OTLP export.

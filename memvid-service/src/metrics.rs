@@ -12,7 +12,7 @@ pub fn init_metrics() -> PrometheusHandle {
     // Register metric descriptions
     describe_histogram!(
         "memvid_search_latency_ms",
-        "Time taken for memvid search operations in milliseconds"
+        "Time taken for memvid search operations in milliseconds (labeled by method)"
     );
     describe_counter!(
         "memvid_search_total",
@@ -22,6 +22,14 @@ pub fn init_metrics() -> PrometheusHandle {
         "memvid_search_errors_total",
         "Total number of search errors"
     );
+    describe_histogram!(
+        "memvid_search_relevance_score",
+        "Cosine similarity scores for search results (0.0 to 1.0)"
+    );
+    describe_histogram!(
+        "memvid_search_chunks_returned",
+        "Number of chunks returned per search operation"
+    );
 
     // Build Prometheus exporter
     PrometheusBuilder::new()
@@ -29,9 +37,11 @@ pub fn init_metrics() -> PrometheusHandle {
         .expect("Failed to install Prometheus recorder")
 }
 
-/// Record a search latency measurement.
-pub fn record_search_latency(latency_ms: f64) {
-    histogram!("memvid_search_latency_ms").record(latency_ms);
+/// Record a search latency measurement with gRPC method label.
+///
+/// Method labels: `search`, `ask`, `get_state`, `unknown`
+pub fn record_search_latency(latency_ms: f64, method: &str) {
+    histogram!("memvid_search_latency_ms", "method" => method.to_owned()).record(latency_ms);
 }
 
 /// Increment the search count.
@@ -43,6 +53,16 @@ pub fn increment_search_count() {
 #[allow(dead_code)]
 pub fn increment_search_errors() {
     counter!("memvid_search_errors_total").increment(1);
+}
+
+/// Record a search relevance score (cosine similarity, 0.0 to 1.0).
+pub fn record_relevance_score(score: f64) {
+    histogram!("memvid_search_relevance_score").record(score);
+}
+
+/// Record the number of chunks returned from a search operation.
+pub fn record_chunks_returned(count: f64) {
+    histogram!("memvid_search_chunks_returned").record(count);
 }
 
 /// Create an Axum router for the metrics HTTP endpoint.
@@ -96,9 +116,23 @@ mod tests {
     fn test_record_search_latency() {
         // This should not panic even without metrics initialized
         // (metrics crate uses NoOp recorder by default)
-        record_search_latency(5.0);
-        record_search_latency(10.5);
-        record_search_latency(0.1);
+        record_search_latency(5.0, "search");
+        record_search_latency(10.5, "ask");
+        record_search_latency(0.1, "get_state");
+    }
+
+    #[test]
+    fn test_record_relevance_score() {
+        record_relevance_score(0.85);
+        record_relevance_score(0.0);
+        record_relevance_score(1.0);
+    }
+
+    #[test]
+    fn test_record_chunks_returned() {
+        record_chunks_returned(5.0);
+        record_chunks_returned(0.0);
+        record_chunks_returned(20.0);
     }
 
     #[test]

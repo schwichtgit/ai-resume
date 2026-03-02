@@ -69,53 +69,22 @@ fi
 
 echo ""
 echo "=== API Service Checks (api-service/) ==="
-if [[ -d "$PROJECT_ROOT/api-service" ]]; then
-    if [[ -d "$PROJECT_ROOT/api-service/.venv" ]]; then
-        VENV_PYTHON="$PROJECT_ROOT/api-service/.venv/bin/python"
-        VENV_RUFF="$PROJECT_ROOT/api-service/.venv/bin/ruff"
-
-        if [[ -x "$VENV_RUFF" ]]; then
-            run_check "Ruff lint" "$VENV_RUFF check ." "$PROJECT_ROOT/api-service" || FAILED=$((FAILED + 1))
-            run_check "Ruff format" "$VENV_RUFF format --check ." "$PROJECT_ROOT/api-service" || FAILED=$((FAILED + 1))
-        else
-            echo "  Skipping ruff: not installed in venv"
-        fi
-
-        run_optional_check "Pytest" "$VENV_PYTHON -m pytest --tb=no -q" "$PROJECT_ROOT/api-service" || WARNINGS=$((WARNINGS + 1))
-    else
-        echo "  Skipping: .venv not found"
-    fi
+if [[ -d "$PROJECT_ROOT/api-service" ]] && command -v uv &> /dev/null; then
+    run_check "Ruff lint" "uv run ruff check ." "$PROJECT_ROOT/api-service" || FAILED=$((FAILED + 1))
+    run_check "Ruff format" "uv run ruff format --check ." "$PROJECT_ROOT/api-service" || FAILED=$((FAILED + 1))
+    run_check "Mypy" "uv run mypy ." "$PROJECT_ROOT/api-service" || FAILED=$((FAILED + 1))
+    run_optional_check "Pytest" "uv run pytest --tb=no -q" "$PROJECT_ROOT/api-service" || WARNINGS=$((WARNINGS + 1))
 else
-    echo "  Skipping: api-service directory not found"
+    echo "  Skipping: api-service directory not found or uv not installed"
 fi
 
 echo ""
 echo "=== Ingest Checks (ingest/) ==="
-if [[ -d "$PROJECT_ROOT/ingest" ]]; then
-    if [[ -d "$PROJECT_ROOT/ingest/.venv" ]]; then
-        VENV_RUFF="$PROJECT_ROOT/ingest/.venv/bin/ruff"
-
-        # Fall back to system ruff if not in venv
-        if [[ ! -x "$VENV_RUFF" ]]; then
-            for candidate in "$HOME/.local/bin/ruff" "$(command -v ruff 2>/dev/null)"; do
-                if [[ -x "$candidate" ]]; then
-                    VENV_RUFF="$candidate"
-                    break
-                fi
-            done
-        fi
-
-        if [[ -x "$VENV_RUFF" ]]; then
-            run_check "Ruff lint" "$VENV_RUFF check ." "$PROJECT_ROOT/ingest" || FAILED=$((FAILED + 1))
-            run_check "Ruff format" "$VENV_RUFF format --check ." "$PROJECT_ROOT/ingest" || FAILED=$((FAILED + 1))
-        else
-            echo "  Skipping ruff: not installed in venv or system"
-        fi
-    else
-        echo "  Skipping: .venv not found"
-    fi
+if [[ -d "$PROJECT_ROOT/ingest" ]] && command -v uv &> /dev/null; then
+    run_check "Ruff lint" "uv run ruff check ." "$PROJECT_ROOT/ingest" || FAILED=$((FAILED + 1))
+    run_check "Ruff format" "uv run ruff format --check ." "$PROJECT_ROOT/ingest" || FAILED=$((FAILED + 1))
 else
-    echo "  Skipping: ingest directory not found"
+    echo "  Skipping: ingest directory not found or uv not installed"
 fi
 
 echo ""

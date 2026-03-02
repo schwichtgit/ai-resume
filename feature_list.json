@@ -211,10 +211,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "pydantic-models",
-        "toml-config-schema"
-      ]
+      "dependencies": ["pydantic-models", "toml-config-schema"]
     },
     {
       "id": "memvid-service-container",
@@ -229,10 +226,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "proto-definition",
-        "real-memvid-searcher"
-      ]
+      "dependencies": ["proto-definition", "real-memvid-searcher"]
     },
     {
       "id": "readonly-containers",
@@ -491,9 +485,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "markdown-frontmatter-parsing"
-      ]
+      "dependencies": ["markdown-frontmatter-parsing"]
     },
     {
       "id": "experience-chunk-parsing",
@@ -510,9 +502,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "section-extraction"
-      ]
+      "dependencies": ["section-extraction"]
     },
     {
       "id": "skills-parsing",
@@ -527,9 +517,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "section-extraction"
-      ]
+      "dependencies": ["section-extraction"]
     },
     {
       "id": "faq-parsing",
@@ -544,9 +532,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "section-extraction"
-      ]
+      "dependencies": ["section-extraction"]
     },
     {
       "id": "failure-story-parsing",
@@ -560,9 +546,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "section-extraction"
-      ]
+      "dependencies": ["section-extraction"]
     },
     {
       "id": "fit-assessment-parsing",
@@ -579,9 +563,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "section-extraction"
-      ]
+      "dependencies": ["section-extraction"]
     },
     {
       "id": "semantic-embedding",
@@ -620,9 +602,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "semantic-embedding"
-      ]
+      "dependencies": ["semantic-embedding"]
     },
     {
       "id": "ingest-retrieval-verification",
@@ -637,9 +617,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "mv2-file-creation"
-      ]
+      "dependencies": ["mv2-file-creation"]
     },
     {
       "id": "ingest-edge-cases",
@@ -682,9 +660,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "mv2-file-creation"
-      ]
+      "dependencies": ["mv2-file-creation"]
     },
     {
       "id": "profile-api",
@@ -708,9 +684,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-in-memvid"
-      ]
+      "dependencies": ["profile-in-memvid"]
     },
     {
       "id": "suggested-questions-api",
@@ -727,9 +701,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-api"
-      ]
+      "dependencies": ["profile-api"]
     },
     {
       "id": "chat-endpoint",
@@ -774,10 +746,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "chat-endpoint",
-        "openrouter-client"
-      ]
+      "dependencies": ["chat-endpoint", "openrouter-client"]
     },
     {
       "id": "mock-streaming",
@@ -793,9 +762,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "streaming-sse"
-      ]
+      "dependencies": ["streaming-sse"]
     },
     {
       "id": "openrouter-client",
@@ -841,9 +808,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "pydantic-models"
-      ]
+      "dependencies": ["pydantic-models"]
     },
     {
       "id": "rate-limiting",
@@ -906,10 +871,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "mock-searcher",
-        "real-memvid-searcher"
-      ]
+      "dependencies": ["mock-searcher", "real-memvid-searcher"]
     },
     {
       "id": "mock-searcher",
@@ -943,9 +905,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "mv2-file-creation"
-      ]
+      "dependencies": ["mv2-file-creation"]
     },
     {
       "id": "prometheus-metrics-api",
@@ -991,9 +951,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "trace-id-propagation"
-      ]
+      "dependencies": ["trace-id-propagation"]
     },
     {
       "id": "structured-logging-memvid",
@@ -1039,9 +997,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "prometheus-metrics-api"
-      ]
+      "dependencies": ["prometheus-metrics-api"]
     },
     {
       "id": "input-guardrails",
@@ -1063,9 +1019,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "chat-endpoint"
-      ]
+      "dependencies": ["chat-endpoint"]
     },
     {
       "id": "output-guardrails",
@@ -1089,9 +1043,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "chat-endpoint"
-      ]
+      "dependencies": ["chat-endpoint"]
     },
     {
       "id": "system-prompt-hardening",
@@ -1107,10 +1059,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-in-memvid",
-        "profile-api"
-      ]
+      "dependencies": ["profile-in-memvid", "profile-api"]
     },
     {
       "id": "api-client-frontend",
@@ -1148,9 +1097,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "api-client-frontend"
-      ]
+      "dependencies": ["api-client-frontend"]
     },
     {
       "id": "profile-hook",
@@ -1167,9 +1114,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "api-client-frontend"
-      ]
+      "dependencies": ["api-client-frontend"]
     },
     {
       "id": "ai-chat-component",
@@ -1218,9 +1163,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-hook"
-      ]
+      "dependencies": ["profile-hook"]
     },
     {
       "id": "experience-component",
@@ -1241,9 +1184,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-hook"
-      ]
+      "dependencies": ["profile-hook"]
     },
     {
       "id": "fit-assessment-component",
@@ -1267,10 +1208,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-hook",
-        "assess-fit-endpoint"
-      ]
+      "dependencies": ["profile-hook", "assess-fit-endpoint"]
     },
     {
       "id": "header-component",
@@ -1286,9 +1224,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-hook"
-      ]
+      "dependencies": ["profile-hook"]
     },
     {
       "id": "footer-component",
@@ -1304,9 +1240,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-hook"
-      ]
+      "dependencies": ["profile-hook"]
     },
     {
       "id": "dynamic-meta-tags",
@@ -1324,9 +1258,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-hook"
-      ]
+      "dependencies": ["profile-hook"]
     },
     {
       "id": "seo-lua-handler",
@@ -1347,9 +1279,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-api"
-      ]
+      "dependencies": ["profile-api"]
     },
     {
       "id": "assess-fit-endpoint",
@@ -1370,11 +1300,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "chat-endpoint",
-        "role-classifier",
-        "grpc-memvid-client"
-      ]
+      "dependencies": ["chat-endpoint", "role-classifier", "grpc-memvid-client"]
     },
     {
       "id": "role-classifier",
@@ -1410,9 +1336,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "openrouter-client"
-      ]
+      "dependencies": ["openrouter-client"]
     },
     {
       "id": "pydantic-models",
@@ -1454,11 +1378,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-in-memvid",
-        "profile-api",
-        "profile-hook"
-      ]
+      "dependencies": ["profile-in-memvid", "profile-api", "profile-hook"]
     },
     {
       "id": "fit-assessment-ui-tabs",
@@ -1475,10 +1395,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "fit-assessment-component",
-        "assess-fit-endpoint"
-      ]
+      "dependencies": ["fit-assessment-component", "assess-fit-endpoint"]
     },
     {
       "id": "error-display-retry",
@@ -1494,9 +1411,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "streaming-chat-hook"
-      ]
+      "dependencies": ["streaming-chat-hook"]
     },
     {
       "id": "loading-states",
@@ -1512,10 +1427,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "profile-hook",
-        "streaming-chat-hook"
-      ]
+      "dependencies": ["profile-hook", "streaming-chat-hook"]
     },
     {
       "id": "cancel-streaming",
@@ -1531,9 +1443,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "streaming-chat-hook"
-      ]
+      "dependencies": ["streaming-chat-hook"]
     },
     {
       "id": "clear-conversation",
@@ -1550,9 +1460,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "streaming-chat-hook"
-      ]
+      "dependencies": ["streaming-chat-hook"]
     },
     {
       "id": "suggested-questions-ui",
@@ -1569,10 +1477,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "api-client-frontend",
-        "suggested-questions-api"
-      ]
+      "dependencies": ["api-client-frontend", "suggested-questions-api"]
     },
     {
       "id": "backend-health-indicator",
@@ -1588,9 +1493,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "api-client-frontend"
-      ]
+      "dependencies": ["api-client-frontend"]
     },
     {
       "id": "ask-mode-reranking",
@@ -1635,9 +1538,7 @@
         "Run 'grep -rn \"arm64\\|aarch64\\|multi-arch\" scripts/build-all.sh' and verify multi-architecture build support for edge devices"
       ],
       "passes": true,
-      "dependencies": [
-        "mv2-file-creation"
-      ]
+      "dependencies": ["mv2-file-creation"]
     },
     {
       "id": "error-boundaries",
@@ -1719,10 +1620,7 @@
         "Verify page layout adjusts without blank space when a section is hidden"
       ],
       "passes": true,
-      "dependencies": [
-        "profile-api",
-        "profile-hook"
-      ]
+      "dependencies": ["profile-api", "profile-hook"]
     },
     {
       "id": "vulnerability-scanning",
@@ -1738,9 +1636,7 @@
         "Grep .github/workflows/ for 'grype' or 'trivy' to verify scanner integration in CI"
       ],
       "passes": true,
-      "dependencies": [
-        "mv2-file-creation"
-      ]
+      "dependencies": ["mv2-file-creation"]
     },
     {
       "id": "load-testing",
@@ -1758,10 +1654,7 @@
         "Verify OpenRouter rate limits are handled gracefully with queuing or backoff, not 5xx errors"
       ],
       "passes": true,
-      "dependencies": [
-        "chat-endpoint",
-        "rate-limiting"
-      ]
+      "dependencies": ["chat-endpoint", "rate-limiting"]
     },
     {
       "id": "performance-profiling",
@@ -1777,10 +1670,7 @@
         "Verify profiling report highlights specific bottleneck with recommendation when P95 exceeds PRD targets"
       ],
       "passes": true,
-      "dependencies": [
-        "chat-endpoint",
-        "grpc-memvid-server"
-      ]
+      "dependencies": ["chat-endpoint", "grpc-memvid-server"]
     },
     {
       "id": "injection-test-scenarios",
@@ -1819,11 +1709,7 @@
         "Run regex scan on collected responses for patterns like 'Frame \\d+', 'chunk', 'embedding', 'vector' in structural context"
       ],
       "passes": true,
-      "dependencies": [
-        "output-guardrails",
-        "streaming-sse",
-        "chat-endpoint"
-      ]
+      "dependencies": ["output-guardrails", "streaming-sse", "chat-endpoint"]
     },
     {
       "id": "documentation-audit",
@@ -1953,10 +1839,7 @@
         "Grep frontend/src/components/AIChat.tsx for 'memvid_connected' or 'degraded' to verify status propagation handling"
       ],
       "passes": true,
-      "dependencies": [
-        "backend-health-indicator",
-        "profile-api"
-      ]
+      "dependencies": ["backend-health-indicator", "profile-api"]
     },
     {
       "id": "session-clear-endpoint",
@@ -1973,10 +1856,7 @@
         "Grep api-service/ai_resume_api/main.py for 'session' and 'clear' to verify route definition"
       ],
       "passes": true,
-      "dependencies": [
-        "session-management",
-        "clear-conversation"
-      ]
+      "dependencies": ["session-management", "clear-conversation"]
     },
     {
       "id": "ingest-container",
@@ -1996,9 +1876,7 @@
         "Run 'grep -n \"ENTRYPOINT\\|CMD\" ingest/Dockerfile' and verify the container has a proper entrypoint for the ingest pipeline"
       ],
       "passes": true,
-      "dependencies": [
-        "mv2-file-creation"
-      ]
+      "dependencies": ["mv2-file-creation"]
     },
     {
       "id": "tailwind-design-tokens",
@@ -2026,9 +1904,7 @@
         "Verify stagger utilities .stagger-1 through .stagger-4 apply animation-delay from 0.1s to 0.4s"
       ],
       "passes": true,
-      "dependencies": [
-        "tailwind-design-tokens"
-      ],
+      "dependencies": ["tailwind-design-tokens"],
       "verified": true
     },
     {
@@ -2042,9 +1918,7 @@
         "Verify tailwindcss-animate plugin is registered in tailwind.config.ts for shadcn animation support"
       ],
       "passes": true,
-      "dependencies": [
-        "tailwind-design-tokens"
-      ],
+      "dependencies": ["tailwind-design-tokens"],
       "verified": true
     },
     {
@@ -2058,10 +1932,7 @@
         "Verify frontend/src/App.tsx defines / as the sole content route with a * catch-all for 404"
       ],
       "passes": true,
-      "dependencies": [
-        "tailwind-design-tokens",
-        "shadcn-ui-components"
-      ],
+      "dependencies": ["tailwind-design-tokens", "shadcn-ui-components"],
       "verified": true
     },
     {
@@ -2167,10 +2038,7 @@
         "Verify script reports individual check pass/fail status to stdout"
       ],
       "passes": true,
-      "dependencies": [
-        "mv2-file-creation",
-        "profile-in-memvid"
-      ],
+      "dependencies": ["mv2-file-creation", "profile-in-memvid"],
       "verified": true
     },
     {
@@ -2209,10 +2077,7 @@
         "If any category scores FAIL, the overall test fails with a non-zero exit code"
       ],
       "passes": true,
-      "dependencies": [
-        "mv2-file-creation",
-        "ingest-retrieval-verification"
-      ]
+      "dependencies": ["mv2-file-creation", "ingest-retrieval-verification"]
     },
     {
       "id": "outcome-factual-accuracy",
@@ -2229,10 +2094,7 @@
         "Test fails with non-zero exit code if hallucination count > 0"
       ],
       "passes": true,
-      "dependencies": [
-        "chat-endpoint",
-        "profile-api"
-      ]
+      "dependencies": ["chat-endpoint", "profile-api"]
     },
     {
       "id": "outcome-negative-testing",
@@ -2248,11 +2110,7 @@
         "Test fails with non-zero exit code if any out-of-scope query receives a fabricated answer"
       ],
       "passes": true,
-      "dependencies": [
-        "input-guardrails",
-        "output-guardrails",
-        "chat-endpoint"
-      ]
+      "dependencies": ["input-guardrails", "output-guardrails", "chat-endpoint"]
     },
     {
       "id": "outcome-latency-nfr",
@@ -2288,10 +2146,7 @@
         "Replace the .mv2 file with a different candidate's data, restart API, and verify the profile endpoint reflects the new candidate (not cached old data)"
       ],
       "passes": true,
-      "dependencies": [
-        "data-portability",
-        "mv2-file-creation"
-      ]
+      "dependencies": ["data-portability", "mv2-file-creation"]
     },
     {
       "id": "outcome-container-deployment",
@@ -2348,10 +2203,7 @@
         "Generate an honesty report: limitation queried, response summary, acknowledged (Y/N), fabricated compensation (Y/N)"
       ],
       "passes": true,
-      "dependencies": [
-        "chat-endpoint",
-        "skills-parsing"
-      ]
+      "dependencies": ["chat-endpoint", "skills-parsing"]
     },
     {
       "id": "outcome-security-guardrails",
@@ -2411,9 +2263,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "toml-config-schema"
-      ]
+      "dependencies": ["toml-config-schema"]
     },
     {
       "id": "grpc-correlation-metadata",
@@ -2433,9 +2283,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "upstream-proxy-ips"
-      ]
+      "dependencies": ["upstream-proxy-ips"]
     },
     {
       "id": "os-independent-protoc",
@@ -2452,9 +2300,7 @@
         "Run 'docker build --target builder -t memvid-builder memvid-service/' from the repo root (with proto/ copied) and verify the build succeeds including tonic-build code generation"
       ],
       "passes": false,
-      "dependencies": [
-        "memvid-service-container"
-      ]
+      "dependencies": ["memvid-service-container"]
     },
     {
       "id": "memvid-distroless-runtime",
@@ -2474,10 +2320,7 @@
         "Run 'docker run --rm memvid-test --health; echo $?' and verify exit code is 1 (no server running, expected failure proves the flag works)"
       ],
       "passes": false,
-      "dependencies": [
-        "memvid-service-container",
-        "os-independent-protoc"
-      ]
+      "dependencies": ["memvid-service-container", "os-independent-protoc"]
     },
     {
       "id": "cargo-auditable-sbom",
@@ -2495,9 +2338,7 @@
         "Run 'rm -f /tmp/memvid-binary' to clean up the extracted binary"
       ],
       "passes": false,
-      "dependencies": [
-        "memvid-service-container"
-      ]
+      "dependencies": ["memvid-service-container"]
     },
     {
       "id": "trivy-severity-gate",
@@ -2517,10 +2358,7 @@
         "Run 'grep -n trivyignore .github/workflows/security.yml' and verify the Trivy action references the .trivyignore file"
       ],
       "passes": false,
-      "dependencies": [
-        "vulnerability-scanning",
-        "cargo-auditable-sbom"
-      ]
+      "dependencies": ["vulnerability-scanning", "cargo-auditable-sbom"]
     },
     {
       "id": "release-workflow",
@@ -2543,10 +2381,7 @@
         "Run 'grep -n \"gh release create\" .github/workflows/release.yml' and verify a GitHub Release is created"
       ],
       "passes": false,
-      "dependencies": [
-        "ci-workflows",
-        "build-automation"
-      ]
+      "dependencies": ["ci-workflows", "build-automation"]
     },
     {
       "id": "changelog-tracking",
@@ -2579,9 +2414,7 @@
         "Run 'grep -n \"ai-resume-frontend\\|ai-resume-api\\|ai-resume-memvid\\|ai-resume-ingest\" scripts/publish-containers.sh' and verify all 4 image names are handled"
       ],
       "passes": false,
-      "dependencies": [
-        "release-workflow"
-      ]
+      "dependencies": ["release-workflow"]
     },
     {
       "id": "release-gate-ci-enforcement",
@@ -2598,10 +2431,7 @@
         "Run 'grep -n \"CHANGELOG.md missing\\|changelog.*missing\\|missing.*entry\" .github/workflows/release.yml' and verify a clear error message for missing changelog entries"
       ],
       "passes": false,
-      "dependencies": [
-        "release-workflow",
-        "changelog-tracking"
-      ]
+      "dependencies": ["release-workflow", "changelog-tracking"]
     },
     {
       "id": "release-trivy-scan",
@@ -2619,10 +2449,7 @@
         "Run 'grep -n \"security-events: write\" .github/workflows/release.yml' and verify the permission for SARIF upload is present"
       ],
       "passes": false,
-      "dependencies": [
-        "release-workflow",
-        "trivy-severity-gate"
-      ]
+      "dependencies": ["release-workflow", "trivy-severity-gate"]
     },
     {
       "id": "ci-uv-python",
@@ -2641,9 +2468,7 @@
       ],
       "passes": true,
       "verified": true,
-      "dependencies": [
-        "ci-workflows"
-      ]
+      "dependencies": ["ci-workflows"]
     },
     {
       "id": "publish-ci-script",
@@ -2663,9 +2488,7 @@
         "Verify the script uses skopeo copy --all for server-side re-tagging (no re-push of layers)"
       ],
       "passes": false,
-      "dependencies": [
-        "ci-workflows"
-      ]
+      "dependencies": ["ci-workflows"]
     },
     {
       "id": "ci-container-build",
@@ -2687,10 +2510,7 @@
         "Verify OCI annotations (org.opencontainers.image.*) are set in the podman build command"
       ],
       "passes": false,
-      "dependencies": [
-        "ci-workflows",
-        "publish-ci-script"
-      ]
+      "dependencies": ["ci-workflows", "publish-ci-script"]
     },
     {
       "id": "release-native-runners",
@@ -2761,9 +2581,7 @@
         "Verify publish-ci.sh verify checks both ci.yml and release.yml workflow identities"
       ],
       "passes": true,
-      "dependencies": [
-        "digest-handoff"
-      ],
+      "dependencies": ["digest-handoff"],
       "verified": true
     },
     {
@@ -2781,10 +2599,7 @@
         "Verify syft SBOM generation failure is blocking (no continue-on-error)"
       ],
       "passes": true,
-      "dependencies": [
-        "ci-container-build",
-        "digest-handoff"
-      ],
+      "dependencies": ["ci-container-build", "digest-handoff"],
       "verified": true
     },
     {
@@ -2804,10 +2619,7 @@
         "Run 'grep -c verify-signatures docs/CI-CONTAINER-FLOW.md' and verify at least 1 match (verification gate documented)"
       ],
       "passes": true,
-      "dependencies": [
-        "cosign-signing",
-        "sbom-generation"
-      ],
+      "dependencies": ["cosign-signing", "sbom-generation"],
       "verified": true
     },
     {
@@ -2824,9 +2636,7 @@
         "Verify summary write is non-blocking: grep for \"|| true\" after GITHUB_STEP_SUMMARY writes"
       ],
       "passes": false,
-      "dependencies": [
-        "ci-workflows"
-      ]
+      "dependencies": ["ci-workflows"]
     },
     {
       "id": "coverage-summaries",
@@ -2841,9 +2651,7 @@
         "Verify summary write is non-blocking: all coverage summary writes use || true"
       ],
       "passes": false,
-      "dependencies": [
-        "service-test-summaries"
-      ]
+      "dependencies": ["service-test-summaries"]
     },
     {
       "id": "container-build-summaries",
@@ -2859,9 +2667,7 @@
         "Verify summary write is non-blocking: container-build summary writes use || true"
       ],
       "passes": false,
-      "dependencies": [
-        "ci-container-build"
-      ]
+      "dependencies": ["ci-container-build"]
     },
     {
       "id": "summary-job-aggregation",
@@ -2930,9 +2736,7 @@
         "Run webmcp tests: cd frontend && npm test -- src/lib/__tests__/webmcp.test.ts"
       ],
       "passes": false,
-      "dependencies": [
-        "mcp-server-remote"
-      ]
+      "dependencies": ["mcp-server-remote"]
     },
     {
       "id": "version-injection-api",
@@ -3011,10 +2815,7 @@
         "Verify responsive layout classes: grep -c 'md:flex-row\\|md:text-left\\|flex-col' frontend/src/components/Footer.tsx >= 1"
       ],
       "passes": false,
-      "dependencies": [
-        "header-about-dialog",
-        "footer-component"
-      ]
+      "dependencies": ["header-about-dialog", "footer-component"]
     },
     {
       "id": "observability-stack-deployment",
@@ -3027,17 +2828,18 @@
         "Verify Tempo config exists: test -f deployment/observability/tempo.yaml",
         "Verify Prometheus config exists: test -f deployment/observability/prometheus.yml",
         "Verify Loki config exists: test -f deployment/observability/loki.yaml",
-        "Verify Grafana datasource provisioning exists: test -f deployment/observability/provisioning/datasources.yaml",
-        "Verify Grafana dashboard provisioning exists: test -f deployment/observability/provisioning/dashboards.yaml",
+        "Verify Grafana datasource provisioning exists: test -f deployment/observability/provisioning/datasources/datasources.yaml",
+        "Verify Grafana dashboard provisioning exists: test -f deployment/observability/provisioning/dashboards/dashboards.yaml",
         "Verify compose defines all 5 services: grep -c 'otel-collector\\|grafana\\|tempo\\|prometheus\\|loki' deployment/observability/compose.yaml >= 5",
         "Verify OTEL Collector receives OTLP gRPC on 4317: grep -c '4317' deployment/observability/otel-collector.yaml >= 1",
         "Verify OTEL Collector receives OTLP HTTP on 4318: grep -c '4318' deployment/observability/otel-collector.yaml >= 1",
         "Verify OTEL Collector has CORS configuration: grep -c 'cors' deployment/observability/otel-collector.yaml >= 1",
         "Verify Tempo has retention configured: grep -c 'retention\\|compaction' deployment/observability/tempo.yaml >= 1",
-        "Verify Grafana anonymous access enabled: grep -c 'anonymous' deployment/observability/compose.yaml >= 1 || grep -c 'anonymous' deployment/observability/provisioning/datasources.yaml >= 1"
+        "Verify Grafana anonymous access enabled: grep -ic 'anonymous' deployment/observability/compose.yaml >= 1"
       ],
-      "passes": false,
-      "dependencies": []
+      "passes": true,
+      "dependencies": [],
+      "verified": true
     },
     {
       "id": "fluent-bit-log-shipper",
@@ -3050,15 +2852,14 @@
         "Verify Fluent Bit uses tail input: grep -c 'tail' deployment/observability/fluent-bit.conf >= 1",
         "Verify Fluent Bit outputs to Loki: grep -c 'loki\\|3100' deployment/observability/fluent-bit.conf >= 1",
         "Verify PODMAN_LOG_ROOT env var referenced: grep -c 'PODMAN_LOG_ROOT' deployment/compose.yaml >= 1",
-        "Verify LOKI_ENDPOINT env var referenced: grep -c 'LOKI_ENDPOINT' deployment/compose.yaml >= 1 || grep -c 'LOKI_ENDPOINT' deployment/observability/fluent-bit.conf >= 1",
+        "Verify Loki connection env vars referenced: grep -c 'LOKI_HOST\\|LOKI_PORT' deployment/compose.yaml >= 1",
         "Verify Mem_Buf_Limit configured: grep -c 'Mem_Buf_Limit' deployment/observability/fluent-bit.conf >= 1",
         "Verify container_name label enrichment: grep -c 'container_name\\|container' deployment/observability/fluent-bit.conf >= 1",
         "Verify read-only volume mount: grep -c 'ro\\|read_only' deployment/compose.yaml >= 1"
       ],
-      "passes": false,
-      "dependencies": [
-        "observability-stack-deployment"
-      ]
+      "passes": true,
+      "dependencies": ["observability-stack-deployment"],
+      "verified": true
     },
     {
       "id": "combined-dev-compose",
@@ -3105,13 +2906,14 @@
         "Verify OTel test file exists: find api-service/tests -name '*otel*' -o -name '*tracing*' | wc -l >= 1",
         "Run OTel tests: cd api-service && source .venv/bin/activate && python -m pytest tests/ -k 'otel or tracing or span' -v"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "observability-stack-deployment",
         "chat-endpoint",
         "assess-fit-endpoint",
         "mcp-server-remote"
-      ]
+      ],
+      "verified": true
     },
     {
       "id": "otel-rust-trace-export",
@@ -3126,15 +2928,14 @@
         "Verify traceparent extraction from gRPC metadata: grep -c 'traceparent' memvid-service/src/**/*.rs >= 1",
         "Verify conditional OTel initialization: grep -c 'OTEL_EXPORTER_OTLP_ENDPOINT' memvid-service/src/*.rs >= 1",
         "Verify existing #[instrument] annotations unchanged: grep -c 'instrument' memvid-service/src/grpc/service.rs >= 2",
-        "Verify Prometheus metrics port 9090 unchanged: grep -c '9090' memvid-service/src/metrics.rs >= 1",
+        "Verify Prometheus metrics port 9090 unchanged: grep -c '9090' memvid-service/src/config.rs >= 1",
         "Verify tracing-test in dev-dependencies: grep -c 'tracing-test' memvid-service/Cargo.toml >= 1",
         "Build memvid-service: cd memvid-service && cargo check 2>&1 | tail -1",
         "Run memvid-service tests: cd memvid-service && cargo test 2>&1 | tail -5"
       ],
-      "passes": false,
-      "dependencies": [
-        "observability-stack-deployment"
-      ]
+      "passes": true,
+      "dependencies": ["observability-stack-deployment"],
+      "verified": true
     },
     {
       "id": "otel-frontend-browser-tracing",
@@ -3155,11 +2956,12 @@
         "Run OTel frontend tests: cd frontend && npm test -- --run src/**/otel* src/**/telemetry* src/**/tracing* 2>&1 | tail -5",
         "Verify bundle includes OTel: cd frontend && npm run build 2>&1 | tail -3"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "observability-stack-deployment",
         "otel-python-instrumentation"
-      ]
+      ],
+      "verified": true
     },
     {
       "id": "grafana-dashboards",
@@ -3179,12 +2981,13 @@
         "Verify dashboards reference Tempo data source: grep -c 'Tempo\\|tempo' deployment/observability/dashboards/request-waterfall.json >= 1",
         "Verify dashboards reference Prometheus data source: grep -c 'Prometheus\\|prometheus' deployment/observability/dashboards/endpoint-overview.json >= 1"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "observability-stack-deployment",
         "otel-python-instrumentation",
         "otel-rust-trace-export"
-      ]
+      ],
+      "verified": true
     },
     {
       "id": "trace-context-propagation-e2e",
@@ -3203,12 +3006,13 @@
         "Run Python trace propagation tests: cd api-service && source .venv/bin/activate && python -m pytest tests/ -k 'propagat or trace_context or traceparent' -v",
         "Verify frontend adds traceparent to fetch: grep -c 'traceparent' frontend/src/lib/api-client.ts >= 1"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "otel-python-instrumentation",
         "otel-rust-trace-export",
         "otel-frontend-browser-tracing"
-      ]
+      ],
+      "verified": true
     },
     {
       "id": "observability-documentation",
@@ -3248,7 +3052,7 @@
         "Verify glossary: grep -c \"[Gg]lossary\" docs/OBSERVABILITY.md >= 1",
         "Verify CLAUDE.md cross-reference: grep -c \"OBSERVABILITY\" CLAUDE.md >= 1"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "observability-stack-deployment",
         "fluent-bit-log-shipper",
@@ -3258,6 +3062,125 @@
         "otel-frontend-browser-tracing",
         "grafana-dashboards",
         "trace-context-propagation-e2e"
+      ],
+      "verified": true
+    },
+    {
+      "id": "grpc-method-latency-breakdown",
+      "category": "functional",
+      "title": "gRPC Method Latency Breakdown in Grafana Dashboard",
+      "description": "Add method label to memvid-service Prometheus histograms and update the Latency Breakdown dashboard with gRPC method selector and per-method latency panels for search, ask, and get_state.",
+      "testing_steps": [
+        "Verify memvid-service emits method label: grep -c 'method' memvid-service/src/metrics.rs >= 1",
+        "Verify search method labeled: grep -c '\"search\"' memvid-service/src/grpc/service.rs >= 1",
+        "Verify ask method labeled: grep -c '\"ask\"' memvid-service/src/grpc/service.rs >= 1",
+        "Verify get_state method labeled: grep -c '\"get_state\"' memvid-service/src/grpc/service.rs >= 1",
+        "Verify dashboard has method template variable: grep -c '\"method\"' deployment/observability/dashboards/latency-breakdown.json >= 1",
+        "Verify per-method latency panel exists: grep -c 'Method Latency\\|gRPC.*Method' deployment/observability/dashboards/latency-breakdown.json >= 1",
+        "Build memvid-service: cd memvid-service && cargo check 2>&1 | tail -1",
+        "Validate dashboard JSON: jq . deployment/observability/dashboards/latency-breakdown.json > /dev/null"
+      ],
+      "passes": false,
+      "dependencies": ["grafana-dashboards", "otel-rust-trace-export"]
+    },
+    {
+      "id": "search-relevance-metrics",
+      "category": "functional",
+      "title": "Search Relevance Cosine Similarity Metrics",
+      "description": "Instrument memvid-service to emit cosine similarity scores as Prometheus histograms (memvid_search_relevance_score, memvid_search_chunks_returned) and OTel span attributes for trace-level correlation.",
+      "testing_steps": [
+        "Verify relevance score metric defined: grep -c 'relevance_score\\|relevance' memvid-service/src/metrics.rs >= 1",
+        "Verify chunks returned metric defined: grep -c 'chunks_returned\\|chunks_count' memvid-service/src/metrics.rs >= 1",
+        "Verify relevance recorded in search handler: grep -c 'relevance' memvid-service/src/grpc/service.rs >= 1",
+        "Verify span attributes for relevance: grep -c 'max_relevance\\|min_relevance\\|avg_relevance\\|chunks_returned' memvid-service/src/grpc/service.rs >= 2",
+        "Verify Prometheus exposition includes new metrics: grep -c 'memvid_search_relevance\\|memvid_search_chunks' memvid-service/src/metrics.rs >= 1",
+        "Build memvid-service: cd memvid-service && cargo check 2>&1 | tail -1",
+        "Run memvid-service tests: cd memvid-service && cargo test 2>&1 | tail -5",
+        "Verify Prometheus scrape config includes memvid: grep -c 'memvid\\|9090' deployment/observability/prometheus.yml >= 1"
+      ],
+      "passes": false,
+      "dependencies": ["otel-rust-trace-export"]
+    },
+    {
+      "id": "success-rate-kpi-panel",
+      "category": "functional",
+      "title": "Success Rate Traffic-Light KPI Panel in Endpoint Overview",
+      "description": "Add traffic-light stat panels to the Endpoint Overview Grafana dashboard showing overall success rate with threshold coloring (green >= 99%, yellow >= 95%, red < 95%), error rate gauge, and total error count. Health checks excluded via PromQL filter.",
+      "testing_steps": [
+        "Verify success rate panel exists: grep -c 'Success Rate\\|success_rate' deployment/observability/dashboards/endpoint-overview.json >= 1",
+        "Verify error count panel exists: grep -c 'Error Count\\|Total Errors' deployment/observability/dashboards/endpoint-overview.json >= 1",
+        "Verify threshold coloring configured: grep -c 'threshold' deployment/observability/dashboards/endpoint-overview.json >= 2",
+        "Verify stat or gauge panel type: grep -c '\"stat\"\\|\"gauge\"' deployment/observability/dashboards/endpoint-overview.json >= 1",
+        "Verify health check exclusion in PromQL: grep -c 'health' deployment/observability/dashboards/endpoint-overview.json >= 1",
+        "Validate dashboard JSON: jq . deployment/observability/dashboards/endpoint-overview.json > /dev/null"
+      ],
+      "passes": false,
+      "dependencies": ["grafana-dashboards"]
+    },
+    {
+      "id": "sse-streaming-latency-metrics",
+      "category": "functional",
+      "title": "SSE Streaming TTFT and Duration Metrics",
+      "description": "Instrument the frontend useStreamingChat hook to measure time-to-first-token (TTFT) from fetch resolution to first SSE data event, and total streaming duration as OTel span attributes. Add TTFT and streaming duration panels to the Latency Breakdown dashboard.",
+      "testing_steps": [
+        "Verify TTFT tracking in streaming hook: grep -c 'time_to_first_token\\|ttft\\|firstToken' frontend/src/hooks/useStreamingChat.ts >= 1",
+        "Verify streaming duration tracking: grep -c 'streaming_duration\\|streamDuration' frontend/src/hooks/useStreamingChat.ts >= 1",
+        "Verify span attributes set: grep -c 'setAttribute\\|setAttributes\\|addEvent' frontend/src/hooks/useStreamingChat.ts >= 1",
+        "Verify user cancellation span attribute: grep -c 'user_cancelled\\|userCancelled' frontend/src/hooks/useStreamingChat.ts >= 1",
+        "Verify TTFT dashboard panel: grep -c 'TTFT\\|Time to First Token\\|first_token' deployment/observability/dashboards/latency-breakdown.json >= 1",
+        "Verify streaming duration panel: grep -c 'Streaming Duration\\|streaming_duration' deployment/observability/dashboards/latency-breakdown.json >= 1",
+        "Verify Tempo query for frontend spans: grep -c 'Tempo\\|tempo' deployment/observability/dashboards/latency-breakdown.json >= 1",
+        "Run frontend tests: cd frontend && npm test -- --run 2>&1 | tail -5",
+        "Validate dashboard JSON: jq . deployment/observability/dashboards/latency-breakdown.json > /dev/null"
+      ],
+      "passes": false,
+      "dependencies": ["otel-frontend-browser-tracing"]
+    },
+    {
+      "id": "retrieval-quality-dashboard",
+      "category": "functional",
+      "title": "Retrieval Quality Grafana Dashboard",
+      "description": "New pre-provisioned Grafana dashboard (retrieval-quality.json) with relevance score distribution histogram, chunks-per-query histogram, low-relevance query rate with configurable threshold variable, and search query volume over time.",
+      "testing_steps": [
+        "Verify dashboard file exists: test -f deployment/observability/dashboards/retrieval-quality.json",
+        "Validate JSON: jq . deployment/observability/dashboards/retrieval-quality.json > /dev/null",
+        "Verify relevance distribution panel: grep -c 'Relevance.*Distribution\\|relevance.*histogram' deployment/observability/dashboards/retrieval-quality.json >= 1",
+        "Verify chunks per query panel: grep -c 'Chunks.*Query\\|chunks_returned' deployment/observability/dashboards/retrieval-quality.json >= 1",
+        "Verify low relevance rate panel: grep -c 'Low Relevance\\|low_relevance' deployment/observability/dashboards/retrieval-quality.json >= 1",
+        "Verify query volume panel: grep -c 'Query Volume\\|query.*rate\\|search.*rate' deployment/observability/dashboards/retrieval-quality.json >= 1",
+        "Verify threshold variable with predefined values: grep -c '0.3\\|0.4\\|0.5\\|0.6\\|0.7\\|0.8' deployment/observability/dashboards/retrieval-quality.json >= 3",
+        "Verify Prometheus data source: grep -c 'Prometheus\\|prometheus' deployment/observability/dashboards/retrieval-quality.json >= 1",
+        "Verify references memvid_search_relevance metric: grep -c 'memvid_search_relevance' deployment/observability/dashboards/retrieval-quality.json >= 1"
+      ],
+      "passes": false,
+      "dependencies": ["search-relevance-metrics", "grafana-dashboards"]
+    },
+    {
+      "id": "quality-evals-dashboard",
+      "category": "functional",
+      "title": "Quality and Evals Dashboard with User Feedback",
+      "description": "Full-stack feature: POST /api/v1/chat/{session_id}/feedback endpoint with idempotent Prometheus counter (chat_feedback_total), structured log events for Loki, thumbs up/down UI in AIChat component, and quality-evals.json Grafana dashboard with feedback rate, positive/negative ratio, and Loki-to-Tempo drill-down.",
+      "testing_steps": [
+        "Verify feedback endpoint: grep -c 'feedback' api-service/ai_resume_api/main.py >= 1",
+        "Verify feedback Pydantic model: grep -c 'FeedbackRequest\\|feedback' api-service/ai_resume_api/models.py >= 1",
+        "Verify feedback counter metric: grep -c 'chat_feedback_total\\|feedback.*counter' api-service/ai_resume_api/main.py >= 1",
+        "Verify rating label on metric: grep -c 'rating' api-service/ai_resume_api/main.py >= 1",
+        "Verify comment max_length validation: grep -c 'max_length.*500\\|500.*max_length' api-service/ai_resume_api/models.py >= 1",
+        "Verify idempotency tracking: grep -c 'message_id.*feedback\\|feedback.*message_id' api-service/ai_resume_api/main.py >= 1",
+        "Verify trace_id in structured log: grep -c 'trace_id' api-service/ai_resume_api/main.py >= 3",
+        "Verify feedback tests exist: find api-service/tests -name '*feedback*' | wc -l >= 1",
+        "Run feedback tests: cd api-service && source .venv/bin/activate && python -m pytest tests/ -k 'feedback' -v",
+        "Verify frontend feedback UI: grep -c 'thumbs\\|feedback\\|ThumbsUp\\|ThumbsDown' frontend/src/components/AIChat.tsx >= 1",
+        "Verify frontend calls feedback endpoint: grep -c 'feedback' frontend/src/lib/api-client.ts >= 1",
+        "Verify dashboard file exists: test -f deployment/observability/dashboards/quality-evals.json",
+        "Validate dashboard JSON: jq . deployment/observability/dashboards/quality-evals.json > /dev/null",
+        "Verify feedback rate panel: grep -c 'Feedback Rate\\|feedback_rate' deployment/observability/dashboards/quality-evals.json >= 1"
+      ],
+      "passes": false,
+      "dependencies": [
+        "grafana-dashboards",
+        "otel-python-instrumentation",
+        "fluent-bit-log-shipper"
       ]
     }
   ]
