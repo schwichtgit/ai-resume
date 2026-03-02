@@ -74,6 +74,14 @@ export function getTraceparent(): string | null {
 }
 
 /**
+ * Whether the OTel SDK has been initialized with a valid collector endpoint.
+ * Use this to gate span creation in hot paths.
+ */
+export function isOtelInitialized(): boolean {
+  return initialized;
+}
+
+/**
  * Reset internal state. Exported only for testing.
  */
 export function _resetForTesting(): void {
