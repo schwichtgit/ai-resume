@@ -11,6 +11,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
 from starlette.middleware.base import RequestResponseEndpoint
+from prometheus_client import Counter as PromCounter
 from prometheus_fastapi_instrumentator import Instrumentator
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -42,6 +43,7 @@ from ai_resume_api.models import (
     ChatResponse,
     ChatStreamEvent,
     Experience,
+    FeedbackRequest,
     FitAssessmentExample,
     HealthResponse,
     ProfileResponse,
@@ -82,6 +84,21 @@ settings = get_settings()
 
 # Rate limiter
 limiter = Limiter(key_func=get_remote_address)
+
+# Feedback metrics and idempotency tracking
+try:
+    chat_feedback_total = PromCounter(
+        "chat_feedback_total",
+        "Total chat feedback submissions",
+        ["rating"],
+    )
+except ValueError:
+    # Metric already registered (during test collection with app/ai_resume_api aliasing)
+    from prometheus_client import REGISTRY as _REGISTRY
+
+    chat_feedback_total = cast(PromCounter, _REGISTRY._names_to_collectors.get("chat_feedback_total"))
+
+_feedback_seen: set[tuple[str, str]] = set()
 
 
 @asynccontextmanager
@@ -709,6 +726,49 @@ def _generate_mock_response(message: str, context: str) -> str:
         f"{context[:500]}...\n\n"
         f"(Note: This is a mock response. Configure OPENROUTER_API_KEY for real AI responses.)"
     )
+
+
+# =============================================================================
+# Feedback Endpoint
+# =============================================================================
+
+
+@app.post("/api/v1/chat/{session_id}/feedback")
+@limiter.limit(lambda: f"{get_settings().rate_limit_per_minute}/minute")
+async def submit_feedback(
+    request: Request, session_id: str, feedback: FeedbackRequest
+) -> dict[str, str]:
+    """Submit feedback (thumbs up/down) for a chat message.
+
+    Idempotent: submitting the same (session_id, message_id) pair a second time
+    returns 200 but does not re-increment the counter.
+    """
+    from uuid import UUID
+
+    try:
+        sid = UUID(session_id)
+    except ValueError as err:
+        raise HTTPException(status_code=404, detail="Session not found") from err
+
+    session_store = get_session_store()
+    session = session_store.get(sid)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    key = (session_id, feedback.message_id)
+    if key not in _feedback_seen:
+        _feedback_seen.add(key)
+        chat_feedback_total.labels(rating=feedback.rating).inc()
+
+    logger.info(
+        "Chat feedback received",
+        session_id=session_id,
+        message_id=feedback.message_id,
+        rating=feedback.rating,
+        comment=feedback.comment,
+    )
+
+    return {"status": "ok"}
 
 
 # =============================================================================

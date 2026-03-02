@@ -6,10 +6,16 @@ import {
   AlertCircle,
   RefreshCw,
   Loader2,
+  ThumbsUp,
+  ThumbsDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStreamingChat } from '@/hooks/useStreamingChat';
-import { getSuggestedQuestions, checkHealth } from '@/lib/api-client';
+import {
+  getSuggestedQuestions,
+  checkHealth,
+  submitFeedback,
+} from '@/lib/api-client';
 import { useProfileContext } from '@/hooks/useProfileContext';
 import { getTracer } from '@/lib/otel';
 import { SpanStatusCode } from '@opentelemetry/api';
@@ -29,6 +35,11 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [countdown, setCountdown] = useState(0);
 
+  // Track which assistant messages have received feedback: index -> "up" | "down"
+  const [feedbackGiven, setFeedbackGiven] = useState<
+    Record<number, 'up' | 'down'>
+  >({});
+
   const {
     messages,
     streamingContent,
@@ -36,6 +47,7 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
     isLoading,
     error,
     stats,
+    sessionId,
     rateLimitedUntil,
     isRateLimited,
     sendMessage,
@@ -129,6 +141,26 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
     [handleSubmit, input],
   );
 
+  const handleFeedback = useCallback(
+    (messageIndex: number, rating: 'up' | 'down') => {
+      if (feedbackGiven[messageIndex]) return;
+      setFeedbackGiven((prev) => ({ ...prev, [messageIndex]: rating }));
+      // Fire-and-forget
+      if (sessionId) {
+        submitFeedback(sessionId, String(messageIndex), rating).catch(() => {
+          // Silent failure -- feedback is best-effort
+        });
+      }
+    },
+    [feedbackGiven, sessionId],
+  );
+
+  // Reset feedback state when messages are cleared
+  const handleClearMessages = useCallback(() => {
+    setFeedbackGiven({});
+    clearMessages();
+  }, [clearMessages]);
+
   if (!isOpen) return null;
 
   const isWaiting = isLoading || isStreaming;
@@ -174,7 +206,7 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
           <div className="flex items-center gap-2">
             {messages.length > 0 && (
               <button
-                onClick={clearMessages}
+                onClick={handleClearMessages}
                 className="min-w-[44px] min-h-[44px] p-2 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-secondary text-sm flex items-center justify-center"
                 title="Clear conversation"
                 aria-label="Clear conversation"
@@ -240,8 +272,8 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
             <div
               key={i}
               className={cn(
-                'flex',
-                msg.role === 'user' ? 'justify-end' : 'justify-start',
+                'flex flex-col',
+                msg.role === 'user' ? 'items-end' : 'items-start',
               )}
             >
               <div
@@ -256,6 +288,46 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
                   {msg.content}
                 </p>
               </div>
+              {msg.role === 'assistant' && (
+                <div className="flex gap-1 mt-1 ml-1">
+                  <button
+                    onClick={() => handleFeedback(i, 'up')}
+                    disabled={!!feedbackGiven[i]}
+                    aria-label="Thumbs up"
+                    className={cn(
+                      'p-1 rounded transition-colors',
+                      feedbackGiven[i] === 'up'
+                        ? 'text-green-500'
+                        : feedbackGiven[i]
+                          ? 'text-muted-foreground/30 cursor-not-allowed'
+                          : 'text-muted-foreground hover:text-green-500',
+                    )}
+                  >
+                    <ThumbsUp
+                      className="w-3.5 h-3.5"
+                      fill={feedbackGiven[i] === 'up' ? 'currentColor' : 'none'}
+                    />
+                  </button>
+                  <button
+                    onClick={() => handleFeedback(i, 'down')}
+                    disabled={!!feedbackGiven[i]}
+                    aria-label="Thumbs down"
+                    className={cn(
+                      'p-1 rounded transition-colors',
+                      feedbackGiven[i] === 'down'
+                        ? 'text-red-500'
+                        : feedbackGiven[i]
+                          ? 'text-muted-foreground/30 cursor-not-allowed'
+                          : 'text-muted-foreground hover:text-red-500',
+                    )}
+                  >
+                    <ThumbsDown
+                      className="w-3.5 h-3.5"
+                      fill={feedbackGiven[i] === 'down' ? 'currentColor' : 'none'}
+                    />
+                  </button>
+                </div>
+              )}
             </div>
           ))}
 

@@ -506,6 +506,37 @@ export async function deleteSession(sessionId: string): Promise<void> {
 }
 
 /**
+ * Submit feedback (thumbs up/down) for a chat message.
+ * Fire-and-forget: callers should not block on the result.
+ */
+export async function submitFeedback(
+  sessionId: string,
+  messageId: string,
+  rating: 'up' | 'down',
+  comment?: string,
+): Promise<void> {
+  const response = await fetch(
+    `${API_BASE_URL}/chat/${sessionId}/feedback`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...traceHeaders(),
+      },
+      body: JSON.stringify({
+        message_id: messageId,
+        rating,
+        comment: comment ?? null,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new ApiError('Failed to submit feedback', response.status);
+  }
+}
+
+/**
  * Assess fit for a job description using AI
  */
 export async function assessFit(
