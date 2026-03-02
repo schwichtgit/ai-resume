@@ -14,8 +14,8 @@
     {
       "id": 1,
       "title": "Trace Search",
-      "type": "traces",
-      "gridPos": { "h": 20, "w": 24, "x": 0, "y": 0 },
+      "type": "table",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 0 },
       "datasource": {
         "type": "tempo",
         "uid": "tempo"
@@ -27,34 +27,9 @@
             "type": "tempo",
             "uid": "tempo"
           },
-          "queryType": "traceqlSearch",
-          "limit": 20,
-          "filters": [
-            {
-              "id": "service-name",
-              "tag": "service.name",
-              "operator": "=",
-              "scope": "resource"
-            },
-            {
-              "id": "span-name",
-              "tag": "name",
-              "operator": "=",
-              "scope": "span"
-            },
-            {
-              "id": "duration",
-              "tag": "duration",
-              "operator": ">",
-              "scope": "intrinsic"
-            },
-            {
-              "id": "status",
-              "tag": "status",
-              "operator": "=",
-              "scope": "intrinsic"
-            }
-          ]
+          "queryType": "traceql",
+          "query": "{}",
+          "limit": 20
         }
       ],
       "options": {}
@@ -63,7 +38,7 @@
       "id": 2,
       "title": "Trace by ID",
       "type": "traces",
-      "gridPos": { "h": 20, "w": 24, "x": 0, "y": 20 },
+      "gridPos": { "h": 20, "w": 24, "x": 0, "y": 12 },
       "datasource": {
         "type": "tempo",
         "uid": "tempo"
@@ -85,7 +60,7 @@
       "id": 3,
       "title": "Service Graph - Request Rate",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -120,14 +95,18 @@
       },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["mean", "max"]
+        }
       }
     },
     {
       "id": 4,
       "title": "Service Graph - Error Rate",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 40 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -162,7 +141,11 @@
       },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["mean", "max"]
+        }
       }
     }
   ],

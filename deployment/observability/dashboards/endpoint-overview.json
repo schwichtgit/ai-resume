@@ -51,7 +51,11 @@
       },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max", "lastNotNull"] }
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": ["mean", "max", "lastNotNull"]
+        }
       }
     },
     {
@@ -70,7 +74,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_request_duration_seconds_count{handler=~\"$endpoint\", status=~\"5..\"}[$__rate_interval])) by (handler, method)",
+          "expr": "sum(rate(http_requests_total{handler=~\"$endpoint\", status=~\"5..\"}[$__rate_interval])) by (handler, method)",
           "legendFormat": "5xx {{method}} {{handler}}"
         },
         {
@@ -79,7 +83,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_request_duration_seconds_count{handler=~\"$endpoint\", status=~\"4..\"}[$__rate_interval])) by (handler, method)",
+          "expr": "sum(rate(http_requests_total{handler=~\"$endpoint\", status=~\"4..\"}[$__rate_interval])) by (handler, method)",
           "legendFormat": "4xx {{method}} {{handler}}"
         }
       ],
@@ -103,20 +107,30 @@
           {
             "matcher": { "id": "byRegexp", "options": "5xx.*" },
             "properties": [
-              { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }
+              {
+                "id": "color",
+                "value": { "mode": "fixed", "fixedColor": "red" }
+              }
             ]
           },
           {
             "matcher": { "id": "byRegexp", "options": "4xx.*" },
             "properties": [
-              { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }
+              {
+                "id": "color",
+                "value": { "mode": "fixed", "fixedColor": "orange" }
+              }
             ]
           }
         ]
       },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max", "lastNotNull"] }
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": ["mean", "max", "lastNotNull"]
+        }
       }
     },
     {
@@ -135,7 +149,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100 * sum(rate(http_request_duration_seconds_count{status=~\"5..\"}[$__rate_interval])) / sum(rate(http_request_duration_seconds_count[$__rate_interval]))",
+          "expr": "100 * sum(rate(http_requests_total{status=~\"5..\"}[$__rate_interval])) / sum(rate(http_requests_total[$__rate_interval]))",
           "legendFormat": "5xx Error Rate"
         }
       ],
@@ -206,7 +220,11 @@
       },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["mean", "max"]
+        }
       }
     },
     {
@@ -248,7 +266,11 @@
       },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["mean", "max"]
+        }
       }
     },
     {
@@ -298,7 +320,11 @@
       },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["mean", "max"]
+        }
       }
     },
     {
@@ -326,9 +352,7 @@
           "color": { "mode": "thresholds" },
           "thresholds": {
             "mode": "absolute",
-            "steps": [
-              { "color": "blue", "value": null }
-            ]
+            "steps": [{ "color": "blue", "value": null }]
           }
         },
         "overrides": []
@@ -419,9 +443,7 @@
           "color": { "mode": "thresholds" },
           "thresholds": {
             "mode": "absolute",
-            "steps": [
-              { "color": "purple", "value": null }
-            ]
+            "steps": [{ "color": "purple", "value": null }]
           }
         },
         "overrides": []
