@@ -2,7 +2,7 @@
 # Validate-bash hook: Block dangerous commands before execution
 # This hook is called before Claude Code executes bash commands
 
-set -euo pipefail
+set -uo pipefail
 
 # Claude Code hooks receive JSON on stdin, not as positional arguments.
 # For PreToolUse hooks, the JSON structure is:

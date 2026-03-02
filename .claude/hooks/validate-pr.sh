@@ -4,7 +4,7 @@
 # and scans the title and body for AI branding, Co-Authored-By trailers,
 # AI-isms, and emoji before the command executes.
 
-set -euo pipefail
+set -uo pipefail
 
 # Read JSON from stdin (Claude Code PreToolUse hook protocol)
 INPUT=$(cat /dev/stdin 2>/dev/null) || true

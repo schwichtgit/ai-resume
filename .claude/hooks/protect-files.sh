@@ -2,7 +2,7 @@
 # Protect-files hook: Block edits to sensitive files
 # This hook is called before Claude Code edits a file
 
-set -euo pipefail
+set -uo pipefail
 
 # Claude Code hooks receive JSON on stdin, not as positional arguments.
 # For PreToolUse hooks, the JSON structure is:
