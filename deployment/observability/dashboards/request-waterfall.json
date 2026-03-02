@@ -97,8 +97,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(traces_spanmetrics_calls_total{service_name=~\"$service\"}[$__rate_interval])) by (service_name, span_name)",
-          "legendFormat": "{{service_name}} - {{span_name}}"
+          "expr": "sum(rate(http_requests_total{job=~\"$service\"}[$__rate_interval])) by (job, handler)",
+          "legendFormat": "{{job}} - {{handler}}"
         }
       ],
       "fieldConfig": {
@@ -139,8 +139,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(traces_spanmetrics_calls_total{service_name=~\"$service\", status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval])) by (service_name, span_name)",
-          "legendFormat": "{{service_name}} - {{span_name}}"
+          "expr": "sum(rate(http_requests_total{job=~\"$service\", status=~\"5..\"}[$__rate_interval])) by (job, handler)",
+          "legendFormat": "{{job}} - {{handler}}"
         }
       ],
       "fieldConfig": {
@@ -176,7 +176,7 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "query": "label_values(traces_spanmetrics_calls_total, service_name)",
+        "query": "label_values(http_requests_total, job)",
         "refresh": 2,
         "includeAll": true,
         "multi": true,

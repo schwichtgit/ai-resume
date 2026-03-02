@@ -27,8 +27,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.50, sum(rate(traces_spanmetrics_latency_bucket{service_name=~\"$service\", span_name=~\"$operation\"}[$__rate_interval])) by (le, span_name))",
-          "legendFormat": "p50 - {{span_name}}"
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=~\"$service\", handler=~\"$operation\"}[$__rate_interval])) by (le, handler))",
+          "legendFormat": "p50 - {{handler}}"
         },
         {
           "refId": "p95",
@@ -36,8 +36,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(traces_spanmetrics_latency_bucket{service_name=~\"$service\", span_name=~\"$operation\"}[$__rate_interval])) by (le, span_name))",
-          "legendFormat": "p95 - {{span_name}}"
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=~\"$service\", handler=~\"$operation\"}[$__rate_interval])) by (le, handler))",
+          "legendFormat": "p95 - {{handler}}"
         },
         {
           "refId": "p99",
@@ -45,8 +45,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(traces_spanmetrics_latency_bucket{service_name=~\"$service\", span_name=~\"$operation\"}[$__rate_interval])) by (le, span_name))",
-          "legendFormat": "p99 - {{span_name}}"
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=~\"$service\", handler=~\"$operation\"}[$__rate_interval])) by (le, handler))",
+          "legendFormat": "p99 - {{handler}}"
         }
       ],
       "fieldConfig": {
@@ -58,7 +58,7 @@
             "axisCenteredZero": false,
             "stacking": { "mode": "none" }
           },
-          "unit": "ms"
+          "unit": "s"
         },
         "overrides": []
       },
@@ -88,7 +88,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.50, sum(rate(traces_spanmetrics_latency_bucket{span_name=~\".*guardrail.*\"}[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{handler=~\".*guardrail.*\"}[$__rate_interval])) by (le))",
           "legendFormat": "p50"
         },
         {
@@ -97,7 +97,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(traces_spanmetrics_latency_bucket{span_name=~\".*guardrail.*\"}[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{handler=~\".*guardrail.*\"}[$__rate_interval])) by (le))",
           "legendFormat": "p95"
         },
         {
@@ -106,7 +106,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(traces_spanmetrics_latency_bucket{span_name=~\".*guardrail.*\"}[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{handler=~\".*guardrail.*\"}[$__rate_interval])) by (le))",
           "legendFormat": "p99"
         }
       ],
@@ -123,13 +123,13 @@
             "axisPlacement": "auto",
             "thresholdsStyle": { "mode": "dashed" }
           },
-          "unit": "ms",
+          "unit": "s",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               { "color": "green", "value": null },
-              { "color": "yellow", "value": 100 },
-              { "color": "red", "value": 500 }
+              { "color": "yellow", "value": 0.1 },
+              { "color": "red", "value": 0.5 }
             ]
           }
         },
@@ -156,7 +156,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.50, sum(rate(traces_spanmetrics_latency_bucket{span_name=~\".*memvid.*|.*search.*|.*semantic.*\"}[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{handler=~\".*memvid.*|.*search.*|.*semantic.*\"}[$__rate_interval])) by (le))",
           "legendFormat": "p50"
         },
         {
@@ -165,7 +165,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(traces_spanmetrics_latency_bucket{span_name=~\".*memvid.*|.*search.*|.*semantic.*\"}[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{handler=~\".*memvid.*|.*search.*|.*semantic.*\"}[$__rate_interval])) by (le))",
           "legendFormat": "p95"
         },
         {
@@ -174,7 +174,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(traces_spanmetrics_latency_bucket{span_name=~\".*memvid.*|.*search.*|.*semantic.*\"}[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{handler=~\".*memvid.*|.*search.*|.*semantic.*\"}[$__rate_interval])) by (le))",
           "legendFormat": "p99"
         }
       ],
@@ -191,13 +191,13 @@
             "axisPlacement": "auto",
             "thresholdsStyle": { "mode": "dashed" }
           },
-          "unit": "ms",
+          "unit": "s",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               { "color": "green", "value": null },
-              { "color": "yellow", "value": 5 },
-              { "color": "red", "value": 20 }
+              { "color": "yellow", "value": 0.005 },
+              { "color": "red", "value": 0.02 }
             ]
           }
         },
@@ -224,7 +224,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.50, sum(rate(traces_spanmetrics_latency_bucket{span_name=~\".*llm.*|.*openrouter.*|.*chat_completion.*\"}[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{handler=~\".*llm.*|.*openrouter.*|.*chat_completion.*\"}[$__rate_interval])) by (le))",
           "legendFormat": "p50"
         },
         {
@@ -233,7 +233,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(traces_spanmetrics_latency_bucket{span_name=~\".*llm.*|.*openrouter.*|.*chat_completion.*\"}[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{handler=~\".*llm.*|.*openrouter.*|.*chat_completion.*\"}[$__rate_interval])) by (le))",
           "legendFormat": "p95"
         },
         {
@@ -242,7 +242,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(traces_spanmetrics_latency_bucket{span_name=~\".*llm.*|.*openrouter.*|.*chat_completion.*\"}[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{handler=~\".*llm.*|.*openrouter.*|.*chat_completion.*\"}[$__rate_interval])) by (le))",
           "legendFormat": "p99"
         }
       ],
@@ -259,13 +259,13 @@
             "axisPlacement": "auto",
             "thresholdsStyle": { "mode": "dashed" }
           },
-          "unit": "ms",
+          "unit": "s",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               { "color": "green", "value": null },
-              { "color": "yellow", "value": 1000 },
-              { "color": "red", "value": 5000 }
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
             ]
           }
         },
@@ -292,7 +292,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(http_server_request_duration_seconds_bucket{handler=~\"$endpoint\"}[$__rate_interval])) by (le)",
+          "expr": "sum(increase(http_request_duration_seconds_bucket{handler=~\"$endpoint\"}[$__rate_interval])) by (le)",
           "legendFormat": "requests",
           "format": "heatmap"
         }
@@ -328,7 +328,7 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "query": "label_values(traces_spanmetrics_calls_total, service_name)",
+        "query": "label_values(http_requests_total, job)",
         "refresh": 2,
         "includeAll": true,
         "multi": true,
@@ -347,7 +347,7 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "query": "label_values(traces_spanmetrics_latency_bucket{service_name=~\"$service\"}, span_name)",
+        "query": "label_values(http_request_duration_seconds_bucket{job=~\"$service\"}, handler)",
         "refresh": 2,
         "includeAll": true,
         "multi": true,
@@ -366,7 +366,7 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "query": "label_values(http_server_request_duration_seconds_bucket, handler)",
+        "query": "label_values(http_request_duration_seconds_bucket, handler)",
         "refresh": 2,
         "includeAll": true,
         "multi": true,
