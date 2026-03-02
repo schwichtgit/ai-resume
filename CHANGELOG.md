@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PreToolUse hook false errors: removed `set -e` from all hook scripts (exit 1 on internal subcommand edge cases reported as "hook error")
 - `protect-files.sh` now allows `.env.example` and `.env.sample` edits (priority match before `.env*` block)
 - Dashboard metric names and panel types corrected across all Grafana dashboards
+- Release gate ingest outcome tests no longer fail on 0% coverage (`--no-cov` for data validation tests)
 
 ## [0.1.0-alpha.6] - 2026-03-01
 

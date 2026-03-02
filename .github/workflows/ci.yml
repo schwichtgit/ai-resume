@@ -640,7 +640,7 @@ jobs:
       - name: Outcome tests -- Data Coverage (ingest)
         env:
           HF_HUB_DOWNLOAD_TIMEOUT: '120'
-        run: cd ingest && uv run pytest tests/test_outcome_data_coverage.py -v --tb=short -m slow
+        run: cd ingest && uv run pytest tests/test_outcome_data_coverage.py -v --tb=short -m slow --no-cov
 
       - name: Outcome tests -- Portability
         run: bash scripts/test-outcome-portability.sh
