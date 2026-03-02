@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-alpha.7] - 2026-03-02
+
+### Added
+
+- gRPC method latency breakdown: `method` label on `memvid_search_latency_ms` histogram (search, ask, get_state)
+- Search relevance metrics: `memvid_search_relevance_score` and `memvid_search_chunks_returned` histograms in Rust memvid-service
+- Span attributes for retrieval quality: `search.max_relevance`, `search.min_relevance`, `search.avg_relevance`, `search.chunks_returned`
+- SSE streaming timing: `chat.time_to_first_token_ms` and `chat.streaming_duration_ms` span attributes in frontend
+- `isOtelInitialized()` guard for conditional browser tracing
+- Chat feedback endpoint: `POST /api/v1/chat/{session_id}/feedback` with idempotent counter and structured logging
+- ThumbsUp/ThumbsDown UI on assistant chat messages with fire-and-forget feedback submission
+- Retrieval Quality dashboard: relevance score distribution, chunks/query histogram, configurable low-relevance threshold
+- Quality Evals dashboard: feedback rate, positive/negative ratio, Loki log panel with Tempo Data Links
+- Success rate % and total error count KPI stat panels on Endpoint Overview dashboard
+- gRPC method template variable and per-method p50/p95/p99 panel on Latency Breakdown dashboard
+- SSE Streaming row with TTFT and duration panels on Latency Breakdown dashboard
+
+### Changed
+
+- `docs/OBSERVABILITY.md` updated for all Phase 2 features (6 dashboards, new metrics, new runbook)
+- Fluent Bit and Loki environment variables added to `deployment/.env.example`
+
+### Fixed
+
+- PreToolUse hook false errors: removed `set -e` from all hook scripts (exit 1 on internal subcommand edge cases reported as "hook error")
+- `protect-files.sh` now allows `.env.example` and `.env.sample` edits (priority match before `.env*` block)
+- Dashboard metric names and panel types corrected across all Grafana dashboards
+
 ## [0.1.0-alpha.6] - 2026-03-01
 
 ### Added
@@ -163,7 +191,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.6...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.7...HEAD
+[0.1.0-alpha.7]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.6...v0.1.0-alpha.7
 [0.1.0-alpha.6]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.5...v0.1.0-alpha.6
 [0.1.0-alpha.5]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.4...v0.1.0-alpha.5
 [0.1.0-alpha.4]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.3...v0.1.0-alpha.4
