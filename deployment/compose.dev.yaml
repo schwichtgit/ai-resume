@@ -146,9 +146,17 @@ services:
   # ---------------------------------------------------------------------------
 
   # Fluent Bit log shipper - tails container logs and forwards to Loki
+  #
+  # Requires PODMAN_LOG_ROOT to point to the container log directory.
+  # On Linux: /var/log/containers (default)
+  # On macOS: not available -- podman runs in a VM, so host log path
+  # doesn't exist. Set FLUENT_BIT_ENABLED=false or omit this service:
+  #   FLUENT_BIT_ENABLED=false podman compose -f compose.dev.yaml up -d
   fluent-bit:
     image: cr.fluentbit.io/fluent/fluent-bit:latest
     container_name: fluent-bit
+    profiles:
+      - linux
     networks:
       - dev-net
     environment:
@@ -200,7 +208,7 @@ services:
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
     volumes:
       - ./observability/provisioning:/etc/grafana/provisioning:ro
-      - grafana-dashboards:/var/lib/grafana/dashboards
+      - ./observability/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - tempo
       - prometheus
@@ -253,7 +261,6 @@ services:
 # ---------------------------------------------------------------------------
 
 volumes:
-  grafana-dashboards:
   tempo-data:
   prometheus-data:
   loki-data:
