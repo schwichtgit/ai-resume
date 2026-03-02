@@ -21,13 +21,15 @@ compactor:
     block_retention: 168h  # 7 days
 
 metrics_generator:
+  processor:
+    service_graphs:
+    span_metrics:
   storage:
     path: /var/tempo/metrics
     remote_write:
       - url: http://prometheus:9090/api/v1/write
 
 overrides:
-  defaults:
-    metrics_generator_processors:
-      - service-graphs
-      - span-metrics
+  metrics_generator_processors:
+    - service-graphs
+    - span-metrics
