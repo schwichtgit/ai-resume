@@ -96,7 +96,9 @@ except ValueError:
     # Metric already registered (during test collection with app/ai_resume_api aliasing)
     from prometheus_client import REGISTRY as _REGISTRY
 
-    chat_feedback_total = cast(PromCounter, _REGISTRY._names_to_collectors.get("chat_feedback_total"))
+    chat_feedback_total = cast(
+        PromCounter, _REGISTRY._names_to_collectors.get("chat_feedback_total")
+    )
 
 _feedback_seen: set[tuple[str, str]] = set()
 

@@ -88,7 +88,11 @@ for pattern in "${PROTECTED_PATTERNS[@]}"; do
         echo "Pattern matched: $pattern"
 
         # For env files and credentials, block completely
+        # Allow .example and .sample files (documentation, not secrets)
         case "$FILENAME" in
+            *.example|*.sample)
+                # Safe documentation files, allow editing
+                ;;
             .env*|*credentials*|*secret*|*password*|id_rsa*|id_ed25519*|*.pem|*.key)
                 echo "BLOCKED: This file type is protected and cannot be modified" >&2
                 exit 2

@@ -62,9 +62,7 @@ def mock_profile_loading() -> Generator[AsyncMock, None, None]:
 
 
 @pytest.fixture
-def client(
-    mock_profile_loading: Any, mock_memvid: Any
-) -> Generator[TestClient, None, None]:
+def client(mock_profile_loading: Any, mock_memvid: Any) -> Generator[TestClient, None, None]:
     """Create test client with mocked dependencies."""
     reset_session_store()
     with TestClient(app) as c:
