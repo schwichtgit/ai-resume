@@ -14,8 +14,8 @@
     {
       "id": 1,
       "title": "Trace Search",
-      "type": "traces",
-      "gridPos": { "h": 20, "w": 24, "x": 0, "y": 0 },
+      "type": "table",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 0 },
       "datasource": {
         "type": "tempo",
         "uid": "tempo"
@@ -27,34 +27,9 @@
             "type": "tempo",
             "uid": "tempo"
           },
-          "queryType": "traceqlSearch",
-          "limit": 20,
-          "filters": [
-            {
-              "id": "service-name",
-              "tag": "service.name",
-              "operator": "=",
-              "scope": "resource"
-            },
-            {
-              "id": "span-name",
-              "tag": "name",
-              "operator": "=",
-              "scope": "span"
-            },
-            {
-              "id": "duration",
-              "tag": "duration",
-              "operator": ">",
-              "scope": "intrinsic"
-            },
-            {
-              "id": "status",
-              "tag": "status",
-              "operator": "=",
-              "scope": "intrinsic"
-            }
-          ]
+          "queryType": "traceql",
+          "query": "{}",
+          "limit": 20
         }
       ],
       "options": {}
@@ -63,7 +38,7 @@
       "id": 2,
       "title": "Trace by ID",
       "type": "traces",
-      "gridPos": { "h": 20, "w": 24, "x": 0, "y": 20 },
+      "gridPos": { "h": 20, "w": 24, "x": 0, "y": 12 },
       "datasource": {
         "type": "tempo",
         "uid": "tempo"
@@ -85,7 +60,7 @@
       "id": 3,
       "title": "Service Graph - Request Rate",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -97,8 +72,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(traces_spanmetrics_calls_total{service_name=~\"$service\"}[$__rate_interval])) by (service_name, span_name)",
-          "legendFormat": "{{service_name}} - {{span_name}}"
+          "expr": "sum(rate(http_requests_total{job=~\"$service\"}[$__rate_interval])) by (job, handler)",
+          "legendFormat": "{{job}} - {{handler}}"
         }
       ],
       "fieldConfig": {
@@ -120,14 +95,18 @@
       },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["mean", "max"]
+        }
       }
     },
     {
       "id": 4,
       "title": "Service Graph - Error Rate",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 40 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -139,8 +118,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(traces_spanmetrics_calls_total{service_name=~\"$service\", status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval])) by (service_name, span_name)",
-          "legendFormat": "{{service_name}} - {{span_name}}"
+          "expr": "sum(rate(http_requests_total{job=~\"$service\", status=~\"5..\"}[$__rate_interval])) by (job, handler)",
+          "legendFormat": "{{job}} - {{handler}}"
         }
       ],
       "fieldConfig": {
@@ -162,7 +141,11 @@
       },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["mean", "max"]
+        }
       }
     }
   ],
@@ -176,7 +159,7 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "query": "label_values(traces_spanmetrics_calls_total, service_name)",
+        "query": "label_values(http_requests_total, job)",
         "refresh": 2,
         "includeAll": true,
         "multi": true,

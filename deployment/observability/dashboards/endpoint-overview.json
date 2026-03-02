@@ -27,7 +27,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_server_request_duration_seconds_count{handler=~\"$endpoint\"}[$__rate_interval])) by (handler, method)",
+          "expr": "sum(rate(http_request_duration_seconds_count{handler=~\"$endpoint\"}[$__rate_interval])) by (handler, method)",
           "legendFormat": "{{method}} {{handler}}"
         }
       ],
@@ -51,7 +51,11 @@
       },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max", "lastNotNull"] }
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": ["mean", "max", "lastNotNull"]
+        }
       }
     },
     {
@@ -70,7 +74,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_server_request_duration_seconds_count{handler=~\"$endpoint\", status_code=~\"5..\"}[$__rate_interval])) by (handler, method)",
+          "expr": "sum(rate(http_requests_total{handler=~\"$endpoint\", status=~\"5..\"}[$__rate_interval])) by (handler, method)",
           "legendFormat": "5xx {{method}} {{handler}}"
         },
         {
@@ -79,7 +83,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_server_request_duration_seconds_count{handler=~\"$endpoint\", status_code=~\"4..\"}[$__rate_interval])) by (handler, method)",
+          "expr": "sum(rate(http_requests_total{handler=~\"$endpoint\", status=~\"4..\"}[$__rate_interval])) by (handler, method)",
           "legendFormat": "4xx {{method}} {{handler}}"
         }
       ],
@@ -103,20 +107,30 @@
           {
             "matcher": { "id": "byRegexp", "options": "5xx.*" },
             "properties": [
-              { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }
+              {
+                "id": "color",
+                "value": { "mode": "fixed", "fixedColor": "red" }
+              }
             ]
           },
           {
             "matcher": { "id": "byRegexp", "options": "4xx.*" },
             "properties": [
-              { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }
+              {
+                "id": "color",
+                "value": { "mode": "fixed", "fixedColor": "orange" }
+              }
             ]
           }
         ]
       },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max", "lastNotNull"] }
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": ["mean", "max", "lastNotNull"]
+        }
       }
     },
     {
@@ -135,7 +149,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100 * sum(rate(http_server_request_duration_seconds_count{status_code=~\"5..\"}[$__rate_interval])) / sum(rate(http_server_request_duration_seconds_count[$__rate_interval]))",
+          "expr": "100 * sum(rate(http_requests_total{status=~\"5..\"}[$__rate_interval])) / sum(rate(http_requests_total[$__rate_interval]))",
           "legendFormat": "5xx Error Rate"
         }
       ],
@@ -183,7 +197,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.50, sum(rate(http_server_request_duration_seconds_bucket{handler=~\"$endpoint\"}[$__rate_interval])) by (le, handler))",
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{handler=~\"$endpoint\"}[$__rate_interval])) by (le, handler))",
           "legendFormat": "p50 {{handler}}"
         }
       ],
@@ -206,7 +220,11 @@
       },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["mean", "max"]
+        }
       }
     },
     {
@@ -225,7 +243,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(http_server_request_duration_seconds_bucket{handler=~\"$endpoint\"}[$__rate_interval])) by (le, handler))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{handler=~\"$endpoint\"}[$__rate_interval])) by (le, handler))",
           "legendFormat": "p95 {{handler}}"
         }
       ],
@@ -248,7 +266,11 @@
       },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["mean", "max"]
+        }
       }
     },
     {
@@ -267,7 +289,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(http_server_request_duration_seconds_bucket{handler=~\"$endpoint\"}[$__rate_interval])) by (le, handler))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{handler=~\"$endpoint\"}[$__rate_interval])) by (le, handler))",
           "legendFormat": "p99 {{handler}}"
         }
       ],
@@ -298,7 +320,11 @@
       },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["mean", "max"]
+        }
       }
     },
     {
@@ -317,7 +343,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(http_server_request_duration_seconds_count[24h]))",
+          "expr": "sum(increase(http_request_duration_seconds_count[24h]))",
           "legendFormat": "Total"
         }
       ],
@@ -326,9 +352,7 @@
           "color": { "mode": "thresholds" },
           "thresholds": {
             "mode": "absolute",
-            "steps": [
-              { "color": "blue", "value": null }
-            ]
+            "steps": [{ "color": "blue", "value": null }]
           }
         },
         "overrides": []
@@ -362,7 +386,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_server_request_duration_seconds_sum[$__rate_interval])) / sum(rate(http_server_request_duration_seconds_count[$__rate_interval]))",
+          "expr": "sum(rate(http_request_duration_seconds_sum[$__rate_interval])) / sum(rate(http_request_duration_seconds_count[$__rate_interval]))",
           "legendFormat": "Avg"
         }
       ],
@@ -410,7 +434,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "count(count by (handler) (http_server_request_duration_seconds_count{handler=~\"$endpoint\"}))",
+          "expr": "count(count by (handler) (http_request_duration_seconds_count{handler=~\"$endpoint\"}))",
           "legendFormat": "Endpoints"
         }
       ],
@@ -419,9 +443,7 @@
           "color": { "mode": "thresholds" },
           "thresholds": {
             "mode": "absolute",
-            "steps": [
-              { "color": "purple", "value": null }
-            ]
+            "steps": [{ "color": "purple", "value": null }]
           }
         },
         "overrides": []
@@ -450,7 +472,7 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "query": "label_values(http_server_request_duration_seconds_count, handler)",
+        "query": "label_values(http_request_duration_seconds_count, handler)",
         "refresh": 2,
         "includeAll": true,
         "multi": true,

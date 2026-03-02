@@ -1,8 +1,8 @@
 {
   "uid": "llm-cost",
-  "title": "LLM Cost Tracker",
-  "description": "Token usage, estimated cost, and request volume per LLM model for ai-resume",
-  "tags": ["ai-resume", "observability", "llm", "cost"],
+  "title": "LLM Performance",
+  "description": "LLM request volume, latency percentiles, and success rate per model for ai-resume",
+  "tags": ["ai-resume", "observability", "llm", "performance"],
   "timezone": "browser",
   "schemaVersion": 39,
   "version": 1,
@@ -13,7 +13,7 @@
   "panels": [
     {
       "id": 1,
-      "title": "Token Usage Over Time",
+      "title": "LLM Request Rate",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 16, "x": 0, "y": 0 },
       "datasource": {
@@ -22,22 +22,13 @@
       },
       "targets": [
         {
-          "refId": "input",
+          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(llm_tokens_total{type=\"input\", model=~\"$model\"}[$__rate_interval])) by (model)",
-          "legendFormat": "Input - {{model}}"
-        },
-        {
-          "refId": "output",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum(rate(llm_tokens_total{type=\"output\", model=~\"$model\"}[$__rate_interval])) by (model)",
-          "legendFormat": "Output - {{model}}"
+          "expr": "sum(rate(llm_requests_total{model=~\"$model\"}[$__rate_interval])) by (model)",
+          "legendFormat": "{{model}}"
         }
       ],
       "fieldConfig": {
@@ -54,8 +45,7 @@
             "axisPlacement": "auto",
             "lineWidth": 2
           },
-          "unit": "short",
-          "displayName": "tokens/sec"
+          "unit": "reqps"
         },
         "overrides": []
       },
@@ -66,7 +56,7 @@
     },
     {
       "id": 2,
-      "title": "Total Tokens (24h)",
+      "title": "Total LLM Requests (24h)",
       "type": "stat",
       "gridPos": { "h": 4, "w": 8, "x": 16, "y": 0 },
       "datasource": {
@@ -80,20 +70,19 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(llm_tokens_total[24h]))",
-          "legendFormat": "Total Tokens"
+          "expr": "sum(increase(llm_requests_total[24h]))",
+          "legendFormat": "Total Requests"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
-          "unit": "short",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               { "color": "green", "value": null },
-              { "color": "yellow", "value": 100000 },
-              { "color": "red", "value": 1000000 }
+              { "color": "yellow", "value": 1000 },
+              { "color": "red", "value": 10000 }
             ]
           }
         },
@@ -159,7 +148,7 @@
     },
     {
       "id": 4,
-      "title": "Token Usage per Model",
+      "title": "Requests per Model",
       "type": "table",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
       "datasource": {
@@ -168,28 +157,6 @@
       },
       "targets": [
         {
-          "refId": "input_tokens",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum(increase(llm_tokens_total{type=\"input\"}[$__range])) by (model)",
-          "legendFormat": "Input Tokens",
-          "format": "table",
-          "instant": true
-        },
-        {
-          "refId": "output_tokens",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum(increase(llm_tokens_total{type=\"output\"}[$__range])) by (model)",
-          "legendFormat": "Output Tokens",
-          "format": "table",
-          "instant": true
-        },
-        {
           "refId": "requests",
           "datasource": {
             "type": "prometheus",
@@ -197,6 +164,28 @@
           },
           "expr": "sum(increase(llm_requests_total[$__range])) by (model)",
           "legendFormat": "Requests",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "success",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(llm_requests_total{status=\"success\"}[$__range])) by (model)",
+          "legendFormat": "Success",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "avg_latency",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(llm_latency_seconds_sum[$__range])) by (model) / sum(increase(llm_latency_seconds_count[$__range])) by (model)",
+          "legendFormat": "Avg Latency",
           "format": "table",
           "instant": true
         }
@@ -221,16 +210,23 @@
             "properties": [
               { "id": "custom.width", "value": 250 }
             ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Avg Latency (s)" },
+            "properties": [
+              { "id": "unit", "value": "s" },
+              { "id": "decimals", "value": 3 }
+            ]
           }
         ]
       },
       "options": {
         "showHeader": true,
-        "sortBy": [{ "displayName": "Value #input_tokens", "desc": true }],
+        "sortBy": [{ "displayName": "Value #requests", "desc": true }],
         "footer": {
           "show": true,
           "reducer": ["sum"],
-          "fields": ["Value #input_tokens", "Value #output_tokens", "Value #requests"]
+          "fields": ["Value #requests", "Value #success"]
         }
       },
       "transformations": [
@@ -244,9 +240,9 @@
             "excludeByName": { "Time": true },
             "renameByName": {
               "model": "Model",
-              "Value #input_tokens": "Input Tokens",
-              "Value #output_tokens": "Output Tokens",
-              "Value #requests": "Requests"
+              "Value #requests": "Requests",
+              "Value #success": "Successful",
+              "Value #avg_latency": "Avg Latency (s)"
             }
           }
         }
@@ -254,9 +250,9 @@
     },
     {
       "id": 5,
-      "title": "Estimated Cost per Model",
+      "title": "Avg LLM Latency per Model",
       "type": "table",
-      "description": "Estimated cost based on per-token pricing. Uses configurable cost_per_input_token and cost_per_output_token variables (defaults: $0.003/1K input, $0.015/1K output).",
+      "description": "p95 latency per model computed from the llm_latency_seconds histogram",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
       "datasource": {
         "type": "prometheus",
@@ -264,24 +260,24 @@
       },
       "targets": [
         {
-          "refId": "input_cost",
+          "refId": "p95",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(llm_tokens_total{type=\"input\"}[$__range])) by (model) * $cost_per_input_token / 1000",
-          "legendFormat": "Input Cost",
+          "expr": "histogram_quantile(0.95, sum(rate(llm_latency_seconds_bucket{model=~\"$model\"}[$__rate_interval])) by (le, model))",
+          "legendFormat": "p95 - {{model}}",
           "format": "table",
           "instant": true
         },
         {
-          "refId": "output_cost",
+          "refId": "p50",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(llm_tokens_total{type=\"output\"}[$__range])) by (model) * $cost_per_output_token / 1000",
-          "legendFormat": "Output Cost",
+          "expr": "histogram_quantile(0.50, sum(rate(llm_latency_seconds_bucket{model=~\"$model\"}[$__rate_interval])) by (le, model))",
+          "legendFormat": "p50 - {{model}}",
           "format": "table",
           "instant": true
         }
@@ -294,11 +290,11 @@
             "steps": [
               { "color": "green", "value": null },
               { "color": "yellow", "value": 1 },
-              { "color": "red", "value": 10 }
+              { "color": "red", "value": 5 }
             ]
           },
-          "unit": "currencyUSD",
-          "decimals": 4,
+          "unit": "s",
+          "decimals": 3,
           "custom": {
             "align": "auto",
             "cellOptions": { "type": "auto" }
@@ -316,11 +312,9 @@
       },
       "options": {
         "showHeader": true,
-        "sortBy": [{ "displayName": "Value #input_cost", "desc": true }],
+        "sortBy": [{ "displayName": "Value #p95", "desc": true }],
         "footer": {
-          "show": true,
-          "reducer": ["sum"],
-          "fields": ["Value #input_cost", "Value #output_cost"]
+          "show": false
         }
       },
       "transformations": [
@@ -334,8 +328,8 @@
             "excludeByName": { "Time": true },
             "renameByName": {
               "model": "Model",
-              "Value #input_cost": "Input Cost ($)",
-              "Value #output_cost": "Output Cost ($)"
+              "Value #p50": "p50 Latency (s)",
+              "Value #p95": "p95 Latency (s)"
             }
           }
         }
@@ -386,9 +380,9 @@
     },
     {
       "id": 7,
-      "title": "Cumulative Cost Over Time",
+      "title": "LLM Latency Over Time",
       "type": "timeseries",
-      "description": "Running total of estimated LLM cost over the selected time range",
+      "description": "p50, p95, and p99 LLM latency over the selected time range",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
       "datasource": {
         "type": "prometheus",
@@ -396,41 +390,66 @@
       },
       "targets": [
         {
-          "refId": "A",
+          "refId": "p50",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(sum(increase(llm_tokens_total{type=\"input\"}[$__rate_interval])) * $cost_per_input_token / 1000) + (sum(increase(llm_tokens_total{type=\"output\"}[$__rate_interval])) * $cost_per_output_token / 1000)",
-          "legendFormat": "Estimated Cost"
+          "expr": "histogram_quantile(0.50, sum(rate(llm_latency_seconds_bucket{model=~\"$model\"}[$__rate_interval])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "refId": "p95",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum(rate(llm_latency_seconds_bucket{model=~\"$model\"}[$__rate_interval])) by (le))",
+          "legendFormat": "p95"
+        },
+        {
+          "refId": "p99",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum(rate(llm_latency_seconds_bucket{model=~\"$model\"}[$__rate_interval])) by (le))",
+          "legendFormat": "p99"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "fixed", "fixedColor": "dark-green" },
+          "color": { "mode": "palette-classic" },
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "smooth",
-            "fillOpacity": 30,
+            "fillOpacity": 15,
             "gradientMode": "scheme",
             "showPoints": "never",
             "stacking": { "mode": "none" },
             "axisPlacement": "auto",
             "lineWidth": 2
           },
-          "unit": "currencyUSD",
-          "decimals": 4
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 2 },
+              { "color": "red", "value": 10 }
+            ]
+          }
         },
         "overrides": []
       },
       "options": {
-        "tooltip": { "mode": "single", "sort": "none" },
-        "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["sum"] }
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["mean", "max"] }
       }
     },
     {
       "id": 8,
-      "title": "Input vs Output Token Ratio",
+      "title": "LLM Success Rate",
       "type": "piechart",
       "gridPos": { "h": 8, "w": 8, "x": 0, "y": 24 },
       "datasource": {
@@ -439,29 +458,42 @@
       },
       "targets": [
         {
-          "refId": "input",
+          "refId": "success",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(llm_tokens_total{type=\"input\"}[$__range]))",
-          "legendFormat": "Input Tokens"
+          "expr": "sum(increase(llm_requests_total{status=\"success\"}[$__range]))",
+          "legendFormat": "Success"
         },
         {
-          "refId": "output",
+          "refId": "failure",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(llm_tokens_total{type=\"output\"}[$__range]))",
-          "legendFormat": "Output Tokens"
+          "expr": "sum(increase(llm_requests_total{status!=\"success\"}[$__range]))",
+          "legendFormat": "Failure"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Success" },
+            "properties": [
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Failure" },
+            "properties": [
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }
+            ]
+          }
+        ]
       },
       "options": {
         "reduceOptions": {
@@ -476,7 +508,7 @@
     },
     {
       "id": 9,
-      "title": "Avg Tokens per Request",
+      "title": "Avg LLM Latency",
       "type": "stat",
       "gridPos": { "h": 4, "w": 8, "x": 8, "y": 24 },
       "datasource": {
@@ -490,20 +522,21 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(llm_tokens_total[$__range])) / sum(increase(llm_requests_total[$__range]))",
-          "legendFormat": "Avg Tokens/Request"
+          "expr": "sum(rate(llm_latency_seconds_sum[$__rate_interval])) / sum(rate(llm_latency_seconds_count[$__rate_interval]))",
+          "legendFormat": "Avg Latency"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
-          "unit": "short",
+          "unit": "s",
+          "decimals": 3,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               { "color": "green", "value": null },
-              { "color": "yellow", "value": 2000 },
-              { "color": "red", "value": 4000 }
+              { "color": "yellow", "value": 2 },
+              { "color": "red", "value": 5 }
             ]
           }
         },
@@ -524,7 +557,7 @@
     },
     {
       "id": 10,
-      "title": "Avg Cost per Request",
+      "title": "p99 LLM Latency",
       "type": "stat",
       "gridPos": { "h": 4, "w": 8, "x": 16, "y": 24 },
       "datasource": {
@@ -538,21 +571,21 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "((sum(increase(llm_tokens_total{type=\"input\"}[$__range])) * $cost_per_input_token / 1000) + (sum(increase(llm_tokens_total{type=\"output\"}[$__range])) * $cost_per_output_token / 1000)) / sum(increase(llm_requests_total[$__range]))",
-          "legendFormat": "Avg Cost"
+          "expr": "histogram_quantile(0.99, sum(rate(llm_latency_seconds_bucket[$__rate_interval])) by (le))",
+          "legendFormat": "p99 Latency"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
-          "unit": "currencyUSD",
-          "decimals": 4,
+          "unit": "s",
+          "decimals": 3,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               { "color": "green", "value": null },
-              { "color": "yellow", "value": 0.01 },
-              { "color": "red", "value": 0.1 }
+              { "color": "yellow", "value": 5 },
+              { "color": "red", "value": 10 }
             ]
           }
         },
@@ -582,7 +615,7 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "query": "label_values(llm_tokens_total, model)",
+        "query": "label_values(llm_requests_total, model)",
         "refresh": 2,
         "includeAll": true,
         "multi": true,
@@ -592,26 +625,6 @@
           "value": ["$__all"]
         },
         "sort": 1
-      },
-      {
-        "name": "cost_per_input_token",
-        "type": "textbox",
-        "label": "Cost per 1K Input Tokens ($)",
-        "current": {
-          "selected": false,
-          "text": "0.003",
-          "value": "0.003"
-        }
-      },
-      {
-        "name": "cost_per_output_token",
-        "type": "textbox",
-        "label": "Cost per 1K Output Tokens ($)",
-        "current": {
-          "selected": false,
-          "text": "0.015",
-          "value": "0.015"
-        }
       }
     ]
   },
