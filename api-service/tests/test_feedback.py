@@ -103,7 +103,8 @@ def _create_session(client: TestClient) -> str:
                 json={"message": "Hello", "stream": False},
             )
             assert response.status_code == 200
-            return response.json()["session_id"]
+            session_id: str = response.json()["session_id"]
+            return session_id
 
 
 class TestFeedbackEndpoint:
