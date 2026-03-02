@@ -4187,11 +4187,11 @@ Each runbook includes: scenario, severity/impact, dashboard/tool, step-by-step d
 
 **Error Handling:**
 
-| Condition | Behavior | User-Facing Message |
-| --- | --- | --- |
+| Condition                       | Behavior                                                                                                    | User-Facing Message |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------- |
 | Observability stack not running | Each runbook starts with "If you see no data" prereq check; Quick Start section provides setup instructions | N/A (documentation) |
-| Incorrect env var configuration | Configuration Reference section lists all env vars with defaults, types, and examples | N/A (documentation) |
-| Grafana unreachable | Quick Start includes connectivity troubleshooting for port conflicts | N/A (documentation) |
+| Incorrect env var configuration | Configuration Reference section lists all env vars with defaults, types, and examples                       | N/A (documentation) |
+| Grafana unreachable             | Quick Start includes connectivity troubleshooting for port conflicts                                        | N/A (documentation) |
 
 **Edge Cases:**
 
@@ -4202,3 +4202,297 @@ Each runbook includes: scenario, severity/impact, dashboard/tool, step-by-step d
 - "No data" troubleshooting in every runbook prevents reader dead-ends
 
 **Dependencies:** INFRA-084, INFRA-085, INFRA-086, FUNC-084, FUNC-085, FUNC-086, FUNC-087, FUNC-088
+
+---
+
+## Observability Phase 2: Enhanced Metrics & Dashboards
+
+### FUNC-089: gRPC Method Latency Breakdown
+
+**Description:** Add `method` label to memvid-service Prometheus histograms and update the Latency Breakdown Grafana dashboard with a gRPC method selector and per-method latency panels for `search`, `ask`, and `get_state`.
+
+**Acceptance Criteria:**
+
+- **Given** memvid-service handles a gRPC `Search` request
+  **When** the request completes
+  **Then** `memvid_search_latency_seconds` histogram records with label `method="search"`
+
+- **Given** memvid-service handles a gRPC `Ask` request
+  **When** the request completes
+  **Then** the histogram records with label `method="ask"`
+
+- **Given** memvid-service handles a gRPC `GetState` request
+  **When** the request completes
+  **Then** the histogram records with label `method="get_state"`
+
+- **Given** the Latency Breakdown dashboard is loaded in Grafana
+  **When** the user selects a method from the `method` variable dropdown
+  **Then** only latency data for that method is displayed
+
+- **Given** all three gRPC methods have been called
+  **When** viewing the per-method latency panel
+  **Then** p50/p95/p99 quantiles are displayed for each method independently
+
+**Error Handling:**
+
+| Condition                 | Behavior                                        | User-Facing Message       |
+| ------------------------- | ----------------------------------------------- | ------------------------- |
+| Unknown gRPC method       | Histogram records with label `method="unknown"` | N/A (metric label)        |
+| Prometheus scrape timeout | Existing retry behavior; no data loss           | Dashboard shows "No data" |
+
+**Edge Cases:**
+
+- Method label cardinality is fixed (3 known + 1 unknown) -- no unbounded label growth
+- Dashboard variable default is "All" showing aggregate view
+
+**Dependencies:** FUNC-087 (grafana-dashboards), FUNC-085 (otel-rust-trace-export)
+
+---
+
+### FUNC-090: Search Relevance Metrics
+
+**Description:** Instrument memvid-service to emit cosine similarity scores from embedding search as Prometheus histograms (`memvid_search_relevance_score`) and chunks-returned count (`memvid_search_chunks_returned`). Record as OTel span attributes for trace-level correlation.
+
+**Acceptance Criteria:**
+
+- **Given** a search query returns N chunks from the vector store
+  **When** results are scored
+  **Then** a `memvid_search_relevance_score` histogram observation is recorded for each chunk's cosine similarity (0.0-1.0 range)
+
+- **Given** a search query completes
+  **When** results are returned
+  **Then** a `memvid_search_chunks_returned` histogram observation records the count of chunks returned
+
+- **Given** a search span is active
+  **When** relevance scores are computed
+  **Then** span attributes `search.max_relevance`, `search.min_relevance`, `search.avg_relevance`, and `search.chunks_returned` are set
+
+- **Given** Prometheus scrapes the memvid-service /metrics endpoint
+  **When** relevance metrics are queried
+  **Then** `memvid_search_relevance_score_bucket` and `memvid_search_chunks_returned_bucket` histograms are available
+
+**Error Handling:**
+
+| Condition                           | Behavior                                                  | User-Facing Message                         |
+| ----------------------------------- | --------------------------------------------------------- | ------------------------------------------- |
+| Search returns 0 chunks             | chunks_returned records 0; no relevance_score observation | N/A (metric)                                |
+| Cosine similarity computation fails | Relevance metric skipped; search still returns results    | N/A (degraded metrics, not degraded search) |
+
+**Edge Cases:**
+
+- Relevance score histogram buckets: 0.0, 0.1, 0.2, ..., 0.9, 0.95, 1.0 (11 buckets for 0-1 range)
+- Chunks returned histogram buckets: 0, 1, 2, 3, 5, 10, 20 (typical range for resume search)
+- Ask mode (reranking) records post-rerank scores, not pre-rerank
+
+**Dependencies:** FUNC-085 (otel-rust-trace-export)
+
+---
+
+### FUNC-091: Success Rate KPI Panel
+
+**Description:** Add traffic-light stat panels to the Endpoint Overview Grafana dashboard showing overall success rate, error rate gauge, and total error count. Uses existing `http_requests_total` and `http_request_duration_seconds` metrics -- no new instrumentation.
+
+**Acceptance Criteria:**
+
+- **Given** the Endpoint Overview dashboard is loaded
+  **When** all endpoints return 2xx
+  **Then** the success rate stat panel shows >= 99% in green
+
+- **Given** some endpoints return 5xx errors
+  **When** the error rate exceeds 5%
+  **Then** the success rate panel turns yellow (95-99%) or red (< 95%)
+
+- **Given** the error count panel is visible
+  **When** errors have occurred in the selected time range
+  **Then** the total error count is displayed as a stat panel
+
+- **Given** the dashboard uses threshold coloring
+  **When** success rate thresholds are configured
+  **Then** green >= 99%, yellow >= 95%, red < 95%
+
+- **Given** health check requests are made to `/health` and `/api/v1/health` alongside application requests, **When** the success rate panel calculates its value, **Then** health check requests are excluded via PromQL filter `{path!~"/health|/api/v1/health"}`
+
+**Error Handling:**
+
+| Condition                       | Behavior                                      | User-Facing Message                      |
+| ------------------------------- | --------------------------------------------- | ---------------------------------------- |
+| No requests in time range       | Stat panels show "No data"                    | Dashboard shows empty state              |
+| Only 4xx errors (client errors) | 4xx counted separately from 5xx in error rate | Success rate reflects server errors only |
+
+**Edge Cases:**
+
+- Health check requests (`/health`, `/api/v1/health`) excluded from success rate calculation to avoid inflating the metric
+- Dashboard time range affects the denominator -- short ranges may show volatile percentages
+
+**Dependencies:** FUNC-087 (grafana-dashboards)
+
+---
+
+### FUNC-092: SSE Streaming Latency Metrics
+
+**Description:** Instrument the frontend `useStreamingChat` hook to measure time-to-first-token (TTFT) and total streaming duration as OTel span attributes. TTFT is measured from fetch() resolution to the first SSE `data` event. Add TTFT and streaming duration panels to the Latency Breakdown dashboard using Tempo span queries.
+
+**Acceptance Criteria:**
+
+- **Given** a user sends a chat message
+  **When** the first SSE data event arrives
+  **Then** the `chat.stream` span records attribute `chat.time_to_first_token_ms` with the elapsed time in milliseconds
+
+- **Given** a streaming response completes
+  **When** the SSE connection closes
+  **Then** the `chat.stream` span records attribute `chat.streaming_duration_ms` with the total elapsed time
+
+- **Given** the Latency Breakdown dashboard is loaded
+  **When** a TTFT panel is present
+  **Then** it displays a Tempo query showing p50/p95 TTFT across chat requests
+
+- **Given** the Latency Breakdown dashboard is loaded
+  **When** a streaming duration panel is present
+  **Then** it displays total streaming time distribution
+
+**Error Handling:**
+
+| Condition                               | Behavior                                                                                                   | User-Facing Message         |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------- | --------------------------- |
+| SSE connection drops before first token | TTFT attribute not set; span status set to ERROR                                                           | Chat UI shows error message |
+| User cancels streaming mid-response     | streaming_duration_ms records time until cancel; span status UNSET with attribute chat.user_cancelled=true | N/A (metric)                |
+| OTel SDK not initialized (no endpoint)  | No span created; streaming works normally                                                                  | N/A (graceful degradation)  |
+
+**Edge Cases:**
+
+- TTFT includes network round-trip -- not comparable to server-side latency
+- Mock streaming mode (no real SSE) should not emit TTFT metrics
+- Browser tab backgrounded during streaming may inflate TTFT due to timer throttling
+
+**Dependencies:** FUNC-086 (otel-frontend-browser-tracing)
+
+---
+
+### FUNC-093: Retrieval Quality Dashboard
+
+**Description:** New pre-provisioned Grafana dashboard (`retrieval-quality.json`) visualizing search relevance metrics: relevance score distribution histogram, chunks-per-query histogram, low-relevance query rate, and search query volume over time.
+
+**Acceptance Criteria:**
+
+- **Given** the retrieval quality dashboard is loaded
+  **When** search queries have been executed
+  **Then** a relevance score distribution panel shows a histogram of cosine similarity scores across all searches
+
+- **Given** the dashboard is loaded
+  **When** chunks-per-query data is available
+  **Then** a histogram panel shows the distribution of chunks returned per search query
+
+- **Given** a low-relevance threshold of 0.5 is configured
+  **When** queries return results with max_relevance below the threshold
+  **Then** the low-relevance query rate panel shows the percentage of such queries
+
+- **Given** the dashboard is loaded
+  **When** viewing query volume
+  **Then** a time-series panel shows search requests per minute over the selected time range
+
+- **Given** the dashboard file exists
+  **When** Grafana starts with provisioning
+  **Then** the dashboard is auto-loaded without manual import
+
+**Error Handling:**
+
+| Condition                                | Behavior                                                       | User-Facing Message          |
+| ---------------------------------------- | -------------------------------------------------------------- | ---------------------------- |
+| No search queries in time range          | All panels show "No data"                                      | Dashboard shows empty state  |
+| memvid-service not scraped by Prometheus | Relevance panels empty; query volume may still show via traces | "No data" on affected panels |
+
+**Edge Cases:**
+
+- Low-relevance threshold (0.5) is a dashboard variable, editable by the operator
+- Dashboard works with zero data (no errors, just empty panels)
+- Relevance histogram uses the same bucket boundaries as the Prometheus metric
+
+**Dependencies:** FUNC-090 (search-relevance-metrics), FUNC-087 (grafana-dashboards)
+
+---
+
+### FUNC-094: Quality & Evals Dashboard
+
+**Description:** Full-stack feature adding user feedback (thumbs up/down) on chat messages. API endpoint (`POST /api/v1/chat/{session_id}/feedback`) accepts feedback with message_id and rating. Emits `chat_feedback_total` Prometheus counter with `rating` label. Logs feedback as structured log events (captured by Loki via Fluent Bit). New Grafana dashboard (`quality-evals.json`) with feedback rate, positive/negative ratio, and Loki-based feedback drill-down.
+
+**Acceptance Criteria:**
+
+- **Given** a user clicks thumbs-up on a chat message
+  **When** the frontend calls `POST /api/v1/chat/{session_id}/feedback` with `{message_id, rating: "up"}`
+  **Then** the API returns 200 OK and increments `chat_feedback_total{rating="up"}`
+
+- **Given** a user clicks thumbs-down
+  **When** the feedback endpoint is called with `rating: "down"`
+  **Then** `chat_feedback_total{rating="down"}` is incremented
+
+- **Given** feedback is submitted
+  **When** the API processes it
+  **Then** a structured log event is emitted with fields: `event="chat_feedback"`, `session_id`, `message_id`, `rating`, `trace_id`, `timestamp`
+
+- **Given** an optional `comment` field is provided in the feedback request
+  **When** logged
+  **Then** the comment is included in the structured log event
+
+- **Given** the quality-evals dashboard is loaded
+  **When** feedback data exists in Prometheus
+  **Then** a feedback rate panel shows feedback submissions per hour
+
+- **Given** the dashboard is loaded
+  **When** positive and negative feedback exist
+  **Then** a ratio panel shows the positive/negative ratio over time
+
+- **Given** the dashboard is loaded
+  **When** a Loki panel is configured
+  **Then** feedback log entries are queryable with drill-down to individual feedback events including trace_id links to Tempo
+
+- **Given** the AIChat component renders a completed assistant message
+  **When** the message is displayed
+  **Then** thumbs-up and thumbs-down icons appear below the message
+
+- **Given** a user has already submitted feedback for a message
+  **When** viewing that message
+  **Then** the selected rating is visually highlighted and re-submission is prevented
+
+- **Given** a user submits feedback for the same message_id twice with the same rating, **When** the second request is processed, **Then** the Prometheus counter is not incremented again and the API returns 200 OK with no side effects
+
+- **Given** a feedback request includes a comment longer than 500 characters, **When** the API validates the request, **Then** it returns 422 Validation Error with message "Comment exceeds 500 character limit"
+
+- **Given** a feedback event is logged to Loki with a trace_id field, **When** an operator clicks the trace_id in the Grafana Loki panel, **Then** Grafana opens Tempo with the corresponding trace via Data Links
+
+**Error Handling:**
+
+| Condition                              | Behavior                                        | User-Facing Message               |
+| -------------------------------------- | ----------------------------------------------- | --------------------------------- |
+| Invalid session_id                     | API returns 404 Not Found                       | "Session not found"               |
+| Invalid rating value (not "up"/"down") | API returns 422 Validation Error                | "Rating must be 'up' or 'down'"   |
+| Feedback endpoint unavailable          | Frontend shows toast error, chat continues      | "Feedback could not be submitted" |
+| Prometheus counter increment fails     | Structured log still emitted (Loki captures it) | N/A (silent degradation)          |
+
+**Edge Cases:**
+
+- Feedback on messages from expired sessions: API returns 404 (session TTL applies)
+- Rate limiting applies to feedback endpoint (same limits as chat)
+- Duplicate feedback for same message_id: counter not incremented again (idempotent)
+- Comment field max length: 500 characters (API rejects with 422 if exceeded; no silent truncation)
+- Feedback does not persist across server restarts (constitution: no server-side persistence)
+
+**Dependencies:** FUNC-087 (grafana-dashboards), FUNC-084 (otel-python-instrumentation), INFRA-085 (fluent-bit-log-shipper)
+
+---
+
+### Phase 2 Clarification Decisions
+
+The following decisions were made during the spec and clarify phases:
+
+1. **Feedback storage model:** Structured logs (Loki) + Prometheus counter. No in-memory persistence beyond the log pipeline. (spec phase)
+2. **TTFT measurement point:** Client-side, from fetch() resolution to first SSE `data` event. Measures user-perceived latency including network. (spec phase)
+3. **Relevance score calculation:** Cosine similarity from existing embedding computations in memvid-service. No new ML inference. (spec phase)
+4. **Observability data persistence:** Observability telemetry (traces, metrics, logs) stored on the observer host is operational metadata, exempt from the constitution's "no server-side conversation persistence" rule. Conversation content is never stored; only operational signals (latency, counts, scores) are retained. (clarify Q3 resolved)
+5. **Feedback counter idempotency:** Counter increments once per message_id per session. If user clicks thumbs-up twice for the same message, the counter does not increment again. UI disables the button after first click. In-memory tracking per session of which messages received feedback. (clarify Q9 resolved)
+6. **Comment field validation:** API rejects comments > 500 characters with 422 Validation Error via Pydantic `max_length=500`. Client enforces with `maxlength` attribute on textarea. No silent truncation -- aligns with zero-hallucination principle. (clarify Q12 resolved)
+7. **Health check exclusion from success rate:** Filtered in the Grafana PromQL query: `{path!~"/health|/api/v1/health"}`. No middleware changes needed. Dashboard-only filtering. (clarify Q5 resolved)
+8. **Unknown gRPC method label:** Label value `method="unknown"` for any unrecognized gRPC method. Fixed cardinality (3 known + 1 unknown). New methods require a spec update to add explicit labels. (clarify Q1 resolved)
+9. **Dashboard "All" variable behavior:** Grafana template variable uses `label_values(method)` query with "All" option that generates `method=~".*"` regex. Self-correcting if methods are added. (clarify Q2 resolved)
+10. **SSE cancellation span status:** User cancellation sets span status to `UNSET` (neutral), not `OK` or `ERROR`. Span attribute `chat.user_cancelled: true` added for trace filtering. Only technical failures (timeout, network drop) set `ERROR`. (clarify Q7 resolved)
+11. **Low-relevance threshold validation:** Dashboard variable uses Grafana custom type with predefined values (0.3, 0.4, 0.5, 0.6, 0.7, 0.8) preventing invalid input. Default: 0.5. (clarify Q8 resolved)
+12. **Feedback Tempo drill-down:** Structured log includes indexed `trace_id` field. Grafana Loki panel uses Data Links feature with template URL to Tempo. Acceptance criterion added to FUNC-094. (clarify Q11 resolved)

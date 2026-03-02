@@ -33,7 +33,7 @@ services:
     networks:
       - dev-net
     ports:
-      - "50051:50051"
+      - '50051:50051'
     environment:
       - MEMVID_FILE_PATH=/data/.memvid/${MEMVID_FILENAME:-resume.mv2}
       - GRPC_PORT=50051
@@ -56,7 +56,7 @@ services:
           memory: 200M
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "/usr/local/bin/memvid-service", "--health"]
+      test: ['CMD', '/usr/local/bin/memvid-service', '--health']
       interval: 45s
       timeout: 10s
       retries: 3
@@ -69,7 +69,7 @@ services:
     networks:
       - dev-net
     ports:
-      - "3000:3000"
+      - '3000:3000'
     depends_on:
       ai-resume-memvid:
         condition: service_healthy
@@ -100,7 +100,7 @@ services:
           memory: 200M
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "/healthcheck"]
+      test: ['CMD', '/healthcheck']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -113,7 +113,7 @@ services:
     networks:
       - dev-net
     ports:
-      - "8080:8080"
+      - '8080:8080'
     depends_on:
       ai-resume-api:
         condition: service_healthy
@@ -135,7 +135,7 @@ services:
           memory: 200M
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8080/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -147,23 +147,23 @@ services:
 
   # Fluent Bit log shipper - tails container logs and forwards to Loki
   #
-  # Requires PODMAN_LOG_ROOT to point to the container log directory.
-  # On Linux: /var/log/containers (default)
-  # On macOS: not available -- podman runs in a VM, so host log path
-  # doesn't exist. Set FLUENT_BIT_ENABLED=false or omit this service:
-  #   FLUENT_BIT_ENABLED=false podman compose -f compose.dev.yaml up -d
+  # On macOS, container logs live inside the podman VM. Fluent Bit runs in the
+  # same VM and can access VM-internal paths. See compose.yaml for discovery steps.
+  # When PODMAN_LOG_ROOT is unset, falls back to an empty named volume (no inputs).
   fluent-bit:
     image: cr.fluentbit.io/fluent/fluent-bit:latest
     container_name: fluent-bit
-    profiles:
-      - linux
     networks:
       - dev-net
     environment:
       - LOKI_HOST=loki
       - LOKI_PORT=${LOKI_PORT:-3100}
     volumes:
-      - ${PODMAN_LOG_ROOT:-/var/log/containers}:/var/log/containers:ro
+      # When PODMAN_LOG_ROOT is set to a host path (e.g. /var/log/containers),
+      # compose creates a bind mount.  When unset, the named volume fallback
+      # "fluent-bit-logs" is used -- an empty volume that lets Fluent Bit start
+      # without error on macOS or any host lacking a container log directory.
+      - ${PODMAN_LOG_ROOT:-fluent-bit-logs}:/var/log/containers:ro
       - ./observability/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
     read_only: true
     security_opt:
@@ -185,8 +185,8 @@ services:
     networks:
       - dev-net
     ports:
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
+      - '4317:4317' # OTLP gRPC
+      - '4318:4318' # OTLP HTTP
     volumes:
       - ./observability/otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
     depends_on:
@@ -202,7 +202,7 @@ services:
     networks:
       - dev-net
     ports:
-      - "3001:3000"
+      - '3001:3000'
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
@@ -222,11 +222,11 @@ services:
     networks:
       - dev-net
     ports:
-      - "3200:3200"
+      - '3200:3200'
     volumes:
       - ./observability/tempo.yaml:/etc/tempo/config.yaml:ro
       - tempo-data:/var/tempo
-    command: ["-config.file=/etc/tempo/config.yaml"]
+    command: ['-config.file=/etc/tempo/config.yaml']
     restart: unless-stopped
 
   # Prometheus -- metrics collection
@@ -236,7 +236,7 @@ services:
     networks:
       - dev-net
     ports:
-      - "9090:9090"
+      - '9090:9090'
     volumes:
       - ./prometheus.dev.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
@@ -249,11 +249,11 @@ services:
     networks:
       - dev-net
     ports:
-      - "3100:3100"
+      - '3100:3100'
     volumes:
       - ./observability/loki.yaml:/etc/loki/config.yaml:ro
       - loki-data:/loki
-    command: ["-config.file=/etc/loki/config.yaml"]
+    command: ['-config.file=/etc/loki/config.yaml']
     restart: unless-stopped
 
 # ---------------------------------------------------------------------------
@@ -264,6 +264,7 @@ volumes:
   tempo-data:
   prometheus-data:
   loki-data:
+  fluent-bit-logs: # fallback when PODMAN_LOG_ROOT is unset (macOS)
 
 networks:
   dev-net:

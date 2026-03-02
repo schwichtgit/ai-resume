@@ -19,7 +19,7 @@ Once established, these principles do not change without explicit human approval
 4. **Edge-deployable** -- runs on ARM64 with 4GB RAM, <200MB memory, no external database.
 5. **API keys via environment variables only** -- no secrets in images, git, or config files.
 6. **Graceful degradation** -- if memvid or LLM unavailable: propagate service status to the frontend; frontend displays "service unavailable" notice with retry capability. Cache-based degradation (serving cached profile data) is deferred to a future phase.
-7. **No server-side conversation persistence** -- sessions are ephemeral and in-memory only. No conversation history stored on disk or database.
+7. **No server-side conversation persistence** -- sessions are ephemeral and in-memory only. No conversation history stored on disk or database. Observability telemetry (traces, metrics, logs) on the observer host is operational metadata and is exempt from this rule.
 
 ## Quality Standards
 

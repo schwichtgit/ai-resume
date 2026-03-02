@@ -1044,3 +1044,140 @@ A `.trivyignore` file (committed empty with comment header) provides documented 
 
 - Positive: Version visibility for debugging and support, corrected GitHub URL drives repo traffic, Medium link connects to project blog series, consistent About experience across header and footer
 - Negative: Adds dropdown menu complexity to header, BookOpen icon is not immediately recognizable as "Medium" (mitigated by tooltip/label), version display depends on API availability
+
+### ADR-026: gRPC Method Label on Prometheus Histograms (FUNC-089)
+
+**Decision:** Add a `method` label to the existing `memvid_search_latency_seconds` histogram in Rust memvid-service. Values: `search`, `ask`, `get_state`, `unknown`. Grafana Latency Breakdown dashboard uses `label_values(method)` template variable with "All" default generating `method=~".*"`.
+
+**Rationale:**
+
+1. The three gRPC methods have distinct latency profiles (search ~5ms, ask ~2-5s due to LLM, get_state ~1ms). Aggregating them hides bottlenecks.
+2. Fixed label cardinality (4 values) prevents Prometheus high-cardinality issues.
+3. `label_values()` template variable is self-correcting if methods are added.
+
+**Alternatives Considered:**
+
+1. **Separate histograms per method** (e.g., `memvid_search_latency_seconds`, `memvid_ask_latency_seconds`). Rejected: duplicates metric definitions, harder to query across methods.
+2. **OTel span attributes only** (no Prometheus labels). Rejected: Prometheus queries are faster for dashboard panels; Tempo span queries are reserved for trace drill-down.
+
+**Consequences:**
+
+- Positive: Per-method latency visibility, dashboard self-corrects on method addition
+- Negative: Adds 1 label dimension to an existing metric (minor storage increase)
+- Files: `memvid-service/src/metrics.rs`, `memvid-service/src/grpc/service.rs`, `deployment/observability/dashboards/latency-breakdown.json`
+
+### ADR-027: Cosine Similarity Histograms for Search Relevance (FUNC-090)
+
+**Decision:** Expose cosine similarity scores from memvid's existing embedding search as two new Prometheus histograms: `memvid_search_relevance_score` (per-chunk scores, buckets 0.0-1.0 in 0.1 increments + 0.95) and `memvid_search_chunks_returned` (chunk count per query, buckets 0-20). Record summary statistics as OTel span attributes (`search.max_relevance`, `search.min_relevance`, `search.avg_relevance`, `search.chunks_returned`).
+
+**Rationale:**
+
+1. memvid already computes cosine similarity during search -- no new computation needed, just metric emission.
+2. Histogram buckets aligned with cosine similarity range [0,1] enable percentile queries in Grafana.
+3. Span attributes enable per-trace relevance analysis without Prometheus cardinality concerns.
+4. When search returns 0 chunks, `chunks_returned` records 0 and no `relevance_score` observation is made (documented asymmetry).
+
+**Alternatives Considered:**
+
+1. **Binary threshold counter** (relevant vs irrelevant). Rejected: loses granularity that histograms provide.
+2. **Rank-based percentile**. Rejected: harder to interpret, less actionable.
+
+**Consequences:**
+
+- Positive: Enables retrieval quality dashboard, per-trace relevance analysis
+- Negative: Two new histogram metrics add ~2KB/scrape to Prometheus
+- Files: `memvid-service/src/metrics.rs`, `memvid-service/src/grpc/service.rs`
+
+### ADR-028: Dashboard-Level Health Check Filtering (FUNC-091)
+
+**Decision:** Exclude health check requests from success rate calculations via PromQL filter in the Grafana dashboard query: `{path!~"/health|/api/v1/health"}`. No middleware changes.
+
+**Rationale:**
+
+1. Health checks are high-frequency (every 30s per service) and inflate request counts.
+2. Filtering at the dashboard level keeps metrics complete (health requests still visible in other panels).
+3. No code changes required -- pure dashboard JSON update.
+
+**Alternatives Considered:**
+
+1. **Middleware exclusion** (don't emit metrics for /health). Rejected: loses visibility into health check latency spikes.
+2. **Both middleware + dashboard**. Rejected: over-engineered for current scale.
+
+**Consequences:**
+
+- Positive: Accurate success rate for application endpoints, zero code changes
+- Negative: Health check success/failure is not reflected in the KPI panel (acceptable; health checks have their own panels)
+- Files: `deployment/observability/dashboards/endpoint-overview.json`
+
+### ADR-029: Client-Side TTFT via OTel Span Attributes (FUNC-092)
+
+**Decision:** Measure time-to-first-token (TTFT) in the frontend `useStreamingChat` hook. Timer starts when `fetch()` resolves (connection established), stops on first SSE `data` event. Recorded as span attribute `chat.time_to_first_token_ms` on a `chat.stream` span. Total streaming duration recorded as `chat.streaming_duration_ms`. User cancellation sets span status `UNSET` (not OK/ERROR) with attribute `chat.user_cancelled: true`.
+
+**Rationale:**
+
+1. Client-side measurement captures the full user-perceived latency including network, which is more meaningful than server-side TTFT.
+2. SSE `data` event (not content chunk) is the simplest reliable measurement point.
+3. UNSET span status for cancellations distinguishes user action from errors without polluting error rate dashboards.
+4. When OTel SDK is not initialized (no `__OTEL_ENDPOINT__`), no spans are created -- streaming works normally (graceful degradation).
+
+**Alternatives Considered:**
+
+1. **Server-side X-Time-To-First-Token header**. Rejected: misses network latency, requires header parsing.
+2. **First content chunk** (skip metadata). Rejected: harder to instrument reliably, minimal TTFT difference.
+
+**Consequences:**
+
+- Positive: User-perceived latency visibility, cancellation tracking
+- Negative: Dashboard panels empty when frontend tracing disabled, TTFT includes network jitter
+- Files: `frontend/src/hooks/useStreamingChat.ts`, `deployment/observability/dashboards/latency-breakdown.json`
+
+### ADR-030: Retrieval Quality Dashboard with Operator-Configurable Threshold (FUNC-093)
+
+**Decision:** New `retrieval-quality.json` Grafana dashboard with 4 panels: relevance score distribution histogram, chunks-per-query histogram, low-relevance query rate, and search query volume. Low-relevance threshold is a Grafana custom variable with predefined values (0.3, 0.4, 0.5, 0.6, 0.7, 0.8), default 0.5. Auto-provisioned in the same directory as existing dashboards.
+
+**Rationale:**
+
+1. Predefined threshold values prevent invalid input (cosine similarity is [0,1]).
+2. Four panels cover the key retrieval quality signals without dashboard clutter.
+3. Same provisioning mechanism as existing dashboards -- no new infrastructure.
+
+**Alternatives Considered:**
+
+1. **Free-text threshold variable**. Rejected: allows invalid values (negative, >1.0) that break queries silently.
+2. **Embedding into existing Latency Breakdown dashboard**. Rejected: separate concern (quality vs. speed), would overcrowd the latency dashboard.
+
+**Consequences:**
+
+- Positive: Dedicated retrieval quality visibility, operator-tunable threshold
+- Negative: Fifth dashboard increases provisioning surface
+- Files: `deployment/observability/dashboards/retrieval-quality.json`, `deployment/observability/provisioning/dashboards.yaml`
+
+### ADR-031: Structured Log + Prometheus Feedback System (FUNC-094)
+
+**Decision:** Full-stack user feedback feature:
+
+- **API:** `POST /api/v1/chat/{session_id}/feedback` accepting `{message_id, rating: "up"|"down", comment?: str(max=500)}`. Emits `chat_feedback_total{rating}` counter (idempotent per message_id per session). Logs structured event to stdout (captured by Fluent Bit -> Loki).
+- **Frontend:** Thumbs up/down icons below completed assistant messages in AIChat.tsx. Button disabled after first click (prevents double-increment).
+- **Dashboard:** `quality-evals.json` with feedback rate, positive/negative ratio, and Loki log panel with Data Links to Tempo traces.
+- **Idempotency:** In-memory set per session tracking `(message_id, rating)` tuples. Duplicate submissions return 200 OK but do not increment the counter. Rating changes (up -> down) decrement old and increment new.
+- **Validation:** Pydantic `max_length=500` on comment field. Returns 422 for violations. No silent truncation.
+
+**Rationale:**
+
+1. Structured logs + Prometheus counter is the lightest full-pipeline approach. No new storage backends.
+2. Loki captures the full feedback event (session_id, message_id, rating, comment, trace_id) for drill-down.
+3. Prometheus counter enables time-series dashboards without Loki query overhead.
+4. Idempotent counters prevent feedback spam from inflating metrics.
+5. 422 rejection (not truncation) aligns with zero-hallucination principle -- user's feedback is never silently modified.
+
+**Alternatives Considered:**
+
+1. **Prometheus-only** (no Loki). Rejected: loses drill-down capability, comment text not stored.
+2. **In-memory persistence** (store N feedback entries). Rejected: adds state management complexity, violates no-persistence spirit.
+3. **Silent truncation** for long comments. Rejected: violates zero-hallucination principle.
+
+**Consequences:**
+
+- Positive: Feedback loop from users to operators, trace-correlated quality signals, zero new infrastructure
+- Negative: Feedback lost on server restart (in-memory idempotency tracking). Comment content only in Loki (subject to retention). Rate limiting shared with chat endpoint.
+- Files: `api-service/ai_resume_api/main.py`, `api-service/ai_resume_api/models.py`, `frontend/src/components/AIChat.tsx`, `frontend/src/lib/api-client.ts`, `deployment/observability/dashboards/quality-evals.json`
