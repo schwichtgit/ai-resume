@@ -136,7 +136,7 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the complete build system ref
 | Method | Path                                          | Description                                           |
 | ------ | --------------------------------------------- | ----------------------------------------------------- |
 | GET    | `/health`                                     | Health check (root-level alias)                       |
-| GET    | `/api/v1/health`                    | Health check with dependency status                   |
+| GET    | `/api/v1/health`                              | Health check with dependency status                   |
 | POST   | `/api/v1/chat`                                | AI chat with semantic search (supports SSE streaming) |
 | GET    | `/api/v1/profile`                             | Profile metadata from memvid                          |
 | GET    | `/api/v1/suggested-questions`                 | Suggested chat questions from profile                 |
