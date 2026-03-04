@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Rust real-searcher tests fail with "exclusive access unavailable" on memvid-core 2.0.138 due to new file locking; added `#[serial]` to all tests sharing the `.mv2` file
 
+### Security
+
+- Updated `aws-lc-sys` to 0.38.0 fixing 3 high-severity CVEs (PKCS7_verify bypass, AES-CCM timing side-channel)
+
 ## [0.1.0-alpha.7] - 2026-03-02
 
 ### Added
