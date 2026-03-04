@@ -234,9 +234,10 @@ MV2_SIZE=$(stat -f%z "$MV2_OUTPUT" 2>/dev/null || stat -c%s "$MV2_OUTPUT" 2>/dev
 echo -e "${GREEN}Ingest complete: $MV2_OUTPUT ($MV2_SIZE bytes)${NC}"
 echo ""
 
-# memvid Bug C (#196) fixed in memvid-core 2.0.138 / SDK 2.0.158.
-# Doctor workaround disabled by default. Set REBUILD_TIME_INDEX=true for diagnostics.
-REBUILD_TIME_INDEX="${REBUILD_TIME_INDEX:-false}"
+# Workaround: memvid Bug C (#196) -- ask() time-index corruption.
+# find(mode="hybrid") is unaffected but ask() still fails without this.
+# Disable by setting REBUILD_TIME_INDEX=false.
+REBUILD_TIME_INDEX="${REBUILD_TIME_INDEX:-true}"
 if [ "$REBUILD_TIME_INDEX" = "true" ]; then
     echo "Rebuilding .mv2 time index (memvid doctor)..."
     if command -v memvid >/dev/null 2>&1; then

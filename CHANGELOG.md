@@ -15,8 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Memvid Core upgraded from 2.0.137 to 2.0.138 (crates.io)
 - Memvid CLI version pins updated to 2.0.158 in E2E scripts and CI workflow
 - `repro_bug_c.py` rewritten to use `find(mode="hybrid")` instead of deprecated `ask()` API (removed `top_k` kwarg)
-- Upstream bug report updated: both #194 and #196 now marked FIXED
-- `memvid doctor` time-index workaround disabled in CI and E2E scripts (Bug C #196 fixed upstream)
+- Upstream bug report updated: #194 FIXED, #196 partial fix (`find()` works, `ask()` still needs doctor workaround)
 - README updated: added MCP server, chat feedback, version, and MCP config endpoints to API table; added MCP Server description
 
 ### Fixed

@@ -339,10 +339,11 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      # memvid Bug C (#196) fixed in memvid-core 2.0.138 / SDK 2.0.158.
-      # Doctor workaround no longer needed. Kept as opt-in for diagnostics.
+      # Workaround: memvid Bug C (#196) -- ask() time-index corruption.
+      # find(mode="hybrid") is unaffected but ask() still fails without this.
+      # Disable by setting repository variable REBUILD_TIME_INDEX=false.
       - name: Rebuild .mv2 time index (Bug C workaround)
-        if: ${{ vars.REBUILD_TIME_INDEX == 'true' }}
+        if: ${{ vars.REBUILD_TIME_INDEX != 'false' }}
         run: npx -y memvid-cli@2.0.158 doctor --rebuild-time-index /tmp/test_resume.mv2
 
       - name: Install cargo-tarpaulin

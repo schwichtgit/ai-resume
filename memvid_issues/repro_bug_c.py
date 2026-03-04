@@ -188,7 +188,10 @@ with tempfile.TemporaryDirectory() as tmpdir:
     # -------------------------------------------------------------------
     print("--- Verdict ---")
     if find_hybrid_passed and fails == 0:
-        print("PASS: find(mode='hybrid') works on fresh .mv2 files. Bug appears FIXED.")
+        print("PASS: find(mode='hybrid') works on fresh .mv2 files.")
+        print("NOTE: Rust memvid_core::ask() still fails on this code path.")
+        print("      The bug is PARTIALLY fixed -- find() bypasses the time index,")
+        print("      but ask() still requires: memvid doctor --rebuild-time-index <path>")
     else:
         print(
             f"FAIL: find(mode='hybrid') raises 'frame id out of range' on fresh .mv2 "

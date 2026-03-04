@@ -15,7 +15,7 @@ releases. One issue is now resolved; two remain.
 | --------------------------------------------------- | -------------------------------------------------------- | --------- | ------------------------- |
 | [#194](https://github.com/memvid/memvid/issues/194) | `vec_enabled`/`lex_enabled` reset to `None` on re-open   | **FIXED** | SDK 2.0.158, Core 2.0.138 |
 | [#195](https://github.com/memvid/memvid/issues/195) | Cross-version deserialization failure (SDK vs crates.io) | **FIXED** | SDK 2.0.158, Core 2.0.138 |
-| [#196](https://github.com/memvid/memvid/issues/196) | `ask()` "frame id out of range" on fresh .mv2 files      | **FIXED** | SDK 2.0.158, Core 2.0.138 |
+| [#196](https://github.com/memvid/memvid/issues/196) | `ask()` "frame id out of range" on fresh .mv2 files      | **PARTIAL** | SDK 2.0.158, Core 2.0.138 |
 
 ## Test Environment
 
@@ -124,7 +124,7 @@ _used_ during search are lost on re-open.
 
 ---
 
-## Issue #196 -- FIXED
+## Issue #196 -- PARTIAL FIX
 
 ### Title
 
@@ -173,11 +173,17 @@ with tempfile.TemporaryDirectory() as tmpdir:
     # -> ERROR: "Time index track is invalid: frame id out of range"
 ```
 
+**Partial fix in 2.0.158/2.0.138:** The Python SDK's `find(mode="hybrid")`
+no longer triggers this bug. However, the Rust `memvid_core::Memvid::ask()`
+code path (which traverses the time index) **still fails** with "frame id out
+of range" on fresh .mv2 files with 12+ frames. The `find()` API bypasses the
+time-index code path entirely, so it is unaffected.
+
 **Note on `ask()` deprecation:** As of SDK 2.0.158, the function-level
 `memvid_sdk.ask()` API is deprecated and the `top_k` kwarg has been removed.
-The reproduction script now uses `mem2.find(query, k=3, mode="hybrid")` which
-exercises the same time-index code path. The Rust `memvid-core::AskRequest`
-API remains available.
+The Python reproduction script now uses `mem2.find(query, k=3, mode="hybrid")`.
+The Rust `memvid-core::AskRequest` API remains available and still requires
+the `memvid doctor --rebuild-time-index` workaround.
 
 **Self-contained scripts:**
 
