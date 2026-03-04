@@ -5,4 +5,4 @@ edition = "2021"
 description = "Standalone reproduction of memvid issue #196 (time index frame id out of range)"
 
 [dependencies]
-memvid-core = { version = "2.0.137", features = ["lex"] }
+memvid-core = { version = "2.0.138", features = ["lex"] }

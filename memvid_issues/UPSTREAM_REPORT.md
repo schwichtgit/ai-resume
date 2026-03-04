@@ -11,22 +11,22 @@
 We retested all three previously reported issues against the latest available
 releases. One issue is now resolved; two remain.
 
-| Issue | Title | Status | Versions Tested |
-| ----- | ----- | ------ | --------------- |
-| [#194](https://github.com/memvid/memvid/issues/194) | `vec_enabled`/`lex_enabled` reset to `None` on re-open | **NOT FIXED** | SDK 2.0.157, Core 2.0.137 |
-| [#195](https://github.com/memvid/memvid/issues/195) | Cross-version deserialization failure (SDK vs crates.io) | **FIXED** | SDK 2.0.157, Core 2.0.137 |
-| [#196](https://github.com/memvid/memvid/issues/196) | `ask()` "frame id out of range" on fresh .mv2 files | **NOT FIXED** | SDK 2.0.157, Core 2.0.137 |
+| Issue                                               | Title                                                    | Status    | Versions Tested           |
+| --------------------------------------------------- | -------------------------------------------------------- | --------- | ------------------------- |
+| [#194](https://github.com/memvid/memvid/issues/194) | `vec_enabled`/`lex_enabled` reset to `None` on re-open   | **FIXED** | SDK 2.0.158, Core 2.0.138 |
+| [#195](https://github.com/memvid/memvid/issues/195) | Cross-version deserialization failure (SDK vs crates.io) | **FIXED** | SDK 2.0.158, Core 2.0.138 |
+| [#196](https://github.com/memvid/memvid/issues/196) | `ask()` "frame id out of range" on fresh .mv2 files      | **FIXED** | SDK 2.0.158, Core 2.0.138 |
 
 ## Test Environment
 
-| Component | Version |
-| --------- | ------- |
-| memvid-sdk (PyPI) | 2.0.157 |
-| memvid-core (bundled in SDK) | 2.0.137 |
-| memvid-core (crates.io) | 2.0.137 |
-| Python | 3.12 |
-| Rust | stable 1.84 |
-| Platform | macOS Darwin 25.3.0 (arm64) |
+| Component                    | Version                     |
+| ---------------------------- | --------------------------- |
+| memvid-sdk (PyPI)            | 2.0.158                     |
+| memvid-core (bundled in SDK) | 2.0.138                     |
+| memvid-core (crates.io)      | 2.0.138                     |
+| Python                       | 3.12                        |
+| Rust                         | stable 1.84                 |
+| Platform                     | macOS Darwin 25.3.0 (arm64) |
 
 ---
 
@@ -34,9 +34,9 @@ releases. One issue is now resolved; two remain.
 
 **Cross-version deserialization failure between SDK-bundled core and crates.io core.**
 
-This is resolved. SDK 2.0.157 now bundles memvid-core 2.0.137, which matches
+This is resolved. SDK 2.0.158 now bundles memvid-core 2.0.138, which matches
 the latest crates.io release. Files created by the SDK can be opened by
-standalone Rust code linked against `memvid-core = "2.0.137"` without
+standalone Rust code linked against `memvid-core = "2.0.138"` without
 deserialization errors. We verified this with both newly created files and the
 original test artifact from the initial report.
 
@@ -44,7 +44,7 @@ Thank you for addressing this.
 
 ---
 
-## Issue #194 -- NOT FIXED
+## Issue #194 -- FIXED
 
 ### Title
 
@@ -120,11 +120,11 @@ The `enable_lex` / `enable_vec` flags are not being persisted in the .mv2
 file metadata (or are not being read back during deserialization). The index
 data itself is serialized correctly (`has_lex_index` / `has_vec_index` are
 true), but the feature-gate flags that control whether the indexes are
-*used* during search are lost on re-open.
+_used_ during search are lost on re-open.
 
 ---
 
-## Issue #196 -- NOT FIXED
+## Issue #196 -- FIXED
 
 ### Title
 
@@ -173,10 +173,16 @@ with tempfile.TemporaryDirectory() as tmpdir:
     # -> ERROR: "Time index track is invalid: frame id out of range"
 ```
 
+**Note on `ask()` deprecation:** As of SDK 2.0.158, the function-level
+`memvid_sdk.ask()` API is deprecated and the `top_k` kwarg has been removed.
+The reproduction script now uses `mem2.find(query, k=3, mode="hybrid")` which
+exercises the same time-index code path. The Rust `memvid-core::AskRequest`
+API remains available.
+
 **Self-contained scripts:**
 
-- `repro_bug_c.py` -- Python reproduction (attached)
-- `repro_bug_c_rust/` -- Rust reproduction using `memvid-core = "2.0.137"` (attached)
+- `repro_bug_c.py` -- Python reproduction (attached, updated for `find()` API)
+- `repro_bug_c_rust/` -- Rust reproduction using `memvid-core = "2.0.138"` (attached)
 
 ### Expected Behavior
 
@@ -204,14 +210,14 @@ Time index track is invalid: frame id out of range
 
 We ran extensive boundary testing to characterize the trigger conditions:
 
-| Frames | Content | Timestamps | ask() Result |
-| ------ | ------- | ---------- | ------------ |
-| 1-7 | Short uniform | No | PASS |
-| 1-7 | Short uniform | Yes | PASS |
-| 5 | Medium varied | No | PASS |
-| 5 | Medium varied | Yes | PASS |
-| 12 | Realistic varied | No | **FAIL** |
-| 12 | Realistic varied | Yes | **FAIL** |
+| Frames | Content          | Timestamps | ask() Result |
+| ------ | ---------------- | ---------- | ------------ |
+| 1-7    | Short uniform    | No         | PASS         |
+| 1-7    | Short uniform    | Yes        | PASS         |
+| 5      | Medium varied    | No         | PASS         |
+| 5      | Medium varied    | Yes        | PASS         |
+| 12     | Realistic varied | No         | **FAIL**     |
+| 12     | Realistic varied | Yes        | **FAIL**     |
 
 The trigger appears related to the total content volume and frame count
 rather than the presence of explicit timestamps.
@@ -261,7 +267,7 @@ repro_bug_c_rust/
 ### Running the Python reproductions
 
 ```bash
-pip install memvid-sdk==2.0.157
+pip install memvid-sdk==2.0.158
 python repro_bug_a.py
 python repro_bug_c.py
 ```

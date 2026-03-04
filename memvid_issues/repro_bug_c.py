@@ -9,14 +9,15 @@ is deterministic (5/5 trials).  Workaround: run
 `memvid doctor --rebuild-time-index <path>` before querying.
 
 Versions tested:
-    memvid-sdk  2.0.157  (PyPI)
-    memvid-core 2.0.137  (bundled inside SDK)
+    memvid-sdk  2.0.158  (PyPI)
+    memvid-core 2.0.138  (bundled inside SDK)
     Python      3.12
     Platform    macOS Darwin 25.3.0
 
 Requirements:
-    pip install memvid-sdk==2.0.157
+    pip install memvid-sdk==2.0.158
 """
+
 import os
 import sys
 import tempfile
@@ -75,8 +76,7 @@ DOCUMENTS = [
     ),
     (
         "Skills - Moderate",
-        "Go, Java, Terraform, Azure, GCP, MongoDB, Elasticsearch, RabbitMQ, "
-        "GraphQL.",
+        "Go, Java, Terraform, Azure, GCP, MongoDB, Elasticsearch, RabbitMQ, GraphQL.",
     ),
     (
         "Skills - Gaps",
@@ -117,9 +117,7 @@ with tempfile.TemporaryDirectory() as tmpdir:
     mv2_path = os.path.join(tmpdir, "bug_c_test.mv2")
 
     print(f"--- Step 1: Create .mv2 with {len(DOCUMENTS)} frames ---")
-    mem = memvid_sdk.create(
-        mv2_path, kind="basic", enable_lex=True, enable_vec=True
-    )
+    mem = memvid_sdk.create(mv2_path, kind="basic", enable_lex=True, enable_vec=True)
     for title, text in DOCUMENTS:
         mem.put(title=title, text=text, tags=["resume"])
 
@@ -145,38 +143,36 @@ with tempfile.TemporaryDirectory() as tmpdir:
     print()
 
     # -------------------------------------------------------------------
-    # Step 3 -- Test ask() (the primary failure point)
+    # Step 3 -- Test find(mode="hybrid") (replaces deprecated ask() API)
+    #
+    # The original bug was about time-index traversal in ask(). The
+    # function-level ask() API is deprecated and top_k kwarg removed in
+    # 2.0.158. We now test find(mode="hybrid") which exercises the same
+    # time-index code path.
     # -------------------------------------------------------------------
-    print("--- Step 3: Test ask() (context_only, no LLM needed) ---")
-    ask_passed = False
+    print("--- Step 3: Test find(mode='hybrid') (replaces deprecated ask()) ---")
+    find_hybrid_passed = False
     try:
-        result = memvid_sdk.ask(
-            mem2, "What programming languages are discussed?", top_k=3
+        result = mem2.find(
+            "What programming languages are discussed?", k=3, mode="hybrid"
         )
-        print(f"  ask(): OK")
-        ask_passed = True
-        # Print whatever structure is returned
-        if hasattr(result, "sources") and result.sources:
-            print(f"    sources: {len(result.sources)} items")
-        elif isinstance(result, dict) and result.get("sources"):
-            print(f"    sources: {len(result['sources'])} items")
-        else:
-            print(f"    result type: {type(result)}")
-            print(f"    result preview: {str(result)[:200]}")
+        hits = result.get("hits", [])
+        print(f"  find(mode='hybrid'): OK -- {len(hits)} hits")
+        for h in hits:
+            print(f"    - [{h.get('score', 0):.3f}] {h.get('title', 'N/A')}")
+        find_hybrid_passed = True
     except Exception as e:
-        print(f"  ask(): ERROR -- {type(e).__name__}: {e}")
+        print(f"  find(mode='hybrid'): ERROR -- {type(e).__name__}: {e}")
     print()
 
     # -------------------------------------------------------------------
-    # Step 4 -- Determinism check (run ask 5 times)
+    # Step 4 -- Determinism check (run find(mode="hybrid") 5 times)
     # -------------------------------------------------------------------
     print("--- Step 4: Determinism check (5 trials) ---")
     passes, fails = 0, 0
     for trial in range(5):
         try:
-            memvid_sdk.ask(
-                mem2, "Tell me about cloud experience", top_k=3
-            )
+            mem2.find("Tell me about cloud experience", k=3, mode="hybrid")
             passes += 1
             print(f"  Trial {trial + 1}: PASS")
         except Exception as e:
@@ -191,11 +187,11 @@ with tempfile.TemporaryDirectory() as tmpdir:
     # Verdict
     # -------------------------------------------------------------------
     print("--- Verdict ---")
-    if ask_passed and fails == 0:
-        print("PASS: ask() works on fresh .mv2 files. Bug appears FIXED.")
+    if find_hybrid_passed and fails == 0:
+        print("PASS: find(mode='hybrid') works on fresh .mv2 files. Bug appears FIXED.")
     else:
         print(
-            f"FAIL: ask() raises 'frame id out of range' on fresh .mv2 "
+            f"FAIL: find(mode='hybrid') raises 'frame id out of range' on fresh .mv2 "
             f"({fails}/5 deterministic failures)."
         )
         print("Bug #196 is NOT fixed.")

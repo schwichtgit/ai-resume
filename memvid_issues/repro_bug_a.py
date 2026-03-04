@@ -9,14 +9,15 @@ VecIndexDisabledError (MV011), and hybrid mode silently degrades to
 lexical-only.
 
 Versions tested:
-    memvid-sdk  2.0.157  (PyPI)
-    memvid-core 2.0.137  (bundled inside SDK)
+    memvid-sdk  2.0.158  (PyPI)
+    memvid-core 2.0.138  (bundled inside SDK)
     Python      3.12
     Platform    macOS Darwin 25.3.0
 
 Requirements:
-    pip install memvid-sdk==2.0.157
+    pip install memvid-sdk==2.0.158
 """
+
 import os
 import sys
 import tempfile
@@ -44,9 +45,7 @@ with tempfile.TemporaryDirectory() as tmpdir:
     mv2_path = os.path.join(tmpdir, "bug_a_test.mv2")
 
     print("--- Step 1: Create .mv2 (enable_lex=True, enable_vec=True) ---")
-    mem = memvid_sdk.create(
-        mv2_path, kind="basic", enable_lex=True, enable_vec=True
-    )
+    mem = memvid_sdk.create(mv2_path, kind="basic", enable_lex=True, enable_vec=True)
     mem.put(
         title="Python Programming",
         text="Python is a high-level language used for web dev and data science.",
