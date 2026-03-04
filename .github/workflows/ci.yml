@@ -339,11 +339,11 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      # Workaround: memvid Bug C (#196) -- remove when upstream fix ships
-      # Disable by setting repository variable REBUILD_TIME_INDEX=false
+      # memvid Bug C (#196) fixed in memvid-core 2.0.138 / SDK 2.0.158.
+      # Doctor workaround no longer needed. Kept as opt-in for diagnostics.
       - name: Rebuild .mv2 time index (Bug C workaround)
-        if: ${{ vars.REBUILD_TIME_INDEX != 'false' }}
-        run: npx -y memvid-cli@2.0.157 doctor --rebuild-time-index /tmp/test_resume.mv2
+        if: ${{ vars.REBUILD_TIME_INDEX == 'true' }}
+        run: npx -y memvid-cli@2.0.158 doctor --rebuild-time-index /tmp/test_resume.mv2
 
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin
