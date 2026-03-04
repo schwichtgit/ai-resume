@@ -234,16 +234,16 @@ MV2_SIZE=$(stat -f%z "$MV2_OUTPUT" 2>/dev/null || stat -c%s "$MV2_OUTPUT" 2>/dev
 echo -e "${GREEN}Ingest complete: $MV2_OUTPUT ($MV2_SIZE bytes)${NC}"
 echo ""
 
-# Workaround: memvid Bug C (#196) -- fresh .mv2 files have an invalid time
-# index causing "frame id out of range" on ask() calls. Remove this block
-# once the upstream bug is fixed and set REBUILD_TIME_INDEX=false.
+# Workaround: memvid Bug C (#196) -- ask() time-index corruption.
+# find(mode="hybrid") is unaffected but ask() still fails without this.
+# Disable by setting REBUILD_TIME_INDEX=false.
 REBUILD_TIME_INDEX="${REBUILD_TIME_INDEX:-true}"
 if [ "$REBUILD_TIME_INDEX" = "true" ]; then
     echo "Rebuilding .mv2 time index (memvid doctor)..."
     if command -v memvid >/dev/null 2>&1; then
         memvid doctor --rebuild-time-index "$MV2_OUTPUT"
     elif command -v npx >/dev/null 2>&1; then
-        npx -y memvid-cli@2.0.157 doctor --rebuild-time-index "$MV2_OUTPUT"
+        npx -y memvid-cli@2.0.158 doctor --rebuild-time-index "$MV2_OUTPUT"
     else
         echo -e "${RED}ERROR: Neither memvid nor npx found. Install memvid-cli or Node.js${NC}"
         exit 1

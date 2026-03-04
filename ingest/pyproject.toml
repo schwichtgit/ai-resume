@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "httpx>=0.28.1",
-    "memvid-sdk==2.0.157",
+    "memvid-sdk==2.0.158",
     "sentence-transformers>=3.0.0",
     "setuptools>=80.10.2",
 ]

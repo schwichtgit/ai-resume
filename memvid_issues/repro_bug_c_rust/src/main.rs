@@ -1,7 +1,7 @@
 //! Standalone reproduction of memvid Bug C (GitHub issue #196).
 //!
 //! Bug: `ask()` fails with "Time index track is invalid: frame id out of
-//! range" when operating on .mv2 files created by memvid-sdk 2.0.157 that
+//! range" when operating on .mv2 files created by memvid-sdk 2.0.158 that
 //! contain 12+ frames of varied content.
 //!
 //! This binary accepts one argument: the path to a .mv2 file created by
@@ -9,14 +9,14 @@
 //!
 //! Usage:
 //!     # First, create the test .mv2 with Python:
-//!     #   pip install memvid-sdk==2.0.157
+//!     #   pip install memvid-sdk==2.0.158
 //!     #   python repro_bug_c.py
 //!     #   (note the path printed at the end)
 //!
 //!     cargo run --release -- <path-to-test.mv2>
 //!
 //! Versions:
-//!     memvid-core 2.0.137 (crates.io)
+//!     memvid-core 2.0.138 (crates.io)
 //!     Rust stable (1.84+)
 
 use memvid_core::Memvid;
@@ -39,7 +39,7 @@ fn main() {
     println!("Bug C (#196): ask() 'frame id out of range' -- Rust reproduction");
     println!("================================================================");
     println!();
-    println!("  memvid-core: 2.0.137 (crates.io)");
+    println!("  memvid-core: 2.0.138 (crates.io)");
     println!("  file:        {}", path);
     println!();
 

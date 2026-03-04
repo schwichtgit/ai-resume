@@ -433,6 +433,7 @@ impl Searcher for RealSearcher {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[tokio::test]
     async fn test_real_searcher_missing_file() {
@@ -445,6 +446,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_real_searcher_loads_valid_file() {
         // Use the actual resume.mv2 file from the project
         let mv2_path = "../data/.memvid/resume.mv2";
@@ -465,6 +467,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_real_searcher_search_returns_results() {
         let mv2_path = "../data/.memvid/resume.mv2";
 
@@ -493,6 +496,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_real_searcher_ask_semantic_mode() {
         let mv2_path = "../data/.memvid/resume.mv2";
 
@@ -528,6 +532,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_real_searcher_ask_lexical_mode() {
         let mv2_path = "../data/.memvid/resume.mv2";
 
@@ -562,6 +567,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_real_searcher_ask_hybrid_mode() {
         let mv2_path = "../data/.memvid/resume.mv2";
 
@@ -596,6 +602,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_real_searcher_get_state_profile() {
         let mv2_path = "../data/.memvid/resume.mv2";
 
@@ -618,6 +625,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_real_searcher_get_state_nonexistent() {
         let mv2_path = "../data/.memvid/resume.mv2";
 
@@ -639,6 +647,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_real_searcher_frame_count() {
         let mv2_path = "../data/.memvid/resume.mv2";
 
@@ -655,6 +664,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_real_searcher_memvid_file_path() {
         let mv2_path = "../data/.memvid/resume.mv2";
 
@@ -671,6 +681,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_real_searcher_is_ready() {
         let mv2_path = "../data/.memvid/resume.mv2";
 
@@ -698,6 +709,7 @@ mod tests {
     // to document expected behavior once lexical indexing is enabled.
 
     #[tokio::test]
+    #[serial]
     #[ignore] // Requires lexical index enabled in .mv2 file. Run with: cargo test --lib -- --ignored
     async fn test_real_searcher_ask_with_filters() {
         let mv2_path = "../data/.memvid/resume.mv2";
@@ -748,6 +760,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     #[ignore] // Requires lexical index enabled in .mv2 file. Run with: cargo test --lib -- --ignored
     async fn test_real_searcher_ask_with_multiple_filters() {
         let mv2_path = "../data/.memvid/resume.mv2";

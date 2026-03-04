@@ -192,17 +192,21 @@ Frontend Components (Dynamic Rendering)
 
 ### API Endpoints
 
-| Method | Path                                 | Description                                           |
-| ------ | ------------------------------------ | ----------------------------------------------------- |
-| GET    | `/health`                            | Health check (root-level alias)                       |
-| GET    | `/api/v1/health`                     | Health check with dependency status                   |
-| POST   | `/api/v1/chat`                       | AI chat with semantic search (supports SSE streaming) |
-| GET    | `/api/v1/profile`                    | Profile metadata from memvid                          |
-| GET    | `/api/v1/suggested-questions`        | Suggested chat questions from profile                 |
-| POST   | `/api/v1/assess-fit`                 | Real-time job fit assessment via AI                   |
-| POST   | `/api/v1/session/{session_id}/clear` | Clear conversation history for a session              |
-| DELETE | `/api/v1/sessions/{session_id}`      | Delete a chat session                                 |
-| GET    | `/metrics`                           | Prometheus metrics (infrastructure)                   |
+| Method | Path                                          | Description                                           |
+| ------ | --------------------------------------------- | ----------------------------------------------------- |
+| GET    | `/health`                                     | Health check (root-level alias)                       |
+| GET    | `/api/v1/health`                              | Health check with dependency status                   |
+| POST   | `/api/v1/chat`                                | AI chat with semantic search (supports SSE streaming) |
+| GET    | `/api/v1/profile`                             | Profile metadata from memvid                          |
+| GET    | `/api/v1/suggested-questions`                 | Suggested chat questions from profile                 |
+| POST   | `/api/v1/assess-fit`                          | Real-time job fit assessment via AI                   |
+| POST   | `/api/v1/chat/{session_id}/feedback`          | Submit thumbs up/down feedback on responses           |
+| POST   | `/api/v1/session/{session_id}/clear`          | Clear conversation history for a session              |
+| DELETE | `/api/v1/sessions/{session_id}`               | Delete a chat session                                 |
+| GET    | `/api/v1/version`                             | Build version and commit SHA                          |
+| GET    | `/api/v1/mcp/config/{client_id}`              | MCP client configuration template                     |
+| --     | `/mcp`                                        | MCP Streamable HTTP server (opt-out via env)          |
+| GET    | `/metrics`                                    | Prometheus metrics (infrastructure)                   |
 
 ### Styling System
 

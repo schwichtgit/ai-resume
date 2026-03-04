@@ -60,11 +60,13 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system design, dat
 
 ## What It Does
 
-**AI Chat** -- Ask anything about the candidate's background. The agent retrieves relevant resume context via hybrid search (BM25 + vector embeddings + cross-encoder re-ranking) and generates grounded, citation-backed answers. It will not hallucinate or make things up.
+**AI Chat** -- Ask anything about the candidate's background. The agent retrieves relevant resume context via hybrid search (BM25 + vector embeddings + cross-encoder re-ranking) and generates grounded, citation-backed answers. It will not hallucinate or make things up. Users can rate responses with thumbs up/down feedback.
 
 **Fit Assessment** -- Paste a real job description and get an honest analysis: key matches, gaps, and a recommendation. Pre-analyzed examples show strong and weak fit scenarios so you know what calibrated output looks like.
 
 **Experience Cards** -- Structured view of roles, projects, and skills loaded dynamically from a single portable data file.
+
+**MCP Server** -- Exposes the resume agent as an MCP-compatible tool server. Connect from Claude Desktop, Cursor, or any MCP client to query the candidate's experience programmatically.
 
 ## Prerequisites
 
@@ -131,17 +133,21 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the complete build system ref
 
 ## API Endpoints
 
-| Method | Path                                 | Description                                           |
-| ------ | ------------------------------------ | ----------------------------------------------------- |
-| GET    | `/health`                            | Health check (root-level alias)                       |
-| GET    | `/api/v1/health`                     | Health check with dependency status                   |
-| POST   | `/api/v1/chat`                       | AI chat with semantic search (supports SSE streaming) |
-| GET    | `/api/v1/profile`                    | Profile metadata from memvid                          |
-| GET    | `/api/v1/suggested-questions`        | Suggested chat questions from profile                 |
-| POST   | `/api/v1/assess-fit`                 | Real-time job fit assessment via AI                   |
-| POST   | `/api/v1/session/{session_id}/clear` | Clear conversation history for a session              |
-| DELETE | `/api/v1/sessions/{session_id}`      | Delete a chat session                                 |
-| GET    | `/metrics`                           | Prometheus metrics (infrastructure)                   |
+| Method | Path                                          | Description                                           |
+| ------ | --------------------------------------------- | ----------------------------------------------------- |
+| GET    | `/health`                                     | Health check (root-level alias)                       |
+| GET    | `/api/v1/health`                              | Health check with dependency status                   |
+| POST   | `/api/v1/chat`                                | AI chat with semantic search (supports SSE streaming) |
+| GET    | `/api/v1/profile`                             | Profile metadata from memvid                          |
+| GET    | `/api/v1/suggested-questions`                 | Suggested chat questions from profile                 |
+| POST   | `/api/v1/assess-fit`                          | Real-time job fit assessment via AI                   |
+| POST   | `/api/v1/chat/{session_id}/feedback`          | Submit thumbs up/down feedback on responses           |
+| POST   | `/api/v1/session/{session_id}/clear`          | Clear conversation history for a session              |
+| DELETE | `/api/v1/sessions/{session_id}`               | Delete a chat session                                 |
+| GET    | `/api/v1/version`                             | Build version and commit SHA                          |
+| GET    | `/api/v1/mcp/config/{client_id}`              | MCP client configuration template                     |
+| --     | `/mcp`                                        | MCP Streamable HTTP server (opt-out via env)          |
+| GET    | `/metrics`                                    | Prometheus metrics (infrastructure)                   |
 
 ## Deployment
 
