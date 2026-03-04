@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-alpha.8] - 2026-03-03
+
+### Changed
+
+- Memvid SDK upgraded from 2.0.157 to 2.0.158 (PyPI)
+- Memvid Core upgraded from 2.0.137 to 2.0.138 (crates.io)
+- Memvid CLI version pins updated to 2.0.158 in E2E scripts and CI workflow
+- `repro_bug_c.py` rewritten to use `find(mode="hybrid")` instead of deprecated `ask()` API (removed `top_k` kwarg)
+- Upstream bug report updated: both #194 and #196 now marked FIXED
+- `memvid doctor` time-index workaround disabled in CI and E2E scripts (Bug C #196 fixed upstream)
+- README updated: added MCP server, chat feedback, version, and MCP config endpoints to API table; added MCP Server description
+
+### Fixed
+
+- Rust real-searcher tests fail with "exclusive access unavailable" on memvid-core 2.0.138 due to new file locking; added `#[serial]` to all tests sharing the `.mv2` file
+
 ## [0.1.0-alpha.7] - 2026-03-02
 
 ### Added
@@ -192,7 +208,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.7...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.8...HEAD
+[0.1.0-alpha.8]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.7...v0.1.0-alpha.8
 [0.1.0-alpha.7]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.6...v0.1.0-alpha.7
 [0.1.0-alpha.6]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.5...v0.1.0-alpha.6
 [0.1.0-alpha.5]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.4...v0.1.0-alpha.5
