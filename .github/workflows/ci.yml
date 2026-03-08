@@ -728,7 +728,7 @@ jobs:
           echo "DOCKER_HOST=unix:///tmp/podman.sock" >> "$GITHUB_ENV"
 
       - name: Trivy scan (SARIF for summary)
-        uses: aquasecurity/trivy-action@0.34.1
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: 'localhost/${{ env.IMAGE_NAME }}:${{ env.VERSION }}'
           format: 'sarif'
@@ -736,7 +736,7 @@ jobs:
           trivyignores: '.trivyignore'
 
       - name: Trivy severity gate (CRITICAL/HIGH)
-        uses: aquasecurity/trivy-action@0.34.1
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: 'localhost/${{ env.IMAGE_NAME }}:${{ env.VERSION }}'
           format: 'table'
