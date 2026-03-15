@@ -7,7 +7,6 @@ Run with: uv run python test_memvid.py
 
 import os
 import tempfile
-from pathlib import Path
 
 import memvid_sdk
 
@@ -106,27 +105,19 @@ def test_create_and_query() -> None:
     print("\nTest completed successfully!")
 
 
-def test_open_existing() -> None:
+def test_open_existing(isolated_mv2: str) -> None:
     """Test opening an existing .mv2 file (if one exists)."""
     print("\n=== Open Existing Test ===")
-
-    # Check for existing resume.mv2 in data/.memvid/
-    project_root = Path(__file__).parent.parent.parent
-    mv2_path = project_root / "data" / ".memvid" / "resume.mv2"
-
-    if mv2_path.exists():
-        print(f"Found existing memory: {mv2_path}")
-        # Use the new API (open() is deprecated)
-        mem = memvid_sdk.use("basic", str(mv2_path))
-        stats = mem.stats()
-        print(f"Stats: {stats}")
-        mem.close()
-    else:
-        print(f"No existing memory found at: {mv2_path}")
-        print("Run ingest.py to create one from master_resume.md")
+    print(f"Found existing memory: {isolated_mv2}")
+    mem = memvid_sdk.use("basic", isolated_mv2)
+    stats = mem.stats()
+    print(f"Stats: {stats}")
+    mem.close()
 
 
 if __name__ == "__main__":
+    from pathlib import Path
+
     test_sdk_info()
     test_create_and_query()
-    test_open_existing()
+    test_open_existing(str(Path(__file__).parent.parent.parent / "data/.memvid/resume.mv2"))

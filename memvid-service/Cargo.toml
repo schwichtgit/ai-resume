@@ -56,6 +56,8 @@ hyper-util = { version = "0.1", features = ["client-legacy", "http1", "tokio"] }
 http-body-util = "0.1"
 # Serialize env-mutating tests to prevent race conditions
 serial_test = "3"
+# Isolated file copies for memvid exclusive-lock tests
+tempfile = "3"
 # OTel test utilities
 tracing-test = "0.2"
 
