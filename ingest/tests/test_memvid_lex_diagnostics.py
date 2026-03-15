@@ -17,27 +17,20 @@ from pathlib import Path
 import pytest
 import memvid_sdk
 
-# Project paths
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-MV2_PATH = PROJECT_ROOT / "data/.memvid/resume.mv2"
 
-
-def test_index_status() -> None:
+def test_index_status(isolated_mv2) -> None:
     """Check if indexes are enabled/disabled in the .mv2 file."""
     print("=" * 70)
     print("MEMVID LEX INDEX DIAGNOSTICS")
     print("=" * 70)
     print()
 
-    if not MV2_PATH.exists():
-        print(f"❌ ERROR: File not found: {MV2_PATH}")
-        pytest.skip(f"File not found: {MV2_PATH}")
-
-    print(f"📁 Testing: {MV2_PATH}")
-    print(f"📊 Size: {MV2_PATH.stat().st_size:,} bytes")
+    mv2_path = Path(isolated_mv2)
+    print(f"📁 Testing: {mv2_path}")
+    print(f"📊 Size: {mv2_path.stat().st_size:,} bytes")
     print()
 
-    mem = memvid_sdk.use("basic", str(MV2_PATH))
+    mem = memvid_sdk.use("basic", isolated_mv2)
     stats = mem.stats()
 
     # Index Status Report
@@ -109,7 +102,7 @@ def test_index_status() -> None:
     print("\n" + "=" * 70)
     print("PROFILE STATE TEST (O(1) LOOKUP)")
     print("=" * 70)
-    mem = memvid_sdk.use("basic", str(MV2_PATH))
+    mem = memvid_sdk.use("basic", isolated_mv2)
     profile_found = False
     try:
         state = mem.state("__profile__")

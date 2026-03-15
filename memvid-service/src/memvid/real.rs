@@ -435,6 +435,21 @@ mod tests {
     use super::*;
     use serial_test::serial;
 
+    /// Copy the shared resume.mv2 to an isolated temp file.
+    /// Returns None if the source file doesn't exist (test should skip).
+    fn isolated_mv2() -> Option<(tempfile::TempDir, String)> {
+        let src = std::path::Path::new("../data/.memvid/resume.mv2");
+        if !src.exists() {
+            eprintln!("Skipping test: {} not found", src.display());
+            return None;
+        }
+        let tmp_dir = tempfile::tempdir().expect("Failed to create temp dir");
+        let dest = tmp_dir.path().join("test.mv2");
+        std::fs::copy(src, &dest).expect("Failed to copy .mv2 file");
+        let path = dest.to_str().unwrap().to_string();
+        Some((tmp_dir, path))
+    }
+
     #[tokio::test]
     async fn test_real_searcher_missing_file() {
         let result = RealSearcher::new("/nonexistent/file.mv2").await;
@@ -446,18 +461,12 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn test_real_searcher_loads_valid_file() {
-        // Use the actual resume.mv2 file from the project
-        let mv2_path = "../data/.memvid/resume.mv2";
-
-        // Skip test if file doesn't exist (for environments without the file)
-        if !std::path::Path::new(mv2_path).exists() {
-            eprintln!("Skipping test: {} not found", mv2_path);
+        let Some((_tmp_dir, mv2_path)) = isolated_mv2() else {
             return;
-        }
+        };
 
-        let searcher = RealSearcher::new(mv2_path)
+        let searcher = RealSearcher::new(&mv2_path)
             .await
             .expect("Should load valid .mv2 file");
 
@@ -467,15 +476,12 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn test_real_searcher_search_returns_results() {
-        let mv2_path = "../data/.memvid/resume.mv2";
-
-        if !std::path::Path::new(mv2_path).exists() {
+        let Some((_tmp_dir, mv2_path)) = isolated_mv2() else {
             return;
-        }
+        };
 
-        let searcher = RealSearcher::new(mv2_path)
+        let searcher = RealSearcher::new(&mv2_path)
             .await
             .expect("Should load .mv2 file");
 
@@ -496,15 +502,12 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn test_real_searcher_ask_semantic_mode() {
-        let mv2_path = "../data/.memvid/resume.mv2";
-
-        if !std::path::Path::new(mv2_path).exists() {
+        let Some((_tmp_dir, mv2_path)) = isolated_mv2() else {
             return;
-        }
+        };
 
-        let searcher = RealSearcher::new(mv2_path)
+        let searcher = RealSearcher::new(&mv2_path)
             .await
             .expect("Should load .mv2 file");
 
@@ -532,15 +535,12 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn test_real_searcher_ask_lexical_mode() {
-        let mv2_path = "../data/.memvid/resume.mv2";
-
-        if !std::path::Path::new(mv2_path).exists() {
+        let Some((_tmp_dir, mv2_path)) = isolated_mv2() else {
             return;
-        }
+        };
 
-        let searcher = RealSearcher::new(mv2_path)
+        let searcher = RealSearcher::new(&mv2_path)
             .await
             .expect("Should load .mv2 file");
 
@@ -567,15 +567,12 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn test_real_searcher_ask_hybrid_mode() {
-        let mv2_path = "../data/.memvid/resume.mv2";
-
-        if !std::path::Path::new(mv2_path).exists() {
+        let Some((_tmp_dir, mv2_path)) = isolated_mv2() else {
             return;
-        }
+        };
 
-        let searcher = RealSearcher::new(mv2_path)
+        let searcher = RealSearcher::new(&mv2_path)
             .await
             .expect("Should load .mv2 file");
 
@@ -602,15 +599,12 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn test_real_searcher_get_state_profile() {
-        let mv2_path = "../data/.memvid/resume.mv2";
-
-        if !std::path::Path::new(mv2_path).exists() {
+        let Some((_tmp_dir, mv2_path)) = isolated_mv2() else {
             return;
-        }
+        };
 
-        let searcher = RealSearcher::new(mv2_path)
+        let searcher = RealSearcher::new(&mv2_path)
             .await
             .expect("Should load .mv2 file");
 
@@ -625,15 +619,12 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn test_real_searcher_get_state_nonexistent() {
-        let mv2_path = "../data/.memvid/resume.mv2";
-
-        if !std::path::Path::new(mv2_path).exists() {
+        let Some((_tmp_dir, mv2_path)) = isolated_mv2() else {
             return;
-        }
+        };
 
-        let searcher = RealSearcher::new(mv2_path)
+        let searcher = RealSearcher::new(&mv2_path)
             .await
             .expect("Should load .mv2 file");
 
@@ -647,15 +638,12 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn test_real_searcher_frame_count() {
-        let mv2_path = "../data/.memvid/resume.mv2";
-
-        if !std::path::Path::new(mv2_path).exists() {
+        let Some((_tmp_dir, mv2_path)) = isolated_mv2() else {
             return;
-        }
+        };
 
-        let searcher = RealSearcher::new(mv2_path)
+        let searcher = RealSearcher::new(&mv2_path)
             .await
             .expect("Should load .mv2 file");
 
@@ -664,32 +652,26 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn test_real_searcher_memvid_file_path() {
-        let mv2_path = "../data/.memvid/resume.mv2";
-
-        if !std::path::Path::new(mv2_path).exists() {
+        let Some((_tmp_dir, mv2_path)) = isolated_mv2() else {
             return;
-        }
+        };
 
-        let searcher = RealSearcher::new(mv2_path)
+        let searcher = RealSearcher::new(&mv2_path)
             .await
             .expect("Should load .mv2 file");
 
         let file_path = searcher.memvid_file();
-        assert!(file_path.contains("resume.mv2"));
+        assert!(file_path.contains("test.mv2"));
     }
 
     #[tokio::test]
-    #[serial]
     async fn test_real_searcher_is_ready() {
-        let mv2_path = "../data/.memvid/resume.mv2";
-
-        if !std::path::Path::new(mv2_path).exists() {
+        let Some((_tmp_dir, mv2_path)) = isolated_mv2() else {
             return;
-        }
+        };
 
-        let searcher = RealSearcher::new(mv2_path)
+        let searcher = RealSearcher::new(&mv2_path)
             .await
             .expect("Should load .mv2 file");
 

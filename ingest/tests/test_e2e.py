@@ -29,7 +29,6 @@ import memvid_sdk
 # Project paths
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
-MV2_PATH = DATA_DIR / ".memvid" / "resume.mv2"
 DEPLOYMENT_ENV = PROJECT_ROOT / "deployment" / ".env"
 
 
@@ -127,19 +126,15 @@ RETRIEVAL_TEST_CASES = [
 ]
 
 
-def test_memvid_retrieval() -> None:
+def test_memvid_retrieval(isolated_mv2) -> None:
     """Test that memvid retrieves expected content for each test case."""
     print("\n" + "=" * 70)
     print("TEST SUITE: Memvid Retrieval Accuracy")
     print("=" * 70)
 
-    if not MV2_PATH.exists():
-        print(f"ERROR: {MV2_PATH} not found. Run ingest first.")
-        pytest.skip(f"{MV2_PATH} not found. Run ingest first.")
-
-    mem = memvid_sdk.use("basic", str(MV2_PATH))
+    mem = memvid_sdk.use("basic", isolated_mv2)
     stats = mem.stats()
-    print(f"Loaded: {MV2_PATH.name} ({stats.get('frame_count', 0)} frames)")
+    print(f"Loaded: ({stats.get('frame_count', 0)} frames)")
 
     passed = 0
     failed = 0
@@ -201,7 +196,7 @@ def test_memvid_retrieval() -> None:
 
 
 @pytest.mark.asyncio
-async def test_query_transformation_improves_retrieval() -> tuple[int, int]:
+async def test_query_transformation_improves_retrieval(isolated_mv2) -> tuple[int, int]:
     """Test that query transformation improves retrieval for ambiguous queries."""
     print("\n" + "=" * 70)
     print("TEST SUITE: Query Transformation Impact")
@@ -219,11 +214,7 @@ async def test_query_transformation_improves_retrieval() -> tuple[int, int]:
         print("SKIP: OPENROUTER_API_KEY not configured")
         return 0, 0
 
-    if not MV2_PATH.exists():
-        print(f"ERROR: {MV2_PATH} not found")
-        return 0, 0
-
-    mem = memvid_sdk.use("basic", str(MV2_PATH))
+    mem = memvid_sdk.use("basic", isolated_mv2)
 
     # Ambiguous queries that benefit from transformation
     test_cases = [
@@ -320,7 +311,7 @@ async def test_query_transformation_improves_retrieval() -> tuple[int, int]:
 
 
 @pytest.mark.asyncio
-async def test_full_rag_pipeline() -> tuple[int, int]:
+async def test_full_rag_pipeline(isolated_mv2) -> tuple[int, int]:
     """Test the complete RAG pipeline produces correct answers."""
     print("\n" + "=" * 70)
     print("TEST SUITE: Full RAG Pipeline (Retrieval + Generation)")
@@ -337,11 +328,7 @@ async def test_full_rag_pipeline() -> tuple[int, int]:
         print("SKIP: OPENROUTER_API_KEY not configured")
         return 0, 0
 
-    if not MV2_PATH.exists():
-        print(f"ERROR: {MV2_PATH} not found")
-        return 0, 0
-
-    mem = memvid_sdk.use("basic", str(MV2_PATH))
+    mem = memvid_sdk.use("basic", isolated_mv2)
 
     # Test cases: question, expected terms in answer
     test_cases = [
@@ -446,7 +433,7 @@ async def main() -> bool:
     print("=" * 70)
     print("AI Resume Agent - End-to-End Integration Tests")
     print("=" * 70)
-    print(f"MV2 file: {MV2_PATH}")
+    print(f"MV2 file: {DATA_DIR / '.memvid' / 'resume.mv2'}")
     print(f"Environment: {DEPLOYMENT_ENV}")
     print(
         f"OpenRouter configured: {bool(os.environ.get('OPENROUTER_API_KEY', '').startswith('sk-'))}"
