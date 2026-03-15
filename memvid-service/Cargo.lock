@@ -1571,9 +1571,9 @@ dependencies = [
 
 [[package]]
 name = "memvid-core"
-version = "2.0.138"
+version = "2.0.139"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c8f86d62f3a2ba0294632f62869f27336b858eb68bf451d03c70485fa8e200a"
+checksum = "d60dcdc06e6e0eacec387da33ee111660369c691b15f8e56087b5989846656ae"
 dependencies = [
  "atomic-write-file",
  "base64",
