@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Vite upgraded from 7.x to 8.x (Rolldown bundler replaces esbuild/Rollup)
+- `@vitejs/plugin-react-swc` replaced with `@vitejs/plugin-react` (Oxc-based)
+- Tailwind CSS migrated from v3 to v4 (CSS-first architecture)
+- `tailwind.config.ts` and `postcss.config.js` removed (Tailwind v4 uses `@tailwindcss/vite` plugin and `@theme` CSS directives)
+- `tailwindcss-animate` replaced with `tw-animate-css` (Tailwind v4 compatible)
+- OpenTelemetry Rust crates upgraded from 0.27.x to 0.31.x (opentelemetry, opentelemetry_sdk, opentelemetry-otlp, tracing-opentelemetry)
+- 8 Dependabot dependency bumps rolled up into single PR (#122)
+- Test isolation for memvid exclusive file locking (#118)
+- Frontend TypeScript API fixes for react-day-picker v9, react-resizable-panels v4, OTel SDK v2 (#119)
+- Memvid SDK 2.0.159 / Core 2.0.139 (#117)
+
+### Security
+
+- CVE-2026-22184 (zlib buffer overflow) patched via `apk upgrade` in frontend Dockerfile
+
 ## [0.1.0-alpha.8] - 2026-03-03
 
 ### Changed

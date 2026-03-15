@@ -120,7 +120,7 @@ Common per-service targets: `setup`, `lint`, `lint:fix`, `test`,
 
 ### Frontend (`frontend/`)
 
-TypeScript, React 19, Vite, Tailwind CSS, shadcn/ui.
+TypeScript, React 19, Vite 8 (Rolldown), Tailwind CSS v4, shadcn/ui.
 
 ```bash
 task frontend:dev             # Vite dev server on port 8080
