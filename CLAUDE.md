@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 **Description:** Polyglot web application enabling recruiters to query a candidate's experience via AI chat with semantic search retrieval
-**Tech Stack:** TypeScript (React 19), Python 3.12 (FastAPI), Rust 1.84 (memvid gRPC)
+**Tech Stack:** TypeScript (React 19), Python 3.12 (FastAPI), Rust 1.93 (memvid gRPC)
 **Repository:** <https://github.com/schwichtgit/ai-resume>
 
 This is an interactive AI-powered resume site built with Vite, React, TypeScript, shadcn/ui, and Tailwind CSS. The site showcases a candidate's experience with an AI chat interface that answers questions about their background, an honest fit assessment tool, and detailed experience cards.
@@ -192,26 +192,28 @@ Frontend Components (Dynamic Rendering)
 
 ### API Endpoints
 
-| Method | Path                                          | Description                                           |
-| ------ | --------------------------------------------- | ----------------------------------------------------- |
-| GET    | `/health`                                     | Health check (root-level alias)                       |
-| GET    | `/api/v1/health`                              | Health check with dependency status                   |
-| POST   | `/api/v1/chat`                                | AI chat with semantic search (supports SSE streaming) |
-| GET    | `/api/v1/profile`                             | Profile metadata from memvid                          |
-| GET    | `/api/v1/suggested-questions`                 | Suggested chat questions from profile                 |
-| POST   | `/api/v1/assess-fit`                          | Real-time job fit assessment via AI                   |
-| POST   | `/api/v1/chat/{session_id}/feedback`          | Submit thumbs up/down feedback on responses           |
-| POST   | `/api/v1/session/{session_id}/clear`          | Clear conversation history for a session              |
-| DELETE | `/api/v1/sessions/{session_id}`               | Delete a chat session                                 |
-| GET    | `/api/v1/version`                             | Build version and commit SHA                          |
-| GET    | `/api/v1/mcp/config/{client_id}`              | MCP client configuration template                     |
-| --     | `/mcp`                                        | MCP Streamable HTTP server (opt-out via env)          |
-| GET    | `/metrics`                                    | Prometheus metrics (infrastructure)                   |
+| Method | Path                                 | Description                                           |
+| ------ | ------------------------------------ | ----------------------------------------------------- |
+| GET    | `/health`                            | Health check (root-level alias)                       |
+| GET    | `/api/v1/health`                     | Health check with dependency status                   |
+| POST   | `/api/v1/chat`                       | AI chat with semantic search (supports SSE streaming) |
+| GET    | `/api/v1/profile`                    | Profile metadata from memvid                          |
+| GET    | `/api/v1/suggested-questions`        | Suggested chat questions from profile                 |
+| POST   | `/api/v1/assess-fit`                 | Real-time job fit assessment via AI                   |
+| POST   | `/api/v1/chat/{session_id}/feedback` | Submit thumbs up/down feedback on responses           |
+| POST   | `/api/v1/session/{session_id}/clear` | Clear conversation history for a session              |
+| DELETE | `/api/v1/sessions/{session_id}`      | Delete a chat session                                 |
+| GET    | `/api/v1/version`                    | Build version and commit SHA                          |
+| GET    | `/api/v1/mcp/config/{client_id}`     | MCP client configuration template                     |
+| --     | `/mcp`                               | MCP Streamable HTTP server (opt-out via env)          |
+| GET    | `/metrics`                           | Prometheus metrics (infrastructure)                   |
 
 ### Styling System
 
-- Tailwind CSS with custom design tokens defined in `tailwind.config.ts`
-- CSS variables for theming in `src/index.css`
+- Tailwind CSS v4 with CSS-first configuration (no `tailwind.config.ts`)
+- Design tokens defined via `@theme {}` directives in `src/index.css`
+- `@tailwindcss/vite` plugin (replaces PostCSS integration, no `postcss.config.js`)
+- `tw-animate-css` for component animations (replaces deprecated `tailwindcss-animate`)
 - shadcn/ui component library for UI primitives
 - Custom animations: `fade-in`, `slide-up`, `pulse-soft`
 - Utility function: `cn()` from `src/lib/utils.ts` for conditional classnames

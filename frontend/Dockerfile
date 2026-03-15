@@ -24,7 +24,6 @@ RUN npm ci --prefer-offline --no-audit
 
 # Copy source code
 COPY index.html vite.config.ts tsconfig.json tsconfig.app.json tsconfig.node.json ./
-COPY tailwind.config.ts postcss.config.js ./
 COPY public/ ./public/
 COPY src/ ./src/
 
