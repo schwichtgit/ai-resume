@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-alpha.9] - 2026-03-15
+
 ### Changed
 
 - Vite upgraded from 7.x to 8.x (Rolldown bundler replaces esbuild/Rollup)
