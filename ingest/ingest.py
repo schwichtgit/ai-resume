@@ -484,7 +484,14 @@ def parse_fit_assessment_examples(content: str) -> list[dict[str, str]]:
             # Format: "### Example 1: Strong Fit — VP of Engineering, AI Infrastructure Startup"
             parts = line[4:].strip().split(":", 1)
             # parts[0] is "Example 1" (not used, just metadata)
-            title_parts = parts[1].strip().split("—", 1) if len(parts) > 1 else ["", ""]
+            # Handle both em-dash (—) and double-hyphen (--) as separators
+            raw_title = parts[1].strip() if len(parts) > 1 else ""
+            if "—" in raw_title:
+                title_parts = raw_title.split("—", 1)
+            elif "--" in raw_title:
+                title_parts = raw_title.split("--", 1)
+            else:
+                title_parts = [raw_title, ""]
             fit_level = title_parts[0].strip()  # "Strong Fit" or "Weak Fit"
             role_title = title_parts[1].strip() if len(title_parts) > 1 else ""
 

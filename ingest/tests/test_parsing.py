@@ -649,6 +649,53 @@ def test_parse_fit_assessment_examples_multiline_jd() -> None:
     assert "Python" in examples[0]["job_description"]
 
 
+def test_parse_fit_assessment_examples_double_hyphen_separator() -> None:
+    """Test parsing fit assessment with double-hyphen separator instead of em-dash."""
+    content = textwrap.dedent("""
+        ### Example 1: Strong Fit -- VP of Engineering, Cloud Company
+
+        **Job Description:**
+        ```
+        Looking for a VP of Engineering
+        ```
+
+        **Assessment:**
+        - **Verdict:** Strong fit (95% match)
+        - **Key Matches:**
+          - Leadership experience
+        - **Gaps:**
+          - None
+        - **Recommendation:**
+          - Hire
+
+        ---
+
+        ### Example 2: Weak Fit -- Director of Mobile, Consumer Fintech
+
+        **Job Description:**
+        ```
+        Looking for a mobile engineering leader
+        ```
+
+        **Assessment:**
+        - **Verdict:** Weak fit (30% match)
+        - **Key Matches:**
+          - Engineering background
+        - **Gaps:**
+          - No mobile experience
+        - **Recommendation:**
+          - Pass
+    """).strip()
+
+    examples = parse_fit_assessment_examples(content)
+
+    assert len(examples) == 2
+    assert examples[0]["fit_level"] == "strong_fit"
+    assert examples[0]["role"] == "VP of Engineering, Cloud Company"
+    assert examples[1]["fit_level"] == "weak_fit"
+    assert examples[1]["role"] == "Director of Mobile, Consumer Fintech"
+
+
 # ============================================================================
 # Utility Functions Tests (3 tests)
 # ============================================================================
