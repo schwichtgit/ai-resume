@@ -45,7 +45,8 @@ FROM alpine:3.23.3
 # OpenResty bundles lua-resty-dns, lua-resty-core, cjson, and LuaJIT.
 # lua-resty-http is installed via opm (not apk) to avoid the Alpine
 # nginx 1.28 / openresty nginx 1.27 package conflict.
-RUN apk add --no-cache openresty curl && \
+RUN apk upgrade --no-cache && \
+    apk add --no-cache openresty curl && \
     curl -fsSL -o /usr/lib/nginx/lualib/resty/http.lua \
       https://raw.githubusercontent.com/ledgetech/lua-resty-http/v0.17.2/lib/resty/http.lua && \
     curl -fsSL -o /usr/lib/nginx/lualib/resty/http_connect.lua \
