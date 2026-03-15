@@ -3182,6 +3182,106 @@
         "otel-python-instrumentation",
         "fluent-bit-log-shipper"
       ]
+    },
+    {
+      "id": "vite-8-migration",
+      "category": "infrastructure",
+      "title": "Vite 7 to 8 Migration (Rolldown)",
+      "description": "Upgrade Vite from 7.x to 8.x, replacing esbuild/Rollup with Rolldown (Rust-based bundler). Replace @vitejs/plugin-react-swc with @vitejs/plugin-react (Oxc-based, no Babel). Rename any build.rollupOptions to build.rolldownOptions. Lightning CSS becomes the default CSS minifier.",
+      "testing_steps": [
+        "Run 'cd frontend && npm run build' and verify it succeeds with Vite 8",
+        "Run 'cd frontend && npm run dev' and verify dev server starts with HMR functional on port 8080",
+        "Run 'cd frontend && npx tsc --noEmit' and verify TypeScript compiles with zero errors",
+        "Run 'cd frontend && npm test' and verify all existing tests pass",
+        "Run 'cd frontend && npm run build 2>&1 | grep -i rolldown' and verify Rolldown is used (not Rollup)",
+        "Verify package.json has @vitejs/plugin-react (not @vitejs/plugin-react-swc)",
+        "Verify vite.config.ts imports from @vitejs/plugin-react",
+        "Run 'cd frontend && npm run build' and verify bundle output in dist/ contains index.html and JS/CSS assets",
+        "Verify no build.rollupOptions in vite.config.ts (should be rolldownOptions if any)",
+        "Run 'cd frontend && npx eslint .' and verify no new lint errors introduced",
+        "Verify all CJS dependencies load correctly at runtime (especially recharts, react-day-picker, cmdk) -- if any fail, add legacy.inconsistentCjsInterop: true to vite.config.ts"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "tailwind-v4-migration",
+      "category": "infrastructure",
+      "title": "Tailwind CSS v3 to v4 Migration",
+      "description": "Migrate from Tailwind CSS v3 to v4 CSS-first architecture. Replace PostCSS plugin with @tailwindcss/vite plugin. Convert tailwind.config.ts theme to @theme {} CSS directives in index.css. Replace @tailwind directives with @import \"tailwindcss\". Delete postcss.config.js and tailwind.config.ts. Update @tailwindcss/typography to v4-compatible version.",
+      "testing_steps": [
+        "Run 'cd frontend && npm run build' and verify production build succeeds",
+        "Run 'cd frontend && npx tsc --noEmit' and verify TypeScript compiles clean",
+        "Run 'cd frontend && npm test' and verify all tests pass",
+        "Verify postcss.config.js has been deleted",
+        "Verify tailwind.config.ts has been deleted",
+        "Verify src/index.css contains '@import \"tailwindcss\"' (not @tailwind directives)",
+        "Verify src/index.css contains '@theme' block with custom color variables",
+        "Verify vite.config.ts imports and uses @tailwindcss/vite plugin",
+        "Verify all 23 HSL color variables render in both light and dark mode (check :root and .dark selectors in index.css)",
+        "Verify custom animations (fade-in, slide-up, pulse-soft, slide-down, typing-cursor) are defined in index.css",
+        "Run the dev server and verify Hero, Experience, FitAssessment, AIChat sections render with no missing elements, no broken layouts, all text visible, and correct colors in both themes (final visual sign-off is a manual human gate)",
+        "Verify dark mode toggle works and all color tokens switch properly",
+        "Verify autoprefixer is removed from devDependencies (Tailwind v4 handles vendor prefixing natively)",
+        "Verify @tailwindcss/typography v4-compatible version is installed and prose classes render correctly",
+        "Verify frontend container build succeeds and serves the app correctly"
+      ],
+      "passes": false,
+      "dependencies": ["vite-8-migration"]
+    },
+    {
+      "id": "tw-animate-css-migration",
+      "category": "infrastructure",
+      "title": "Replace tailwindcss-animate with tw-animate-css",
+      "description": "Replace deprecated tailwindcss-animate plugin (incompatible with Tailwind v4) with tw-animate-css, a pure CSS drop-in replacement. Update CSS imports accordingly. Verify all shadcn/ui component animations continue to function.",
+      "testing_steps": [
+        "Verify package.json does NOT contain tailwindcss-animate dependency",
+        "Verify package.json contains tw-animate-css as a devDependency",
+        "Verify src/index.css contains '@import \"tw-animate-css\"'",
+        "Run 'cd frontend && npm run build' and verify build succeeds with no CSS warnings",
+        "Run 'cd frontend && npm test' and verify all tests pass",
+        "Verify accordion components animate (animate-accordion-down, animate-accordion-up)",
+        "Verify dialog/dropdown/popover components use animate-in/animate-out transitions",
+        "Verify toast notifications slide in and fade out correctly",
+        "Verify tooltip hover animations work",
+        "Run 'cd frontend && npx tsc --noEmit' and verify no type errors"
+      ],
+      "passes": false,
+      "dependencies": ["tailwind-v4-migration"]
+    },
+    {
+      "id": "close-stale-dependabot-prs",
+      "category": "infrastructure",
+      "title": "Close and Clean Up Stale Dependabot PRs",
+      "description": "Close Dependabot PRs that are superseded by the currency upgrade work or are undesirable (canary downgrades). Add explanatory comments to each closed PR.",
+      "testing_steps": [
+        "Verify PR #107 (eslint-plugin-react-hooks canary downgrade) is closed with comment explaining the version date comparison confirms it is a downgrade",
+        "Verify PR #110 (raw Tailwind v4 bump) is closed with comment referencing the proper migration PR",
+        "Run 'gh pr list --state open' and verify only actionable PRs remain",
+        "Verify each closed PR has a comment explaining the closure reason"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "otel-rust-crate-migration",
+      "category": "functional",
+      "title": "OTel Rust Crate Migration 0.27 to 0.31",
+      "description": "Combine Dependabot PRs #102-105 into a single branch and upgrade all OpenTelemetry Rust crates (opentelemetry, opentelemetry_sdk, opentelemetry-otlp, tracing-opentelemetry) from 0.27.x/0.28.x to 0.31.x/0.32.x. Adapt memvid-service code to breaking API changes in the OTel Rust ecosystem.",
+      "testing_steps": [
+        "Run 'cd memvid-service && cargo check' and verify compilation succeeds",
+        "Run 'cd memvid-service && cargo clippy -- -D warnings' and verify no clippy warnings",
+        "Run 'cd memvid-service && cargo test' and verify all tests pass",
+        "Verify Cargo.toml has opentelemetry >= 0.31.0",
+        "Verify Cargo.toml has opentelemetry_sdk >= 0.31.0",
+        "Verify Cargo.toml has opentelemetry-otlp >= 0.31.0",
+        "Verify Cargo.toml has tracing-opentelemetry >= 0.32.0",
+        "Verify PRs #102, #103, #104, #105 are closed (superseded by combined migration)",
+        "Run integration test to verify trace context propagation still works",
+        "Verify the gRPC health check endpoint responds correctly after upgrade"
+      ],
+      "passes": false,
+      "dependencies": []
     }
   ]
 }

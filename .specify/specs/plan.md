@@ -1181,3 +1181,69 @@ A `.trivyignore` file (committed empty with comment header) provides documented 
 - Positive: Feedback loop from users to operators, trace-correlated quality signals, zero new infrastructure
 - Negative: Feedback lost on server restart (in-memory idempotency tracking). Comment content only in Loki (subject to retention). Rate limiting shared with chat endpoint.
 - Files: `api-service/ai_resume_api/main.py`, `api-service/ai_resume_api/models.py`, `frontend/src/components/AIChat.tsx`, `frontend/src/lib/api-client.ts`, `deployment/observability/dashboards/quality-evals.json`
+
+---
+
+## Phase 8: Frontend Currency Upgrades
+
+### Goal
+
+Upgrade frontend build tooling and dependencies to current major versions, and clean up stale Dependabot PRs superseded by manual migration work. Also consolidate OTel Rust crate upgrades into a single coherent migration.
+
+### Implementation Order
+
+The features have strict dependency ordering for the frontend toolchain upgrades:
+
+```text
+Phase 8a (parallel, no dependencies):
+  INFRA-090: Close stale Dependabot PRs
+  FUNC-095: OTel Rust crate migration 0.27 -> 0.31
+
+Phase 8b (sequential chain):
+  INFRA-087: Vite 7 -> 8 (Rolldown)
+      ↓
+  INFRA-088: Tailwind CSS v3 -> v4
+      ↓
+  INFRA-089: tw-animate-css (replaces tailwindcss-animate)
+```
+
+**Phase 8a** can be executed in parallel with **Phase 8b** since the Dependabot cleanup and Rust crate migration have no dependencies on the frontend toolchain upgrades.
+
+Within **Phase 8b**, strict sequential ordering is required:
+
+1. **Vite 8 first** -- the new build system must be in place before migrating CSS tooling, since Tailwind v4 uses a Vite plugin (`@tailwindcss/vite`) instead of PostCSS.
+2. **Tailwind v4 second** -- the CSS-first architecture must be established before swapping animation libraries.
+3. **tw-animate-css last** -- depends on Tailwind v4 being in place since `tailwindcss-animate` is incompatible with v4.
+
+### Feature Summary
+
+| ID        | Title                               | Category       | Dependencies |
+| --------- | ----------------------------------- | -------------- | ------------ |
+| INFRA-087 | Vite 7 to 8 Migration (Rolldown)    | infrastructure | None         |
+| INFRA-088 | Tailwind CSS v3 to v4 Migration     | infrastructure | INFRA-087    |
+| INFRA-089 | tw-animate-css migration            | infrastructure | INFRA-088    |
+| INFRA-090 | Close stale Dependabot PRs          | infrastructure | None         |
+| FUNC-095  | OTel Rust crate migration 0.27-0.31 | functional     | None         |
+
+### Risk Assessment
+
+| Risk                                          | Likelihood | Impact | Mitigation                                                                          |
+| --------------------------------------------- | ---------- | ------ | ----------------------------------------------------------------------------------- |
+| Rolldown breaking changes in Vite 8           | Medium     | High   | Pin exact Vite 8.x version; test full build + dev + HMR before proceeding           |
+| Tailwind v4 CSS-first migration misses tokens | Medium     | Medium | Verify all 23 HSL variables render in both light/dark mode; visual regression check |
+| shadcn/ui animation breakage with tw-animate  | Low        | Medium | Test accordion, dialog, dropdown, popover, toast, tooltip animations individually   |
+| OTel Rust 0.31 breaking API changes           | High       | Medium | Review changelog for each crate; adapt tracing setup code; run cargo test + clippy  |
+| Stale PR closure causes confusion             | Low        | Low    | Add explanatory comments to each closed PR referencing the superseding migration    |
+
+### Verification Strategy
+
+Each feature has explicit testing_steps in `feature_list.json`. The frontend toolchain features (INFRA-087/088/089) share a common verification pattern:
+
+1. `npm run build` succeeds (production build)
+2. `npm run dev` starts correctly (dev server + HMR)
+3. `npx tsc --noEmit` passes (type checking)
+4. `npm test` passes (all existing tests)
+5. `npx eslint .` passes (no new lint errors)
+6. Visual verification of key sections (Hero, Experience, FitAssessment, AIChat)
+
+The Rust crate migration (FUNC-095) follows the standard Rust verification: `cargo check`, `cargo clippy -- -D warnings`, `cargo test`.

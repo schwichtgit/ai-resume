@@ -4496,3 +4496,110 @@ The following decisions were made during the spec and clarify phases:
 10. **SSE cancellation span status:** User cancellation sets span status to `UNSET` (neutral), not `OK` or `ERROR`. Span attribute `chat.user_cancelled: true` added for trace filtering. Only technical failures (timeout, network drop) set `ERROR`. (clarify Q7 resolved)
 11. **Low-relevance threshold validation:** Dashboard variable uses Grafana custom type with predefined values (0.3, 0.4, 0.5, 0.6, 0.7, 0.8) preventing invalid input. Default: 0.5. (clarify Q8 resolved)
 12. **Feedback Tempo drill-down:** Structured log includes indexed `trace_id` field. Grafana Loki panel uses Data Links feature with template URL to Tempo. Acceptance criterion added to FUNC-094. (clarify Q11 resolved)
+
+---
+
+## Frontend Currency Upgrades
+
+### INFRA-087: Vite 7 to 8 Migration (Rolldown)
+
+**Description:** Upgrade Vite from 7.x to 8.x, replacing esbuild/Rollup with Rolldown (Rust-based bundler). Replace @vitejs/plugin-react-swc with @vitejs/plugin-react (Oxc-based, no Babel). Rename any build.rollupOptions to build.rolldownOptions. Lightning CSS becomes the default CSS minifier.
+
+**Acceptance Criteria:**
+
+- [ ] `package.json` declares `vite` version 8.x
+- [ ] `package.json` declares `@vitejs/plugin-react` (not `@vitejs/plugin-react-swc`)
+- [ ] `vite.config.ts` imports from `@vitejs/plugin-react`
+- [ ] Production build (`npm run build`) succeeds with Vite 8 and uses Rolldown (not Rollup)
+- [ ] Dev server (`npm run dev`) starts with HMR functional on port 8080
+- [ ] TypeScript compiles with zero errors (`npx tsc --noEmit`)
+- [ ] All existing tests pass (`npm test`)
+- [ ] Bundle output in `dist/` contains `index.html` and JS/CSS assets
+- [ ] No `build.rollupOptions` in `vite.config.ts` (use `build.rolldownOptions` if needed)
+- [ ] No new lint errors introduced (`npx eslint .`)
+- [ ] All CJS dependencies load correctly at runtime (especially recharts, react-day-picker, cmdk). If any fail, add `legacy.inconsistentCjsInterop: true` to `vite.config.ts`
+
+**Dependencies:** None
+
+---
+
+### INFRA-088: Tailwind CSS v3 to v4 Migration
+
+**Description:** Migrate from Tailwind CSS v3 to v4 CSS-first architecture. Replace PostCSS plugin with @tailwindcss/vite plugin. Convert tailwind.config.ts theme to @theme {} CSS directives in index.css. Replace @tailwind directives with @import "tailwindcss". Delete postcss.config.js and tailwind.config.ts. Update @tailwindcss/typography to v4-compatible version.
+
+**Acceptance Criteria:**
+
+- [ ] Production build (`npm run build`) succeeds
+- [ ] TypeScript compiles clean (`npx tsc --noEmit`)
+- [ ] All tests pass (`npm test`)
+- [ ] `postcss.config.js` has been deleted
+- [ ] `tailwind.config.ts` has been deleted
+- [ ] `src/index.css` contains `@import "tailwindcss"` (not `@tailwind` directives)
+- [ ] `src/index.css` contains `@theme` block with custom color variables
+- [ ] `vite.config.ts` imports and uses `@tailwindcss/vite` plugin
+- [ ] All 23 HSL color variables render in both light and dark mode (`:root` and `.dark` selectors in `index.css`)
+- [ ] Custom animations (fade-in, slide-up, pulse-soft, slide-down, typing-cursor) are defined in `index.css`
+- [ ] Hero, Experience, FitAssessment, AIChat sections render in dev server with no missing elements, no broken layouts, all text visible, and correct colors in both light and dark themes (final visual sign-off is a manual human gate)
+- [ ] Dark mode toggle works and all color tokens switch properly
+- [ ] `autoprefixer` removed from `devDependencies` (Tailwind v4 handles vendor prefixing natively)
+- [ ] `@tailwindcss/typography` v4-compatible version installed and prose classes render correctly
+- [ ] Frontend container build succeeds and serves the app correctly
+
+**Dependencies:** INFRA-087 (vite-8-migration)
+
+---
+
+### INFRA-089: Replace tailwindcss-animate with tw-animate-css
+
+**Description:** Replace deprecated tailwindcss-animate plugin (incompatible with Tailwind v4) with tw-animate-css, a pure CSS drop-in replacement. Update CSS imports accordingly. Verify all shadcn/ui component animations continue to function.
+
+**Acceptance Criteria:**
+
+- [ ] `package.json` does NOT contain `tailwindcss-animate` dependency
+- [ ] `package.json` contains `tw-animate-css` as a devDependency
+- [ ] `src/index.css` contains `@import "tw-animate-css"`
+- [ ] Production build succeeds with no CSS warnings
+- [ ] All tests pass (`npm test`)
+- [ ] Accordion components animate (animate-accordion-down, animate-accordion-up)
+- [ ] Dialog/dropdown/popover components use animate-in/animate-out transitions
+- [ ] Toast notifications slide in and fade out correctly
+- [ ] Tooltip hover animations work
+- [ ] TypeScript compiles with no errors (`npx tsc --noEmit`)
+
+**Dependencies:** INFRA-088 (tailwind-v4-migration)
+
+---
+
+### INFRA-090: Close and Clean Up Stale Dependabot PRs
+
+**Description:** Close Dependabot PRs that are superseded by the currency upgrade work or are undesirable (canary downgrades). Add explanatory comments to each closed PR.
+
+**Acceptance Criteria:**
+
+- [ ] PR #107 (eslint-plugin-react-hooks canary downgrade) is closed with comment explaining the version date comparison confirms it is a downgrade
+- [ ] PR #110 (raw Tailwind v4 bump) is closed with comment referencing the proper migration PR
+- [ ] Only actionable PRs remain open (`gh pr list --state open`)
+- [ ] Each closed PR has a comment explaining the closure reason
+
+**Dependencies:** None
+
+---
+
+### FUNC-095: OTel Rust Crate Migration 0.27 to 0.31
+
+**Description:** Combine Dependabot PRs #102-105 into a single branch and upgrade all OpenTelemetry Rust crates (opentelemetry, opentelemetry_sdk, opentelemetry-otlp, tracing-opentelemetry) from 0.27.x/0.28.x to 0.31.x/0.32.x. Adapt memvid-service code to breaking API changes in the OTel Rust ecosystem.
+
+**Acceptance Criteria:**
+
+- [ ] `memvid-service/Cargo.toml` declares `opentelemetry` >= 0.31.0
+- [ ] `memvid-service/Cargo.toml` declares `opentelemetry_sdk` >= 0.31.0
+- [ ] `memvid-service/Cargo.toml` declares `opentelemetry-otlp` >= 0.31.0
+- [ ] `memvid-service/Cargo.toml` declares `tracing-opentelemetry` >= 0.32.0
+- [ ] `cargo check` succeeds in `memvid-service/`
+- [ ] `cargo clippy -- -D warnings` produces no warnings
+- [ ] All tests pass (`cargo test`)
+- [ ] PRs #102, #103, #104, #105 are closed (superseded by combined migration)
+- [ ] Trace context propagation still works end-to-end
+- [ ] gRPC health check endpoint responds correctly after upgrade
+
+**Dependencies:** None
