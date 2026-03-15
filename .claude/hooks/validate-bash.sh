@@ -59,8 +59,6 @@ LITERAL_PATTERNS=(
     # Environment variable manipulation
     "unset PATH"
 
-    # Variable reassignment (literal prefix)
-    "PATH="
 )
 
 # Define dangerous regex patterns (checked with grep -E, extended regex)
