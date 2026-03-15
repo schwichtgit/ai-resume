@@ -104,7 +104,11 @@ describe('otel', () => {
       initOtel();
 
       expect(mocks.SimpleSpanProcessor).toHaveBeenCalledTimes(1);
-      expect(mocks.addSpanProcessor).toHaveBeenCalledTimes(1);
+      expect(mocks.WebTracerProvider).toHaveBeenCalledWith(
+        expect.objectContaining({
+          spanProcessors: expect.arrayContaining([expect.any(Object)]),
+        }),
+      );
       expect(mocks.ZoneContextManager).toHaveBeenCalledTimes(1);
     });
 
