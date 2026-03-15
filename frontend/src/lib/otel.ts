@@ -35,13 +35,14 @@ export function initOtel(): void {
     'service.name': 'ai-resume-frontend',
   });
 
-  const provider = new WebTracerProvider({ resource });
-
   const exporter = new OTLPTraceExporter({
     url: `${endpoint}/v1/traces`,
   });
 
-  provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
+  const provider = new WebTracerProvider({
+    resource,
+    spanProcessors: [new SimpleSpanProcessor(exporter)],
+  });
   provider.register({
     contextManager: new ZoneContextManager(),
   });
