@@ -105,7 +105,7 @@ def test_create_and_query() -> None:
     print("\nTest completed successfully!")
 
 
-def test_open_existing(isolated_mv2) -> None:
+def test_open_existing(isolated_mv2: str) -> None:
     """Test opening an existing .mv2 file (if one exists)."""
     print("\n=== Open Existing Test ===")
     print(f"Found existing memory: {isolated_mv2}")
@@ -116,6 +116,8 @@ def test_open_existing(isolated_mv2) -> None:
 
 
 if __name__ == "__main__":
+    from pathlib import Path
+
     test_sdk_info()
     test_create_and_query()
-    test_open_existing()
+    test_open_existing(str(Path(__file__).parent.parent.parent / "data/.memvid/resume.mv2"))

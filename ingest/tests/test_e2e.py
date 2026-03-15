@@ -126,7 +126,7 @@ RETRIEVAL_TEST_CASES = [
 ]
 
 
-def test_memvid_retrieval(isolated_mv2) -> None:
+def test_memvid_retrieval(isolated_mv2: str) -> None:
     """Test that memvid retrieves expected content for each test case."""
     print("\n" + "=" * 70)
     print("TEST SUITE: Memvid Retrieval Accuracy")
@@ -196,7 +196,7 @@ def test_memvid_retrieval(isolated_mv2) -> None:
 
 
 @pytest.mark.asyncio
-async def test_query_transformation_improves_retrieval(isolated_mv2) -> tuple[int, int]:
+async def test_query_transformation_improves_retrieval(isolated_mv2: str) -> tuple[int, int]:
     """Test that query transformation improves retrieval for ambiguous queries."""
     print("\n" + "=" * 70)
     print("TEST SUITE: Query Transformation Impact")
@@ -311,7 +311,7 @@ async def test_query_transformation_improves_retrieval(isolated_mv2) -> tuple[in
 
 
 @pytest.mark.asyncio
-async def test_full_rag_pipeline(isolated_mv2) -> tuple[int, int]:
+async def test_full_rag_pipeline(isolated_mv2: str) -> tuple[int, int]:
     """Test the complete RAG pipeline produces correct answers."""
     print("\n" + "=" * 70)
     print("TEST SUITE: Full RAG Pipeline (Retrieval + Generation)")
@@ -439,21 +439,23 @@ async def main() -> bool:
         f"OpenRouter configured: {bool(os.environ.get('OPENROUTER_API_KEY', '').startswith('sk-'))}"
     )
 
+    mv2_path = str(DATA_DIR / ".memvid" / "resume.mv2")
+
     total_passed = 0
     total_failed = 0
 
     # Test 1: Memvid retrieval accuracy
-    p, f = test_memvid_retrieval()  # type: ignore[func-returns-value]
+    p, f = test_memvid_retrieval(mv2_path)  # type: ignore[func-returns-value]
     total_passed += p
     total_failed += f
 
     # Test 2: Query transformation impact
-    p, f = await test_query_transformation_improves_retrieval()
+    p, f = await test_query_transformation_improves_retrieval(mv2_path)
     total_passed += p
     total_failed += f
 
     # Test 3: Full RAG pipeline
-    p, f = await test_full_rag_pipeline()
+    p, f = await test_full_rag_pipeline(mv2_path)
     total_passed += p
     total_failed += f
 

@@ -1,6 +1,7 @@
 """Shared fixtures for ingest tests."""
 
 import shutil
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -10,7 +11,7 @@ SOURCE_MV2 = PROJECT_ROOT / "data" / ".memvid" / "resume.mv2"
 
 
 @pytest.fixture
-def isolated_mv2(tmp_path):
+def isolated_mv2(tmp_path: Path) -> Generator[str, None, None]:
     """Copy resume.mv2 to an isolated temp path for exclusive access.
 
     memvid-core 2.0.139+ acquires an exclusive file lock on open.

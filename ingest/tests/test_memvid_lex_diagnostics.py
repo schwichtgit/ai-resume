@@ -18,7 +18,7 @@ import pytest
 import memvid_sdk
 
 
-def test_index_status(isolated_mv2) -> None:
+def test_index_status(isolated_mv2: str) -> None:
     """Check if indexes are enabled/disabled in the .mv2 file."""
     print("=" * 70)
     print("MEMVID LEX INDEX DIAGNOSTICS")
@@ -155,5 +155,5 @@ def test_index_status(isolated_mv2) -> None:
 
 
 if __name__ == "__main__":
-    test_index_status()
+    test_index_status(str(Path(__file__).parent.parent.parent / "data/.memvid/resume.mv2"))
     sys.exit(0)
