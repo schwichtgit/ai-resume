@@ -9,7 +9,7 @@ use opentelemetry::trace::TracerProvider as _;
 use opentelemetry::KeyValue;
 use opentelemetry_otlp::SpanExporter;
 use opentelemetry_otlp::WithExportConfig;
-use opentelemetry_sdk::trace::TracerProvider;
+use opentelemetry_sdk::trace::SdkTracerProvider;
 use opentelemetry_sdk::Resource;
 use tracing::info;
 use tracing_opentelemetry::OpenTelemetryLayer;
@@ -20,7 +20,7 @@ use tracing_subscriber::registry::LookupSpan;
 /// Returns an optional layer that can be added to the tracing subscriber.
 /// When the env var is absent or the exporter fails to build, returns `None`
 /// and logs a warning (no crash).
-pub fn init_otel_layer<S>() -> Option<OpenTelemetryLayer<S, opentelemetry_sdk::trace::Tracer>>
+pub fn init_otel_layer<S>() -> Option<OpenTelemetryLayer<S, opentelemetry_sdk::trace::SdkTracer>>
 where
     S: tracing::Subscriber + for<'span> LookupSpan<'span>,
 {
@@ -47,10 +47,12 @@ where
         }
     };
 
-    let resource = Resource::new(vec![KeyValue::new("service.name", service_name)]);
+    let resource = Resource::builder_empty()
+        .with_attributes(vec![KeyValue::new("service.name", service_name)])
+        .build();
 
-    let provider = TracerProvider::builder()
-        .with_batch_exporter(exporter, opentelemetry_sdk::runtime::Tokio)
+    let provider = SdkTracerProvider::builder()
+        .with_batch_exporter(exporter)
         .with_resource(resource)
         .build();
 
@@ -77,7 +79,7 @@ mod tests {
         std::env::remove_var("OTEL_EXPORTER_OTLP_ENDPOINT");
 
         let layer: Option<
-            OpenTelemetryLayer<tracing_subscriber::Registry, opentelemetry_sdk::trace::Tracer>,
+            OpenTelemetryLayer<tracing_subscriber::Registry, opentelemetry_sdk::trace::SdkTracer>,
         > = init_otel_layer();
         assert!(
             layer.is_none(),
@@ -94,7 +96,7 @@ mod tests {
         std::env::remove_var("OTEL_SERVICE_NAME");
 
         let layer: Option<
-            OpenTelemetryLayer<tracing_subscriber::Registry, opentelemetry_sdk::trace::Tracer>,
+            OpenTelemetryLayer<tracing_subscriber::Registry, opentelemetry_sdk::trace::SdkTracer>,
         > = init_otel_layer();
         assert!(layer.is_some(), "Layer should be Some when endpoint is set");
 
@@ -109,7 +111,7 @@ mod tests {
         std::env::set_var("OTEL_SERVICE_NAME", "custom-service");
 
         let layer: Option<
-            OpenTelemetryLayer<tracing_subscriber::Registry, opentelemetry_sdk::trace::Tracer>,
+            OpenTelemetryLayer<tracing_subscriber::Registry, opentelemetry_sdk::trace::SdkTracer>,
         > = init_otel_layer();
         assert!(layer.is_some());
 
@@ -127,7 +129,7 @@ mod tests {
         let fmt_layer = tracing_subscriber::fmt::layer().json();
         let registry = tracing_subscriber::registry().with(fmt_layer);
 
-        let otel_layer: Option<OpenTelemetryLayer<_, opentelemetry_sdk::trace::Tracer>> = None;
+        let otel_layer: Option<OpenTelemetryLayer<_, opentelemetry_sdk::trace::SdkTracer>> = None;
 
         // This should compile and work -- the None case means no OTel layer
         let _subscriber = registry.with(otel_layer);
