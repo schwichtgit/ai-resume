@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-alpha.10] - 2026-03-25
+
+### Changed
+
+- dorny/paths-filter bumped from 3 to 4 in CI workflow (#128)
+- sonner bumped from 1.7.4 to 2.0.7 (toast notification library, major) (#131)
+- tailwind-merge bumped from 2.6.1 to 3.5.0 (CSS class merging, major) (#132)
+- @types/node bumped from 22.19.15 to 25.5.0 (devDependency) (#133)
+- 12 minor/patch frontend dependency updates (#134)
+- opentelemetry-otlp bumped from 0.31.0 to 0.31.1 in memvid-service (#129)
+- rustls-webpki bumped from 0.103.9 to 0.103.10 in memvid-service (#126)
+- lz4_flex bumped from 0.12.0 to 0.12.1 in memvid-service (#125)
+- flatted bumped from 3.4.1 to 3.4.2 (devDependency) (#127)
+- authlib bumped from 1.6.8 to 1.6.9 in api-service (#124)
+
+### Security
+
+- Security review completed: no high-confidence vulnerabilities found in dependency changes
+- aws-lc-sys 0.38.0 CVEs (alerts #25, #26) assessed as not exploitable -- no TLS connections made via affected code path; blocked on upstream fix (0.39.0 not yet resolvable)
+- Pygments ReDoS alerts (#29, #30) assessed as non-impacting -- test/dev tooling only, not loaded in production
+
 ## [0.1.0-alpha.9] - 2026-03-15
 
 ### Changed
