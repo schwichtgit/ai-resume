@@ -143,7 +143,7 @@ jobs:
         run: uv run mypy .
 
       - name: Test with pytest
-        run: uv run pytest -v --tb=short 2>&1 | tee /tmp/test-output.txt
+        run: uv run pytest -v --tb=short --cov --cov-report=term-missing 2>&1 | tee /tmp/test-output.txt
 
       - name: Write test summary
         if: always()
@@ -155,11 +155,14 @@ jobs:
               PASSED=$(grep -c "PASSED" /tmp/test-output.txt || true)
               FAILED=$(grep -c "FAILED" /tmp/test-output.txt || true)
               TOTAL=$((PASSED + FAILED))
+              COVERAGE=$(grep -oP 'TOTAL\s+\d+\s+\d+\s+\K\d+%' /tmp/test-output.txt || echo "unknown")
               echo "| Metric | Value |"
               echo "|--------|-------|"
               echo "| Passed | ${PASSED} |"
               echo "| Failed | ${FAILED} |"
               echo "| Total | ${TOTAL} |"
+              echo "| Coverage | ${COVERAGE} |"
+              echo "| Threshold | 85% |"
             fi
           } >> "$GITHUB_STEP_SUMMARY" || true
         shell: bash
