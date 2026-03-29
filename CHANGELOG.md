@@ -26,6 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Add `@opentelemetry/sdk-trace-base` as explicit dependency; Rolldown fails on transitive-only imports (#147)
+- Remove duplicate PreToolUse hooks from project settings.json (plugin provides these)
+
+### Security
+
+- aws-lc-sys bumped from 0.38.0 to 0.39.1 via aws-lc-rs 1.16.2; fixes Dependabot alerts #25, #26 (X.509 Name Constraints Bypass, CRL Distribution Point Scope Check)
+- Pygments bumped from 2.19.2 to 2.20.0 in api-service and ingest; fixes Dependabot alerts #29, #30 (ReDoS in GUID matching)
 
 ## [0.1.0-alpha.10] - 2026-03-25
 
