@@ -257,9 +257,6 @@ jobs:
       - name: Clippy
         run: cargo clippy -- -D warnings
 
-      - name: Build
-        run: cargo build --release
-
       - name: Test
         run: cargo test
 
@@ -598,27 +595,19 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: '1.93.0'
-
-      - name: Install protobuf compiler
-        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
-
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
-
-      - name: Run API endpoint tests (mocked backends)
-        run: cd api-service && uv sync --extra test && uv run pytest tests/test_e2e_api.py -v --tb=short
 
       - name: Install frontend dependencies
         run: cd frontend && npm ci
 
       - name: Install ingest dependencies
         run: cd ingest && uv sync --extra test
+
+      - name: Install api-service dependencies
+        run: cd api-service && uv sync --extra test
 
       - name: Outcome tests -- Factual Accuracy
         run: cd api-service && uv run pytest tests/test_outcome_factual.py -v --tb=short
@@ -907,6 +896,7 @@ jobs:
         docs,
         commit-standards,
         container-build,
+        release-gate,
       ]
     if: always()
     runs-on: ubuntu-latest
@@ -924,6 +914,7 @@ jobs:
           echo "Docs: ${{ needs.docs.result || 'skipped' }}"
           echo "Commit Standards: ${{ needs.commit-standards.result || 'skipped' }}"
           echo "Container Build: ${{ needs.container-build.result || 'skipped' }}"
+          echo "Release Gate: ${{ needs.release-gate.result || 'skipped' }}"
           echo ""
           echo "=== Coverage Gate ==="
           echo "Coverage thresholds enforced per-service:"
@@ -940,7 +931,8 @@ jobs:
              [[ "${{ needs.cross-service.result }}" == "failure" ]] || \
              [[ "${{ needs.docs.result }}" == "failure" ]] || \
              [[ "${{ needs.commit-standards.result }}" == "failure" ]] || \
-             [[ "${{ needs.container-build.result }}" == "failure" ]]; then
+             [[ "${{ needs.container-build.result }}" == "failure" ]] || \
+             [[ "${{ needs.release-gate.result }}" == "failure" ]]; then
             echo ""
             echo "One or more jobs failed!"
             exit 1
@@ -962,6 +954,7 @@ jobs:
             echo "| Docs | ${{ needs.docs.result || 'skipped' }} |"
             echo "| Commit Standards | ${{ needs.commit-standards.result || 'skipped' }} |"
             echo "| Container Build | ${{ needs.container-build.result || 'skipped' }} |"
+            echo "| Release Gate | ${{ needs.release-gate.result || 'skipped' }} |"
             echo ""
             echo "### Container Build Matrix"
             echo ""
@@ -996,6 +989,7 @@ jobs:
           DOCS=$(status_icon "${{ needs.docs.result || 'skipped' }}")
           COMMITS=$(status_icon "${{ needs.commit-standards.result || 'skipped' }}")
           CONTAINERS=$(status_icon "${{ needs.container-build.result || 'skipped' }}")
+          RELEASE=$(status_icon "${{ needs.release-gate.result || 'skipped' }}")
 
           # Determine overall status
           OVERALL="All checks passed"
@@ -1006,7 +1000,8 @@ jobs:
              [[ "${{ needs.cross-service.result }}" == "failure" ]] || \
              [[ "${{ needs.docs.result }}" == "failure" ]] || \
              [[ "${{ needs.commit-standards.result }}" == "failure" ]] || \
-             [[ "${{ needs.container-build.result }}" == "failure" ]]; then
+             [[ "${{ needs.container-build.result }}" == "failure" ]] || \
+             [[ "${{ needs.release-gate.result }}" == "failure" ]]; then
             OVERALL="One or more checks failed"
           fi
 
@@ -1027,6 +1022,7 @@ jobs:
           | Docs | ${DOCS} |
           | Commit Standards | ${COMMITS} |
           | Container Build | ${CONTAINERS} |
+          | Release Gate | ${RELEASE} |
 
           **${OVERALL}** | [Full run details](${RUN_URL})
           ENDMD

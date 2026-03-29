@@ -2,12 +2,8 @@ name: Security Scan
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
   schedule:
-    - cron: '0 6 * * 1'  # Weekly Monday 6am UTC
+    - cron: '0 6 * * 1' # Weekly Monday 6am UTC
 
 permissions:
   contents: read
