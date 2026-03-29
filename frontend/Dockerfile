@@ -14,7 +14,7 @@ WORKDIR /app
 # Update system packages to fix CVE-2025-14831 and CVE-2025-9820 (GnuTLS vulnerabilities)
 RUN apt-get update && apt-get upgrade -y && apt-get clean
 
-RUN npm install -g npm@11.10.1
+RUN npm install -g npm@11.12.1
 
 # Copy package files first for better layer caching
 COPY package.json package-lock.json ./

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- TypeScript upgraded from 5.x to 6.0.2 (removed deprecated `baseUrl` from tsconfig)
+- date-fns upgraded from 3.x to 4.1.0
+- jsdom upgraded from 27.x to 29.0.1 (devDependency)
+- globals upgraded from 15.x to 17.4.0 (devDependency)
+- npm upgraded from 11.10.1 to 11.12.1 in frontend Dockerfile
+- cryptography bumped from 46.0.5 to 46.0.6 in api-service (#139)
+- 8 minor/patch frontend dependency updates (#140)
+
 ## [0.1.0-alpha.10] - 2026-03-25
 
 ### Changed
