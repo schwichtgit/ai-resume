@@ -93,6 +93,9 @@
   "overrides": {
     "@tailwindcss/vite": {
       "vite": "$vite"
+    },
+    "typescript-eslint": {
+      "typescript": "$typescript"
     }
   }
 }
