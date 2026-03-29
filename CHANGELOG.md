@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - cryptography bumped from 46.0.5 to 46.0.6 in api-service (#139)
 - 8 minor/patch frontend dependency updates (#140)
 
+### Fixed
+
+- Add `@opentelemetry/sdk-trace-base` as explicit dependency (Rolldown fails on transitive-only imports)
+
 ## [0.1.0-alpha.10] - 2026-03-25
 
 ### Changed
