@@ -89,7 +89,7 @@ The system uses a **three-container architecture**:
 
 ### Rust Memvid Service
 
-- **Technology:** Rust 1.84 + Axum + tokio + memvid SDK
+- **Technology:** Rust 1.93 + Tonic gRPC + tokio + memvid-core
 - **Container Size:** ~15MB (distroless)
 - **Memory:** ~20MB runtime
 - **Responsibilities:**

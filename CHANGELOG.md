@@ -7,19 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-alpha.11] - 2026-03-29
+
 ### Changed
 
-- TypeScript upgraded from 5.x to 6.0.2 (removed deprecated `baseUrl` from tsconfig)
-- date-fns upgraded from 3.x to 4.1.0
-- jsdom upgraded from 27.x to 29.0.1 (devDependency)
-- globals upgraded from 15.x to 17.4.0 (devDependency)
-- npm upgraded from 11.10.1 to 11.12.1 in frontend Dockerfile
+- TypeScript upgraded from 5.x to 6.0.2; removed deprecated `baseUrl` from tsconfig (#145)
+- date-fns upgraded from 3.x to 4.1.0 (#145)
+- jsdom upgraded from 27.x to 29.0.1 (devDependency, #145)
+- globals upgraded from 15.x to 17.4.0 (devDependency, #145)
+- npm upgraded from 11.10.1 to 11.12.1 in frontend Dockerfile (#145)
 - cryptography bumped from 46.0.5 to 46.0.6 in api-service (#139)
-- 8 minor/patch frontend dependency updates (#140)
+- requests bumped from 2.32.5 to 2.33.0 in api-service (#137)
+- picomatch bumped from 4.0.3 to 4.0.4 in frontend (#136)
+- OTel JS exporter-trace-otlp-http and instrumentation-fetch bumped to 0.214.0 (#148)
+- 22 specforge features verified; stale testing steps updated (#138)
+- api-service CI job now reports coverage in GITHUB_STEP_SUMMARY (#138)
 
 ### Fixed
 
-- Add `@opentelemetry/sdk-trace-base` as explicit dependency (Rolldown fails on transitive-only imports)
+- Add `@opentelemetry/sdk-trace-base` as explicit dependency; Rolldown fails on transitive-only imports (#147)
 
 ## [0.1.0-alpha.10] - 2026-03-25
 
