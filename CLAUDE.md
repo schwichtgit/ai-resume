@@ -95,10 +95,34 @@ npm run test:watch   # Run tests in watch mode
 
 ### Testing
 
-- Tests are configured with Vitest + React Testing Library
+#### Unit Tests (Vitest + React Testing Library)
+
 - Test files: `src/**/*.{test,spec}.{ts,tsx}`
 - Test setup: `src/test/setup.ts`
+- Run all: `npm test`
 - Run a single test file: `npm test -- src/path/to/file.test.ts`
+
+#### E2E Tests (Playwright)
+
+- Test files: `e2e/*.spec.ts`
+- Config: `playwright.config.ts`
+- Requires all three services running (frontend, api-service, memvid-service)
+- Tests are data-driven (resume-agnostic) -- work with any `.mv2` file
+- Components use `data-testid` attributes for stable Playwright selectors
+
+```bash
+# Install browser (first time only)
+npx playwright install chromium
+
+# Run against local dev server (requires services running)
+E2E_BASE_URL=http://localhost:8080 npx playwright test
+
+# Run against production
+E2E_BASE_URL=https://frank-ai-resume.schwichtenberg.us npx playwright test
+
+# View HTML report after run
+npx playwright show-report
+```
 
 ### Virtual Environments
 

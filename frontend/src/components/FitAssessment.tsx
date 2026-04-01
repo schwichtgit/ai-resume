@@ -47,7 +47,10 @@ const FitAssessment = () => {
     try {
       const result = await assessFit(customJD);
       setCustomResult(result);
-      span.setAttribute('response_time_ms', Math.round(performance.now() - start));
+      span.setAttribute(
+        'response_time_ms',
+        Math.round(performance.now() - start),
+      );
       span.setStatus({ code: SpanStatusCode.OK });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to assess fit');
@@ -78,6 +81,7 @@ const FitAssessment = () => {
   return (
     <section
       id="fit-assessment"
+      data-testid="fit-section"
       className="py-12 sm:py-24 px-4 sm:px-6 bg-secondary/30"
     >
       <div className="max-w-4xl mx-auto">

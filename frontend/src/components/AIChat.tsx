@@ -112,12 +112,18 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
         if (questions.length > 0) {
           setSuggestedQuestions(questions);
         }
-        sqSpan.setAttribute('response_time_ms', Math.round(performance.now() - sqStart));
+        sqSpan.setAttribute(
+          'response_time_ms',
+          Math.round(performance.now() - sqStart),
+        );
         sqSpan.setStatus({ code: SpanStatusCode.OK });
       })
       .catch(() => {
         // Keep default questions on error
-        sqSpan.setStatus({ code: SpanStatusCode.ERROR, message: 'fetch_failed' });
+        sqSpan.setStatus({
+          code: SpanStatusCode.ERROR,
+          message: 'fetch_failed',
+        });
       })
       .finally(() => {
         sqSpan.end();
@@ -166,7 +172,10 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
   const isWaiting = isLoading || isStreaming;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-background/80 backdrop-blur-sm animate-fade-in">
+    <div
+      data-testid="chat-dialog"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-background/80 backdrop-blur-sm animate-fade-in"
+    >
       <div className="w-full sm:max-w-2xl h-[100dvh] sm:h-[80vh] bg-card border-0 sm:border sm:border-border rounded-t-2xl sm:rounded-2xl flex flex-col overflow-hidden shadow-2xl animate-slide-up">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
@@ -323,7 +332,9 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
                   >
                     <ThumbsDown
                       className="w-3.5 h-3.5"
-                      fill={feedbackGiven[i] === 'down' ? 'currentColor' : 'none'}
+                      fill={
+                        feedbackGiven[i] === 'down' ? 'currentColor' : 'none'
+                      }
                     />
                   </button>
                 </div>
@@ -367,7 +378,10 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
 
           {/* Stats display */}
           {stats && !isWaiting && messages.length > 0 && (
-            <div className="text-xs text-muted-foreground text-center">
+            <div
+              data-testid="chat-stats"
+              className="text-xs text-muted-foreground text-center"
+            >
               {stats.chunks_retrieved && (
                 <span>{stats.chunks_retrieved} sources used</span>
               )}

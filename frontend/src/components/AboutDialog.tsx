@@ -17,7 +17,7 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent data-testid="about-dialog" className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>About AI Resume</DialogTitle>
         </DialogHeader>

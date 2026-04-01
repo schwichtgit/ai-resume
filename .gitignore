@@ -83,3 +83,9 @@ memvid-service/target/
 
 # Fastembed model cache (large binary files)
 .fastembed_cache/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+.playwright-mcp/
