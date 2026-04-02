@@ -3523,6 +3523,32 @@
       "passes": true,
       "dependencies": [],
       "verified": true
+    },
+    {
+      "id": "playwright-e2e-smoke",
+      "category": "testing",
+      "title": "Playwright E2E Smoke Test Suite",
+      "description": "Data-driven Playwright E2E smoke tests validating UI structure and behavior against any ai-resume instance. Uses data-testid for elements lacking semantic roles, getByRole for interactive elements. Resume-agnostic, works with any .mv2 file.",
+      "testing_steps": [
+        "Verify @playwright/test is listed in frontend/package.json devDependencies",
+        "Verify frontend/playwright.config.ts exists and contains baseURL from E2E_BASE_URL env var",
+        "Verify frontend/e2e/ui-smoke.spec.ts exists with 10 test cases",
+        "Verify Hero.tsx has data-testid='hero-subtitle' and data-testid='hero-cta'",
+        "Verify Experience.tsx has data-testid='experience-section'",
+        "Verify AIChat.tsx has data-testid='chat-dialog' and data-testid='chat-stats'",
+        "Verify FitAssessment.tsx has data-testid='fit-section'",
+        "Verify AboutDialog.tsx has data-testid='about-dialog'",
+        "Verify tests use getByRole() for buttons, tabs, links, headings (not testids)",
+        "Verify no test assertions reference specific resume content (names, companies, dates)",
+        "Start all three services (frontend, api, memvid) and run E2E_BASE_URL=http://localhost:8080 npx playwright test -- all 10 tests pass",
+        "Verify .gitignore excludes test-results/, playwright-report/, .playwright-mcp/",
+        "Verify .markdownlint-cli2.yaml excludes playwright artifact directories",
+        "Verify CLAUDE.md documents Playwright E2E testing under Testing section",
+        "Verify docs/DEVELOPMENT.md documents E2E test commands"
+      ],
+      "passes": true,
+      "dependencies": [],
+      "verified": true
     }
   ]
 }

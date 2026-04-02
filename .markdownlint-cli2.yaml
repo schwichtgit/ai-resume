@@ -1,8 +1,11 @@
 # markdownlint-cli2 configuration
 # Ignore paths that should not be linted
 ignores:
-  - "**/node_modules/**"
-  - "**/.venv/**"
-  - "**/target/**"
-  - "dist/**"
-  - ".claude/restart-*.md"
+  - '**/node_modules/**'
+  - '**/.venv/**'
+  - '**/target/**'
+  - 'dist/**'
+  - '.claude/restart-*.md'
+  - '**/playwright-report/**'
+  - '**/test-results/**'
+  - '**/.playwright-mcp/**'

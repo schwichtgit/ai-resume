@@ -4603,3 +4603,22 @@ The following decisions were made during the spec and clarify phases:
 - [ ] gRPC health check endpoint responds correctly after upgrade
 
 **Dependencies:** None
+
+### TEST-018: Playwright E2E Smoke Test Suite
+
+**Description:** Data-driven Playwright E2E smoke tests that validate UI structure and behavior against any deployed ai-resume instance. Tests use `data-testid` attributes (as last-resort stable selectors per Playwright best practices) alongside `getByRole()` for interactive elements. Tests are resume-agnostic and work with any `.mv2` file.
+
+**Acceptance Criteria:**
+
+- [ ] `@playwright/test` is a devDependency in `frontend/package.json`
+- [ ] `frontend/playwright.config.ts` exists with configurable `baseURL` via `E2E_BASE_URL` env var
+- [ ] `frontend/e2e/ui-smoke.spec.ts` exists with test cases covering hero, navigation, experience accordion, skills, dark mode, fit assessment tabs, AI chat, footer, and responsive layout
+- [ ] Key components have `data-testid` attributes for elements lacking semantic roles: `hero-subtitle`, `hero-cta`, `experience-section`, `chat-dialog`, `chat-stats`, `fit-section`, `about-dialog`
+- [ ] Interactive elements use `getByRole()` selectors (buttons, tabs, links, headings, dialog) not testids
+- [ ] Tests validate structure and behavior, not specific resume content (data-driven)
+- [ ] All tests pass against local dev server (`E2E_BASE_URL=http://localhost:8080`)
+- [ ] Tests pass against a different resume instance (alternate content)
+- [ ] Playwright artifacts excluded from git (`.gitignore`) and markdown lint (`.markdownlint-cli2.yaml`)
+- [ ] E2E testing documented in `CLAUDE.md` and `docs/DEVELOPMENT.md`
+
+**Dependencies:** None

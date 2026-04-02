@@ -143,6 +143,16 @@ npm test -- --run
 npm test -- --run --coverage
 ```
 
+**E2E tests** (Playwright, requires all services running):
+
+```bash
+npx playwright install chromium  # first time only
+E2E_BASE_URL=http://localhost:8080 npx playwright test
+```
+
+The E2E suite is data-driven (tests structure and behavior, not specific resume
+content) and works against any deployed instance.
+
 ### API Service (`api-service/`)
 
 Python 3.12, FastAPI, uvicorn. The Python package name is `ai_resume_api`

@@ -49,7 +49,10 @@ const Hero = ({ onOpenChat }: HeroProps) => {
         </h1>
 
         {/* Role */}
-        <p className="text-xl sm:text-2xl md:text-3xl text-primary font-serif mb-3 sm:mb-4 animate-slide-up stagger-1">
+        <p
+          data-testid="hero-subtitle"
+          className="text-xl sm:text-2xl md:text-3xl text-primary font-serif mb-3 sm:mb-4 animate-slide-up stagger-1"
+        >
           {profile.title}
         </p>
 
@@ -72,6 +75,7 @@ const Hero = ({ onOpenChat }: HeroProps) => {
 
         {/* CTA Button */}
         <button
+          data-testid="hero-cta"
           onClick={onOpenChat}
           className="group relative inline-flex items-center gap-2 sm:gap-3 px-6 sm:px-8 py-3 sm:py-4 min-h-[44px] bg-accent text-accent-foreground rounded-2xl font-medium transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-accent/20 animate-slide-up stagger-4"
         >

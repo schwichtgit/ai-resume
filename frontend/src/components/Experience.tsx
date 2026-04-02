@@ -25,7 +25,11 @@ const Experience = () => {
   }
 
   return (
-    <section id="experience" className="py-12 sm:py-24 px-4 sm:px-6">
+    <section
+      id="experience"
+      data-testid="experience-section"
+      className="py-12 sm:py-24 px-4 sm:px-6"
+    >
       <div className="max-w-4xl mx-auto">
         {/* Section header */}
         <div className="mb-8 sm:mb-12">
