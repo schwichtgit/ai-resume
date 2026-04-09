@@ -27,7 +27,8 @@ Scan staged changes for patterns:
 - GitHub tokens: `ghp_`, `gho_`
 - GitLab tokens: `glpat-`
 - Slack tokens: `xoxb-`
-- Generic: high-entropy strings near keywords `password`, `secret`, `token`, `api_key`
+- Generic: high-entropy strings near keywords `password`,
+  `secret`, `token`, `api_key`
 
 Block the commit if any match is found.
 
@@ -35,7 +36,9 @@ Block the commit if any match is found.
 
 Block commits that include:
 
-`.env*`, `*.pem`, `*.key`, `*.crt`, `*.p12`, `*.pfx`, `id_rsa*`, `id_ed25519*`, `credentials.json`, `service-account*.json`, `*.keystore`
+`.env*`, `*.pem`, `*.key`, `*.crt`, `*.p12`, `*.pfx`,
+`id_rsa*`, `id_ed25519*`, `credentials.json`,
+`service-account*.json`, `*.keystore`
 
 ## 4. Conventional Commit Format
 
@@ -54,14 +57,16 @@ Block (case-insensitive):
 
 - **Self-references:** "I have", "I've", "I updated", "I fixed"
 - **Filler:** "Certainly", "I'd be happy to", "As an AI"
-- **Marketing adjectives:** "seamless", "robust", "powerful", "elegant", "streamlined", "polished", "enhanced", "refined"
+- **Marketing adjectives:** "seamless", "robust", "powerful",
+  "elegant", "streamlined", "polished", "enhanced", "refined"
 - **AI branding:** "Anthropic", "GPT", "OpenAI", "Copilot"
 - **Standalone "Claude"** (allow "Claude Code" as product reference)
 - **Co-Authored-By trailers**
 
 ## 6. No Emoji
 
-Block Unicode emoji in commit messages: U+1F300-U+1F9FF, U+2600-U+27BF, and related ranges.
+Block Unicode emoji in commit messages: U+1F300-U+1F9FF,
+U+2600-U+27BF, and related ranges.
 
 ## 7. No Draft Markers
 

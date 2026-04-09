@@ -1,59 +1,37 @@
 #!/bin/bash
-# Install Git hooks for the ai-resume project
-# Usage: ./scripts/install-hooks.sh
-
 set -euo pipefail
 
-# Get the project root
+# Install git hooks and make Claude Code hooks executable.
+# This script resolves hook sources relative to its own location,
+# so it works correctly when projected into any host project.
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+HOOKS_DIR="$SCRIPT_DIR/hooks"
 
-echo "Installing Git hooks for ai-resume..."
-echo "Project root: $PROJECT_ROOT"
-echo ""
+PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || { echo "Not in a git repository." >&2; exit 1; })
 
-# Configure git to use .githooks/ as the hooks directory
-echo "Setting core.hooksPath to .githooks/ ..."
-git config core.hooksPath .githooks
-echo "  Done: git config core.hooksPath = .githooks"
+echo "Installing hooks for: $PROJECT_ROOT"
 
-# Ensure .githooks scripts are executable
-echo ""
-echo "=== Making .githooks scripts executable ==="
-for hook_file in "$PROJECT_ROOT/.githooks"/*; do
-    if [[ -f "$hook_file" ]] && [[ ! "$hook_file" =~ \.sample$ ]]; then
-        chmod +x "$hook_file"
-        echo "  Made executable: $(basename "$hook_file")"
+# Copy git hooks
+GIT_HOOKS_DIR="$PROJECT_ROOT/.git/hooks"
+mkdir -p "$GIT_HOOKS_DIR"
+
+for hook in pre-commit commit-msg; do
+    src="$HOOKS_DIR/$hook"
+    dst="$GIT_HOOKS_DIR/$hook"
+    if [[ -f "$src" ]]; then
+        cp "$src" "$dst"
+        chmod +x "$dst"
+        echo "  Installed: $hook"
+    else
+        echo "  Skipped (not found): $src"
     fi
 done
 
-echo ""
-echo "=== Claude Code Hooks ==="
-
-# Check for Claude Code hooks
-CLAUDE_HOOKS_DIR="$PROJECT_ROOT/.claude/hooks"
-if [[ -d "$CLAUDE_HOOKS_DIR" ]]; then
-    echo "Making Claude Code hooks executable..."
-    for hook_file in "$CLAUDE_HOOKS_DIR"/*.sh; do
-        if [[ -f "$hook_file" ]]; then
-            chmod +x "$hook_file"
-            echo "  Made executable: $(basename "$hook_file")"
-        fi
-    done
-else
-    echo "No Claude Code hooks directory found"
+# Make Claude Code hooks executable
+if [[ -d "$PROJECT_ROOT/.claude/hooks" ]]; then
+    chmod +x "$PROJECT_ROOT"/.claude/hooks/*.sh 2>/dev/null || true
+    echo "  Claude Code hooks made executable."
 fi
 
-echo ""
-echo "=== Installation Complete ==="
-echo ""
-echo "Active hooks (from .githooks/):"
-for hook_file in "$PROJECT_ROOT/.githooks"/*; do
-    if [[ -f "$hook_file" ]] && [[ ! "$hook_file" =~ \.sample$ ]]; then
-        echo "  - $(basename "$hook_file")"
-    fi
-done
-
-echo ""
-echo "To skip hooks temporarily, use: git commit --no-verify"
-echo "To uninstall, run: git config --unset core.hooksPath"
+echo "Done."
