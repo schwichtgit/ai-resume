@@ -88,6 +88,31 @@ default.
 - **Fix regressions first.** If a previously passing feature
   breaks, fix it before new work.
 
+## Directory Semantics
+
+These conventions define what belongs in each directory.
+
+| Directory             | Purpose                     | Examples                                       |
+| --------------------- | --------------------------- | ---------------------------------------------- |
+| `.claude/`            | Claude Code tooling only    | hooks, settings, PLAN.md (session-scoped)      |
+| `.specify/memory/`    | Specforge governance        | constitution.md, versioning strategy           |
+| `.specify/specs/`     | Specforge spec artifacts    | spec.md, plan.md                               |
+| `.specify/proposals/` | Pre-spec planning documents | change requests, ADR drafts, feature proposals |
+| `.specify/templates/` | Specforge templates         | constitution-template.md, spec-template.md     |
+
+**Key rules:**
+
+- `.claude/` is for tooling configuration, not project
+  planning documents
+- Session-scoped working docs (restart prompts, cheat sheets)
+  are ephemeral -- do not commit them
+- Change requests and proposals that outlive a session belong
+  in `.specify/proposals/`
+- `.specify/proposals/` feeds the specforge workflow: proposals
+  mature into specs via `/cpf:specforge spec`
+- `.claude/PLAN.md` is session-scoped, not a persistent
+  planning artifact
+
 ## Quality Gates
 
 All code changes are subject to quality gates defined in:
