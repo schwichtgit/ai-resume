@@ -1,0 +1,201 @@
+name: CI Base
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Markdown lint
+  # ---------------------------------------------------------------------------
+  markdownlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: DavidAnson/markdownlint-cli2-action@v22
+        with:
+          globs: '**/*.md'
+
+  # ---------------------------------------------------------------------------
+  # Prettier format check
+  # ---------------------------------------------------------------------------
+  prettier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: npx prettier --check .
+
+  # ---------------------------------------------------------------------------
+  # Shell script lint
+  # ---------------------------------------------------------------------------
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+      - name: Run shellcheck
+        run: |
+          find . -name '*.sh' -not -path './.git/*' -print0 | xargs -0 shellcheck -x
+          find scripts/hooks -type f -not -name '*.md' -print0 | xargs -0 shellcheck -x
+
+  # ---------------------------------------------------------------------------
+  # Commit standards (PR only)
+  # ---------------------------------------------------------------------------
+  commit-standards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Validate commits
+        run: |
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+
+          # Skip when not in PR context (push to main, etc.)
+          if [[ -z "$BASE" ]] || [[ -z "$HEAD" ]]; then
+            echo "Not a pull request context -- skipping commit validation."
+            exit 0
+          fi
+
+          ERRORS=0
+          while IFS= read -r sha; do
+            MSG=$(git log --format='%s' -n 1 "$sha")
+
+            # Skip merge commits (e.g. from branch updates, Dependabot)
+            if echo "$MSG" | grep -qE '^Merge '; then
+              continue
+            fi
+
+            # Conventional commit format
+            if ! echo "$MSG" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+'; then
+              echo "FAIL [$sha]: Not conventional commit format: $MSG"
+              ERRORS=$((ERRORS + 1))
+            fi
+
+            # Subject length
+            if [ ${#MSG} -gt 72 ]; then
+              echo "WARN [$sha]: Subject exceeds 72 chars: $MSG"
+            fi
+
+            # Emoji
+            if echo "$MSG" | python3 -c "
+          import sys, re
+          text = sys.stdin.read()
+          pattern = re.compile('[\U0001F300-\U0001F9FF\U00002600-\U000027BF]+', re.UNICODE)
+          sys.exit(0 if pattern.search(text) else 1)
+          " 2>/dev/null; then
+              echo "FAIL [$sha]: Emoji in commit message: $MSG"
+              ERRORS=$((ERRORS + 1))
+            fi
+
+            # AI-isms
+            if echo "$MSG" | grep -qiE '\b(I have|I'\''ve|I updated|I fixed|Certainly|seamless|robust|powerful|elegant)\b'; then
+              echo "FAIL [$sha]: AI-ism detected: $MSG"
+              ERRORS=$((ERRORS + 1))
+            fi
+
+          done < <(git rev-list "$BASE".."$HEAD")
+
+          if [ $ERRORS -gt 0 ]; then
+            echo ""
+            echo "Commit standards check failed: $ERRORS error(s)."
+            exit 1
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Plugin validation
+  # ---------------------------------------------------------------------------
+  plugin-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate plugin.json
+        run: |
+          echo "--- plugin.json structure ---"
+          jq empty .claude-plugin/plugin.json
+          echo "PASS: plugin.json is valid JSON"
+
+          # Verify required fields
+          jq -e '.name' .claude-plugin/plugin.json > /dev/null
+          jq -e '.version' .claude-plugin/plugin.json > /dev/null
+          jq -e '.hooks' .claude-plugin/plugin.json > /dev/null
+          echo "PASS: required fields present"
+      - name: Validate referenced file paths
+        run: |
+          echo "--- Checking skill paths ---"
+          for path in $(jq -r '.skills[]?.path // empty' .claude-plugin/plugin.json); do
+            if [ ! -f ".claude-plugin/$path" ]; then
+              echo "FAIL: .claude-plugin/$path not found"
+              exit 1
+            fi
+            echo "  OK: $path"
+          done
+
+          echo "--- Checking agent paths ---"
+          for path in $(jq -r '.agents[]?.path // empty' .claude-plugin/plugin.json); do
+            if [ ! -f ".claude-plugin/$path" ]; then
+              echo "FAIL: .claude-plugin/$path not found"
+              exit 1
+            fi
+            echo "  OK: $path"
+          done
+          echo "PASS: all referenced paths exist"
+      - name: Validate hooks.json
+        run: |
+          HOOKS_REL=$(jq -r '.hooks' .claude-plugin/plugin.json)
+          HOOKS_PATH=".claude-plugin/$HOOKS_REL"
+
+          echo "--- hooks.json structure ---"
+          jq empty "$HOOKS_PATH"
+          echo "PASS: hooks.json is valid JSON"
+
+          echo "--- Checking hook script paths ---"
+          jq -r '.. | .command? // empty' "$HOOKS_PATH" | while IFS= read -r cmd; do
+            SCRIPT=$(echo "$cmd" | sed 's|\${CLAUDE_PLUGIN_ROOT}|.claude-plugin|g')
+            if [ ! -f "$SCRIPT" ]; then
+              echo "FAIL: $SCRIPT not found (from $cmd)"
+              exit 1
+            fi
+            echo "  OK: $cmd"
+          done
+          echo "PASS: all hook scripts exist"
+      - name: Validate SKILL.md exists
+        run: |
+          SKILL_PATH=$(jq -r '.skills[0].path' .claude-plugin/plugin.json)
+          test -f ".claude-plugin/$SKILL_PATH"
+          echo "PASS: SKILL.md exists at $SKILL_PATH"
+
+  # ---------------------------------------------------------------------------
+  # Summary (ONLY job to require in branch protection)
+  # ---------------------------------------------------------------------------
+  summary:
+    if: always()
+    needs:
+      [markdownlint, prettier, shellcheck, commit-standards, plugin-validation]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check results
+        run: |
+          echo "Markdown:  ${{ needs.markdownlint.result }}"
+          echo "Prettier:  ${{ needs.prettier.result }}"
+          echo "Shell:     ${{ needs.shellcheck.result }}"
+          echo "Commits:   ${{ needs.commit-standards.result }}"
+          echo "Plugin:    ${{ needs.plugin-validation.result }}"
+
+          for result in "${{ needs.markdownlint.result }}" "${{ needs.prettier.result }}" "${{ needs.shellcheck.result }}" "${{ needs.commit-standards.result }}" "${{ needs.plugin-validation.result }}"; do
+            if [[ "$result" == "failure" ]]; then
+              echo "One or more checks failed."
+              exit 1
+            fi
+          done
+
+          echo "All checks passed."

@@ -9,10 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Specforge scaffold upgraded from alpha.8 to alpha.9
-  - `scripts/hooks/pre-commit`: added markdown and YAML lint checks for staged files
-  - `CLAUDE.md.template`: expanded with service environment table, subagent delegation policy, spec-driven workflow table, API/testing/container/MR-PR sections
-  - `ci/github/dependabot.yml`: added Go (gomod) commented-out ecosystem entry
+- Specforge scaffold upgraded from alpha.9 to alpha.10
+  - CI migrated to reusable workflow: `ci-base.yml` called from `ci.yml` via `workflow_call`
+  - Redundant `docs` job removed from `ci.yml` (markdownlint now in `ci-base.yml`)
+  - New scaffold checks: shellcheck, prettier, plugin-validation via `ci-base.yml`
+  - `CLAUDE.md.template`: added merged-MR branch check and error handling section
+  - `ci/gitlab/gitlab-ci-guide.md`: rewritten with pipeline docs, customization examples, parity table
+  - `ci/jenkins/jenkinsfile-guide.md`: rewritten with stage docs, customization examples, parity table
+  - `scripts/hooks/pre-commit`, `.specify/WORKFLOW.md`: updated from scaffold
 
 ## [0.1.0-alpha.12] - 2026-04-10
 

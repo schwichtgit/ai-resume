@@ -166,19 +166,21 @@ lint_staged_files() {
             ;;
         md)
             if [[ -f "$project_root/node_modules/.bin/markdownlint-cli2" ]]; then
-                npx --prefix "$project_root" markdownlint-cli2 "$file" 2>/dev/null || return 1
+                git show ":$file" 2>/dev/null \
+                    | npx --prefix "$project_root" markdownlint-cli2 - 2>/dev/null || return 1
             fi
             ;;
         yml|yaml)
             if command -v python3 >/dev/null 2>&1; then
-                python3 -c "
+                git show ":$file" 2>/dev/null \
+                    | python3 -c "
 import sys, yaml
 try:
-    yaml.safe_load(open(sys.argv[1]))
+    yaml.safe_load(sys.stdin.read())
 except yaml.YAMLError as e:
     print(f'  YAML error: {e}', file=sys.stderr)
     sys.exit(1)
-" "$file" 2>/dev/null || return 1
+" 2>/dev/null || return 1
             fi
             ;;
     esac
