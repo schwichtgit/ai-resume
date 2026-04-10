@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-alpha.12] - 2026-04-10
+
+### Added
+
+- Playwright E2E smoke test suite for frontend (#152)
+
+### Changed
+
+- lucide-react upgraded from 0.577.0 to 1.7.0 (major); brand icons replaced with inline SVGs (#157)
+- vite bumped from 8.0.3 to 8.0.5 in frontend (#158)
+- fastmcp bumped from 3.0.2 to 3.2.0 in api-service (#151)
+- poetry bumped from 2.3.1 to 2.3.3 in api-service (#153)
+- SonarSource/sonarqube-scan-action bumped from 7.0.0 to 7.1.0 (#154)
+- 7 minor/patch frontend dependency updates (#156)
+- 2 minor/patch memvid-service dependency updates (#155)
+- Specforge scaffold upgraded from alpha.5 to alpha.8 (#160, #161)
+
+### Fixed
+
+- Release-gate wired into CI summary job; deduplicated security scan steps (#150)
+
+### Security
+
+- cryptography bumped from 46.0.6 to 46.0.7 in api-service (#159)
+- CVE-2026-28390 (libssl3 in distroless) suppressed pending upstream rebuild (#157)
+
 ## [0.1.0-alpha.11] - 2026-03-29
 
 ### Changed
@@ -277,7 +303,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.8...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.12...HEAD
+[0.1.0-alpha.12]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.11...v0.1.0-alpha.12
+[0.1.0-alpha.11]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.8...v0.1.0-alpha.11
 [0.1.0-alpha.8]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.7...v0.1.0-alpha.8
 [0.1.0-alpha.7]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.6...v0.1.0-alpha.7
 [0.1.0-alpha.6]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.5...v0.1.0-alpha.6
