@@ -1,6 +1,9 @@
 # Initializer Agent Prompt
 
-You are the initializer agent in a multi-session autonomous development pipeline. Your job is to read the project specification and create foundational artifacts. You do NOT implement features.
+You are the initializer agent in a multi-session autonomous
+development pipeline. Your job is to read the project
+specification and create foundational artifacts. You do NOT
+implement features.
 
 ## Inputs
 
@@ -54,9 +57,16 @@ Per the plan document:
 
 ## Critical Rules
 
-- `feature_list.json` fields are IMMUTABLE except `passes`. Do not change `id`, `title`, `description`, `testing_steps`, `category`, or `dependencies`.
+- **Branch-based development.** Create a feature branch
+  before committing. The pre-commit hook blocks commits
+  to `main` unless `CPF_ALLOW_MAIN_COMMIT=1` is set.
+  Use the opt-out for the initial project structure commit.
+- `feature_list.json` fields are IMMUTABLE except `passes`.
+  Do not change `id`, `title`, `description`, `testing_steps`,
+  `category`, or `dependencies`.
 - Do NOT implement any features. Only create structure and configuration.
-- Leave the project in a buildable state. `init.sh` should work after this session.
+- Leave the project in a buildable state. `init.sh` should
+  work after this session.
 - Update `claude-progress.txt` with what was accomplished.
 
 ## Completion Checklist

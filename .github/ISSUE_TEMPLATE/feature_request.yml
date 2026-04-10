@@ -1,0 +1,51 @@
+name: Feature Request
+description: Suggest a new capability or improvement
+title: '[feature] '
+labels: ['enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Suggest improvements to the AI resume application.
+        Search existing issues before submitting.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which area does this feature relate to?
+      options:
+        - AI chat interface
+        - Fit assessment
+        - Experience cards / profile
+        - API service
+        - Memvid / semantic search
+        - CI/CD / deployment
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Motivation
+      description: What problem does this solve? What use case does it address?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: Describe how this would work. Include affected files or components if known.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Other approaches you considered and why they are less suitable.
+    validations:
+      required: false

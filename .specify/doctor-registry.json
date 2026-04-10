@@ -1,0 +1,251 @@
+{
+  "tools": [
+    {
+      "name": "jq",
+      "purpose": "JSON parsing in all hooks",
+      "tier": "required",
+      "project_types": [],
+      "version_flag": "--version",
+      "aliases": [],
+      "install": {
+        "darwin": "brew install jq",
+        "linux": "sudo apt-get install -y jq",
+        "generic": "See https://jqlang.github.io/jq/download/"
+      }
+    },
+    {
+      "name": "git",
+      "purpose": "Version control, hook infrastructure",
+      "tier": "required",
+      "project_types": [],
+      "version_flag": "--version",
+      "aliases": [],
+      "install": {
+        "darwin": "brew install git",
+        "linux": "sudo apt-get install -y git",
+        "generic": "See https://git-scm.com/downloads"
+      }
+    },
+    {
+      "name": "python3",
+      "purpose": "Emoji detection and PR validation in hooks",
+      "tier": "required",
+      "project_types": [],
+      "version_flag": "--version",
+      "aliases": ["python"],
+      "install": {
+        "darwin": "brew install python3",
+        "linux": "sudo apt-get install -y python3",
+        "generic": "See https://www.python.org/downloads/"
+      }
+    },
+    {
+      "name": "npm",
+      "purpose": "Package manager for Node projects",
+      "tier": "recommended",
+      "project_types": ["node"],
+      "version_flag": "--version",
+      "aliases": [],
+      "install": {
+        "darwin": "brew install node",
+        "linux": "sudo apt-get install -y nodejs npm",
+        "generic": "Installed with Node.js — see https://nodejs.org/"
+      }
+    },
+    {
+      "name": "npx",
+      "purpose": "Package runner, used for prettier/eslint",
+      "tier": "recommended",
+      "project_types": ["node"],
+      "version_flag": "--version",
+      "aliases": [],
+      "install": {
+        "darwin": "brew install node",
+        "linux": "sudo apt-get install -y nodejs npm",
+        "generic": "Installed with Node.js — see https://nodejs.org/"
+      }
+    },
+    {
+      "name": "prettier",
+      "purpose": "Code formatter for md/yaml/json",
+      "tier": "recommended",
+      "project_types": ["node"],
+      "version_flag": "--version",
+      "aliases": [],
+      "install": {
+        "darwin": "brew install prettier",
+        "linux": "npm install -g prettier",
+        "generic": "npm install -g prettier"
+      }
+    },
+    {
+      "name": "ruff",
+      "purpose": "Python linter and formatter",
+      "tier": "recommended",
+      "project_types": ["python"],
+      "version_flag": "--version",
+      "aliases": [],
+      "install": {
+        "darwin": "brew install ruff",
+        "linux": "pip install ruff",
+        "generic": "uv tool install ruff"
+      }
+    },
+    {
+      "name": "cargo",
+      "purpose": "Rust package manager and build tool",
+      "tier": "recommended",
+      "project_types": ["rust"],
+      "version_flag": "--version",
+      "aliases": [],
+      "install": {
+        "darwin": "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh",
+        "linux": "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh",
+        "generic": "Installed via rustup — see https://rustup.rs/"
+      }
+    },
+    {
+      "name": "rustfmt",
+      "purpose": "Rust code formatter",
+      "tier": "recommended",
+      "project_types": ["rust"],
+      "version_flag": "--version",
+      "aliases": [],
+      "install": {
+        "darwin": "rustup component add rustfmt",
+        "linux": "rustup component add rustfmt",
+        "generic": "Installed via rustup — see https://rustup.rs/"
+      }
+    },
+    {
+      "name": "gofmt",
+      "purpose": "Go code formatter",
+      "tier": "recommended",
+      "project_types": ["go"],
+      "version_flag": null,
+      "aliases": [],
+      "install": {
+        "darwin": "brew install go",
+        "linux": "sudo apt-get install -y golang",
+        "generic": "Installed with Go — see https://go.dev/dl/"
+      }
+    },
+    {
+      "name": "go",
+      "purpose": "Go compiler and tools",
+      "tier": "recommended",
+      "project_types": ["go"],
+      "version_flag": "version",
+      "aliases": [],
+      "install": {
+        "darwin": "brew install go",
+        "linux": "sudo apt-get install -y golang",
+        "generic": "See https://go.dev/dl/"
+      }
+    },
+    {
+      "name": "shellcheck",
+      "purpose": "Shell script linter",
+      "tier": "recommended",
+      "project_types": ["shell"],
+      "version_flag": "--version",
+      "aliases": [],
+      "install": {
+        "darwin": "brew install shellcheck",
+        "linux": "sudo apt-get install -y shellcheck",
+        "generic": "See https://github.com/koalaman/shellcheck#installing"
+      }
+    },
+    {
+      "name": "shfmt",
+      "purpose": "Shell script formatter",
+      "tier": "recommended",
+      "project_types": ["shell"],
+      "version_flag": "--version",
+      "aliases": [],
+      "install": {
+        "darwin": "brew install shfmt",
+        "linux": "sudo snap install shfmt",
+        "generic": "go install mvdan.cc/sh/v3/cmd/shfmt@latest"
+      }
+    },
+    {
+      "name": "markdownlint-cli2",
+      "purpose": "Markdown linter (CI-only in most setups)",
+      "tier": "optional",
+      "project_types": [],
+      "version_flag": "--version",
+      "aliases": [],
+      "install": {
+        "darwin": "npm install -g markdownlint-cli2",
+        "linux": "npm install -g markdownlint-cli2",
+        "generic": "npm install -g markdownlint-cli2"
+      }
+    },
+    {
+      "name": "golangci-lint",
+      "purpose": "Go meta-linter (falls back to go vet)",
+      "tier": "optional",
+      "project_types": ["go"],
+      "version_flag": "--version",
+      "aliases": [],
+      "install": {
+        "darwin": "brew install golangci-lint",
+        "linux": "curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin",
+        "generic": "See https://golangci-lint.run/welcome/install/"
+      }
+    },
+    {
+      "name": "black",
+      "purpose": "Python formatter (fallback for ruff)",
+      "tier": "optional",
+      "project_types": ["python"],
+      "version_flag": "--version",
+      "aliases": [],
+      "install": {
+        "darwin": "pip install black",
+        "linux": "pip install black",
+        "generic": "pip install black"
+      }
+    },
+    {
+      "name": "autopep8",
+      "purpose": "Python formatter (fallback for black)",
+      "tier": "optional",
+      "project_types": ["python"],
+      "version_flag": "--version",
+      "aliases": [],
+      "install": {
+        "darwin": "pip install autopep8",
+        "linux": "pip install autopep8",
+        "generic": "pip install autopep8"
+      }
+    },
+    {
+      "name": "rubocop",
+      "purpose": "Ruby linter",
+      "tier": "optional",
+      "project_types": ["ruby"],
+      "version_flag": "--version",
+      "aliases": [],
+      "install": {
+        "darwin": "gem install rubocop",
+        "linux": "gem install rubocop",
+        "generic": "gem install rubocop"
+      }
+    },
+    {
+      "name": "google-java-format",
+      "purpose": "Java formatter",
+      "tier": "optional",
+      "project_types": ["java"],
+      "version_flag": "--version",
+      "aliases": [],
+      "install": {
+        "darwin": "brew install google-java-format",
+        "linux": "See https://github.com/google/google-java-format/releases",
+        "generic": "See https://github.com/google/google-java-format/releases"
+      }
+    }
+  ]
+}

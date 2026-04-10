@@ -1,11 +1,17 @@
-# markdownlint-cli2 configuration
-# Ignore paths that should not be linted
+config:
+  MD013:
+    line_length: 80
+    tables: false
+    code_blocks: false
+  MD033: false
+  MD041: false
+  MD024:
+    siblings_only: true
+
 ignores:
+  - '.claude/PLAN.md'
+  - 'node_modules/**'
   - '**/node_modules/**'
+  - '.venv/**'
   - '**/.venv/**'
   - '**/target/**'
-  - 'dist/**'
-  - '.claude/restart-*.md'
-  - '**/playwright-report/**'
-  - '**/test-results/**'
-  - '**/.playwright-mcp/**'

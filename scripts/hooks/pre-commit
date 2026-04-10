@@ -1,137 +1,202 @@
 #!/bin/bash
-# Pre-commit hook: Validate code quality before committing
-# Install with: cp scripts/hooks/pre-commit .git/hooks/ && chmod +x .git/hooks/pre-commit
-
 set -euo pipefail
 
-# Get the project root
-PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+# Git pre-commit hook.
+# Checks staged files for forbidden files, secrets, and lint issues.
 
-echo "Running pre-commit checks..."
-
-# Get list of staged files
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
 
 if [[ -z "$STAGED_FILES" ]]; then
-    echo "No staged files to check."
     exit 0
 fi
 
-FAILED=0
+# --- Block commits to protected branches ---
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == "master" ]]; then
+    if [[ "${CPF_ALLOW_MAIN_COMMIT:-0}" != "1" ]]; then
+        echo "ERROR: Direct commits to '$CURRENT_BRANCH' are blocked." >&2
+        echo "  Create a feature branch instead:" >&2
+        echo "    git checkout -b feat/my-feature origin/main" >&2
+        echo "" >&2
+        echo "  To override (release/CI only):" >&2
+        echo "    CPF_ALLOW_MAIN_COMMIT=1 git commit ..." >&2
+        exit 1
+    fi
+fi
 
-# Check for files that should never be committed
+ERRORS=0
+
+# --- Check for forbidden files ---
 check_forbidden_files() {
-    local forbidden_patterns=(
-        ".env"
-        ".env.local"
-        ".env.production"
-        "*.pem"
-        "*.key"
-        "id_rsa"
-        "id_ed25519"
-        "credentials.json"
-        "service-account*.json"
-    )
+    local file="$1"
+    local basename
+    basename=$(basename "$file")
 
-    for file in $STAGED_FILES; do
-        for pattern in "${forbidden_patterns[@]}"; do
-            if [[ "$(basename "$file")" == $pattern ]] || [[ "$file" == *"$pattern"* ]]; then
-                echo "ERROR: Attempted to commit forbidden file: $file"
-                echo "       This file matches pattern: $pattern"
-                FAILED=$((FAILED + 1))
-            fi
-        done
-    done
+    case "$basename" in
+        .env|.env.*) return 1 ;;
+        id_rsa*|id_ed25519*|id_ecdsa*|authorized_keys|known_hosts) return 1 ;;
+        *.pem|*.key|*.crt|*.p12|*.pfx|*.keystore) return 1 ;;
+        credentials.json|service-account*.json|aws-credentials) return 1 ;;
+    esac
+
+    if echo "$file" | grep -qE '/(\.ssh|\.gnupg|\.aws|\.gcloud)/'; then
+        return 1
+    fi
+
+    return 0
 }
 
-# Check for secrets in staged files
+# --- Check for secrets in staged content ---
 check_for_secrets() {
-    # Patterns compatible with grep -E (no Perl-style assertions)
-    local secret_patterns=(
-        "AKIA[0-9A-Z]{16}"                    # AWS Access Key
-        "sk-[a-zA-Z0-9]{48}"                  # OpenAI API Key
-        "ghp_[a-zA-Z0-9]{36}"                 # GitHub Personal Access Token
-        "gho_[a-zA-Z0-9]{36}"                 # GitHub OAuth Token
-        "glpat-[a-zA-Z0-9-]{20}"              # GitLab Personal Access Token
-        "xoxb-[0-9]{11}-[0-9]{11}-[a-zA-Z0-9]{24}"  # Slack Bot Token
-    )
+    local file="$1"
+    local content
+    content=$(git show ":$file" 2>/dev/null || echo "")
 
-    for file in $STAGED_FILES; do
-        # Skip binary files and non-existent staged files
-        if [[ -f "$PROJECT_ROOT/$file" ]] && file "$PROJECT_ROOT/$file" 2>/dev/null | grep -q "text"; then
-            for pattern in "${secret_patterns[@]}"; do
-                if git show ":$file" 2>/dev/null | grep -qE "$pattern" 2>/dev/null; then
-                    echo "WARNING: Possible secret detected in: $file"
-                    echo "         Pattern: $pattern"
-                fi
-            done
-        fi
-    done
+    if [[ -z "$content" ]]; then
+        return 0
+    fi
+
+    # AWS keys
+    if echo "$content" | grep -qE 'AKIA[0-9A-Z]{16}'; then
+        echo "  SECRET: AWS key pattern in $file" >&2
+        return 1
+    fi
+
+    # OpenAI keys
+    if echo "$content" | grep -qE 'sk-[a-zA-Z0-9]{48}'; then
+        echo "  SECRET: OpenAI key pattern in $file" >&2
+        return 1
+    fi
+
+    # GitHub tokens
+    if echo "$content" | grep -qE '(ghp_|gho_)[a-zA-Z0-9]{36}'; then
+        echo "  SECRET: GitHub token pattern in $file" >&2
+        return 1
+    fi
+
+    # GitLab tokens
+    if echo "$content" | grep -qE 'glpat-[a-zA-Z0-9_-]{20}'; then
+        echo "  SECRET: GitLab token pattern in $file" >&2
+        return 1
+    fi
+
+    # Slack tokens
+    if echo "$content" | grep -qE 'xoxb-[0-9]{10,}'; then
+        echo "  SECRET: Slack token pattern in $file" >&2
+        return 1
+    fi
+
+    # Generic password/secret/token assignments
+    if echo "$content" | grep -qiE '(password|secret|api_key|token)\s*[=:]\s*["\x27][^\s"'\'']{8,}'; then
+        echo "  SECRET: Possible credential assignment in $file" >&2
+        return 1
+    fi
+
+    return 0
 }
 
-# Run linting on changed files by type
+# --- Find nearest project root for a file ---
+find_project_root() {
+    local dir="$1"
+    while [[ "$dir" != "." ]] && [[ "$dir" != "/" ]]; do
+        if [[ -f "$dir/package.json" ]] || [[ -f "$dir/Cargo.toml" ]] || \
+           [[ -f "$dir/pyproject.toml" ]] || [[ -f "$dir/go.mod" ]]; then
+            echo "$dir"
+            return 0
+        fi
+        dir=$(dirname "$dir")
+    done
+    # Check current directory
+    for marker in package.json Cargo.toml pyproject.toml go.mod; do
+        if [[ -f "./$marker" ]]; then
+            echo "."
+            return 0
+        fi
+    done
+    return 1
+}
+
+# --- Lint staged files ---
 lint_staged_files() {
-    local ts_files=""
-    local py_files=""
-    local rs_files=""
+    local file="$1"
+    local ext="${file##*.}"
+    local dir
+    dir=$(dirname "$file")
 
-    for file in $STAGED_FILES; do
-        case "$file" in
-            frontend/*.ts|frontend/*.tsx|frontend/*.js|frontend/*.jsx)
-                ts_files="$ts_files ${file#frontend/}"
-                ;;
-            api-service/*.py|ingest/*.py)
-                # Skip generated protobuf files
-                case "$file" in */proto/*) continue ;; esac
-                py_files="$py_files $file"
-                ;;
-            memvid-service/*.rs)
-                rs_files="$rs_files $file"
-                ;;
-        esac
-    done
+    # Skip generated files
+    case "$file" in
+        *_pb2.py|*_pb2_grpc.py) return 0 ;;
+    esac
 
-    # Lint TypeScript/JavaScript files
-    if [[ -n "$ts_files" ]] && [[ -d "$PROJECT_ROOT/frontend/node_modules" ]]; then
-        echo "Checking TypeScript/JavaScript files..."
-        (cd "$PROJECT_ROOT/frontend" && npx eslint $ts_files 2>/dev/null) || {
-            echo "ERROR: ESLint failed"
-            FAILED=$((FAILED + 1))
-        }
-    fi
+    local project_root
+    project_root=$(find_project_root "$dir") || return 0
 
-    # Lint Python files
-    if [[ -n "$py_files" ]]; then
-        echo "Checking Python files..."
-        if command -v ruff &> /dev/null; then
-            ruff check $py_files 2>/dev/null || {
-                echo "ERROR: Ruff lint failed"
-                FAILED=$((FAILED + 1))
-            }
-        fi
-    fi
+    case "$ext" in
+        ts|tsx|js|jsx)
+            if [[ -f "$project_root/node_modules/.bin/eslint" ]]; then
+                npx --prefix "$project_root" eslint "$file" --quiet 2>/dev/null || return 1
+            fi
+            ;;
+        py)
+            if command -v ruff >/dev/null 2>&1; then
+                ruff check "$file" 2>/dev/null || return 1
+            fi
+            ;;
+        rs)
+            # Clippy runs on the whole crate, skip per-file
+            ;;
+        sh)
+            if command -v shellcheck >/dev/null 2>&1; then
+                shellcheck "$file" 2>/dev/null || return 1
+            fi
+            ;;
+        go)
+            if command -v gofmt >/dev/null 2>&1; then
+                if [[ -n "$(gofmt -l "$file" 2>/dev/null)" ]]; then
+                    gofmt -w "$file"
+                    git add "$file"
+                    echo "  FORMATTED: $file"
+                fi
+            fi
+            if command -v golangci-lint >/dev/null 2>&1; then
+                (cd "$project_root" && golangci-lint run "./$dir/...") || return 1
+            elif command -v go >/dev/null 2>&1; then
+                (cd "$project_root" && go vet "./$dir/..." 2>/dev/null) || return 1
+            fi
+            ;;
+    esac
 
-    # Check Rust formatting
-    if [[ -n "$rs_files" ]] && command -v cargo &> /dev/null; then
-        echo "Checking Rust files..."
-        (cd "$PROJECT_ROOT/memvid-service" && cargo fmt --check 2>/dev/null) || {
-            echo "ERROR: Rust formatting check failed"
-            FAILED=$((FAILED + 1))
-        }
-    fi
+    return 0
 }
 
-# Run checks
-check_forbidden_files
-check_for_secrets
-lint_staged_files
+# --- Main ---
+echo "Pre-commit: checking staged files..."
 
-if [[ $FAILED -gt 0 ]]; then
-    echo ""
-    echo "Pre-commit checks failed with $FAILED error(s)."
-    echo "Please fix the issues and try again."
+for file in $STAGED_FILES; do
+    # Check forbidden files
+    if ! check_forbidden_files "$file"; then
+        echo "BLOCKED: Forbidden file: $file" >&2
+        ERRORS=$((ERRORS + 1))
+        continue
+    fi
+
+    # Check for secrets
+    if ! check_for_secrets "$file"; then
+        ERRORS=$((ERRORS + 1))
+        continue
+    fi
+
+    # Lint
+    if ! lint_staged_files "$file"; then
+        echo "LINT FAIL: $file" >&2
+        ERRORS=$((ERRORS + 1))
+    fi
+done
+
+if [[ "$ERRORS" -gt 0 ]]; then
+    echo "" >&2
+    echo "Pre-commit failed: $ERRORS issue(s) found." >&2
     exit 1
 fi
 
-echo "All pre-commit checks passed!"
 exit 0

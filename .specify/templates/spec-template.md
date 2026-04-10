@@ -38,7 +38,8 @@ Infrastructure features have NO dependencies. They establish the foundation.
 
 ## Functional Features
 
-Core application behavior. Each includes Given/When/Then criteria, error handling, and dependencies.
+Core application behavior. Each includes Given/When/Then
+criteria, error handling, and dependencies.
 
 ### FUNC-001: [Title]
 

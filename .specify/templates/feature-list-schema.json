@@ -57,10 +57,6 @@
               "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
             },
             "uniqueItems": true
-          },
-          "verified": {
-            "type": "boolean",
-            "description": "Brownfield migration status. When present and false, indicates an existing implementation that has not been validated against specforge testing_steps. When true, the implementation has been explicitly verified. Absent for greenfield features."
           }
         }
       }

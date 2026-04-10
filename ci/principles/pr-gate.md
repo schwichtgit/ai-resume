@@ -19,7 +19,8 @@ Full test suite passes with zero failures.
 
 ## 3. Code Coverage
 
-Coverage >= configurable threshold (default 85%). Report coverage delta from base branch.
+Coverage >= configurable threshold (default 85%). Report
+coverage delta from base branch.
 
 ## 4. Static Analysis
 

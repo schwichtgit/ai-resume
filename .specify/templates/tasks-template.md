@@ -66,4 +66,8 @@ Style features depending on functional features.
 
 ## Session Planning
 
-1. Complete Group 1 first. 2. Within a group, any order works. 3. One feature per session. 4. Use initializer prompt for first session. 5. Use coding prompt for subsequent sessions.
+1. Complete Group 1 first.
+2. Within a group, any order works.
+3. One feature per session.
+4. Use initializer prompt for first session.
+5. Use coding prompt for subsequent sessions.
