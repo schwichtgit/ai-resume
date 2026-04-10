@@ -1,0 +1,70 @@
+name: Bug Report
+description: Report a defect in the AI resume application
+title: '[bug] '
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Report defects in the AI resume application.
+        Search existing issues before submitting.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened? What did you expect to happen?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of the application is affected?
+      options:
+        - Frontend (React/TypeScript)
+        - API service (Python/FastAPI)
+        - Memvid service (Rust/gRPC)
+        - Data ingestion pipeline
+        - CI/CD workflows
+        - Container/deployment
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Minimal steps to reproduce the behavior.
+      placeholder: |
+        1. Start the dev server with `task dev`
+        2. Navigate to ...
+        3. Perform action ...
+        4. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, shell, relevant tool versions.
+      placeholder: |
+        - OS: macOS 15.3 / Ubuntu 24.04
+        - Shell: bash 5.x / zsh 5.x
+        - Browser: Chrome 130 / Firefox 133
+        - Node.js: 22.x / Python: 3.12 / Rust: 1.93
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Log Output
+      description: Paste any error messages or log output.
+      render: shell
+    validations:
+      required: false

@@ -1,6 +1,7 @@
 # GitHub Repository Settings Checklist
 
-Configure these settings after creating your repository. Use the `gh` CLI where possible.
+Configure these settings after creating your repository.
+Use the `gh` CLI where possible.
 
 ## 1. Branch Protection
 
@@ -12,7 +13,9 @@ gh api repos/{owner}/{repo}/branches/main/protection -X PUT -f \
   restrictions=null
 ```
 
-**Key:** Only require the `summary` job. Conditional jobs (nodejs, python, rust) show as "skipped" when no relevant files change, and would block PRs if required directly.
+**Key:** Only require the `summary` job. Conditional jobs
+(nodejs, python, rust) show as "skipped" when no relevant
+files change, and would block PRs if required directly.
 
 ## 2. Merge Settings
 
@@ -39,6 +42,20 @@ gh api repos/{owner}/{repo}/code-scanning/default-setup -X PATCH \
 gh api repos/{owner}/{repo} -X PATCH \
   -f security_and_analysis='{"secret_scanning":{"status":"enabled"},"secret_scanning_push_protection":{"status":"enabled"}}'
 ```
+
+### Best Practice: Separate Workflows per Scanner
+
+Keep each security scanner in its own workflow file:
+
+- **Independent failure modes** -- a Trivy failure does not
+  mask a CodeQL result or vice versa
+- **Independent triggers** -- CodeQL on every push, container
+  scanning only when Dockerfiles or dependencies change
+- **Clearer ownership** -- code analysis vs image scanning
+
+The scaffold ships `codeql.yml` as a separate workflow.
+Follow the same pattern when adding container scanning
+(Trivy, Grype) or other security tools.
 
 ## 4. Dependabot
 
@@ -70,4 +87,5 @@ cp ci/github/workflows/ci.yml .github/workflows/ci.yml
 cp ci/github/workflows/commit-standards.yml .github/workflows/commit-standards.yml
 ```
 
-Review and customize the workflow files for your tech stack (enable/disable language jobs, adjust path filters).
+Review and customize the workflow files for your tech stack
+(enable/disable language jobs, adjust path filters).

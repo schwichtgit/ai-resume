@@ -1,6 +1,7 @@
 # CODEOWNERS
 
 # Quality gate infrastructure
+.claude-plugin/             @schwichtgit
 .claude/                    @schwichtgit
 .github/                    @schwichtgit
 scripts/hooks/              @schwichtgit

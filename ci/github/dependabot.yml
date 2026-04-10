@@ -5,6 +5,9 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
+    commit-message:
+      prefix: 'build'
+      include: 'scope'
     groups:
       minor-and-patch:
         update-types:
@@ -16,6 +19,9 @@ updates:
   #   directory: "/"
   #   schedule:
   #     interval: "weekly"
+  #   commit-message:
+  #     prefix: "build"
+  #     include: "scope"
   #   groups:
   #     minor-and-patch:
   #       update-types:
@@ -27,6 +33,9 @@ updates:
   #   directory: "/"
   #   schedule:
   #     interval: "weekly"
+  #   commit-message:
+  #     prefix: "build"
+  #     include: "scope"
   #   groups:
   #     minor-and-patch:
   #       update-types:
@@ -38,6 +47,9 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
+    commit-message:
+      prefix: 'build'
+      include: 'scope'
     groups:
       minor-and-patch:
         update-types:
