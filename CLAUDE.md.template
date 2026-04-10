@@ -1,6 +1,7 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code)
+when working with code in this repository.
 
 ## Project Overview
 
@@ -8,14 +9,38 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Tech Stack:** [PRIMARY_LANGUAGE], [FRAMEWORK], [DATABASE]
 **Repository:** [REPO_URL]
 
+## Service Environment (optional -- delete if not applicable)
+
+| Service   | Directory   | Activate Command   |
+| --------- | ----------- | ------------------ |
+| [SERVICE] | [DIRECTORY] | [ACTIVATE_COMMAND] |
+| [SERVICE] | [DIRECTORY] | [ACTIVATE_COMMAND] |
+
 ## Development Workflow
 
-### Subagent Guidance
+### Subagent Delegation Policy
 
-Use the Task tool with specialized agents for:
-- Complex multi-file changes
-- Running test suites
-- Exploring unfamiliar parts of the codebase
+Customize these categories for your project.
+
+**Mandatory delegation** (always use subagents):
+
+- Multi-file changes spanning 3+ files
+- Security-sensitive fixes (auth, secrets, permissions)
+- Running full test suites
+- Large refactors or migrations
+
+**Parallelization** (launch concurrent subagents):
+
+- Independent analyses with no data dependencies
+- Simultaneous lint, test, and type-check runs
+- Reviewing multiple files or modules at once
+
+**Main conversation only** (do not delegate):
+
+- Orchestration and sequencing decisions
+- User-facing questions and confirmations
+- Quick single-file reads or edits
+- Plan creation and updates
 
 ### Commands
 
@@ -23,11 +48,14 @@ Use the Task tool with specialized agents for:
 # Start development
 ./init.sh
 
-# Run tests
-[TEST_COMMAND]
+# Unit tests
+[UNIT_TEST_COMMAND]
 
 # Run single test
 [SINGLE_TEST_COMMAND]
+
+# E2E tests (optional -- delete if not applicable)
+[E2E_TEST_COMMAND]
 
 # Lint
 [LINT_COMMAND]
@@ -39,30 +67,100 @@ Use the Task tool with specialized agents for:
 [BUILD_COMMAND]
 ```
 
+## Spec-Driven Workflow
+
+This project uses `/cpf:specforge` for spec-driven development.
+The workflow steps are **mandatory and sequential** -- do not
+skip or reorder them:
+
+| Phase | Command                  | Artifact          | Status   |
+| ----- | ------------------------ | ----------------- | -------- |
+| 1     | `/cpf:specforge const`   | constitution.md   | [STATUS] |
+| 2     | `/cpf:specforge spec`    | spec.md           | [STATUS] |
+| 3     | `/cpf:specforge clarify` | spec.md (updated) | [STATUS] |
+| 4     | `/cpf:specforge plan`    | plan.md           | [STATUS] |
+| 5     | `/cpf:specforge feat`    | feature_list.json | [STATUS] |
+| 6     | `/cpf:specforge analyze` | score report      | [STATUS] |
+| 7     | `/cpf:specforge setup`   | setup checklist   | [STATUS] |
+
+See `.specify/WORKFLOW.md` for the full process documentation.
+Each sub-command enforces artifact gates: if a prerequisite
+artifact is missing, stop and run the required prior step first.
+
 ## Architecture
 
-[Describe the project architecture: main modules, data flow, key abstractions.]
+[Describe the project architecture: main modules, data flow,
+key abstractions.]
+
+## API Endpoints (optional -- delete if not applicable)
+
+| Method   | Path   | Description   |
+| -------- | ------ | ------------- |
+| [METHOD] | [PATH] | [DESCRIPTION] |
+| [METHOD] | [PATH] | [DESCRIPTION] |
+
+## Testing
+
+### Unit Tests
+
+- **Framework:** [UNIT_TEST_FRAMEWORK]
+- **Test files:** [TEST_FILE_PATTERN]
+- **Run all:** [UNIT_TEST_COMMAND]
+
+### E2E Tests (optional -- delete if not applicable)
+
+- **Framework:** [E2E_FRAMEWORK]
+- **Prerequisites:** [E2E_PREREQUISITES]
+- **Run:** [E2E_COMMAND]
+
+## Container Deployment (optional -- delete if not applicable)
+
+- **Build:** [CONTAINER_BUILD_COMMAND]
+- **Ports:** [EXPOSED_PORTS]
+- **Health check:** [HEALTH_CHECK_ENDPOINT]
+- **Reverse proxy notes:** [PROXY_NOTES]
 
 ## Quality Standards
 
-Quality is enforced by the Claude Project Foundation hooks:
+Quality is enforced by Claude Project Foundation hooks:
 
-- **Pre-edit:** Blocks modification of sensitive files (.env, keys, credentials, lock files)
-- **Pre-bash:** Blocks destructive commands (rm -rf /, force push, hard reset)
-- **Post-edit:** Auto-formats files by language (Prettier, Ruff, rustfmt, etc.)
-- **On stop:** Runs lint, type check, and test suite before allowing session end
-- **Pre-commit:** Checks for secrets, forbidden files, runs linters
-- **Commit-msg:** Validates conventional commits, blocks AI-isms and emoji
+| Hook           | Trigger    | Purpose                               |
+| -------------- | ---------- | ------------------------------------- |
+| protect-files  | Pre-edit   | Block sensitive file modifications    |
+| validate-bash  | Pre-bash   | Block destructive commands            |
+| format-check   | Post-edit  | Auto-format files by language         |
+| verify-quality | On stop    | Run lint, type check, and test suite  |
+| pre-commit     | Pre-commit | Check for secrets and forbidden files |
+| commit-msg     | Commit-msg | Validate conventional commits         |
+| [HOOK_NAME]    | [TRIGGER]  | [PURPOSE]                             |
 
 Coverage threshold: [COVERAGE_THRESHOLD]% (configured in constitution)
 
 ## Git Commit Guidelines
 
+- Branch-based development: never commit directly to
+  `main`. Create a feature branch first.
+  Opt-out: `CPF_ALLOW_MAIN_COMMIT=1` (releases only)
 - Format: Conventional Commits (`feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert`)
 - Subject line: <= 72 characters
 - No emoji in commit messages or PR titles
 - No AI-isms or self-referential language
 - No Co-Authored-By trailers
+
+### Commit Strategy
+
+- Make atomic commits with clear messages as you work
+- Push individual commits (do not squash before push)
+- Squash happens at PR merge time (configured in GitHub)
+
+### MR/PR Workflow
+
+Before opening a merge request or pull request:
+
+1. `git fetch origin`
+2. `git rebase origin/main`
+3. Verify CI passes on the rebased branch
+4. Open the MR/PR -- diff should contain only branch work
 
 ## Communication Style
 

@@ -164,6 +164,23 @@ lint_staged_files() {
                 (cd "$project_root" && go vet "./$dir/..." 2>/dev/null) || return 1
             fi
             ;;
+        md)
+            if [[ -f "$project_root/node_modules/.bin/markdownlint-cli2" ]]; then
+                npx --prefix "$project_root" markdownlint-cli2 "$file" 2>/dev/null || return 1
+            fi
+            ;;
+        yml|yaml)
+            if command -v python3 >/dev/null 2>&1; then
+                python3 -c "
+import sys, yaml
+try:
+    yaml.safe_load(open(sys.argv[1]))
+except yaml.YAMLError as e:
+    print(f'  YAML error: {e}', file=sys.stderr)
+    sys.exit(1)
+" "$file" 2>/dev/null || return 1
+            fi
+            ;;
     esac
 
     return 0

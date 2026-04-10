@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Specforge scaffold upgraded from alpha.8 to alpha.9
+  - `scripts/hooks/pre-commit`: added markdown and YAML lint checks for staged files
+  - `CLAUDE.md.template`: expanded with service environment table, subagent delegation policy, spec-driven workflow table, API/testing/container/MR-PR sections
+  - `ci/github/dependabot.yml`: added Go (gomod) commented-out ecosystem entry
+
 ## [0.1.0-alpha.12] - 2026-04-10
 
 ### Added
