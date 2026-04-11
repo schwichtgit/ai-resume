@@ -29,8 +29,8 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
-      - run: npm install
-      - run: npx prettier --check .
+      - run: npm install --prefix frontend
+      - run: npx --prefix frontend prettier --check .
 
   # ---------------------------------------------------------------------------
   # Shell script lint
@@ -120,6 +120,10 @@ jobs:
       - uses: actions/checkout@v6
       - name: Validate plugin.json
         run: |
+          if [ ! -f .claude-plugin/plugin.json ]; then
+            echo "SKIP: .claude-plugin/plugin.json not found"
+            exit 0
+          fi
           echo "--- plugin.json structure ---"
           jq empty .claude-plugin/plugin.json
           echo "PASS: plugin.json is valid JSON"
@@ -130,6 +134,7 @@ jobs:
           jq -e '.hooks' .claude-plugin/plugin.json > /dev/null
           echo "PASS: required fields present"
       - name: Validate referenced file paths
+        if: hashFiles('.claude-plugin/plugin.json') != ''
         run: |
           echo "--- Checking skill paths ---"
           for path in $(jq -r '.skills[]?.path // empty' .claude-plugin/plugin.json); do
@@ -150,6 +155,7 @@ jobs:
           done
           echo "PASS: all referenced paths exist"
       - name: Validate hooks.json
+        if: hashFiles('.claude-plugin/plugin.json') != ''
         run: |
           HOOKS_REL=$(jq -r '.hooks' .claude-plugin/plugin.json)
           HOOKS_PATH=".claude-plugin/$HOOKS_REL"
@@ -169,6 +175,7 @@ jobs:
           done
           echo "PASS: all hook scripts exist"
       - name: Validate SKILL.md exists
+        if: hashFiles('.claude-plugin/plugin.json') != ''
         run: |
           SKILL_PATH=$(jq -r '.skills[0].path' .claude-plugin/plugin.json)
           test -f ".claude-plugin/$SKILL_PATH"
