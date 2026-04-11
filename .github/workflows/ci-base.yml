@@ -43,7 +43,7 @@ jobs:
         run: sudo apt-get install -y shellcheck
       - name: Run shellcheck
         run: |
-          find . -name '*.sh' -not -path './.git/*' -print0 | xargs -0 shellcheck -x
+          find . -name '*.sh' -not -path './.git/*' -not -path '*/.venv/*' -not -path '*/node_modules/*' -print0 | xargs -0 shellcheck -x
           find scripts/hooks -type f -not -name '*.md' -print0 | xargs -0 shellcheck -x
 
   # ---------------------------------------------------------------------------

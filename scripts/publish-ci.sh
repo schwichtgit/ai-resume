@@ -262,7 +262,8 @@ cmd_tag_family() {
     fi
 
     local bare_version="${version#v}"
-    local sha_tag="sha-$(git rev-parse --short HEAD)"
+    local sha_tag
+    sha_tag="sha-$(git rev-parse --short HEAD)"
     local source_ref="docker://${registry}/${image}:${version}"
 
     # Build list of tags to apply

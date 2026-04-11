@@ -82,6 +82,7 @@ PROTECTED_PATTERNS=(
 # Check if file matches any protected pattern
 for pattern in "${PROTECTED_PATTERNS[@]}"; do
     # Handle glob patterns
+    # shellcheck disable=SC2053  # intentional glob matching
     if [[ "$FILENAME" == $pattern ]] || [[ "$FILE_PATH" == *"$pattern"* ]]; then
         # Special case: allow reading but warn
         echo "WARNING: Attempting to modify protected file: $FILE_PATH"

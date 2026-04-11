@@ -127,6 +127,7 @@ ssh "$SERVER" << 'REMOTE_SCRIPT'
     podman exec ai-resume-api wget --spider http://localhost:3000/api/v1/health || echo "⚠️  API health check pending..."
 REMOTE_SCRIPT
 
+# shellcheck disable=SC2181
 if [ $? -eq 0 ]; then
     log_section "✓ Deployment successful!"
     echo ""

@@ -48,6 +48,7 @@ rm -f "$OUTPUT_FILE"
 
 # Activate ingest venv
 log_info "Activating ingest venv..."
+# shellcheck disable=SC1091
 source "$INGEST_VENV/bin/activate"
 
 # Run ingest pipeline
