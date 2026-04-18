@@ -10,8 +10,8 @@ dependencies = [
     "fastapi>=0.115.6",
     "starlette>=0.49.1",
     "setuptools>=80.10.2",
-    "uvicorn[standard]>=0.34.0",
-    "python-multipart>=0.0.22",
+    "uvicorn[standard]>=0.44.0",
+    "python-multipart>=0.0.26",
     "httpx>=0.28.1",
     "pydantic>=2.10.6",
     "pydantic-settings>=2.7.1",
@@ -20,7 +20,7 @@ dependencies = [
     "opentelemetry-api>=1.29.0",
     "opentelemetry-sdk>=1.29.0",
     "opentelemetry-instrumentation-fastapi>=0.50b0",
-    "prometheus-client>=0.21.1",
+    "prometheus-client>=0.25.0",
     "prometheus-fastapi-instrumentator>=7.0.0",
     "structlog>=24.4.0",
     "cachetools>=5.5.0",
@@ -31,15 +31,15 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
-    "pytest>=8.3.4",
+    "pytest>=9.0.3",
     "pytest-asyncio>=0.25.2",
     "pytest-cov>=6.0.0",
 ]
 lint = [
     "black>=24.10.0",
-    "isort>=5.13.2",
+    "isort>=8.0.1",
     "ruff>=0.8.6",
-    "mypy>=1.14.1",
+    "mypy>=1.20.0",
     "types-cachetools>=5.5.0",
 ]
 sbom = [

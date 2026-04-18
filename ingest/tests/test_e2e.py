@@ -445,9 +445,12 @@ async def main() -> bool:
     total_failed = 0
 
     # Test 1: Memvid retrieval accuracy
-    p, f = test_memvid_retrieval(mv2_path)  # type: ignore[func-returns-value]
-    total_passed += p
-    total_failed += f
+    # (pytest fixture-style test returns None; swallow assertion into pass/fail counts)
+    try:
+        test_memvid_retrieval(mv2_path)
+        total_passed += 1
+    except AssertionError:
+        total_failed += 1
 
     # Test 2: Query transformation impact
     p, f = await test_query_transformation_improves_retrieval(mv2_path)
