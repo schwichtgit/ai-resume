@@ -97,19 +97,31 @@ export function useStreamingChat(
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [stats, setStats] = useState<StreamStats | null>(null);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(() =>
+    generateSessionId(),
+  );
   const [rateLimitedUntil, setRateLimitedUntil] = useState<number | null>(null);
-
-  const isRateLimited =
-    rateLimitedUntil !== null && rateLimitedUntil > Date.now();
+  const [isRateLimited, setIsRateLimited] = useState(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastMessageRef = useRef<string | null>(null);
 
-  // Initialize session ID on mount
+  // Flip isRateLimited off when the window expires so the UI auto-updates
+  // without requiring another render to notice wall-clock time has advanced.
   useEffect(() => {
-    setSessionId(generateSessionId());
-  }, []);
+    if (rateLimitedUntil === null) {
+      setIsRateLimited(false);
+      return;
+    }
+    const remaining = rateLimitedUntil - Date.now();
+    if (remaining <= 0) {
+      setIsRateLimited(false);
+      return;
+    }
+    setIsRateLimited(true);
+    const timer = setTimeout(() => setIsRateLimited(false), remaining);
+    return () => clearTimeout(timer);
+  }, [rateLimitedUntil]);
 
   const cancelStream = useCallback(() => {
     if (abortControllerRef.current) {
