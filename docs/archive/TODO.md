@@ -207,7 +207,6 @@ Based on analysis from `docs/streamchat.pdf` (Perplexity AI recommendations).
 ### Streaming Implementation ✅
 
 - [x] Implement `_stream_chat_response()` helper:
-
   - [x] Async generator for real OpenRouter streaming
   - [x] SSE-compatible output format (`data:`, `event:` fields)
   - [x] Token counting and timing metrics (start_time, elapsed_seconds)
@@ -242,7 +241,6 @@ Based on analysis from `docs/streamchat.pdf` (Perplexity AI recommendations).
 ### Testing & Observability ✅
 
 - [x] Add integration tests:
-
   - [x] Test streaming endpoint with mock
   - [x] Test non-streaming endpoint
   - [x] Test client disconnect handling (CancelledError)
@@ -411,13 +409,11 @@ event: error\ndata: {message}\n\n         # Errors
 ### Container Security Hardening ✅
 
 - [x] Add read-only filesystem to all services:
-
   - [x] `ai-resume-memvid`: `read_only: true`
   - [x] `ai-resume-api`: `read_only: true`
   - [x] `ai-resume-frontend`: `read_only: true`
 
 - [x] Configure tmpfs mounts for writable directories:
-
   - [x] **memvid-service**: `/tmp` (128M), `/run` (64M)
   - [x] **api-service**: `/tmp` (256M), `/var/tmp` (128M), `/run` (64M)
   - [x] **frontend**: `/var/cache/nginx` (128M), `/var/run` (64M), `/tmp` (64M)
@@ -436,7 +432,6 @@ event: error\ndata: {message}\n\n         # Errors
 ### Health Checks Update ✅
 
 - [x] Changed memvid-service health check:
-
   - [x] From: `grpc-health-probe -addr=:50051` (missing binary)
   - [x] To: `wget -q --spider http://localhost:9090/metrics` (HTTP endpoint, proves Rust service is healthy)
 
@@ -459,13 +454,11 @@ event: error\ndata: {message}\n\n         # Errors
 ### Files Modified ✅
 
 - [x] `deployment/compose.yaml`:
-
   - [x] Added `tmpfs:` sections to all three services
   - [x] Updated memvid health check to use metrics endpoint
   - [x] Removed unnecessary log volume mounts
 
 - [x] `memvid-service/Dockerfile`:
-
   - [x] Added `wget` to runtime image
 
 - [x] `frontend/nginx.conf`:
@@ -850,27 +843,23 @@ class CandidateOntology(BaseModel):
 ### Implementation Tasks
 
 - [ ] **10.1: Define Pydantic Ontology**
-
   - [ ] Create `ingest/ontology.py` with above schema
   - [ ] Add validation rules (years > 0, required fields)
   - [ ] Generate JSON Schema for documentation
 
 - [ ] **10.2: LLM-Based Extraction Pipeline**
-
   - [ ] Integrate `instructor` library for structured extraction
   - [ ] Use OpenRouter with structured output (Gemini/GPT-4o)
   - [ ] Validation loop to ensure failures/anti-patterns aren't skipped
   - [ ] Fallback to current parsing if LLM extraction fails
 
 - [ ] **10.3: Memvid Fact Frame Storage**
-
   - [ ] Store each entity as typed frame with full JSON metadata
   - [ ] Add `type` field to metadata (experience, narrative, skill, etc.)
   - [ ] Link frames via `candidate_id` for multi-candidate support
   - [ ] Preserve backward compatibility with current .mv2 format
 
 - [ ] **10.4: Hybrid Query Router**
-
   - [ ] Implement query classifier (semantic vs structured)
   - [ ] Add metadata filtering to memvid search
   - [ ] Support queries like "leadership roles" → filter `is_leadership: true`
@@ -903,7 +892,6 @@ class CandidateOntology(BaseModel):
 **Fastest path to working system (2-3 weeks remaining):**
 
 1. ✅ **Week 1:** Docs, scripts, configuration
-
    - [x] PRD & design complete
    - [x] Setup scripts created
    - [x] Configuration schema finalized
@@ -911,7 +899,6 @@ class CandidateOntology(BaseModel):
    - [x] Pattern B networking documented
 
 2. ✅ **Week 1-2:** Memvid Ingest — **COMPLETE**
-
    - [x] Install memvid-sdk via UV/pip
    - [x] Set up sentence-transformers embeddings
    - [x] Implement `ingest/ingest.py`
@@ -920,7 +907,6 @@ class CandidateOntology(BaseModel):
    - [x] Hybrid search enabled (lexical + vector)
 
 3. ✅ **Week 2-3:** Backend core — **COMPLETE**
-
    - [x] Python FastAPI + OpenRouter integration
      - [x] Streaming SSE responses
      - [x] Session management with TTL
@@ -970,13 +956,11 @@ class CandidateOntology(BaseModel):
    ```
 
 2. Update ingest pipeline:
-
    - Extract `image` from frontmatter
    - Store in memvid profile metadata
    - Validate image exists and is accessible
 
 3. Update API endpoints:
-
    - Return `image` in ProfileResponse
    - Update `/api/v1/profile` endpoint
 

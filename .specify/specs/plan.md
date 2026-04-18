@@ -391,7 +391,6 @@ Host nginx (TLS) --> 192.168.100.10:8080 (frontend/OpenResty)
 ### init.sh Requirements
 
 1. **System dependencies:**
-
    - `protoc` (protobuf compiler) -- required by both api-service (grpcio-tools) and memvid-service (tonic-build)
      - macOS: `brew install protobuf`
      - Ubuntu: `apt-get install -y protobuf-compiler`
@@ -401,7 +400,6 @@ Host nginx (TLS) --> 192.168.100.10:8080 (frontend/OpenResty)
      - macOS: `brew install podman`
 
 2. **Language runtimes:**
-
    - **Node.js 22.x** (CI uses `NODE_VERSION: "22"`; jsdom 27 requires Node 20.19+ minimum)
    - **Python 3.12** (api-service `requires-python = ">=3.12,<3.13"`; constitution specifies Python 3.12)
    - **Rust 1.92.0** (pinned in `memvid-service/rust-toolchain.toml`)

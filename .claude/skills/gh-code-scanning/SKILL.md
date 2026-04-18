@@ -47,7 +47,6 @@ gh api repos/schwichtgit/ai-resume/code-scanning/alerts \
 ```
 
 1. Format output as a table showing:
-
    - Alert number
    - Rule ID (e.g., "py/clear-text-logging-sensitive-data")
    - Severity (error, warning, note)
@@ -81,7 +80,6 @@ gh api repos/schwichtgit/ai-resume/code-scanning/alerts/$ARGUMENTS
 ```
 
 1. Extract and display:
-
    - Rule ID and description
    - Severity and security severity level
    - Affected file and line numbers
@@ -137,7 +135,6 @@ FILE_PATH=$(gh api repos/schwichtgit/ai-resume/code-scanning/alerts/$ARGUMENTS -
 1. Use Read tool to view file content with context around the issue
 
 2. Analyze the vulnerability and propose a fix based on:
-
    - Alert rule description
    - Best practices for the vulnerability type
    - Existing code patterns in the file
@@ -205,7 +202,6 @@ gh api --method PATCH repos/schwichtgit/ai-resume/code-scanning/alerts/$ARGUMENT
 ```
 
 1. Document the dismissal:
-
    - Add entry to docs/SECURITY.md under "Dismissed Alerts"
    - Include alert number, rule ID, reason, and rationale
    - Commit documentation update
@@ -245,7 +241,6 @@ gh api repos/schwichtgit/ai-resume/code-scanning/alerts/$ARGUMENTS
 ```
 
 1. Check alert state:
-
    - If `state == "fixed"` or `state == "closed"`: Success! Alert resolved.
    - If `state == "open"`: Still open, check if recent commits addressed it
    - If `state == "dismissed"`: Show dismissal info

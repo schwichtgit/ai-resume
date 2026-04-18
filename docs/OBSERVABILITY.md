@@ -737,7 +737,6 @@ dashboard shows p95 latency exceeding 5 seconds on `POST /api/v1/chat`.
    trace ID (e.g., from SSE stats sent to the browser), paste it into the
    `traceId` variable. Otherwise, use the Trace Search panel with these
    filters:
-
    - `service.name` = `ai-resume-api`
    - `name` = `POST /api/v1/chat`
    - `duration` > `5s`
@@ -752,7 +751,6 @@ dashboard shows p95 latency exceeding 5 seconds on `POST /api/v1/chat`.
    every span as a horizontal bar. Identify which span consumes the most time.
 
 3. **Identify the bottleneck and resolve per stage:**
-
    - **`guardrail.check_input` is slow (>100ms)**: Check regex complexity in
      `api-service/ai_resume_api/guardrails.py`. Guardrail checks should
      complete in under 10ms. If regex matching is catastrophically
@@ -876,7 +874,6 @@ panel turns yellow or red).
    ```
 
 4. **Identify root cause** from the trace waterfall and logs:
-
    - **memvid service down**: The `memvid.search` span will show an error.
      Check memvid container health: `podman exec ai-resume-memvid /usr/local/bin/memvid-service --health`.
    - **OpenRouter 429 (rate limited)**: The `llm.openrouter_call` span will
@@ -938,7 +935,6 @@ operational.
    minutes. The test request trace should appear within 10 seconds.
 
 4. **Verify all 6 dashboards show data:**
-
    - Endpoint Overview: Request Rate panel should show recent traffic.
    - Latency Breakdown: At least one operation should have data.
    - Request Waterfall: Trace Search should return results.
@@ -1054,7 +1050,6 @@ Waterfall.
 
 1. **Check the Retrieval Quality dashboard first.** Open the Retrieval Quality
    dashboard (`retrieval-quality`) and review:
-
    - **Low Relevance Rate**: If this stat is high (e.g., >20%), many queries
      are returning poor results. Adjust the `$threshold` variable to tune the
      sensitivity.
@@ -1073,7 +1068,6 @@ Waterfall.
    ```
 
 3. **Inspect the `memvid.search` span attributes:**
-
    - `search.chunks_retrieved`: Expected 3-10 for a typical query. If 0, the
      index may be corrupt or the query did not match any content.
    - `search.retrieval_ms`: Expected under 10ms. If slow, the memvid service
@@ -1157,7 +1151,6 @@ or LLM issues.
 
 5. **Correlate with LLM behavior.** If retrieval looks fine but answers are
    poor, check the `llm.openrouter_call` span in the trace for:
-
    - `llm.model`: Was a different model used?
    - `llm.tokens_used`: Was the response truncated due to token limits?
    - `llm.finish_reason`: Did the model stop normally or hit a limit?
