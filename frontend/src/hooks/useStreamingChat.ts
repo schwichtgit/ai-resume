@@ -225,12 +225,18 @@ export function useStreamingChat(
           const error = err as Error;
           setError(error);
           onError?.(error);
-          span?.setStatus({ code: SpanStatusCode.ERROR, message: 'rate_limited' });
+          span?.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: 'rate_limited',
+          });
         } else {
           const error = err instanceof Error ? err : new Error('Unknown error');
           setError(error);
           onError?.(error);
-          span?.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+          span?.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: error.message,
+          });
         }
       } finally {
         span?.end();

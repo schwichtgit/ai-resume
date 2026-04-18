@@ -334,6 +334,7 @@ Alert dismissed as wont-fix.
 Reason: Application runs in Docker container with isolated networking.
 
 Security controls:
+
 - Container on isolated Docker bridge network
 - Traefik reverse proxy handles all external requests
 - Host firewall prevents direct external access

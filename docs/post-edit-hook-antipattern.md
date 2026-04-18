@@ -2,7 +2,7 @@
 
 ## Problem Statement
 
-Claude Code's `Edit` tool performs exact string matching on an `old_string` parameter to locate and replace content in files. When a PostToolUse hook runs a formatter (prettier, ruff, rustfmt) after every Edit call, the formatter modifies the file content *between* consecutive Edit calls. The next Edit call then fails because its `old_string` no longer matches the file -- the formatter changed whitespace, line wrapping, import order, or trailing commas since Claude last read the file.
+Claude Code's `Edit` tool performs exact string matching on an `old_string` parameter to locate and replace content in files. When a PostToolUse hook runs a formatter (prettier, ruff, rustfmt) after every Edit call, the formatter modifies the file content _between_ consecutive Edit calls. The next Edit call then fails because its `old_string` no longer matches the file -- the formatter changed whitespace, line wrapping, import order, or trailing commas since Claude last read the file.
 
 This produces two failure modes:
 
@@ -37,14 +37,10 @@ Prettier wraps long lines, reorders imports, and adds trailing commas:
 
 ```tsx
 // Claude writes this:
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from 'react';
 
 // Prettier may reformat to:
-import {
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
+import { useCallback, useEffect, useState } from 'react';
 ```
 
 ### ruff (Python)
@@ -96,27 +92,27 @@ Each iteration wastes context window on the system reminder and the re-read. For
 
 The Claude Code repository (`anthropics/claude-code`) has multiple open issues documenting this behavior:
 
-| Issue | Reactions | Summary |
-| ----- | --------- | ------- |
-| [#3513](https://github.com/anthropics/claude-code/issues/3513) | 150+ | "File modified since read, either by user or by a linter" -- the canonical report. Users identify PostToolUse formatters as the root cause. |
-| [#10882](https://github.com/anthropics/claude-code/issues/10882) | -- | Documents the infinite Edit/format loop specifically in VSCode with prettier-on-save. Same root cause with PostToolUse hooks. |
-| [#10011](https://github.com/anthropics/claude-code/issues/10011) | -- | Reports that PostToolUse hook changes may be silently overwritten by subsequent Edit calls, or cause cascading mismatches. |
-| [#7443](https://github.com/anthropics/claude-code/issues/7443) | -- | "File has been unexpectedly modified" during multi-file refactors with formatting hooks active. |
-| [#14516](https://github.com/anthropics/claude-code/issues/14516) | -- | Additional "unexpectedly modified" report correlated with auto-formatting tools. |
+| Issue                                                            | Reactions | Summary                                                                                                                                     |
+| ---------------------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| [#3513](https://github.com/anthropics/claude-code/issues/3513)   | 150+      | "File modified since read, either by user or by a linter" -- the canonical report. Users identify PostToolUse formatters as the root cause. |
+| [#10882](https://github.com/anthropics/claude-code/issues/10882) | --        | Documents the infinite Edit/format loop specifically in VSCode with prettier-on-save. Same root cause with PostToolUse hooks.               |
+| [#10011](https://github.com/anthropics/claude-code/issues/10011) | --        | Reports that PostToolUse hook changes may be silently overwritten by subsequent Edit calls, or cause cascading mismatches.                  |
+| [#7443](https://github.com/anthropics/claude-code/issues/7443)   | --        | "File has been unexpectedly modified" during multi-file refactors with formatting hooks active.                                             |
+| [#14516](https://github.com/anthropics/claude-code/issues/14516) | --        | Additional "unexpectedly modified" report correlated with auto-formatting tools.                                                            |
 
 The common thread: formatters that run between Edit calls break the exact-match contract that the Edit tool depends on.
 
 ## Severity by File Type
 
-| File Type | Impact | Explanation |
-| --------- | ------ | ----------- |
-| JSON | **HIGH** | Prettier aggressively collapses/expands arrays and objects based on print width. Nearly every multi-line JSON edit triggers a mismatch. |
-| TSX/TS | **HIGH** | Prettier wraps imports, adds trailing commas, reformats JSX. Most edits to component files trigger reformatting. |
-| Python | **MEDIUM** | ruff reorders imports and adjusts line length. Edits to import blocks and long expressions are affected. |
-| Rust | **MEDIUM** | rustfmt adjusts brace style and trailing commas. Struct/enum definitions and match arms are affected. |
-| Shell | **LOW** | shfmt adjusts indentation but rarely changes line structure in ways that break exact matching. |
-| YAML | **LOW** | Prettier makes minimal changes to YAML. Quoting and flow style changes are rare. |
-| Markdown | **LOW** | Prettier adjusts line wrapping in prose but Claude rarely makes consecutive edits to the same markdown paragraph. |
+| File Type | Impact     | Explanation                                                                                                                             |
+| --------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| JSON      | **HIGH**   | Prettier aggressively collapses/expands arrays and objects based on print width. Nearly every multi-line JSON edit triggers a mismatch. |
+| TSX/TS    | **HIGH**   | Prettier wraps imports, adds trailing commas, reformats JSX. Most edits to component files trigger reformatting.                        |
+| Python    | **MEDIUM** | ruff reorders imports and adjusts line length. Edits to import blocks and long expressions are affected.                                |
+| Rust      | **MEDIUM** | rustfmt adjusts brace style and trailing commas. Struct/enum definitions and match arms are affected.                                   |
+| Shell     | **LOW**    | shfmt adjusts indentation but rarely changes line structure in ways that break exact matching.                                          |
+| YAML      | **LOW**    | Prettier makes minimal changes to YAML. Quoting and flow style changes are rare.                                                        |
+| Markdown  | **LOW**    | Prettier adjusts line wrapping in prose but Claude rarely makes consecutive edits to the same markdown paragraph.                       |
 
 ## The Official Docs Gap
 
@@ -138,7 +134,7 @@ The official docs do not address:
 
 ## The Fix: Format-on-Stop
 
-Move auto-formatting from PostToolUse to a Stop hook. Format only git-changed files, not every individual edit. Run formatting *before* quality checks so the formatted code passes lint.
+Move auto-formatting from PostToolUse to a Stop hook. Format only git-changed files, not every individual edit. Run formatting _before_ quality checks so the formatted code passes lint.
 
 ### Design Principles
 
@@ -206,7 +202,7 @@ Move auto-formatting from PostToolUse to a Stop hook. Format only git-changed fi
 Key changes:
 
 - `PostToolUse` array is emptied -- no more per-edit formatting
-- `format-changed.sh` is added to the Stop hook chain *before* `verify-quality.sh`
+- `format-changed.sh` is added to the Stop hook chain _before_ `verify-quality.sh`
 - The post-edit.sh script remains in the repository but is no longer wired into settings.json
 
 ### format-changed.sh Implementation

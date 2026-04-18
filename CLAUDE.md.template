@@ -155,12 +155,23 @@ Coverage threshold: [COVERAGE_THRESHOLD]% (configured in constitution)
 
 ### MR/PR Workflow
 
+Before committing to a branch, verify the MR/PR has not
+been merged (`glab mr view` / `gh pr view`). If merged,
+create a new branch from `origin/main`.
+
 Before opening a merge request or pull request:
 
 1. `git fetch origin`
 2. `git rebase origin/main`
 3. Verify CI passes on the rebased branch
 4. Open the MR/PR -- diff should contain only branch work
+
+## Error Handling
+
+When a command fails, report the error and diagnose the
+root cause before taking any further action. Never silently
+recover by splitting a failing command or retrying without
+disclosing the failure.
 
 ## Communication Style
 

@@ -1,0 +1,241 @@
+# ---------------------------------------------------------------------------
+# GitLab CI -- equivalent quality gates to the GitHub Actions CI workflow
+# ---------------------------------------------------------------------------
+# Stages: lint -> test -> release
+# The `summary` job in the test stage is the single merge-gate check.
+# Require only `summary` in your protected-branch pipeline-success rules.
+# ---------------------------------------------------------------------------
+
+stages:
+  - lint
+  - test
+  - release
+
+variables:
+  NODE_VERSION: '22'
+
+default:
+  image: node:${NODE_VERSION}-slim
+
+# ===========================================================================
+# Lint stage
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# Shell script lint
+# ---------------------------------------------------------------------------
+shellcheck:
+  stage: lint
+  image: koalaman/shellcheck-alpine:stable
+  script:
+    - find . -name '*.sh' -not -path './.git/*' | xargs shellcheck -x
+    - |
+      if [ -d scripts/hooks ]; then
+        find scripts/hooks -type f -not -name '*.md' | xargs shellcheck -x
+      fi
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+      changes:
+        - '**/*.sh'
+        - scripts/hooks/*
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+        - '**/*.sh'
+        - scripts/hooks/*
+    - if: $CI_COMMIT_TAG
+
+# ---------------------------------------------------------------------------
+# Markdown lint
+# ---------------------------------------------------------------------------
+markdownlint:
+  stage: lint
+  before_script:
+    - npm ci --ignore-scripts
+  script:
+    - npx markdownlint-cli2 "**/*.md" "#node_modules"
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+      changes:
+        - '**/*.md'
+        - .markdownlint-cli2.yaml
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+        - '**/*.md'
+        - .markdownlint-cli2.yaml
+    - if: $CI_COMMIT_TAG
+
+# ---------------------------------------------------------------------------
+# Prettier format check
+# ---------------------------------------------------------------------------
+prettier:
+  stage: lint
+  before_script:
+    - npm ci --ignore-scripts
+  script:
+    - npx prettier --check .
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+      changes:
+        - '**/*.md'
+        - '**/*.yml'
+        - '**/*.yaml'
+        - '**/*.json'
+        - .prettierrc*
+        - .prettierignore
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+        - '**/*.md'
+        - '**/*.yml'
+        - '**/*.yaml'
+        - '**/*.json'
+        - .prettierrc*
+        - .prettierignore
+    - if: $CI_COMMIT_TAG
+
+# ---------------------------------------------------------------------------
+# Commit standards (merge requests only)
+# ---------------------------------------------------------------------------
+commit-standards:
+  stage: lint
+  image: alpine:latest
+  script:
+    - apk add --no-cache git
+    - |
+      ERRORS=0
+      for MSG in $(git log --format='%s' "origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}..HEAD"); do
+        # Skip merge commits
+        echo "$MSG" | grep -qE '^Merge ' && continue
+
+        # Conventional commit format
+        if ! echo "$MSG" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+'; then
+          echo "FAIL: Not conventional commit format: $MSG"
+          ERRORS=$((ERRORS + 1))
+        fi
+
+        # Subject length
+        if [ ${#MSG} -gt 72 ]; then
+          echo "WARN: Subject exceeds 72 chars: $MSG"
+        fi
+      done
+
+      if [ "$ERRORS" -gt 0 ]; then
+        echo ""
+        echo "Commit standards check failed: $ERRORS error(s)."
+        exit 1
+      fi
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+
+# ---------------------------------------------------------------------------
+# Plugin validation
+# ---------------------------------------------------------------------------
+plugin-validation:
+  stage: lint
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache jq
+  script:
+    - echo "--- plugin.json structure ---"
+    - jq empty .claude-plugin/plugin.json
+    - jq -e '.name' .claude-plugin/plugin.json > /dev/null
+    - jq -e '.version' .claude-plugin/plugin.json > /dev/null
+    - jq -e '.hooks' .claude-plugin/plugin.json > /dev/null
+    - echo "PASS: required fields present"
+    - |
+      echo "--- Checking skill paths ---"
+      for path in $(jq -r '.skills[]?.path // empty' .claude-plugin/plugin.json); do
+        if [ ! -f ".claude-plugin/$path" ]; then
+          echo "FAIL: .claude-plugin/$path not found"
+          exit 1
+        fi
+        echo "  OK: $path"
+      done
+    - |
+      echo "--- Checking agent paths ---"
+      for path in $(jq -r '.agents[]?.path // empty' .claude-plugin/plugin.json); do
+        if [ ! -f ".claude-plugin/$path" ]; then
+          echo "FAIL: .claude-plugin/$path not found"
+          exit 1
+        fi
+        echo "  OK: $path"
+      done
+    - |
+      echo "--- Checking hook scripts ---"
+      HOOKS_REL=$(jq -r '.hooks' .claude-plugin/plugin.json)
+      jq empty ".claude-plugin/$HOOKS_REL"
+      jq -r '.. | .command? // empty' ".claude-plugin/$HOOKS_REL" | while IFS= read -r cmd; do
+        SCRIPT=$(echo "$cmd" | sed 's|\${CLAUDE_PLUGIN_ROOT}|.claude-plugin|g')
+        if [ ! -f "$SCRIPT" ]; then
+          echo "FAIL: $SCRIPT not found (from $cmd)"
+          exit 1
+        fi
+        echo "  OK: $cmd"
+      done
+      echo "PASS: all referenced paths exist"
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+      changes:
+        - .claude-plugin/**/*
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+        - .claude-plugin/**/*
+    - if: $CI_COMMIT_TAG
+
+# ===========================================================================
+# Test stage
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# Summary -- single merge-gate check
+# ---------------------------------------------------------------------------
+# Require ONLY this job in protected-branch pipeline-success rules.
+# Conditional lint jobs that are skipped (not created) do not block the
+# pipeline when only the summary job is required.
+# ---------------------------------------------------------------------------
+summary:
+  stage: test
+  needs:
+    - job: shellcheck
+      optional: true
+    - job: markdownlint
+      optional: true
+    - job: prettier
+      optional: true
+    - job: commit-standards
+      optional: true
+    - job: plugin-validation
+      optional: true
+  script:
+    - echo "All upstream lint jobs passed (or were skipped by path rules)."
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+# ===========================================================================
+# Release stage
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# Validate tag version against plugin.json and create release
+# ---------------------------------------------------------------------------
+release:
+  stage: release
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache jq
+  script:
+    - TAG_VERSION="${CI_COMMIT_TAG#v}"
+    - PLUGIN_VERSION=$(jq -r '.version' .claude-plugin/plugin.json 2>/dev/null || echo "")
+    - |
+      echo "Tag version:    $TAG_VERSION"
+      echo "Plugin version: $PLUGIN_VERSION"
+
+      if [ "$TAG_VERSION" != "$PLUGIN_VERSION" ]; then
+        echo "FAIL: Tag ($TAG_VERSION) != plugin.json ($PLUGIN_VERSION)"
+        exit 1
+      fi
+
+      echo "PASS: versions match"
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v/

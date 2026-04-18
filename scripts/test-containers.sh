@@ -91,6 +91,7 @@ curl_with_429_retry() {
     return 1
 }
 
+# shellcheck disable=SC2317,SC2329  # called via trap
 cleanup() {
     echo "Cleaning up..."
     podman stop test-memvid test-api test-frontend 2>/dev/null || true

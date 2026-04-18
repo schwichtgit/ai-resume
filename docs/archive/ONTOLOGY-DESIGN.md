@@ -8,24 +8,24 @@ Full graph RAG is deferred to Phase 10+. Current phase implements entity type an
 
 ### Entity Types
 
-| Type | Description | Example |
-| ---- | ----------- | ------- |
-| Person | Candidate or referenced individual | Frank Schwichtenberg |
-| Company | Employer or organization | Acme Corp |
-| Role | Job title or position | Senior Engineer |
-| Skill | Technology or competency | Python, Kubernetes |
-| Project | Named project or initiative | Resume AI Platform |
-| Achievement | Quantified accomplishment | "reduced latency by 40%" |
+| Type        | Description                        | Example                  |
+| ----------- | ---------------------------------- | ------------------------ |
+| Person      | Candidate or referenced individual | Frank Schwichtenberg     |
+| Company     | Employer or organization           | Acme Corp                |
+| Role        | Job title or position              | Senior Engineer          |
+| Skill       | Technology or competency           | Python, Kubernetes       |
+| Project     | Named project or initiative        | Resume AI Platform       |
+| Achievement | Quantified accomplishment          | "reduced latency by 40%" |
 
 ### Relationship Types
 
-| Relationship | From | To | Example |
-| ------------ | ---- | -- | ------- |
-| WORKED_AT | Person | Company | Frank -> Acme Corp |
-| HELD_ROLE | Person | Role | Frank -> Senior Engineer |
-| USED_SKILL | Role/Project | Skill | Resume AI -> Python |
-| ACHIEVED | Person/Role | Achievement | Senior Engineer -> "reduced latency" |
-| AT_COMPANY | Role | Company | Senior Engineer -> Acme Corp |
+| Relationship | From         | To          | Example                              |
+| ------------ | ------------ | ----------- | ------------------------------------ |
+| WORKED_AT    | Person       | Company     | Frank -> Acme Corp                   |
+| HELD_ROLE    | Person       | Role        | Frank -> Senior Engineer             |
+| USED_SKILL   | Role/Project | Skill       | Resume AI -> Python                  |
+| ACHIEVED     | Person/Role  | Achievement | Senior Engineer -> "reduced latency" |
+| AT_COMPANY   | Role         | Company     | Senior Engineer -> Acme Corp         |
 
 ### Data Flow
 

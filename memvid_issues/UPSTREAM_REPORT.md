@@ -11,11 +11,11 @@
 We retested all three previously reported issues against the latest available
 releases. One issue is now resolved; two remain.
 
-| Issue                                               | Title                                                   | Status      | Versions Tested           |
-| --------------------------------------------------- | ------------------------------------------------------- | ----------- | ------------------------- |
-| [#194](https://github.com/memvid/memvid/issues/194) | `vec_enabled`/`lex_enabled` reset to `None` on re-open  | **FIXED**   | SDK 2.0.158, Core 2.0.138 |
-| [#195](https://github.com/memvid/memvid/issues/195) | Cross-version deserialization (SDK vs crates.io)        | **FIXED**   | SDK 2.0.158, Core 2.0.138 |
-| [#196](https://github.com/memvid/memvid/issues/196) | `ask()` "frame id out of range" on fresh .mv2 files     | **PARTIAL** | SDK 2.0.158, Core 2.0.138 |
+| Issue                                               | Title                                                  | Status      | Versions Tested           |
+| --------------------------------------------------- | ------------------------------------------------------ | ----------- | ------------------------- |
+| [#194](https://github.com/memvid/memvid/issues/194) | `vec_enabled`/`lex_enabled` reset to `None` on re-open | **FIXED**   | SDK 2.0.158, Core 2.0.138 |
+| [#195](https://github.com/memvid/memvid/issues/195) | Cross-version deserialization (SDK vs crates.io)       | **FIXED**   | SDK 2.0.158, Core 2.0.138 |
+| [#196](https://github.com/memvid/memvid/issues/196) | `ask()` "frame id out of range" on fresh .mv2 files    | **PARTIAL** | SDK 2.0.158, Core 2.0.138 |
 
 ## Test Environment
 

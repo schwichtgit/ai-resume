@@ -40,10 +40,10 @@ system_prompt: |
 # Suggested Questions (MUST mirror FAQ entries)
 suggested_questions:
   - "What's her security track record?"
-  - "What programming languages does she know?"
-  - "Tell me about her AI/ML experience."
-  - "What are her biggest failures?"
-  - "Would she be good for an early-stage startup?"
+  - 'What programming languages does she know?'
+  - 'Tell me about her AI/ML experience.'
+  - 'What are her biggest failures?'
+  - 'Would she be good for an early-stage startup?'
 
 # Global Tags (for memvid indexing)
 tags:

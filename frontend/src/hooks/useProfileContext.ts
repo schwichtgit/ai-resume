@@ -1,5 +1,8 @@
-import { useContext } from "react";
-import { ProfileContext, ProfileContextValue } from "@/context/profileContextValue";
+import { useContext } from 'react';
+import {
+  ProfileContext,
+  ProfileContextValue,
+} from '@/context/profileContextValue';
 
 /**
  * Hook to access profile data from context.
@@ -25,7 +28,7 @@ export function useProfileContext(): ProfileContextValue {
   const context = useContext(ProfileContext);
 
   if (context === undefined) {
-    throw new Error("useProfileContext must be used within a ProfileProvider");
+    throw new Error('useProfileContext must be used within a ProfileProvider');
   }
 
   return context;

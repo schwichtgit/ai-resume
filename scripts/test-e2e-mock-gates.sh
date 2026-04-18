@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC1091,SC2015  # SC1091: venv activate created at runtime; SC2015: intentional A && B || C pattern
 set -euo pipefail
 
 # E2E Test Script for Mock Feature Gates
@@ -141,7 +142,7 @@ curl_with_429_retry() {
     return 1
 }
 
-# Cleanup function
+# shellcheck disable=SC2317,SC2329  # called via trap
 cleanup() {
     echo -e "\n${YELLOW}Cleaning up background processes...${NC}"
     pkill -f "memvid-service" || true

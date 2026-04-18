@@ -11,6 +11,7 @@ API_DIR="$PROJECT_ROOT/api-service"
 echo "Generating protobuf stubs..."
 
 # Activate the api-service venv for grpc_tools
+# shellcheck disable=SC1091
 source "$API_DIR/.venv/bin/activate"
 
 cd "$API_DIR"

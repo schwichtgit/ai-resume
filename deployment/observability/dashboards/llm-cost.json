@@ -51,7 +51,11 @@
       },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max", "sum"] }
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": ["mean", "max", "sum"]
+        }
       }
     },
     {
@@ -126,9 +130,7 @@
           "color": { "mode": "thresholds" },
           "thresholds": {
             "mode": "absolute",
-            "steps": [
-              { "color": "blue", "value": null }
-            ]
+            "steps": [{ "color": "blue", "value": null }]
           }
         },
         "overrides": []
@@ -195,9 +197,7 @@
           "color": { "mode": "thresholds" },
           "thresholds": {
             "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null }
-            ]
+            "steps": [{ "color": "green", "value": null }]
           },
           "custom": {
             "align": "auto",
@@ -207,9 +207,7 @@
         "overrides": [
           {
             "matcher": { "id": "byName", "options": "model" },
-            "properties": [
-              { "id": "custom.width", "value": 250 }
-            ]
+            "properties": [{ "id": "custom.width", "value": 250 }]
           },
           {
             "matcher": { "id": "byName", "options": "Avg Latency (s)" },
@@ -375,7 +373,11 @@
       },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "sum"] }
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": ["mean", "sum"]
+        }
       }
     },
     {
@@ -444,7 +446,11 @@
       },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["mean", "max"] }
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": ["mean", "max"]
+        }
       }
     },
     {
@@ -484,13 +490,19 @@
           {
             "matcher": { "id": "byName", "options": "Success" },
             "properties": [
-              { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }
+              {
+                "id": "color",
+                "value": { "mode": "fixed", "fixedColor": "green" }
+              }
             ]
           },
           {
             "matcher": { "id": "byName", "options": "Failure" },
             "properties": [
-              { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }
+              {
+                "id": "color",
+                "value": { "mode": "fixed", "fixedColor": "red" }
+              }
             ]
           }
         ]
@@ -503,7 +515,11 @@
         },
         "pieType": "donut",
         "tooltip": { "mode": "single" },
-        "legend": { "displayMode": "table", "placement": "right", "calcs": ["percent", "value"] }
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": ["percent", "value"]
+        }
       }
     },
     {

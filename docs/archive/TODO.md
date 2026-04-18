@@ -528,19 +528,19 @@ The implementation exceeded the original plan. Key achievements:
 
 ### Phase 4 Summary
 
-| Task | Effort | Priority | Status |
-| ---- | ------ | -------- | ------ |
-| 4.1 Backend Profile API | 2-3h | 🔴 CRITICAL | ✅ COMPLETE |
-| 4.2 Frontend Profile Hook | 3-4h | 🔴 CRITICAL | ✅ COMPLETE |
-| 4.3 Component Refactoring | 2-3h | 🔴 CRITICAL | ✅ COMPLETE |
-| 4.4 HTML Metadata | 1-2h | 🟡 HIGH | ✅ COMPLETE |
-| 4.5-4.6 Extended API & Cleanup | 2-3h | 🟡 HIGH | ✅ COMPLETE |
-| 4.7 Profile in Memvid | 2h | 🔴 CRITICAL | ✅ COMPLETE |
-| 4.8 Hybrid Fit Assessment | 4-5h | 🟡 HIGH | ✅ COMPLETE |
-| 4.9-4.10 Legacy Cleanup | 1-2h | 🟡 MEDIUM | ✅ COMPLETE |
-| 4.11 Testing & Validation | 2h | 🟡 HIGH | ✅ COMPLETE |
-| 4.12 Documentation | 1h | 🟢 MEDIUM | ✅ COMPLETE |
-| **Total** | **~20h** | | **✅ COMPLETE** |
+| Task                           | Effort   | Priority    | Status          |
+| ------------------------------ | -------- | ----------- | --------------- |
+| 4.1 Backend Profile API        | 2-3h     | 🔴 CRITICAL | ✅ COMPLETE     |
+| 4.2 Frontend Profile Hook      | 3-4h     | 🔴 CRITICAL | ✅ COMPLETE     |
+| 4.3 Component Refactoring      | 2-3h     | 🔴 CRITICAL | ✅ COMPLETE     |
+| 4.4 HTML Metadata              | 1-2h     | 🟡 HIGH     | ✅ COMPLETE     |
+| 4.5-4.6 Extended API & Cleanup | 2-3h     | 🟡 HIGH     | ✅ COMPLETE     |
+| 4.7 Profile in Memvid          | 2h       | 🔴 CRITICAL | ✅ COMPLETE     |
+| 4.8 Hybrid Fit Assessment      | 4-5h     | 🟡 HIGH     | ✅ COMPLETE     |
+| 4.9-4.10 Legacy Cleanup        | 1-2h     | 🟡 MEDIUM   | ✅ COMPLETE     |
+| 4.11 Testing & Validation      | 2h       | 🟡 HIGH     | ✅ COMPLETE     |
+| 4.12 Documentation             | 1h       | 🟢 MEDIUM   | ✅ COMPLETE     |
+| **Total**                      | **~20h** |             | **✅ COMPLETE** |
 
 ### Success Criteria ✅
 
@@ -786,12 +786,12 @@ The implementation exceeded the original plan. Key achievements:
 
 ### Why This Matters
 
-| Current State | Ontology-Based |
-| ------------- | -------------- |
-| Find text containing "Python" | Query "5+ years Python experience" via metadata |
-| Context from entire job description | Link specific skills to specific projects |
+| Current State                         | Ontology-Based                                    |
+| ------------------------------------- | ------------------------------------------------- |
+| Find text containing "Python"         | Query "5+ years Python experience" via metadata   |
+| Context from entire job description   | Link specific skills to specific projects         |
 | Anti-patterns mixed with achievements | Structured "Limitations" frame for honest answers |
-| FAQ text matching | Typed NarrativeFrame with sentiment analysis |
+| FAQ text matching                     | Typed NarrativeFrame with sentiment analysis      |
 
 ### Proposed Ontology Schema
 
@@ -892,7 +892,6 @@ class CandidateOntology(BaseModel):
 **Fastest path to working system (2-3 weeks remaining):**
 
 1. ✅ **Week 1:** Docs, scripts, configuration
-
    - [x] PRD & design complete
    - [x] Setup scripts created
    - [x] Configuration schema finalized
@@ -900,7 +899,6 @@ class CandidateOntology(BaseModel):
    - [x] Pattern B networking documented
 
 2. ✅ **Week 1-2:** Memvid Ingest — **COMPLETE**
-
    - [x] Install memvid-sdk via UV/pip
    - [x] Set up sentence-transformers embeddings
    - [x] Implement `ingest/ingest.py`
@@ -909,7 +907,6 @@ class CandidateOntology(BaseModel):
    - [x] Hybrid search enabled (lexical + vector)
 
 3. ✅ **Week 2-3:** Backend core — **COMPLETE**
-
    - [x] Python FastAPI + OpenRouter integration
      - [x] Streaming SSE responses
      - [x] Session management with TTL
@@ -955,8 +952,7 @@ class CandidateOntology(BaseModel):
    ```yaml
    ---
    name: Jane Chen
-   image: /path/to/jane-preview.png  # NEW: Optional OG preview image
-   ...
+   image: /path/to/jane-preview.png # NEW: Optional OG preview image
    ```
 
 2. Update ingest pipeline:
@@ -1003,7 +999,7 @@ class CandidateOntology(BaseModel):
 1. Add `pronouns` field to resume YAML:
 
    ```yaml
-   pronouns: she/her  # or: he/him, they/them, etc.
+   pronouns: she/her # or: he/him, they/them, etc.
    ```
 
 2. Extract in ingest pipeline
@@ -1284,19 +1280,19 @@ Ask mode adds a cross-encoder re-ranking layer that:
 
 ### Estimated Timeline
 
-| Task | Effort | Priority |
-| ---- | ------ | -------- |
-| 11.1 Proto Updates | 2h | 🔴 CRITICAL |
-| 11.2 Rust Service (using memvid SDK Ask) | 4h | 🔴 CRITICAL |
-| 11.3 Python Client | 2h | 🔴 CRITICAL |
-| 11.4 Chat Integration | 2h | 🔴 CRITICAL |
-| 11.5 Ingest Updates | 2h | 🟡 HIGH |
-| 11.6 Testing | 4h | 🟡 HIGH |
-| 11.7 A/B Testing | 2h | 🟢 MEDIUM |
-| 11.8 Documentation | 2h | 🟢 MEDIUM |
-| 11.9 Optimization | 4h | 🟢 LOW |
-| 11.10 Custom Cross-Encoder (future) | TBD | 🟢 FUTURE |
-| **Total** | **~24h** | **2-3 days** |
+| Task                                     | Effort   | Priority     |
+| ---------------------------------------- | -------- | ------------ |
+| 11.1 Proto Updates                       | 2h       | 🔴 CRITICAL  |
+| 11.2 Rust Service (using memvid SDK Ask) | 4h       | 🔴 CRITICAL  |
+| 11.3 Python Client                       | 2h       | 🔴 CRITICAL  |
+| 11.4 Chat Integration                    | 2h       | 🔴 CRITICAL  |
+| 11.5 Ingest Updates                      | 2h       | 🟡 HIGH      |
+| 11.6 Testing                             | 4h       | 🟡 HIGH      |
+| 11.7 A/B Testing                         | 2h       | 🟢 MEDIUM    |
+| 11.8 Documentation                       | 2h       | 🟢 MEDIUM    |
+| 11.9 Optimization                        | 4h       | 🟢 LOW       |
+| 11.10 Custom Cross-Encoder (future)      | TBD      | 🟢 FUTURE    |
+| **Total**                                | **~24h** | **2-3 days** |
 
 ---
 
@@ -1376,19 +1372,19 @@ Ask mode adds a cross-encoder re-ranking layer that:
 
 ## Estimated Timeline
 
-| Phase                    | Effort   | Timeline      | Status         |
-| ------------------------ | -------- | ------------- | -------------- |
-| 1. Infrastructure        | 10h      | Week 1        | ✅ Complete    |
-| 1.5. Memvid Ingest       | 15h      | Week 1-2      | ✅ Complete    |
-| 2. Backend               | 40h      | 2 weeks       | ✅ Complete    |
-| 3. Frontend              | 20h      | 1 week        | Pending        |
-| 4. Data-driven           | 15h      | 1 week        | Pending        |
-| 5. Containers            | 15h      | 1 week        | Pending        |
-| 6. QA                    | 20h      | 1-2 weeks     | Pending        |
-| 7. Observability         | 15h      | 1 week        | Pending        |
-| 8. Hardening             | 20h      | 1-2 weeks     | Pending        |
-| 9. Extended Features     | 40h+     | Optional      | -              |
-| **Remaining MVP**        | **~85h** | **3-4 weeks** | -              |
+| Phase                | Effort   | Timeline      | Status      |
+| -------------------- | -------- | ------------- | ----------- |
+| 1. Infrastructure    | 10h      | Week 1        | ✅ Complete |
+| 1.5. Memvid Ingest   | 15h      | Week 1-2      | ✅ Complete |
+| 2. Backend           | 40h      | 2 weeks       | ✅ Complete |
+| 3. Frontend          | 20h      | 1 week        | Pending     |
+| 4. Data-driven       | 15h      | 1 week        | Pending     |
+| 5. Containers        | 15h      | 1 week        | Pending     |
+| 6. QA                | 20h      | 1-2 weeks     | Pending     |
+| 7. Observability     | 15h      | 1 week        | Pending     |
+| 8. Hardening         | 20h      | 1-2 weeks     | Pending     |
+| 9. Extended Features | 40h+     | Optional      | -           |
+| **Remaining MVP**    | **~85h** | **3-4 weeks** | -           |
 
 **Progress Notes:**
 

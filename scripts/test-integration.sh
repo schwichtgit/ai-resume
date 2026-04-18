@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2317,SC2329
 # End-to-end integration test using podman-compose with real resume.mv2
 # Tests the full stack: memvid service + API service + frontend
 #
@@ -17,7 +18,6 @@ set -euo pipefail
 # Colors for output
 GREEN='\033[0;32m'
 RED='\033[0;31m'
-YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
@@ -58,6 +58,7 @@ if [ ! -d "$DEPLOYMENT_DIR/.venv" ]; then
     exit 1
 fi
 
+# shellcheck disable=SC1091
 source "$DEPLOYMENT_DIR/.venv/bin/activate"
 
 if ! command -v podman-compose &> /dev/null; then
@@ -73,6 +74,7 @@ fi
 
 # Load deployment .env and set variables
 cd "$DEPLOYMENT_DIR"
+# shellcheck disable=SC2046
 export $(grep -v '^#' .env | xargs)
 export PROJECT_BASE_DIR="$PROJECT_ROOT"
 

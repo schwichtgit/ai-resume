@@ -88,6 +88,30 @@ default.
 - **Fix regressions first.** If a previously passing feature
   breaks, fix it before new work.
 
+## MR/PR Workflow
+
+Before any new commit on a branch:
+
+1. `git fetch origin`
+2. Check MR/PR state:
+   - GitLab: `glab mr view`
+   - GitHub: `gh pr view`
+3. If the MR/PR is already merged, stop. Create a new
+   branch from `origin/main` for the next piece of work.
+
+Do not commit to a branch whose MR/PR has been merged.
+
+Before opening a merge request or pull request:
+
+1. `git fetch origin`
+2. `git rebase origin/main` -- resolve any conflicts
+3. Verify CI passes on the rebased branch
+4. Open the MR/PR
+
+The MR/PR diff must contain only the work introduced by
+the branch. If commits already merged into main appear in
+the diff, rebase is needed.
+
 ## Directory Semantics
 
 These conventions define what belongs in each directory.

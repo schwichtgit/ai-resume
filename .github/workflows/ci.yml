@@ -1,4 +1,4 @@
-name: CI
+name: I
 
 on:
   push:
@@ -19,6 +19,10 @@ env:
   NODE_VERSION: '22'
 
 jobs:
+  # CPF scaffold base checks (shellcheck, markdownlint, prettier, plugin-validation)
+  base:
+    uses: ./.github/workflows/ci-base.yml
+
   # Detect which services changed
   changes:
     runs-on: ubuntu-latest
@@ -27,7 +31,6 @@ jobs:
       api-service: ${{ steps.filter.outputs.api-service }}
       ingest: ${{ steps.filter.outputs.ingest }}
       memvid-service: ${{ steps.filter.outputs.memvid-service }}
-      docs: ${{ steps.filter.outputs.docs }}
       containers: ${{ steps.filter.outputs.containers }}
     steps:
       - uses: actions/checkout@v6
@@ -48,10 +51,6 @@ jobs:
             memvid-service:
               - 'memvid-service/**'
               - 'proto/**'
-            docs:
-              - 'docs/**'
-              - '**/*.md'
-              - '.markdownlint*.yaml'
             containers:
               - '**/Dockerfile'
               - 'frontend/**'
@@ -564,24 +563,6 @@ jobs:
 
           echo "All commit messages passed validation!"
 
-  # Docs: Markdown linting
-  docs:
-    needs: changes
-    if: ${{ needs.changes.outputs.docs == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Lint Markdown
-        run: |
-          npm install -g markdownlint-cli2
-          markdownlint-cli2 '**/*.md'
-
   # Release gate: final validation on main branch pushes
   release-gate:
     needs: [changes, frontend, api-service, memvid-service, cross-service]
@@ -885,6 +866,7 @@ jobs:
   summary:
     needs:
       [
+        base,
         changes,
         frontend,
         api-service,
@@ -893,7 +875,6 @@ jobs:
         memvid-integration,
         cross-service,
         e2e-real,
-        docs,
         commit-standards,
         container-build,
         release-gate,
@@ -904,6 +885,7 @@ jobs:
       - name: Check results
         run: |
           echo "=== CI Summary ==="
+          echo "Base (lint): ${{ needs.base.result || 'skipped' }}"
           echo "Frontend: ${{ needs.frontend.result || 'skipped' }}"
           echo "API Service: ${{ needs.api-service.result || 'skipped' }}"
           echo "Ingest: ${{ needs.ingest.result || 'skipped' }}"
@@ -911,7 +893,6 @@ jobs:
           echo "Memvid Integration: ${{ needs.memvid-integration.result || 'skipped' }}"
           echo "Cross-Service: ${{ needs.cross-service.result || 'skipped' }}"
           echo "E2E Real: ${{ needs.e2e-real.result || 'skipped' }}"
-          echo "Docs: ${{ needs.docs.result || 'skipped' }}"
           echo "Commit Standards: ${{ needs.commit-standards.result || 'skipped' }}"
           echo "Container Build: ${{ needs.container-build.result || 'skipped' }}"
           echo "Release Gate: ${{ needs.release-gate.result || 'skipped' }}"
@@ -924,12 +905,12 @@ jobs:
           echo "  Memvid (integration): 50% (cargo tarpaulin on real.rs, soft gate)"
 
           # Fail if any required job failed (includes coverage threshold enforcement)
-          if [[ "${{ needs.frontend.result }}" == "failure" ]] || \
+          if [[ "${{ needs.base.result }}" == "failure" ]] || \
+             [[ "${{ needs.frontend.result }}" == "failure" ]] || \
              [[ "${{ needs.api-service.result }}" == "failure" ]] || \
              [[ "${{ needs.ingest.result }}" == "failure" ]] || \
              [[ "${{ needs.memvid-service.result }}" == "failure" ]] || \
              [[ "${{ needs.cross-service.result }}" == "failure" ]] || \
-             [[ "${{ needs.docs.result }}" == "failure" ]] || \
              [[ "${{ needs.commit-standards.result }}" == "failure" ]] || \
              [[ "${{ needs.container-build.result }}" == "failure" ]] || \
              [[ "${{ needs.release-gate.result }}" == "failure" ]]; then
@@ -944,6 +925,7 @@ jobs:
             echo ""
             echo "| Job | Status |"
             echo "|-----|--------|"
+            echo "| Base (lint) | ${{ needs.base.result || 'skipped' }} |"
             echo "| Frontend | ${{ needs.frontend.result || 'skipped' }} |"
             echo "| API Service | ${{ needs.api-service.result || 'skipped' }} |"
             echo "| Ingest | ${{ needs.ingest.result || 'skipped' }} |"
@@ -951,7 +933,6 @@ jobs:
             echo "| Memvid Integration | ${{ needs.memvid-integration.result || 'skipped' }} |"
             echo "| Cross-Service | ${{ needs.cross-service.result || 'skipped' }} |"
             echo "| E2E Real | ${{ needs.e2e-real.result || 'skipped' }} |"
-            echo "| Docs | ${{ needs.docs.result || 'skipped' }} |"
             echo "| Commit Standards | ${{ needs.commit-standards.result || 'skipped' }} |"
             echo "| Container Build | ${{ needs.container-build.result || 'skipped' }} |"
             echo "| Release Gate | ${{ needs.release-gate.result || 'skipped' }} |"
@@ -979,6 +960,7 @@ jobs:
             esac
           }
 
+          BASE=$(status_icon "${{ needs.base.result || 'skipped' }}")
           FRONTEND=$(status_icon "${{ needs.frontend.result || 'skipped' }}")
           API=$(status_icon "${{ needs.api-service.result || 'skipped' }}")
           INGEST=$(status_icon "${{ needs.ingest.result || 'skipped' }}")
@@ -986,19 +968,18 @@ jobs:
           MEMVID_INT=$(status_icon "${{ needs.memvid-integration.result || 'skipped' }}")
           CROSS=$(status_icon "${{ needs.cross-service.result || 'skipped' }}")
           E2E=$(status_icon "${{ needs.e2e-real.result || 'skipped' }}")
-          DOCS=$(status_icon "${{ needs.docs.result || 'skipped' }}")
           COMMITS=$(status_icon "${{ needs.commit-standards.result || 'skipped' }}")
           CONTAINERS=$(status_icon "${{ needs.container-build.result || 'skipped' }}")
           RELEASE=$(status_icon "${{ needs.release-gate.result || 'skipped' }}")
 
           # Determine overall status
           OVERALL="All checks passed"
-          if [[ "${{ needs.frontend.result }}" == "failure" ]] || \
+          if [[ "${{ needs.base.result }}" == "failure" ]] || \
+             [[ "${{ needs.frontend.result }}" == "failure" ]] || \
              [[ "${{ needs.api-service.result }}" == "failure" ]] || \
              [[ "${{ needs.ingest.result }}" == "failure" ]] || \
              [[ "${{ needs.memvid-service.result }}" == "failure" ]] || \
              [[ "${{ needs.cross-service.result }}" == "failure" ]] || \
-             [[ "${{ needs.docs.result }}" == "failure" ]] || \
              [[ "${{ needs.commit-standards.result }}" == "failure" ]] || \
              [[ "${{ needs.container-build.result }}" == "failure" ]] || \
              [[ "${{ needs.release-gate.result }}" == "failure" ]]; then
@@ -1012,6 +993,7 @@ jobs:
 
           | Job | Status |
           |-----|--------|
+          | Base (lint) | ${BASE} |
           | Frontend | ${FRONTEND} |
           | API Service | ${API} |
           | Ingest | ${INGEST} |
@@ -1019,7 +1001,6 @@ jobs:
           | Memvid Integration | ${MEMVID_INT} |
           | Cross-Service | ${CROSS} |
           | E2E Real | ${E2E} |
-          | Docs | ${DOCS} |
           | Commit Standards | ${COMMITS} |
           | Container Build | ${CONTAINERS} |
           | Release Gate | ${RELEASE} |

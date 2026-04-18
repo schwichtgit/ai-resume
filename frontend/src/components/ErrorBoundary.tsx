@@ -1,4 +1,4 @@
-import { Component, ReactNode } from "react";
+import { Component, ReactNode } from 'react';
 
 interface Props {
   children: ReactNode;
@@ -23,9 +23,9 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error(
-      `[ErrorBoundary:${this.props.sectionName || "unknown"}]`,
+      `[ErrorBoundary:${this.props.sectionName || 'unknown'}]`,
       error,
-      info.componentStack
+      info.componentStack,
     );
   }
 
@@ -42,7 +42,7 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="flex flex-col items-center justify-center p-8 text-center">
           <p className="text-muted-foreground mb-4">
-            Unable to load {this.props.sectionName || "this section"}
+            Unable to load {this.props.sectionName || 'this section'}
           </p>
           <button
             onClick={this.handleRetry}

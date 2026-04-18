@@ -161,7 +161,6 @@ Query → Initial Retrieval (50 candidates) → Cross-Encoder Re-Ranking → Top
 **Architecture Components:**
 
 1. **Stage 1: Initial Retrieval (Hybrid Search)**
-
    - Vector search (BGE embeddings) for semantic matching
    - BM25 lexical search for exact keywords
    - Metadata filtering: `{"section": "experience", "role": "leadership"}`

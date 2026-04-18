@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC1091,SC2001,SC2317,SC2329
 set -euo pipefail
 
 # Cross-Service Integration Tests (mock backends)

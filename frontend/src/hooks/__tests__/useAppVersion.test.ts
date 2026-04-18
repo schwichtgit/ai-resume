@@ -32,7 +32,10 @@ describe('useAppVersion', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    expect(result.current.version).toEqual({ version: 'dev', commit: 'unknown' });
+    expect(result.current.version).toEqual({
+      version: 'dev',
+      commit: 'unknown',
+    });
   });
 
   it('falls back to dev on non-ok response', async () => {
@@ -47,6 +50,9 @@ describe('useAppVersion', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    expect(result.current.version).toEqual({ version: 'dev', commit: 'unknown' });
+    expect(result.current.version).toEqual({
+      version: 'dev',
+      commit: 'unknown',
+    });
   });
 });

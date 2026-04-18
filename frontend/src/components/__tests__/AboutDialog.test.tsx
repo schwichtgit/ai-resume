@@ -24,13 +24,19 @@ describe('AboutDialog', () => {
   it('renders GitHub link', () => {
     render(<AboutDialog open={true} onOpenChange={() => {}} />);
     const link = screen.getByText('Source Code');
-    expect(link.closest('a')).toHaveAttribute('href', 'https://github.com/schwichtgit/ai-resume');
+    expect(link.closest('a')).toHaveAttribute(
+      'href',
+      'https://github.com/schwichtgit/ai-resume',
+    );
   });
 
   it('renders Medium link', () => {
     render(<AboutDialog open={true} onOpenChange={() => {}} />);
     const link = screen.getByText('Blog');
-    expect(link.closest('a')).toHaveAttribute('href', expect.stringContaining('medium.com'));
+    expect(link.closest('a')).toHaveAttribute(
+      'href',
+      expect.stringContaining('medium.com'),
+    );
   });
 
   it('does not render when closed', () => {

@@ -62,6 +62,7 @@ LITERAL_PATTERNS=(
 )
 
 # Define dangerous regex patterns (checked with grep -E, extended regex)
+# shellcheck disable=SC2016  # literal regex patterns, not variable expansion
 REGEX_PATTERNS=(
     'rm -rf \$HOME'
     'git push origin .*(--force|-f[[:space:]]|-f$)'

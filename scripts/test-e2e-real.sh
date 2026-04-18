@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC1091,SC2001,SC2317,SC2329
 set -euo pipefail
 
 # True E2E Tests: Real ingest -> real memvid search -> real API
@@ -554,6 +555,7 @@ echo ""
 test_coverage() {
     local desc="$1"
     local query="$2"
+    # shellcheck disable=SC2034  # reserved for future keyword matching
     local expected_keyword="${3:-}"
 
     run_test "Coverage: $desc"
