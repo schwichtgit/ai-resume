@@ -33,6 +33,13 @@ tools = [
     "it2 @ git+https://github.com/mkusaka/it2.git",
 ]
 
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["ingest", "compare_models"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"
