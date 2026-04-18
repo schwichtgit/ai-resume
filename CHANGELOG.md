@@ -7,16 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-alpha.13] - 2026-04-18
+
 ### Changed
 
-- Specforge scaffold upgraded from alpha.9 to alpha.10
+- Specforge scaffold upgraded from alpha.8 to alpha.10 (#164, #165)
   - CI migrated to reusable workflow: `ci-base.yml` called from `ci.yml` via `workflow_call`
   - Redundant `docs` job removed from `ci.yml` (markdownlint now in `ci-base.yml`)
   - New scaffold checks: shellcheck, prettier, plugin-validation via `ci-base.yml`
-  - `CLAUDE.md.template`: added merged-MR branch check and error handling section
-  - `ci/gitlab/gitlab-ci-guide.md`: rewritten with pipeline docs, customization examples, parity table
-  - `ci/jenkins/jenkinsfile-guide.md`: rewritten with stage docs, customization examples, parity table
+  - Pre-commit hook: added markdown (`markdownlint-cli2`) and YAML (`yaml.safe_load`) lint checks for staged files
+  - `CLAUDE.md.template`: expanded service/subagent/spec/API/container/commit/PR sections; added merged-MR branch check
+  - `ci/gitlab/gitlab-ci-guide.md` and `ci/jenkins/jenkinsfile-guide.md`: rewritten with pipeline/stage docs, customization examples, platform parity tables
+  - `ci/github/dependabot.yml`: added Go (`gomod`) commented-out ecosystem entry
   - `scripts/hooks/pre-commit`, `.specify/WORKFLOW.md`: updated from scaffold
+- Local patches applied to `.github/workflows/ci-base.yml` for monorepo compatibility: shellcheck exclusions for `.venv/`/`node_modules/`, prettier via `npx`, plugin-validation guarded by `hashFiles()` existence check (tracked upstream in `.specify/proposals/cr-ci-base-scaffold-issues.md`)
+- Dependency currency rollup consolidating 17 Dependabot PRs across cargo, npm, uv, pip (#184)
+  - **frontend**: 12-update minor-and-patch group, protobufjs 7.5.4 → 7.5.5
+  - **memvid-service**: tokio 1.51.0 → 1.51.1
+  - **api-service**: authlib, python-multipart, pytest, uvicorn, prometheus-client, isort
+  - **ingest**: pytest, pytest-asyncio, sentence-transformers 3.0.0 → 5.4.0, ruff
+- Additional frontend minor-and-patch group: @opentelemetry/context-zone 2.6.1 → 2.7.0, exporter-trace-otlp-http and instrumentation-fetch 0.214.0 → 0.215.0, @tanstack/react-query 5.99.0 → 5.99.1, react-router-dom 7.14.0 → 7.14.1, eslint 10.2.0 → 10.2.1, eslint-plugin-react-hooks 7.1.0-canary → 7.1.1, typescript 6.0.2 → 6.0.3, typescript-eslint 8.58.1 → 8.58.2 (#185)
+- mypy dev dependency bumped from >=1.14.1 to >=1.20.0 in api-service (#171)
+- `ingest/pyproject.toml`: declared setuptools build-system and `py-modules = ["ingest", "compare_models"]` -- fixes `uv pip install -e .` under setuptools>=80 flat-layout strict auto-discovery
+- `frontend/src/hooks/useStreamingChat.ts`: derived `isRateLimited` from state instead of storing it; moved session ID generation to lazy `useState` initializer -- resolves eslint-plugin-react-hooks 7.1.1 "impure function during render" and "setState synchronously within an effect" rules
+- `ingest/tests/test_e2e.py`: refactored standalone `main()` runner to try/except pattern -- resolves mypy 1.20 stricter `misc`/`has-type` errors
+
+### Fixed
+
+- Release validate job race condition when CI was re-run (#163) -- now polls all runs sorted by `run_started_at`, requires `conclusion=success` on both the run and its `summary` job, and waits while any run is in-progress
+
+### Security
+
+- rustls-webpki bumped from 0.103.10 → 0.103.12 in memvid-service -- closes Dependabot alert #50 (X.509 name-constraint bypass) (#186)
+- rand bumped from 0.9.2 → 0.9.3 in memvid-service -- partial remediation for Dependabot alert #47 (unsound with custom `log::Log`); residual rand 0.8.5 copy is upstream-blocked through `memvid-core 2.0.139 → tantivy 0.25.0 → rand_distr 0.4.3` (pinned to `rand ^0.8`, no 0.8.x patch exists) (#186)
 
 ## [0.1.0-alpha.12] - 2026-04-10
 
