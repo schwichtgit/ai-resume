@@ -4,13 +4,13 @@ Quick-reference for building, running, and testing the full containerized stack 
 
 ## Prerequisites
 
-| Requirement | How to verify |
-| --- | --- |
-| Podman machine running | `podman machine info` (machinestate: Running) |
-| yellow-net exists | `podman network ls \| grep yellow-net` |
-| Deployment venv | `source deployment/.venv/bin/activate && podman compose --version` |
-| `.env` configured | `cat deployment/.env` (needs OPENROUTER_API_KEY, PROJECT_BASE_DIR) |
-| Data dir has resume | `ls data/example_resume.md` (source for ingest) |
+| Requirement            | How to verify                                                      |
+| ---------------------- | ------------------------------------------------------------------ |
+| Podman machine running | `podman machine info` (machinestate: Running)                      |
+| yellow-net exists      | `podman network ls \| grep yellow-net`                             |
+| Deployment venv        | `source deployment/.venv/bin/activate && podman compose --version` |
+| `.env` configured      | `cat deployment/.env` (needs OPENROUTER_API_KEY, PROJECT_BASE_DIR) |
+| Data dir has resume    | `ls data/example_resume.md` (source for ingest)                    |
 
 ## Architecture
 
@@ -201,31 +201,31 @@ podman compose down
 
 ## Compose Environment Variables (.env)
 
-| Variable | Purpose | Default |
-| --- | --- | --- |
-| `PROJECT_BASE_DIR` | Host path to project root (volume mount) | `/opt/ai-resume` |
-| `OPENROUTER_API_KEY` | LLM API key (required unless MOCK_OPENROUTER) | none |
-| `MEMVID_FILENAME` | .mv2 filename inside data/.memvid/ | `resume.mv2` |
-| `LLM_MODEL` | OpenRouter model ID | `nvidia/nemotron-nano-9b-v2:free` |
-| `REGISTRY` | Container image registry prefix | `localhost` |
-| `VERSION` | Image tag | `latest` |
-| `SESSION_TTL` | Chat session lifetime (seconds) | `1800` |
-| `RATE_LIMIT` | Requests per minute per IP | `10` |
-| `LOG_LEVEL` | Service log level | `INFO` |
-| `API_BACKEND_HOST` | Frontend->API hostname (for macvlan/no-DNS) | `ai-resume-api` |
-| `API_BACKEND_PORT` | Frontend->API port | `3000` |
-| `MEMVID_GRPC_HOST` | API->memvid hostname | `ai-resume-memvid` |
-| `MEMVID_GRPC_PORT` | API->memvid port | `50051` |
-| `BIND_ADDRESS` | IPv4/IPv6 bind (auto/0.0.0.0/::) | `auto` |
+| Variable             | Purpose                                       | Default                           |
+| -------------------- | --------------------------------------------- | --------------------------------- |
+| `PROJECT_BASE_DIR`   | Host path to project root (volume mount)      | `/opt/ai-resume`                  |
+| `OPENROUTER_API_KEY` | LLM API key (required unless MOCK_OPENROUTER) | none                              |
+| `MEMVID_FILENAME`    | .mv2 filename inside data/.memvid/            | `resume.mv2`                      |
+| `LLM_MODEL`          | OpenRouter model ID                           | `nvidia/nemotron-nano-9b-v2:free` |
+| `REGISTRY`           | Container image registry prefix               | `localhost`                       |
+| `VERSION`            | Image tag                                     | `latest`                          |
+| `SESSION_TTL`        | Chat session lifetime (seconds)               | `1800`                            |
+| `RATE_LIMIT`         | Requests per minute per IP                    | `10`                              |
+| `LOG_LEVEL`          | Service log level                             | `INFO`                            |
+| `API_BACKEND_HOST`   | Frontend->API hostname (for macvlan/no-DNS)   | `ai-resume-api`                   |
+| `API_BACKEND_PORT`   | Frontend->API port                            | `3000`                            |
+| `MEMVID_GRPC_HOST`   | API->memvid hostname                          | `ai-resume-memvid`                |
+| `MEMVID_GRPC_PORT`   | API->memvid port                              | `50051`                           |
+| `BIND_ADDRESS`       | IPv4/IPv6 bind (auto/0.0.0.0/::)              | `auto`                            |
 
 ## Container Details
 
-| Container | Base Image | Port | Healthcheck | Non-root |
-| --- | --- | --- | --- | --- |
-| ai-resume-frontend | alpine:3.23 + openresty | 8080 | `wget --spider http://localhost:8080/health` | nginx |
-| ai-resume-api | python:3.12-slim-bookworm | 3000 | `/healthcheck` (python script, tries IPv6 then IPv4) | appuser (1000) |
-| ai-resume-memvid | debian:trixie-slim | 50051 | `/healthcheck` (symlink to binary) | memvid (1000) |
-| ai-resume-ingest | python:3.12-slim-bookworm | none | none (one-shot) | appuser (1000) |
+| Container          | Base Image                | Port  | Healthcheck                                          | Non-root       |
+| ------------------ | ------------------------- | ----- | ---------------------------------------------------- | -------------- |
+| ai-resume-frontend | alpine:3.23 + openresty   | 8080  | `wget --spider http://localhost:8080/health`         | nginx          |
+| ai-resume-api      | python:3.12-slim-bookworm | 3000  | `/healthcheck` (python script, tries IPv6 then IPv4) | appuser (1000) |
+| ai-resume-memvid   | debian:trixie-slim        | 50051 | `/healthcheck` (symlink to binary)                   | memvid (1000)  |
+| ai-resume-ingest   | python:3.12-slim-bookworm | none  | none (one-shot)                                      | appuser (1000) |
 
 ## Startup Order (compose depends_on)
 
@@ -271,18 +271,18 @@ cd deployment && podman compose up -d
 
 ## Key File Locations
 
-| File | Purpose |
-| --- | --- |
-| `deployment/compose.yaml` | Full stack orchestration spec |
-| `deployment/.env` | Runtime configuration (git-ignored, contains API key) |
-| `deployment/.env.example` | Template for .env |
-| `deployment/.venv/` | Python venv with podman compose |
-| `scripts/build-all.sh` | Builds all 4 container images (multi-arch) |
-| `scripts/test-containers.sh` | Podman-native smoke test (without compose) |
-| `scripts/test-e2e-real.sh` | Real E2E with native processes (not containers) |
-| `frontend/Dockerfile` | OpenResty + React SPA |
-| `api-service/Dockerfile` | FastAPI + gRPC client |
-| `memvid-service/Dockerfile` | Rust gRPC server |
-| `ingest/Dockerfile` | Python ingest pipeline + HuggingFace model |
-| `data/example_resume.md` | Example resume (Jane Chen) for testing |
-| `data/.memvid/resume.mv2` | Generated vector DB file |
+| File                         | Purpose                                               |
+| ---------------------------- | ----------------------------------------------------- |
+| `deployment/compose.yaml`    | Full stack orchestration spec                         |
+| `deployment/.env`            | Runtime configuration (git-ignored, contains API key) |
+| `deployment/.env.example`    | Template for .env                                     |
+| `deployment/.venv/`          | Python venv with podman compose                       |
+| `scripts/build-all.sh`       | Builds all 4 container images (multi-arch)            |
+| `scripts/test-containers.sh` | Podman-native smoke test (without compose)            |
+| `scripts/test-e2e-real.sh`   | Real E2E with native processes (not containers)       |
+| `frontend/Dockerfile`        | OpenResty + React SPA                                 |
+| `api-service/Dockerfile`     | FastAPI + gRPC client                                 |
+| `memvid-service/Dockerfile`  | Rust gRPC server                                      |
+| `ingest/Dockerfile`          | Python ingest pipeline + HuggingFace model            |
+| `data/example_resume.md`     | Example resume (Jane Chen) for testing                |
+| `data/.memvid/resume.mv2`    | Generated vector DB file                              |

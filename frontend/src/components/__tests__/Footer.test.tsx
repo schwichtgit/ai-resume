@@ -33,13 +33,19 @@ describe('Footer', () => {
   it('has corrected GitHub URL', () => {
     render(<Footer />);
     const githubLink = screen.getByLabelText('GitHub');
-    expect(githubLink).toHaveAttribute('href', 'https://github.com/schwichtgit/ai-resume');
+    expect(githubLink).toHaveAttribute(
+      'href',
+      'https://github.com/schwichtgit/ai-resume',
+    );
   });
 
   it('has Medium/BookOpen link', () => {
     render(<Footer />);
     const mediumLink = screen.getByLabelText('Medium');
-    expect(mediumLink).toHaveAttribute('href', expect.stringContaining('medium.com'));
+    expect(mediumLink).toHaveAttribute(
+      'href',
+      expect.stringContaining('medium.com'),
+    );
   });
 
   it('displays version', () => {

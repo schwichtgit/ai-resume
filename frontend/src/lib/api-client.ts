@@ -515,21 +515,18 @@ export async function submitFeedback(
   rating: 'up' | 'down',
   comment?: string,
 ): Promise<void> {
-  const response = await fetch(
-    `${API_BASE_URL}/chat/${sessionId}/feedback`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...traceHeaders(),
-      },
-      body: JSON.stringify({
-        message_id: messageId,
-        rating,
-        comment: comment ?? null,
-      }),
+  const response = await fetch(`${API_BASE_URL}/chat/${sessionId}/feedback`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...traceHeaders(),
     },
-  );
+    body: JSON.stringify({
+      message_id: messageId,
+      rating,
+      comment: comment ?? null,
+    }),
+  });
 
   if (!response.ok) {
     throw new ApiError('Failed to submit feedback', response.status);

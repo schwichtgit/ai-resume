@@ -192,17 +192,23 @@ const Header = ({ onOpenChat }: HeaderProps) => {
               {theme === 'dark' ? 'Light mode' : 'Dark mode'}
             </button>
             <button
-              onClick={() => { setAboutOpen(true); setMobileMenuOpen(false); }}
+              onClick={() => {
+                setAboutOpen(true);
+                setMobileMenuOpen(false);
+              }}
               className="w-full text-left px-4 py-3 min-h-[44px] text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
             >
               About
             </button>
             <button
-              onClick={() => { setMcpConfigOpen(true); setMobileMenuOpen(false); }}
+              onClick={() => {
+                setMcpConfigOpen(true);
+                setMobileMenuOpen(false);
+              }}
               disabled={mcpAvailable === false}
               className={cn(
-                "w-full text-left px-4 py-3 min-h-[44px] text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors",
-                mcpAvailable === false && "opacity-50 cursor-not-allowed"
+                'w-full text-left px-4 py-3 min-h-[44px] text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors',
+                mcpAvailable === false && 'opacity-50 cursor-not-allowed',
               )}
             >
               MCP Config

@@ -165,29 +165,34 @@ Complete:
 **Version Progression:**
 
 1. **Day 0 (Alpha 1):** Merge to main → Auto-create 1.6.0-alpha.1 tag
+
    - Full test suite runs
    - Security scan runs
    - Container builds and scans
    - All gates must pass
 
 2. **Day 1-2 (Alpha.N):** Internal testing, bug fixes
+
    - Bug fix commits create 1.6.0-alpha.2, alpha.3, etc.
    - Each alpha tag reruns full gate suite
    - Target: stability reached
 
 3. **Day 2-3 (Beta 1):** Move to beta after 48h in alpha
+
    - Create 1.6.0-beta.1 tag
    - E2E testing in staging
    - Load testing starts (synthetic traffic)
    - Security audit performed
 
 4. **Day 4-9 (Beta.N):** Staging validation and load testing
+
    - Production-like environment tests
    - Memory and latency profiling
    - Real-world traffic patterns simulated
    - Target: production readiness confirmed
 
 5. **Day 10-16 (RC 1):** Move to RC after 1 week in beta
+
    - Create 1.6.0-rc.1 tag
    - Final QA in production-like environment
    - No code changes except critical security fixes
@@ -205,12 +210,14 @@ Complete:
 ### Deprecation Cycle (3 releases)
 
 1. **Release N:** Mark feature as deprecated
+
    - Add `@deprecated` annotation in code comments
    - Document deprecation in CHANGELOG
    - Document migration path in docs
    - Release as MINOR version (e.g., 1.6.0)
 
 2. **Releases N+1 and N+2:** Final releases with deprecated feature
+
    - Feature continues to work
    - Warning messages in documentation
    - Users have 3 releases to migrate

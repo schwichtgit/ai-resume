@@ -5,12 +5,12 @@ global:
 scrape_configs:
   - job_name: api-service
     static_configs:
-      - targets: ["ai-resume-api:3000"]
+      - targets: ['ai-resume-api:3000']
 
   - job_name: memvid-service
     static_configs:
-      - targets: ["ai-resume-memvid:9090"]
+      - targets: ['ai-resume-memvid:9090']
 
   - job_name: tempo-metrics
     static_configs:
-      - targets: ["tempo:3200"]
+      - targets: ['tempo:3200']

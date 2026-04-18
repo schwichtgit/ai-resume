@@ -4,12 +4,12 @@
 
 The AI Resume stack consists of three runtime services plus a one-shot ingest pipeline:
 
-| Service              | Base Image                        | Port  | Protocol | Lifecycle  |
-| -------------------- | --------------------------------- | ----- | -------- | ---------- |
-| ai-resume-frontend   | Alpine 3.23 (OpenResty/nginx)     | 8080  | HTTP     | Long-lived |
-| ai-resume-api        | Python 3.12 slim-bookworm         | 3000  | HTTP     | Long-lived |
-| ai-resume-memvid     | Debian trixie-slim (Rust binary)  | 50051 | gRPC     | Long-lived |
-| ai-resume-ingest     | Python 3.12                       | --    | --       | One-shot   |
+| Service            | Base Image                       | Port  | Protocol | Lifecycle  |
+| ------------------ | -------------------------------- | ----- | -------- | ---------- |
+| ai-resume-frontend | Alpine 3.23 (OpenResty/nginx)    | 8080  | HTTP     | Long-lived |
+| ai-resume-api      | Python 3.12 slim-bookworm        | 3000  | HTTP     | Long-lived |
+| ai-resume-memvid   | Debian trixie-slim (Rust binary) | 50051 | gRPC     | Long-lived |
+| ai-resume-ingest   | Python 3.12                      | --    | --       | One-shot   |
 
 Traffic flow: reverse proxy -> frontend (8080) -> api (3000) -> memvid (50051 gRPC)
 
@@ -92,11 +92,11 @@ stack fits within 600MB total -- well within a 4GB ARM64 edge device.
 
 Typical observed memory usage:
 
-| Service          | Idle   | Under Load | Limit |
-| ---------------- | ------ | ---------- | ----- |
-| frontend         | ~15MB  | ~30MB      | 200M  |
-| api-service      | ~60MB  | ~120MB     | 200M  |
-| memvid-service   | ~20MB  | ~80MB      | 200M  |
+| Service        | Idle  | Under Load | Limit |
+| -------------- | ----- | ---------- | ----- |
+| frontend       | ~15MB | ~30MB      | 200M  |
+| api-service    | ~60MB | ~120MB     | 200M  |
+| memvid-service | ~20MB | ~80MB      | 200M  |
 
 ## ARM64 / Edge Deployment
 

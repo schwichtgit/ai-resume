@@ -4,7 +4,13 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { getProfile, getSuggestedQuestions, assessFit, checkHealth, ApiError } from '../api-client';
+import {
+  getProfile,
+  getSuggestedQuestions,
+  assessFit,
+  checkHealth,
+  ApiError,
+} from '../api-client';
 
 // Mock the otel module to prevent any real OTel initialization
 vi.mock('../otel', () => ({
@@ -106,8 +112,12 @@ describe('api-client', () => {
       expect(result.experience).toHaveLength(1);
       // Check camelCase transformation
       expect(result.experience[0].aiContext).toBeDefined();
-      expect(result.experience[0].aiContext?.technicalWork).toBe('Technical work');
-      expect(result.experience[0].aiContext?.lessonsLearned).toBe('Lessons learned');
+      expect(result.experience[0].aiContext?.technicalWork).toBe(
+        'Technical work',
+      );
+      expect(result.experience[0].aiContext?.lessonsLearned).toBe(
+        'Lessons learned',
+      );
     });
 
     it('should throw ApiError on 404', async () => {
@@ -160,7 +170,8 @@ describe('api-client', () => {
   });
 
   describe('assessFit', () => {
-    const validJobDescription = 'VP Engineering role at AI startup requiring Kubernetes and Python experience...';
+    const validJobDescription =
+      'VP Engineering role at AI startup requiring Kubernetes and Python experience...';
 
     it('should return structured fit assessment', async () => {
       const mockResponse = {
@@ -196,7 +207,7 @@ describe('api-client', () => {
             'Content-Type': 'application/json',
           }),
           body: JSON.stringify({ job_description: validJobDescription }),
-        })
+        }),
       );
     });
 
@@ -205,7 +216,8 @@ describe('api-client', () => {
         ok: false,
         status: 503,
         json: async () => ({
-          detail: 'AI service not configured. Set OPENROUTER_API_KEY to enable real-time fit assessment.',
+          detail:
+            'AI service not configured. Set OPENROUTER_API_KEY to enable real-time fit assessment.',
         }),
       });
 

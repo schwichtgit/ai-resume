@@ -52,20 +52,30 @@
           {
             "matcher": { "id": "byName", "options": "up" },
             "properties": [
-              { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }
+              {
+                "id": "color",
+                "value": { "mode": "fixed", "fixedColor": "green" }
+              }
             ]
           },
           {
             "matcher": { "id": "byName", "options": "down" },
             "properties": [
-              { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }
+              {
+                "id": "color",
+                "value": { "mode": "fixed", "fixedColor": "red" }
+              }
             ]
           }
         ]
       },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max", "sum"] }
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": ["mean", "max", "sum"]
+        }
       }
     },
     {
@@ -153,13 +163,19 @@
           {
             "matcher": { "id": "byName", "options": "Positive" },
             "properties": [
-              { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }
+              {
+                "id": "color",
+                "value": { "mode": "fixed", "fixedColor": "green" }
+              }
             ]
           },
           {
             "matcher": { "id": "byName", "options": "Negative" },
             "properties": [
-              { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }
+              {
+                "id": "color",
+                "value": { "mode": "fixed", "fixedColor": "red" }
+              }
             ]
           }
         ]
@@ -172,7 +188,11 @@
         },
         "pieType": "donut",
         "tooltip": { "mode": "single" },
-        "legend": { "displayMode": "table", "placement": "right", "calcs": ["percent", "value"] }
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": ["percent", "value"]
+        }
       }
     },
     {

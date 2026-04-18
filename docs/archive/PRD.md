@@ -14,10 +14,10 @@ An AI-powered resume agent that:
 
 ## Target Users
 
-| Persona | Need |
-| ------- | ---- |
-| **Resume Owner** | Present their experience interactively without constant availability |
-| **Recruiter/Hiring Manager** | Get immediate, detailed answers without scheduling calls |
+| Persona                      | Need                                                                 |
+| ---------------------------- | -------------------------------------------------------------------- |
+| **Resume Owner**             | Present their experience interactively without constant availability |
+| **Recruiter/Hiring Manager** | Get immediate, detailed answers without scheduling calls             |
 
 ## Functional Requirements
 
@@ -43,13 +43,13 @@ An AI-powered resume agent that:
 
 ## Non-Functional Requirements
 
-| Requirement | Target |
-| ----------- | ------ |
-| Response latency (P95) | <2 seconds |
-| Semantic search latency | <5 milliseconds |
-| Monthly operating cost | <$5 at 100 chats/day |
-| Container startup time | <5 seconds |
-| Memory footprint | <200MB total |
+| Requirement             | Target               |
+| ----------------------- | -------------------- |
+| Response latency (P95)  | <2 seconds           |
+| Semantic search latency | <5 milliseconds      |
+| Monthly operating cost  | <$5 at 100 chats/day |
+| Container startup time  | <5 seconds           |
+| Memory footprint        | <200MB total         |
 
 ## Data Requirements
 
@@ -68,12 +68,12 @@ All instance data must be:
 
 ## Success Metrics
 
-| Metric | Definition | Target |
-| ------ | ---------- | ------ |
-| Engagement | Questions per session | >3 |
-| Quality | Relevant answer rate | >90% |
-| Honesty | Accurate gap identification | 100% |
-| Cost | Monthly LLM spend | <$5 |
+| Metric     | Definition                  | Target |
+| ---------- | --------------------------- | ------ |
+| Engagement | Questions per session       | >3     |
+| Quality    | Relevant answer rate        | >90%   |
+| Honesty    | Accurate gap identification | 100%   |
+| Cost       | Monthly LLM spend           | <$5    |
 
 ## Out of Scope
 
@@ -90,30 +90,30 @@ The system must demonstrate complete and accurate retrieval of all resume facts 
 
 All factual categories in the source resume must be retrievable through natural language questions:
 
-| Category | Example Facts | Validation Query |
-| -------- | ------------- | ---------------- |
-| **Profile** | Name, title, location, status | "Who is this candidate?" |
-| **Experience Timeline** | 3 companies, roles, dates, durations | "Walk me through her career" |
-| **Technical Skills** | Python 10+y, Go 5+y, Terraform, K8s | "What languages does she know?" |
-| **Accomplishments** | 50x deployment speed, 10M inferences/day | "What are her key achievements?" |
-| **Security Track Record** | FedRAMP, SOC 2, zero breaches | "What's her security experience?" |
-| **AI/ML Experience** | MLOps, RAG pipelines, model serving | "Tell me about her AI experience" |
-| **Leadership** | Team 3→15, <10% attrition, 25+ hires | "How has she grown teams?" |
-| **Failures & Growth** | 3 specific failures with lessons | "What are her biggest failures?" |
-| **Honest Limitations** | No mobile, no frontend, no C/C++ | "What is she NOT good at?" |
-| **Fit Scenarios** | Strong/moderate/weak role types | "Would she fit an early-stage startup?" |
+| Category                  | Example Facts                            | Validation Query                        |
+| ------------------------- | ---------------------------------------- | --------------------------------------- |
+| **Profile**               | Name, title, location, status            | "Who is this candidate?"                |
+| **Experience Timeline**   | 3 companies, roles, dates, durations     | "Walk me through her career"            |
+| **Technical Skills**      | Python 10+y, Go 5+y, Terraform, K8s      | "What languages does she know?"         |
+| **Accomplishments**       | 50x deployment speed, 10M inferences/day | "What are her key achievements?"        |
+| **Security Track Record** | FedRAMP, SOC 2, zero breaches            | "What's her security experience?"       |
+| **AI/ML Experience**      | MLOps, RAG pipelines, model serving      | "Tell me about her AI experience"       |
+| **Leadership**            | Team 3→15, <10% attrition, 25+ hires     | "How has she grown teams?"              |
+| **Failures & Growth**     | 3 specific failures with lessons         | "What are her biggest failures?"        |
+| **Honest Limitations**    | No mobile, no frontend, no C/C++         | "What is she NOT good at?"              |
+| **Fit Scenarios**         | Strong/moderate/weak role types          | "Would she fit an early-stage startup?" |
 
 **Target: 100% category coverage** — Every category must be surfaceable through questions.
 
 ### Extraction Quality Criteria
 
-| Criterion | Definition | Target |
-| --------- | ---------- | ------ |
-| **Factual Accuracy** | Claims match source resume exactly | 100% |
-| **No Hallucination** | No fabricated companies, dates, or metrics | 0 hallucinations |
-| **Completeness** | Answers include relevant details, not just surface | >80% detail retention |
-| **Attribution** | Facts linked to correct company/role/period | 100% |
-| **Honest Gaps** | System says "I don't know" for facts not in resume | Required |
+| Criterion            | Definition                                         | Target                |
+| -------------------- | -------------------------------------------------- | --------------------- |
+| **Factual Accuracy** | Claims match source resume exactly                 | 100%                  |
+| **No Hallucination** | No fabricated companies, dates, or metrics         | 0 hallucinations      |
+| **Completeness**     | Answers include relevant details, not just surface | >80% detail retention |
+| **Attribution**      | Facts linked to correct company/role/period        | 100%                  |
+| **Honest Gaps**      | System says "I don't know" for facts not in resume | Required              |
 
 ### Negative Testing
 
@@ -135,12 +135,12 @@ The system must correctly refuse to answer or acknowledge uncertainty for:
 
 ### Acceptance Threshold
 
-| Metric | Threshold | Blocking? |
-| ------ | --------- | --------- |
-| Category coverage | 100% | Yes |
-| Factual accuracy | 100% | Yes |
-| Hallucination rate | 0% | Yes |
-| Detail completeness | >80% | No |
-| Response latency P95 | <2s | No |
+| Metric               | Threshold | Blocking? |
+| -------------------- | --------- | --------- |
+| Category coverage    | 100%      | Yes       |
+| Factual accuracy     | 100%      | Yes       |
+| Hallucination rate   | 0%        | Yes       |
+| Detail completeness  | >80%      | No        |
+| Response latency P95 | <2s       | No        |
 
 **Release gate**: All blocking metrics must pass before production deployment.

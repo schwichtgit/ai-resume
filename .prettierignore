@@ -1,3 +1,51 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Python virtual environments
+.venv/
+**/.venv/
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+**/dist/
+**/build/
+**/target/
+
+# Test / coverage artifacts
+coverage/
+htmlcov/
+.nyc_output/
+**/coverage/
+playwright-report/
+test-results/
+
+# Caches
+.cache/
+.vite/
+.turbo/
+.next/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+
+# Lockfiles (owned by package managers)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+uv.lock
+Cargo.lock
+poetry.lock
+
+# Generated / binary data
+data/.memvid/
+*.mv2
+
 # Generated/working files
 claude-project-foundation-PLAN.md
 .claude/PLAN.md

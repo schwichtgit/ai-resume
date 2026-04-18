@@ -1,84 +1,84 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-import { ErrorBoundary } from "../ErrorBoundary";
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { ErrorBoundary } from '../ErrorBoundary';
 
 // Component that throws on render
 function ThrowingComponent({ shouldThrow = true }: { shouldThrow?: boolean }) {
   if (shouldThrow) {
-    throw new Error("Test error");
+    throw new Error('Test error');
   }
   return <div>Working content</div>;
 }
 
-describe("ErrorBoundary", () => {
+describe('ErrorBoundary', () => {
   beforeEach(() => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
-  it("renders children when no error", () => {
+  it('renders children when no error', () => {
     render(
       <ErrorBoundary sectionName="Test">
         <div>Child content</div>
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
-    expect(screen.getByText("Child content")).toBeDefined();
+    expect(screen.getByText('Child content')).toBeDefined();
   });
 
-  it("renders fallback on error", () => {
+  it('renders fallback on error', () => {
     render(
       <ErrorBoundary sectionName="Experience">
         <ThrowingComponent />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
-    expect(screen.getByText("Unable to load Experience")).toBeDefined();
-    expect(screen.getByText("Try Again")).toBeDefined();
+    expect(screen.getByText('Unable to load Experience')).toBeDefined();
+    expect(screen.getByText('Try Again')).toBeDefined();
   });
 
-  it("renders custom fallback when provided", () => {
+  it('renders custom fallback when provided', () => {
     render(
       <ErrorBoundary sectionName="Test" fallback={<div>Custom fallback</div>}>
         <ThrowingComponent />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
-    expect(screen.getByText("Custom fallback")).toBeDefined();
+    expect(screen.getByText('Custom fallback')).toBeDefined();
   });
 
-  it("logs error with section name", () => {
-    const consoleSpy = vi.spyOn(console, "error");
+  it('logs error with section name', () => {
+    const consoleSpy = vi.spyOn(console, 'error');
     render(
       <ErrorBoundary sectionName="AIChat">
         <ThrowingComponent />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
     expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining("[ErrorBoundary:AIChat]"),
+      expect.stringContaining('[ErrorBoundary:AIChat]'),
       expect.any(Error),
-      expect.anything()
+      expect.anything(),
     );
   });
 
-  it("resets on Try Again click", () => {
+  it('resets on Try Again click', () => {
     let shouldThrow = true;
     function ConditionalThrower() {
-      if (shouldThrow) throw new Error("Test error");
+      if (shouldThrow) throw new Error('Test error');
       return <div>Recovered content</div>;
     }
 
     render(
       <ErrorBoundary sectionName="Test">
         <ConditionalThrower />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
 
-    expect(screen.getByText("Unable to load Test")).toBeDefined();
+    expect(screen.getByText('Unable to load Test')).toBeDefined();
 
     shouldThrow = false;
-    fireEvent.click(screen.getByText("Try Again"));
+    fireEvent.click(screen.getByText('Try Again'));
 
-    expect(screen.getByText("Recovered content")).toBeDefined();
+    expect(screen.getByText('Recovered content')).toBeDefined();
   });
 
-  it("does not affect sibling sections on error", () => {
+  it('does not affect sibling sections on error', () => {
     render(
       <div>
         <ErrorBoundary sectionName="Broken">
@@ -87,10 +87,10 @@ describe("ErrorBoundary", () => {
         <ErrorBoundary sectionName="Working">
           <div>Working section</div>
         </ErrorBoundary>
-      </div>
+      </div>,
     );
 
-    expect(screen.getByText("Unable to load Broken")).toBeDefined();
-    expect(screen.getByText("Working section")).toBeDefined();
+    expect(screen.getByText('Unable to load Broken')).toBeDefined();
+    expect(screen.getByText('Working section')).toBeDefined();
   });
 });

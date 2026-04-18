@@ -248,10 +248,12 @@ sock.bind(('0.0.0.0', 8080))
 **Security Risks:**
 
 1. **Exposure to Multiple Networks:**
+
    - Service listens on public, private, and VPN interfaces
    - Attacker on any connected network can reach the service
 
 2. **Cloud Metadata Services:**
+
    - Some cloud providers have metadata services on specific interfaces
    - Binding to all interfaces may expose unintended access paths
 
@@ -312,11 +314,13 @@ uvicorn.run(app, host=BIND_HOST, port=8000)
 **When `0.0.0.0` is Acceptable:**
 
 1. **Behind a Reverse Proxy:**
+
    - Service runs on isolated Docker network
    - Traefik/Nginx handles external requests
    - Container is not directly exposed to internet
 
 2. **Proper Firewall Rules:**
+
    - Host firewall blocks direct access
    - Only reverse proxy can reach the service
    - Network segmentation in place
@@ -334,6 +338,7 @@ Alert dismissed as wont-fix.
 Reason: Application runs in Docker container with isolated networking.
 
 Security controls:
+
 - Container on isolated Docker bridge network
 - Traefik reverse proxy handles all external requests
 - Host firewall prevents direct external access
@@ -437,16 +442,19 @@ class UserQuery(BaseModel):
 ### Prioritization
 
 1. **Critical (9.0-10.0):** Fix immediately
+
    - SQL injection
    - Remote code execution
    - Authentication bypasses
 
 2. **High (7.0-8.9):** Fix within sprint
+
    - Insecure randomness in security contexts
    - Unvalidated redirects
    - XSS vulnerabilities
 
 3. **Medium (4.0-6.9):** Fix within release cycle
+
    - Clear-text logging
    - Missing encryption
    - Information disclosure

@@ -1,6 +1,6 @@
-import { ReactNode } from "react";
-import { useProfile } from "@/hooks/useProfile";
-import { ProfileContext } from "@/context/profileContextValue";
+import { ReactNode } from 'react';
+import { useProfile } from '@/hooks/useProfile';
+import { ProfileContext } from '@/context/profileContextValue';
 
 /**
  * Provider component that loads and provides profile data to the app.

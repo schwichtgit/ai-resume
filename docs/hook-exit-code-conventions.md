@@ -22,22 +22,22 @@ Claude Code command hooks communicate intent through three exit code classes:
 Exit 2 only blocks events that represent future actions. Events that report
 things that already happened cannot be blocked.
 
-| Hook Event          | Can Block? | Exit 2 Effect                                          |
-|---------------------|------------|--------------------------------------------------------|
-| `PreToolUse`        | Yes        | Blocks the tool call                                   |
-| `PermissionRequest` | Yes        | Denies the permission                                  |
-| `UserPromptSubmit`  | Yes        | Blocks prompt processing and erases the prompt         |
-| `Stop`              | Yes        | Prevents Claude from stopping; conversation continues  |
-| `SubagentStop`      | Yes        | Prevents the subagent from stopping                    |
-| `TeammateIdle`      | Yes        | Prevents the teammate from going idle                  |
-| `TaskCompleted`     | Yes        | Prevents the task from being marked completed          |
-| `PostToolUse`       | No         | Shows stderr to Claude (tool already ran)              |
-| `PostToolUseFailure`| No         | Shows stderr to Claude (tool already failed)           |
-| `Notification`      | No         | Shows stderr to user only                              |
-| `SubagentStart`     | No         | Shows stderr to user only                              |
-| `SessionStart`      | No         | Shows stderr to user only                              |
-| `SessionEnd`        | No         | Shows stderr to user only                              |
-| `PreCompact`        | No         | Shows stderr to user only                              |
+| Hook Event           | Can Block? | Exit 2 Effect                                         |
+| -------------------- | ---------- | ----------------------------------------------------- |
+| `PreToolUse`         | Yes        | Blocks the tool call                                  |
+| `PermissionRequest`  | Yes        | Denies the permission                                 |
+| `UserPromptSubmit`   | Yes        | Blocks prompt processing and erases the prompt        |
+| `Stop`               | Yes        | Prevents Claude from stopping; conversation continues |
+| `SubagentStop`       | Yes        | Prevents the subagent from stopping                   |
+| `TeammateIdle`       | Yes        | Prevents the teammate from going idle                 |
+| `TaskCompleted`      | Yes        | Prevents the task from being marked completed         |
+| `PostToolUse`        | No         | Shows stderr to Claude (tool already ran)             |
+| `PostToolUseFailure` | No         | Shows stderr to Claude (tool already failed)          |
+| `Notification`       | No         | Shows stderr to user only                             |
+| `SubagentStart`      | No         | Shows stderr to user only                             |
+| `SessionStart`       | No         | Shows stderr to user only                             |
+| `SessionEnd`         | No         | Shows stderr to user only                             |
+| `PreCompact`         | No         | Shows stderr to user only                             |
 
 ## The Antipattern: `exit 1` for Blocks
 
@@ -154,14 +154,14 @@ Changes:
 
 The output channel determines who sees your message:
 
-| Exit Code | Channel  | Who Sees It                                      |
-|-----------|----------|--------------------------------------------------|
-| 0         | stdout   | Claude Code parses as JSON; verbose mode display |
-| 0         | stderr   | Ignored                                          |
-| 2         | stderr   | Fed to Claude as error context                   |
-| 2         | stdout   | Ignored (JSON not parsed)                        |
-| Other     | stderr   | Shown in verbose mode (`Ctrl+O`)                 |
-| Other     | stdout   | Ignored                                          |
+| Exit Code | Channel | Who Sees It                                      |
+| --------- | ------- | ------------------------------------------------ |
+| 0         | stdout  | Claude Code parses as JSON; verbose mode display |
+| 0         | stderr  | Ignored                                          |
+| 2         | stderr  | Fed to Claude as error context                   |
+| 2         | stdout  | Ignored (JSON not parsed)                        |
+| Other     | stderr  | Shown in verbose mode (`Ctrl+O`)                 |
+| Other     | stdout  | Ignored                                          |
 
 Key rule: **Claude only reads stderr on exit 2, stdout on exit 0.** If you send
 your block explanation to stdout and exit 2, Claude never sees why the tool was

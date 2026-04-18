@@ -22,7 +22,7 @@ This document defines the optimal schema for resume data files used by the AI Re
 
 ### 1. Optimize for Retrieval, Not Reading
 
-The master document is **not** a traditional resume. It's a knowledge base optimized for semantic search and LLM augmentation. Structure content for how it will be *queried*, not how it would be *read*.
+The master document is **not** a traditional resume. It's a knowledge base optimized for semantic search and LLM augmentation. Structure content for how it will be _queried_, not how it would be _read_.
 
 **Bad:** Long narrative paragraphs mixing multiple topics
 **Good:** Focused sections with explicit topic markers and keywords
@@ -151,10 +151,10 @@ system_prompt: |
 # Suggested Questions (MUST mirror FAQ entries)
 suggested_questions:
   - "What's her security track record?"
-  - "What programming languages does she know?"
-  - "Tell me about her AI/ML experience."
-  - "What are her biggest failures?"
-  - "Would she be good for an early-stage startup?"
+  - 'What programming languages does she know?'
+  - 'Tell me about her AI/ML experience.'
+  - 'What are her biggest failures?'
+  - 'Would she be good for an early-stage startup?'
 
 # Global Tags (for memvid indexing)
 tags:
@@ -189,40 +189,48 @@ Each FAQ entry should:
 ## Frequently Asked Questions
 
 ### What's her security track record?
+
 **Keywords:** security, zero-trust, FedRAMP, SOC 2, compliance, audit, encryption
 
 Jane has 12+ years of security architecture experience in regulated industries:
 
 **Compliance Certifications:**
+
 - Led FedRAMP Moderate certification (passed first attempt)
 - Achieved SOC 2 Type II compliance for SaaS platform
 - Maintained PCI-DSS compliance for payment processing systems
 
 **Security Architecture:**
+
 - Designed zero-trust network architecture at Acme Corp
 - Implemented HashiCorp Vault for secrets management
 - Built automated security scanning in CI/CD (Snyk, Trivy, Grype)
 
 **Track Record:**
+
 - Zero security breaches across 5 years at previous company
 - Reduced vulnerability remediation time from 30 days to 48 hours
 - Passed 3 external penetration tests with no critical findings
 
 ### What programming languages does she know?
+
 **Keywords:** programming, languages, coding, Python, Go, Rust, development
 
 Jane's programming skills:
 
 **Primary Languages (daily use):**
+
 - Python: 10+ years, data pipelines, automation, ML tooling
 - Go: 5+ years, microservices, CLI tools, Kubernetes operators
 - Bash: System scripting, CI/CD automation
 
 **Secondary Languages (working knowledge):**
+
 - Rust: Learning, interested in systems programming
 - JavaScript/TypeScript: Can read/review, not primary developer
 
 **Not a fit for:**
+
 - Frontend development (React, Vue) - limited experience
 - Mobile development - no production experience
 - Low-level systems (C, C++) - hasn't used in 10+ years
@@ -244,6 +252,7 @@ Each role should be a separate chunk with consistent structure:
 ## Professional Experience
 
 ### Acme Corp
+
 **Role:** VP of Platform Engineering
 **Period:** January 2022 – Present (3 years)
 **Location:** San Francisco, CA (Hybrid)
@@ -253,16 +262,19 @@ Each role should be a separate chunk with consistent structure:
 Built and led platform engineering team supporting 200+ developers across 5 product teams.
 
 **Key Achievements:**
+
 - Reduced deployment time from 2 weeks to 4 hours (50x improvement)
 - Grew team from 3 to 15 engineers while maintaining <10% attrition
 - Achieved 99.95% platform availability (up from 99.5%)
 
 **Technical Highlights:**
+
 - Kubernetes: Managed 50+ clusters across AWS and GCP
 - MLOps: Built model serving platform handling 10M inferences/day
 - Observability: Prometheus/Grafana stack with SLO-based alerting
 
 **AI Context (Story Behind the Achievement):**
+
 - **Situation:** Developers blocked for weeks waiting for infrastructure
 - **Approach:** Built self-service platform with guardrails, not gatekeepers
 - **Technical Work:** Kubernetes operators, GitOps with ArgoCD, Backstage developer portal
@@ -285,19 +297,23 @@ Built and led platform engineering team supporting 200+ developers across 5 prod
 
 ```markdown
 ## Security Skills & Experience
+
 **Keywords:** security, zero-trust, compliance, FedRAMP, SOC 2, Vault, encryption
 
 **Certifications & Compliance:**
+
 - FedRAMP Moderate (led certification)
 - SOC 2 Type II (designed controls)
 - PCI-DSS (maintained compliance)
 
 **Security Tools:**
+
 - Secrets Management: HashiCorp Vault, AWS Secrets Manager
 - Scanning: Snyk, Trivy, Grype, SBOM generation
 - Policy: Open Policy Agent, Kyverno
 
 **Architecture Patterns:**
+
 - Zero-trust networking (mTLS, service mesh)
 - Defense in depth (network segmentation, WAF, DDoS protection)
 - Secure CI/CD (signed commits, image scanning, SLSA compliance)
@@ -305,19 +321,23 @@ Built and led platform engineering team supporting 200+ developers across 5 prod
 ---
 
 ## Programming Languages & Development
+
 **Keywords:** programming, languages, coding, Python, Go, Bash, Rust, software
 
 **Primary Languages:**
+
 - **Python:** Data pipelines, ML tooling, automation (10+ years)
 - **Go:** Microservices, Kubernetes operators, CLI tools (5+ years)
 - **Bash:** System administration, CI/CD scripting
 
 **Infrastructure as Code:**
+
 - Terraform (AWS, GCP, Azure)
 - Pulumi (Python-based IaC)
 - Ansible (configuration management)
 
 **Limitations:**
+
 - Not a frontend developer (limited React/Vue)
 - No mobile development experience
 - Rust: Currently learning, not production-ready
@@ -325,6 +345,7 @@ Built and led platform engineering team supporting 200+ developers across 5 prod
 ---
 
 ## Cloud & Infrastructure
+
 **Keywords:** cloud, AWS, GCP, Azure, Kubernetes, infrastructure, containers
 
 [Similar structure...]
@@ -346,22 +367,26 @@ Each failure should be a separate chunk:
 ## Documented Failures & Lessons Learned
 
 ### Failure: The Over-Engineered Platform (2023)
+
 **Keywords:** failure, complexity, maintainability, documentation, lessons
 
 **What Happened:**
 Built an internal platform so complex that only I could maintain it. When I moved to another project, it required a complete rewrite within 6 months.
 
 **Root Cause:**
+
 - Prioritized "elegant" architecture over maintainability
 - No documentation or knowledge transfer
 - Assumed I'd always be available to support it
 
 **What I Learned:**
+
 - Simplicity is a feature, complexity is a liability
 - "If only one person understands it, it's not production-ready"
 - Now: Always ask "can a new team member maintain this in 6 months?"
 
 **How Behavior Changed:**
+
 - Write documentation as I build, not after
 - Favor boring technology over clever solutions
 - Require code reviews from junior engineers (if they can't understand it, simplify)
@@ -369,6 +394,7 @@ Built an internal platform so complex that only I could maintain it. When I move
 ---
 
 ### Failure: The Migration That Took 2x Longer (2021)
+
 [Similar structure...]
 ```
 

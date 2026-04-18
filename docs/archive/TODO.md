@@ -207,6 +207,7 @@ Based on analysis from `docs/streamchat.pdf` (Perplexity AI recommendations).
 ### Streaming Implementation ✅
 
 - [x] Implement `_stream_chat_response()` helper:
+
   - [x] Async generator for real OpenRouter streaming
   - [x] SSE-compatible output format (`data:`, `event:` fields)
   - [x] Token counting and timing metrics (start_time, elapsed_seconds)
@@ -241,6 +242,7 @@ Based on analysis from `docs/streamchat.pdf` (Perplexity AI recommendations).
 ### Testing & Observability ✅
 
 - [x] Add integration tests:
+
   - [x] Test streaming endpoint with mock
   - [x] Test non-streaming endpoint
   - [x] Test client disconnect handling (CancelledError)
@@ -409,11 +411,13 @@ event: error\ndata: {message}\n\n         # Errors
 ### Container Security Hardening ✅
 
 - [x] Add read-only filesystem to all services:
+
   - [x] `ai-resume-memvid`: `read_only: true`
   - [x] `ai-resume-api`: `read_only: true`
   - [x] `ai-resume-frontend`: `read_only: true`
 
 - [x] Configure tmpfs mounts for writable directories:
+
   - [x] **memvid-service**: `/tmp` (128M), `/run` (64M)
   - [x] **api-service**: `/tmp` (256M), `/var/tmp` (128M), `/run` (64M)
   - [x] **frontend**: `/var/cache/nginx` (128M), `/var/run` (64M), `/tmp` (64M)
@@ -432,6 +436,7 @@ event: error\ndata: {message}\n\n         # Errors
 ### Health Checks Update ✅
 
 - [x] Changed memvid-service health check:
+
   - [x] From: `grpc-health-probe -addr=:50051` (missing binary)
   - [x] To: `wget -q --spider http://localhost:9090/metrics` (HTTP endpoint, proves Rust service is healthy)
 
@@ -454,11 +459,13 @@ event: error\ndata: {message}\n\n         # Errors
 ### Files Modified ✅
 
 - [x] `deployment/compose.yaml`:
+
   - [x] Added `tmpfs:` sections to all three services
   - [x] Updated memvid health check to use metrics endpoint
   - [x] Removed unnecessary log volume mounts
 
 - [x] `memvid-service/Dockerfile`:
+
   - [x] Added `wget` to runtime image
 
 - [x] `frontend/nginx.conf`:
@@ -528,19 +535,19 @@ The implementation exceeded the original plan. Key achievements:
 
 ### Phase 4 Summary
 
-| Task | Effort | Priority | Status |
-| ---- | ------ | -------- | ------ |
-| 4.1 Backend Profile API | 2-3h | 🔴 CRITICAL | ✅ COMPLETE |
-| 4.2 Frontend Profile Hook | 3-4h | 🔴 CRITICAL | ✅ COMPLETE |
-| 4.3 Component Refactoring | 2-3h | 🔴 CRITICAL | ✅ COMPLETE |
-| 4.4 HTML Metadata | 1-2h | 🟡 HIGH | ✅ COMPLETE |
-| 4.5-4.6 Extended API & Cleanup | 2-3h | 🟡 HIGH | ✅ COMPLETE |
-| 4.7 Profile in Memvid | 2h | 🔴 CRITICAL | ✅ COMPLETE |
-| 4.8 Hybrid Fit Assessment | 4-5h | 🟡 HIGH | ✅ COMPLETE |
-| 4.9-4.10 Legacy Cleanup | 1-2h | 🟡 MEDIUM | ✅ COMPLETE |
-| 4.11 Testing & Validation | 2h | 🟡 HIGH | ✅ COMPLETE |
-| 4.12 Documentation | 1h | 🟢 MEDIUM | ✅ COMPLETE |
-| **Total** | **~20h** | | **✅ COMPLETE** |
+| Task                           | Effort   | Priority    | Status          |
+| ------------------------------ | -------- | ----------- | --------------- |
+| 4.1 Backend Profile API        | 2-3h     | 🔴 CRITICAL | ✅ COMPLETE     |
+| 4.2 Frontend Profile Hook      | 3-4h     | 🔴 CRITICAL | ✅ COMPLETE     |
+| 4.3 Component Refactoring      | 2-3h     | 🔴 CRITICAL | ✅ COMPLETE     |
+| 4.4 HTML Metadata              | 1-2h     | 🟡 HIGH     | ✅ COMPLETE     |
+| 4.5-4.6 Extended API & Cleanup | 2-3h     | 🟡 HIGH     | ✅ COMPLETE     |
+| 4.7 Profile in Memvid          | 2h       | 🔴 CRITICAL | ✅ COMPLETE     |
+| 4.8 Hybrid Fit Assessment      | 4-5h     | 🟡 HIGH     | ✅ COMPLETE     |
+| 4.9-4.10 Legacy Cleanup        | 1-2h     | 🟡 MEDIUM   | ✅ COMPLETE     |
+| 4.11 Testing & Validation      | 2h       | 🟡 HIGH     | ✅ COMPLETE     |
+| 4.12 Documentation             | 1h       | 🟢 MEDIUM   | ✅ COMPLETE     |
+| **Total**                      | **~20h** |             | **✅ COMPLETE** |
 
 ### Success Criteria ✅
 
@@ -786,12 +793,12 @@ The implementation exceeded the original plan. Key achievements:
 
 ### Why This Matters
 
-| Current State | Ontology-Based |
-| ------------- | -------------- |
-| Find text containing "Python" | Query "5+ years Python experience" via metadata |
-| Context from entire job description | Link specific skills to specific projects |
+| Current State                         | Ontology-Based                                    |
+| ------------------------------------- | ------------------------------------------------- |
+| Find text containing "Python"         | Query "5+ years Python experience" via metadata   |
+| Context from entire job description   | Link specific skills to specific projects         |
 | Anti-patterns mixed with achievements | Structured "Limitations" frame for honest answers |
-| FAQ text matching | Typed NarrativeFrame with sentiment analysis |
+| FAQ text matching                     | Typed NarrativeFrame with sentiment analysis      |
 
 ### Proposed Ontology Schema
 
@@ -843,23 +850,27 @@ class CandidateOntology(BaseModel):
 ### Implementation Tasks
 
 - [ ] **10.1: Define Pydantic Ontology**
+
   - [ ] Create `ingest/ontology.py` with above schema
   - [ ] Add validation rules (years > 0, required fields)
   - [ ] Generate JSON Schema for documentation
 
 - [ ] **10.2: LLM-Based Extraction Pipeline**
+
   - [ ] Integrate `instructor` library for structured extraction
   - [ ] Use OpenRouter with structured output (Gemini/GPT-4o)
   - [ ] Validation loop to ensure failures/anti-patterns aren't skipped
   - [ ] Fallback to current parsing if LLM extraction fails
 
 - [ ] **10.3: Memvid Fact Frame Storage**
+
   - [ ] Store each entity as typed frame with full JSON metadata
   - [ ] Add `type` field to metadata (experience, narrative, skill, etc.)
   - [ ] Link frames via `candidate_id` for multi-candidate support
   - [ ] Preserve backward compatibility with current .mv2 format
 
 - [ ] **10.4: Hybrid Query Router**
+
   - [ ] Implement query classifier (semantic vs structured)
   - [ ] Add metadata filtering to memvid search
   - [ ] Support queries like "leadership roles" → filter `is_leadership: true`
@@ -955,16 +966,17 @@ class CandidateOntology(BaseModel):
    ```yaml
    ---
    name: Jane Chen
-   image: /path/to/jane-preview.png  # NEW: Optional OG preview image
-   ...
+   image: /path/to/jane-preview.png # NEW: Optional OG preview image
    ```
 
 2. Update ingest pipeline:
+
    - Extract `image` from frontmatter
    - Store in memvid profile metadata
    - Validate image exists and is accessible
 
 3. Update API endpoints:
+
    - Return `image` in ProfileResponse
    - Update `/api/v1/profile` endpoint
 
@@ -1003,7 +1015,7 @@ class CandidateOntology(BaseModel):
 1. Add `pronouns` field to resume YAML:
 
    ```yaml
-   pronouns: she/her  # or: he/him, they/them, etc.
+   pronouns: she/her # or: he/him, they/them, etc.
    ```
 
 2. Extract in ingest pipeline
@@ -1284,19 +1296,19 @@ Ask mode adds a cross-encoder re-ranking layer that:
 
 ### Estimated Timeline
 
-| Task | Effort | Priority |
-| ---- | ------ | -------- |
-| 11.1 Proto Updates | 2h | 🔴 CRITICAL |
-| 11.2 Rust Service (using memvid SDK Ask) | 4h | 🔴 CRITICAL |
-| 11.3 Python Client | 2h | 🔴 CRITICAL |
-| 11.4 Chat Integration | 2h | 🔴 CRITICAL |
-| 11.5 Ingest Updates | 2h | 🟡 HIGH |
-| 11.6 Testing | 4h | 🟡 HIGH |
-| 11.7 A/B Testing | 2h | 🟢 MEDIUM |
-| 11.8 Documentation | 2h | 🟢 MEDIUM |
-| 11.9 Optimization | 4h | 🟢 LOW |
-| 11.10 Custom Cross-Encoder (future) | TBD | 🟢 FUTURE |
-| **Total** | **~24h** | **2-3 days** |
+| Task                                     | Effort   | Priority     |
+| ---------------------------------------- | -------- | ------------ |
+| 11.1 Proto Updates                       | 2h       | 🔴 CRITICAL  |
+| 11.2 Rust Service (using memvid SDK Ask) | 4h       | 🔴 CRITICAL  |
+| 11.3 Python Client                       | 2h       | 🔴 CRITICAL  |
+| 11.4 Chat Integration                    | 2h       | 🔴 CRITICAL  |
+| 11.5 Ingest Updates                      | 2h       | 🟡 HIGH      |
+| 11.6 Testing                             | 4h       | 🟡 HIGH      |
+| 11.7 A/B Testing                         | 2h       | 🟢 MEDIUM    |
+| 11.8 Documentation                       | 2h       | 🟢 MEDIUM    |
+| 11.9 Optimization                        | 4h       | 🟢 LOW       |
+| 11.10 Custom Cross-Encoder (future)      | TBD      | 🟢 FUTURE    |
+| **Total**                                | **~24h** | **2-3 days** |
 
 ---
 
@@ -1376,19 +1388,19 @@ Ask mode adds a cross-encoder re-ranking layer that:
 
 ## Estimated Timeline
 
-| Phase                    | Effort   | Timeline      | Status         |
-| ------------------------ | -------- | ------------- | -------------- |
-| 1. Infrastructure        | 10h      | Week 1        | ✅ Complete    |
-| 1.5. Memvid Ingest       | 15h      | Week 1-2      | ✅ Complete    |
-| 2. Backend               | 40h      | 2 weeks       | ✅ Complete    |
-| 3. Frontend              | 20h      | 1 week        | Pending        |
-| 4. Data-driven           | 15h      | 1 week        | Pending        |
-| 5. Containers            | 15h      | 1 week        | Pending        |
-| 6. QA                    | 20h      | 1-2 weeks     | Pending        |
-| 7. Observability         | 15h      | 1 week        | Pending        |
-| 8. Hardening             | 20h      | 1-2 weeks     | Pending        |
-| 9. Extended Features     | 40h+     | Optional      | -              |
-| **Remaining MVP**        | **~85h** | **3-4 weeks** | -              |
+| Phase                | Effort   | Timeline      | Status      |
+| -------------------- | -------- | ------------- | ----------- |
+| 1. Infrastructure    | 10h      | Week 1        | ✅ Complete |
+| 1.5. Memvid Ingest   | 15h      | Week 1-2      | ✅ Complete |
+| 2. Backend           | 40h      | 2 weeks       | ✅ Complete |
+| 3. Frontend          | 20h      | 1 week        | Pending     |
+| 4. Data-driven       | 15h      | 1 week        | Pending     |
+| 5. Containers        | 15h      | 1 week        | Pending     |
+| 6. QA                | 20h      | 1-2 weeks     | Pending     |
+| 7. Observability     | 15h      | 1 week        | Pending     |
+| 8. Hardening         | 20h      | 1-2 weeks     | Pending     |
+| 9. Extended Features | 40h+     | Optional      | -           |
+| **Remaining MVP**    | **~85h** | **3-4 weeks** | -           |
 
 **Progress Notes:**
 

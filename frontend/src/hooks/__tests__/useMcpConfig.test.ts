@@ -14,9 +14,7 @@ describe('useMcpConfig', () => {
   });
 
   it('fetches clients on demand', async () => {
-    const mockClients = [
-      { id: 'claude-desktop', label: 'Claude Desktop' },
-    ];
+    const mockClients = [{ id: 'claude-desktop', label: 'Claude Desktop' }];
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockClients),
@@ -46,7 +44,11 @@ describe('useMcpConfig', () => {
   });
 
   it('fetches config for a client', async () => {
-    const mockConfig = { label: 'Test', instructions: 'Add this', config: { url: '/mcp' } };
+    const mockConfig = {
+      label: 'Test',
+      instructions: 'Add this',
+      config: { url: '/mcp' },
+    };
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockConfig),

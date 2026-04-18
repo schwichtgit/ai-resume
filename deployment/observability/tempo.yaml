@@ -18,7 +18,7 @@ storage:
 
 compactor:
   compaction:
-    block_retention: 168h  # 7 days
+    block_retention: 168h # 7 days
 
 metrics_generator:
   processor:

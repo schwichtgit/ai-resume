@@ -67,7 +67,7 @@ Check that proper security measures are in place:
 networks:
   app-network:
     driver: bridge
-    internal: false  # Allows outbound, but Traefik controls inbound
+    internal: false # Allows outbound, but Traefik controls inbound
 ```
 
 1. **Firewall Rules:**
@@ -174,6 +174,7 @@ Docker bridge network. This is necessary for the reverse proxy (Traefik) to
 forward requests to the container.
 
 **Security Controls:**
+
 - Container runs on isolated Docker bridge network (`app-network`)
 - Traefik reverse proxy handles all external requests
 - TLS termination, authentication, and rate limiting at proxy layer
@@ -181,6 +182,7 @@ forward requests to the container.
 - Container runs as non-root user (uid 101) for additional isolation
 
 **Network Architecture:**
+
 ```text
 
 Internet → Traefik (443) → Docker Network → Container (8000)
@@ -189,6 +191,7 @@ Internet → Traefik (443) → Docker Network → Container (8000)
 ```
 
 **Alternatives Considered:**
+
 - Binding to `127.0.0.1` - Would prevent Docker network access
 - Binding to specific container IP - Would break with dynamic container IPs
 - Using host networking - Would reduce isolation
@@ -280,6 +283,7 @@ Even dismissed alerts should be periodically reviewed:
 **Review Schedule:** Annually
 **Next Review:** 2027-02-06
 **Trigger for Earlier Review:**
+
 - Change in deployment architecture
 - Moving from containerized to direct deployment
 - Changes to network segmentation

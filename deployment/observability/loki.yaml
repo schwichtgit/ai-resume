@@ -15,11 +15,11 @@ common:
       store: inmemory
 
 limits_config:
-  retention_period: 168h  # 7 days
+  retention_period: 168h # 7 days
 
 schema_config:
   configs:
-    - from: "2024-01-01"
+    - from: '2024-01-01'
       store: tsdb
       object_store: filesystem
       schema: v13

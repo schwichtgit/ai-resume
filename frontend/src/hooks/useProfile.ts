@@ -85,7 +85,10 @@ export function useProfile(): UseProfileResult {
         });
         setError(null);
 
-        span.setAttribute('response_time_ms', Math.round(performance.now() - start));
+        span.setAttribute(
+          'response_time_ms',
+          Math.round(performance.now() - start),
+        );
         span.setStatus({ code: SpanStatusCode.OK });
 
         // Register WebMCP tools once profile loads (Chrome 146+ only)
