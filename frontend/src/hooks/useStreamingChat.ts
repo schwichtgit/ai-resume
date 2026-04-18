@@ -97,19 +97,26 @@ export function useStreamingChat(
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [stats, setStats] = useState<StreamStats | null>(null);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(() =>
+    generateSessionId(),
+  );
   const [rateLimitedUntil, setRateLimitedUntil] = useState<number | null>(null);
-
-  const isRateLimited =
-    rateLimitedUntil !== null && rateLimitedUntil > Date.now();
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastMessageRef = useRef<string | null>(null);
 
-  // Initialize session ID on mount
+  // Schedule a clear of rateLimitedUntil when the window expires so the UI
+  // auto-updates without needing a render to notice wall-clock time has
+  // advanced. Using setTimeout (even with 0 ms) keeps the clear asynchronous,
+  // so no setState fires synchronously inside the effect.
   useEffect(() => {
-    setSessionId(generateSessionId());
-  }, []);
+    if (rateLimitedUntil === null) return;
+    const remaining = Math.max(0, rateLimitedUntil - Date.now());
+    const timer = setTimeout(() => setRateLimitedUntil(null), remaining);
+    return () => clearTimeout(timer);
+  }, [rateLimitedUntil]);
+
+  const isRateLimited = rateLimitedUntil !== null;
 
   const cancelStream = useCallback(() => {
     if (abortControllerRef.current) {
