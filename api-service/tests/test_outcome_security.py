@@ -417,8 +417,8 @@ class TestRateLimitingSecurity:
         ):
             mock_settings_obj.load_profile_from_memvid = AsyncMock(return_value=MOCK_PROFILE)
             mock_settings_obj.load_profile = lambda: MOCK_PROFILE
-            mock_settings_obj.get_system_prompt_from_profile = (
-                lambda: "You are an AI resume assistant."
+            mock_settings_obj.get_system_prompt_from_profile = lambda: (
+                "You are an AI resume assistant."
             )
             mock_settings_obj.max_history_messages = 10
             mock_settings_obj.llm_model = "test-model"
