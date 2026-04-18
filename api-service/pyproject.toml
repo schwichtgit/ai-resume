@@ -37,7 +37,7 @@ test = [
 ]
 lint = [
     "black>=24.10.0",
-    "isort>=5.13.2",
+    "isort>=8.0.1",
     "ruff>=0.8.6",
     "mypy>=1.20.0",
     "types-cachetools>=5.5.0",
