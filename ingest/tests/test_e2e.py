@@ -445,7 +445,7 @@ async def main() -> bool:
     total_failed = 0
 
     # Test 1: Memvid retrieval accuracy
-    p, f = test_memvid_retrieval(mv2_path)  # type: ignore[func-returns-value]
+    p, f = test_memvid_retrieval(mv2_path)  # type: ignore[func-returns-value,misc]
     total_passed += p
     total_failed += f
 
