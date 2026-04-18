@@ -101,27 +101,22 @@ export function useStreamingChat(
     generateSessionId(),
   );
   const [rateLimitedUntil, setRateLimitedUntil] = useState<number | null>(null);
-  const [isRateLimited, setIsRateLimited] = useState(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastMessageRef = useRef<string | null>(null);
 
-  // Flip isRateLimited off when the window expires so the UI auto-updates
-  // without requiring another render to notice wall-clock time has advanced.
+  // Schedule a clear of rateLimitedUntil when the window expires so the UI
+  // auto-updates without needing a render to notice wall-clock time has
+  // advanced. Using setTimeout (even with 0 ms) keeps the clear asynchronous,
+  // so no setState fires synchronously inside the effect.
   useEffect(() => {
-    if (rateLimitedUntil === null) {
-      setIsRateLimited(false);
-      return;
-    }
-    const remaining = rateLimitedUntil - Date.now();
-    if (remaining <= 0) {
-      setIsRateLimited(false);
-      return;
-    }
-    setIsRateLimited(true);
-    const timer = setTimeout(() => setIsRateLimited(false), remaining);
+    if (rateLimitedUntil === null) return;
+    const remaining = Math.max(0, rateLimitedUntil - Date.now());
+    const timer = setTimeout(() => setRateLimitedUntil(null), remaining);
     return () => clearTimeout(timer);
   }, [rateLimitedUntil]);
+
+  const isRateLimited = rateLimitedUntil !== null;
 
   const cancelStream = useCallback(() => {
     if (abortControllerRef.current) {
