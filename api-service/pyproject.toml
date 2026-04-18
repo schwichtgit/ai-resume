@@ -39,7 +39,7 @@ lint = [
     "black>=24.10.0",
     "isort>=8.0.1",
     "ruff>=0.8.6",
-    "mypy>=1.20.0",
+    "mypy>=1.20.1",
     "types-cachetools>=5.5.0",
 ]
 sbom = [
