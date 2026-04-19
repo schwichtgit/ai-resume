@@ -2,14 +2,14 @@ ARG BUILD_VERSION=dev
 ARG BUILD_COMMIT=unknown
 
 # --- Stage 1: Builder ---
-# Full UBI 10 with dnf, compilers, and uv for building the production venv
-FROM registry.access.redhat.com/ubi10/ubi AS builder
+# Rocky 10 minimal (microdnf) with compilers and uv for building the production venv
+FROM rockylinux/rockylinux:10-minimal AS builder
 
 # Install Python 3.12 + build toolchain for native extensions
-RUN dnf install -y --nodocs \
+RUN microdnf install -y --nodocs \
         python3.12 python3.12-devel \
         gcc gcc-c++ \
-    && dnf clean all
+    && microdnf clean all
 
 # Grab the uv binary from the official image
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
@@ -39,9 +39,9 @@ ARG BUILD_COMMIT
 RUN printf '{"version":"%s","commit":"%s"}\n' "${BUILD_VERSION}" "${BUILD_COMMIT}" > /app/VERSION
 
 # --- Stage 2: Python runtime staging ---
-# ubi-minimal has microdnf to install Python + shared libraries, then we
+# Rocky 10 minimal has microdnf to install Python + shared libraries, then we
 # stage everything into /python-runtime/ for a single COPY into ubi-micro.
-FROM registry.access.redhat.com/ubi10/ubi-minimal AS python-deps
+FROM rockylinux/rockylinux:10-minimal AS python-deps
 
 RUN microdnf install -y --nodocs \
         python3.12 \
