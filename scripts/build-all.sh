@@ -1,6 +1,7 @@
 #!/bin/bash
-# Multi-architecture container build script for Hybrid Rust + Python setup
-# Builds frontend (nginx+React), Rust memvid service, and Python API service
+# Multi-architecture container build orchestrator.
+# Delegates to per-service scripts (build-<service>.sh) so any one
+# container can be rebuilt in isolation via task container:build:<service>.
 #
 # Usage:
 #   ./build-all.sh [version] [--no-cache] [--skip-frontend]
@@ -12,229 +13,92 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/lib/container-build.sh
+source "${SCRIPT_DIR}/lib/container-build.sh"
+REPO_ROOT="$(container_build_repo_root)"
+cd "${REPO_ROOT}"
+
+require_podman
+
 VERSION="${1:-latest}"
 REGISTRY="${REGISTRY:-localhost}"
 NO_CACHE=""
 SKIP_FRONTEND=false
 
-# Parse additional arguments
 shift || true
 while [[ $# -gt 0 ]]; do
-    case $1 in
-        --no-cache)
-            NO_CACHE="--no-cache"
-            shift
-            ;;
-        --skip-frontend)
-            SKIP_FRONTEND=true
-            shift
-            ;;
-        *)
-            shift
-            ;;
+    case "$1" in
+        --no-cache) NO_CACHE="--no-cache" ;;
+        --skip-frontend) SKIP_FRONTEND=true ;;
+        *) ;;
     esac
+    shift
 done
 
-# Colors for output
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m'
-
-log_info() {
-    echo -e "${GREEN}[INFO]${NC} $1"
-}
-
-log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-# Check if podman is installed
-if ! command -v podman &> /dev/null; then
-    log_error "podman is not installed. Please install podman first."
-    exit 1
-fi
-
-# Change to project root directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "${SCRIPT_DIR}/.."
-
-# OCI image metadata (dynamic values injected at build time)
-BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-GIT_REVISION=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+export REGISTRY VERSION NO_CACHE
 
 log_info "Building multi-arch containers for Hybrid Rust + Python setup"
 log_info "Version: ${VERSION}"
 log_info "Registry: ${REGISTRY}"
-log_info "Revision: ${GIT_REVISION}"
-log_info "Build date: ${BUILD_DATE}"
 log_info "Platforms: linux/amd64, linux/arm64"
-[[ -n "$NO_CACHE" ]] && log_info "Cache: disabled"
+[[ -n "${NO_CACHE}" ]] && log_info "Cache: disabled"
 echo ""
 
-# Sync proto files from authoritative source before building
-# Uses hard links to keep proto files synchronized across build contexts
-log_info "Syncing proto files from authoritative source..."
-mkdir -p api-service/proto/memvid/v1 memvid-service/proto/memvid/v1
-ln -f proto/memvid/v1/memvid.proto api-service/proto/memvid/v1/memvid.proto 2>/dev/null || log_warn "Failed to link to api-service"
-ln -f proto/memvid/v1/memvid.proto memvid-service/proto/memvid/v1/memvid.proto 2>/dev/null || log_warn "Failed to link to memvid-service"
-log_info "Proto files synced"
-echo ""
-
-# Build frontend (React SPA + nginx)
-log_info "[1/4] Building frontend container..."
-if [ "$SKIP_FRONTEND" = true ]; then
+# Assemble the list of per-service builds to run.
+services=()
+if [[ "${SKIP_FRONTEND}" != "true" ]]; then
+    services+=("frontend")
+else
     log_warn "Skipping frontend build (--skip-frontend)"
-elif [ -f "frontend/Dockerfile" ]; then
-    # Remove existing manifest to avoid conflicts
-    podman manifest rm "${REGISTRY}/ai-resume-frontend:${VERSION}" 2>/dev/null || true
-    podman build \
-        ${NO_CACHE} \
-        --platform linux/amd64,linux/arm64 \
-        --manifest "${REGISTRY}/ai-resume-frontend:${VERSION}" \
-        --build-arg "BUILD_VERSION=${VERSION}" \
-        --build-arg "BUILD_COMMIT=${GIT_REVISION}" \
-        --annotation "org.opencontainers.image.title=ai-resume-frontend" \
-        --annotation "org.opencontainers.image.description=React SPA with OpenResty reverse proxy" \
-        --annotation "org.opencontainers.image.url=https://github.com/schwichtgit/ai-resume/pkgs/container/ai-resume-frontend" \
-        --annotation "org.opencontainers.image.source=https://github.com/schwichtgit/ai-resume" \
-        --annotation "org.opencontainers.image.documentation=https://github.com/schwichtgit/ai-resume#readme" \
-        --annotation "org.opencontainers.image.version=${VERSION}" \
-        --annotation "org.opencontainers.image.created=${BUILD_DATE}" \
-        --annotation "org.opencontainers.image.revision=${GIT_REVISION}" \
-        --annotation "org.opencontainers.image.licenses=PolyForm-Noncommercial-1.0.0 OR LicenseRef-Commercial" \
-        --annotation "org.opencontainers.image.vendor=schwichtgit" \
-        --annotation "org.opencontainers.image.authors=https://github.com/schwichtgit" \
-        -f frontend/Dockerfile \
-        frontend/
-    log_info "Frontend built successfully"
-else
-    log_warn "frontend/Dockerfile not found, skipping"
 fi
-echo ""
+services+=("memvid" "api" "ingest")
 
-# Build Rust memvid service
-log_info "[2/4] Building Rust memvid service..."
-if [ -f "memvid-service/Dockerfile" ]; then
-    # Remove existing manifest to avoid conflicts
-    podman manifest rm "${REGISTRY}/ai-resume-memvid:${VERSION}" 2>/dev/null || true
-    podman build \
-        ${NO_CACHE} \
-        --platform linux/amd64,linux/arm64 \
-        --manifest "${REGISTRY}/ai-resume-memvid:${VERSION}" \
-        --build-arg "BUILD_VERSION=${VERSION}" \
-        --build-arg "BUILD_COMMIT=${GIT_REVISION}" \
-        --annotation "org.opencontainers.image.title=ai-resume-memvid" \
-        --annotation "org.opencontainers.image.description=Rust gRPC service for semantic search over resume data" \
-        --annotation "org.opencontainers.image.url=https://github.com/schwichtgit/ai-resume/pkgs/container/ai-resume-memvid" \
-        --annotation "org.opencontainers.image.source=https://github.com/schwichtgit/ai-resume" \
-        --annotation "org.opencontainers.image.documentation=https://github.com/schwichtgit/ai-resume#readme" \
-        --annotation "org.opencontainers.image.version=${VERSION}" \
-        --annotation "org.opencontainers.image.created=${BUILD_DATE}" \
-        --annotation "org.opencontainers.image.revision=${GIT_REVISION}" \
-        --annotation "org.opencontainers.image.licenses=PolyForm-Noncommercial-1.0.0 OR LicenseRef-Commercial" \
-        --annotation "org.opencontainers.image.vendor=schwichtgit" \
-        --annotation "org.opencontainers.image.authors=https://github.com/schwichtgit" \
-        -f memvid-service/Dockerfile \
-        memvid-service/
-    log_info "Rust memvid service built successfully"
-else
-    log_warn "memvid-service/Dockerfile not found, skipping"
-fi
-echo ""
+total="${#services[@]}"
+idx=0
+for svc in "${services[@]}"; do
+    idx=$((idx + 1))
+    echo ""
+    log_info "[${idx}/${total}] Delegating to scripts/build-${svc}.sh"
+    # Pass through version + cache flag; per-service script honors REGISTRY from env.
+    if [[ -n "${NO_CACHE}" ]]; then
+        "${SCRIPT_DIR}/build-${svc}.sh" "${VERSION}" --no-cache
+    else
+        "${SCRIPT_DIR}/build-${svc}.sh" "${VERSION}"
+    fi
+done
 
-# Build Python API service
-log_info "[3/4] Building Python API service..."
-if [ -f "api-service/Dockerfile" ]; then
-    # Remove existing manifest to avoid conflicts
-    podman manifest rm "${REGISTRY}/ai-resume-api:${VERSION}" 2>/dev/null || true
-    podman build \
-        ${NO_CACHE} \
-        --platform linux/amd64,linux/arm64 \
-        --manifest "${REGISTRY}/ai-resume-api:${VERSION}" \
-        --build-arg "BUILD_VERSION=${VERSION}" \
-        --build-arg "BUILD_COMMIT=${GIT_REVISION}" \
-        --annotation "org.opencontainers.image.title=ai-resume-api" \
-        --annotation "org.opencontainers.image.description=FastAPI backend for profile API and gRPC client" \
-        --annotation "org.opencontainers.image.url=https://github.com/schwichtgit/ai-resume/pkgs/container/ai-resume-api" \
-        --annotation "org.opencontainers.image.source=https://github.com/schwichtgit/ai-resume" \
-        --annotation "org.opencontainers.image.documentation=https://github.com/schwichtgit/ai-resume#readme" \
-        --annotation "org.opencontainers.image.version=${VERSION}" \
-        --annotation "org.opencontainers.image.created=${BUILD_DATE}" \
-        --annotation "org.opencontainers.image.revision=${GIT_REVISION}" \
-        --annotation "org.opencontainers.image.licenses=PolyForm-Noncommercial-1.0.0 OR LicenseRef-Commercial" \
-        --annotation "org.opencontainers.image.vendor=schwichtgit" \
-        --annotation "org.opencontainers.image.authors=https://github.com/schwichtgit" \
-        -f api-service/Dockerfile \
-        api-service/
-    log_info "Python API service built successfully"
-else
-    log_warn "api-service/Dockerfile not found, skipping"
-fi
 echo ""
-
-# Build Python ingest service
-log_info "[4/4] Building Python ingest service..."
-if [ -f "ingest/Dockerfile" ]; then
-    # Remove existing manifest to avoid conflicts
-    podman manifest rm "${REGISTRY}/ai-resume-ingest:${VERSION}" 2>/dev/null || true
-    podman build \
-        ${NO_CACHE} \
-        --platform linux/amd64,linux/arm64 \
-        --manifest "${REGISTRY}/ai-resume-ingest:${VERSION}" \
-        --build-arg "BUILD_VERSION=${VERSION}" \
-        --build-arg "BUILD_COMMIT=${GIT_REVISION}" \
-        --annotation "org.opencontainers.image.title=ai-resume-ingest" \
-        --annotation "org.opencontainers.image.description=Data ingestion pipeline for .mv2 file creation" \
-        --annotation "org.opencontainers.image.url=https://github.com/schwichtgit/ai-resume/pkgs/container/ai-resume-ingest" \
-        --annotation "org.opencontainers.image.source=https://github.com/schwichtgit/ai-resume" \
-        --annotation "org.opencontainers.image.documentation=https://github.com/schwichtgit/ai-resume#readme" \
-        --annotation "org.opencontainers.image.version=${VERSION}" \
-        --annotation "org.opencontainers.image.created=${BUILD_DATE}" \
-        --annotation "org.opencontainers.image.revision=${GIT_REVISION}" \
-        --annotation "org.opencontainers.image.licenses=PolyForm-Noncommercial-1.0.0 OR LicenseRef-Commercial" \
-        --annotation "org.opencontainers.image.vendor=schwichtgit" \
-        --annotation "org.opencontainers.image.authors=https://github.com/schwichtgit" \
-        -f ingest/Dockerfile \
-        ingest/
-    log_info "Ingest service built successfully"
-else
-    log_warn "ingest/Dockerfile not found, skipping"
-fi
-echo ""
-
 log_info "All containers built successfully"
-echo ""
 
-# Show manifest info
+echo ""
 log_info "Manifest architectures:"
 for img in ai-resume-frontend ai-resume-memvid ai-resume-api ai-resume-ingest; do
     if podman manifest exists "${REGISTRY}/${img}:${VERSION}" 2>/dev/null; then
-        archs=$(podman manifest inspect "${REGISTRY}/${img}:${VERSION}" 2>/dev/null | grep -o '"architecture": "[^"]*"' | cut -d'"' -f4 | tr '\n' ' ')
+        archs="$(podman manifest inspect "${REGISTRY}/${img}:${VERSION}" 2>/dev/null \
+            | grep -o '"architecture": "[^"]*"' | cut -d'"' -f4 | tr '\n' ' ')"
         echo "  ${img}: ${archs:-unknown}"
     fi
 done
-echo ""
 
+echo ""
 echo "To inspect manifests:"
-echo "  podman manifest inspect ${REGISTRY}/ai-resume-frontend:${VERSION}"
-echo "  podman manifest inspect ${REGISTRY}/ai-resume-memvid:${VERSION}"
-echo "  podman manifest inspect ${REGISTRY}/ai-resume-api:${VERSION}"
-echo "  podman manifest inspect ${REGISTRY}/ai-resume-ingest:${VERSION}"
+for img in ai-resume-frontend ai-resume-memvid ai-resume-api ai-resume-ingest; do
+    echo "  podman manifest inspect ${REGISTRY}/${img}:${VERSION}"
+done
+
 echo ""
 echo "To save for transfer to edge server:"
-echo "  podman save --multi-image-archive ${REGISTRY}/ai-resume-frontend:${VERSION} -o frontend-${VERSION}.tar"
-echo "  podman save --multi-image-archive ${REGISTRY}/ai-resume-memvid:${VERSION} -o memvid-${VERSION}.tar"
-echo "  podman save --multi-image-archive ${REGISTRY}/ai-resume-api:${VERSION} -o api-${VERSION}.tar"
-echo "  podman save --multi-image-archive ${REGISTRY}/ai-resume-ingest:${VERSION} -o ingest-${VERSION}.tar"
+for img in ai-resume-frontend ai-resume-memvid ai-resume-api ai-resume-ingest; do
+    svc="${img#ai-resume-}"
+    echo "  podman save --multi-image-archive ${REGISTRY}/${img}:${VERSION} -o ${svc}-${VERSION}.tar"
+done
+
 echo ""
 echo "To run a quick smoke test:"
 echo "  ./scripts/test-containers.sh"
+
 echo ""
-echo "To run locally with podman-compose:"
+echo "To run locally with podman compose:"
 echo "  cd deployment/"
-echo "  podman-compose up -d"
+echo "  podman compose up -d"

@@ -163,6 +163,26 @@ tasks:
     cmds:
       - task: deploy:build
 
+  container:build:frontend:
+    desc: Build only the frontend container image
+    cmds:
+      - task: deploy:build:frontend
+
+  container:build:api:
+    desc: Build only the API service container image
+    cmds:
+      - task: deploy:build:api
+
+  container:build:memvid:
+    desc: Build only the memvid service container image
+    cmds:
+      - task: deploy:build:memvid
+
+  container:build:ingest:
+    desc: Build only the ingest container image
+    cmds:
+      - task: deploy:build:ingest
+
   container:export:
     desc: Export containers as tar files
     cmds:
