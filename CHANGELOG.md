@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-alpha.14] - 2026-04-19
+
+### Changed
+
+- Dependency currency rollup consolidating 6 Dependabot PRs (#195)
+  - **api-service**: pydantic >=2.10.6 → >=2.13.2 (#194), pydantic-settings >=2.7.1 → >=2.13.1 (#190), grpcio-tools >=1.69.0 → >=1.80.0 (#189), fastmcp >=3.0.0 → >=3.2.4 (#192)
+  - **api-service (dev)**: pytest-asyncio >=0.25.2 → >=1.3.0 (#191)
+  - **frontend**: @tanstack/react-query 5.99.1 → 5.99.2 (#193)
+- `DavidAnson/markdownlint-cli2-action` bumped from 22 to 23 (#188)
+
 ## [0.1.0-alpha.13] - 2026-04-18
 
 ### Changed
