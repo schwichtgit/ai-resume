@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-alpha.15] - 2026-04-20
+
+### Changed
+
+- Split `scripts/build-all.sh` into per-service wrappers (`build-frontend.sh`, `build-api.sh`, `build-memvid.sh`, `build-ingest.sh`) sharing a new `scripts/lib/container-build.sh` helper; `build-all.sh` is now a thin orchestrator (#197)
+- Exposed per-service container builds through Taskfile: `task container:build:{frontend,api,memvid,ingest}` alongside the existing `task container:build` aggregate (#197)
+- Switched api-service and ingest Dockerfile builder/python-deps stages from `ubi10/ubi` to `rockylinux/rockylinux:10-minimal` to sidestep the UBI 10 OpenSSL 3.5.1 TLS bug under Rosetta 2; runtime stage remains `ubi10/ubi-micro` (#197)
+- Rewrote Stop hook `.claude/hooks/verify-quality.sh` to delegate to `task lint` (blocking) and `task test` (advisory) instead of PATH-probing per-service tools -- reference implementation for upstream cpf CR issue 4 (polyglot per-service venv resolution); severity contract preserved (exit 2 on lint fail, non-blocking on test fail) (#197)
+- Added per-tool lint targets to root Taskfile that mirror `ci-base.yml` jobs one-for-one: `lint:shellcheck`, `lint:prettier`, `lint:markdown`; aggregate `task lint` now includes them, closing the prior CI/local parity gap (#197)
+
 ## [0.1.0-alpha.14] - 2026-04-19
 
 ### Changed
