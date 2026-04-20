@@ -79,8 +79,17 @@ tasks:
       - test "$(git config core.hooksPath)" = ".githooks"
 
   lint:
-    desc: Lint all services
-    deps: [frontend:lint, api:lint, memvid:lint, ingest:lint, docs:lint]
+    desc: Lint all services and root assets (matches CI ci-base coverage)
+    deps:
+      [
+        frontend:lint,
+        api:lint,
+        memvid:lint,
+        ingest:lint,
+        lint:markdown,
+        lint:prettier,
+        lint:shellcheck,
+      ]
 
   lint:fix:
     desc: Lint all services with auto-fix
@@ -92,6 +101,27 @@ tasks:
         ingest:lint:fix,
         docs:lint:fix,
       ]
+
+  lint:shellcheck:
+    desc: Run shellcheck across repo shell scripts (matches CI ci-base/shellcheck)
+    cmds:
+      - |
+        find . -name '*.sh' \
+          -not -path './.git/*' \
+          -not -path '*/.venv/*' \
+          -not -path '*/node_modules/*' \
+          -not -path '*/target/*' \
+          -print0 | xargs -0 shellcheck -x
+
+  lint:prettier:
+    desc: Run prettier --check against the repo (matches CI ci-base/prettier)
+    cmds:
+      - npx --prefix frontend prettier --check .
+
+  lint:markdown:
+    desc: Run markdownlint-cli2 (matches CI ci-base/markdownlint)
+    cmds:
+      - npx --prefix frontend markdownlint-cli2 '**/*.md'
 
   test:
     desc: Unit test all services
@@ -131,7 +161,6 @@ tasks:
       - task: ingest:typecheck
       - task: test:coverage
       - task: build
-      - task: docs:lint
 
   proto:
     desc: Regenerate gRPC Python stubs
@@ -162,6 +191,26 @@ tasks:
     desc: Build all container images
     cmds:
       - task: deploy:build
+
+  container:build:frontend:
+    desc: Build only the frontend container image
+    cmds:
+      - task: deploy:build:frontend
+
+  container:build:api:
+    desc: Build only the API service container image
+    cmds:
+      - task: deploy:build:api
+
+  container:build:memvid:
+    desc: Build only the memvid service container image
+    cmds:
+      - task: deploy:build:memvid
+
+  container:build:ingest:
+    desc: Build only the ingest container image
+    cmds:
+      - task: deploy:build:ingest
 
   container:export:
     desc: Export containers as tar files
@@ -204,9 +253,9 @@ tasks:
       - task: memvid:dev
 
   docs:lint:
-    desc: Lint Markdown files
+    desc: Alias for lint:markdown (kept for backward compat)
     cmds:
-      - npx --prefix frontend markdownlint-cli2 '**/*.md'
+      - task: lint:markdown
 
   docs:lint:fix:
     desc: Lint and fix Markdown files

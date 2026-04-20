@@ -13,6 +13,38 @@ tasks:
     cmds:
       - ../scripts/build-all.sh {{.VERSION}}
 
+  build:frontend:
+    desc: Build only the frontend container image
+    preconditions:
+      - sh: command -v podman
+        msg: 'podman not found.'
+    cmds:
+      - ../scripts/build-frontend.sh {{.VERSION}}
+
+  build:api:
+    desc: Build only the API service container image
+    preconditions:
+      - sh: command -v podman
+        msg: 'podman not found.'
+    cmds:
+      - ../scripts/build-api.sh {{.VERSION}}
+
+  build:memvid:
+    desc: Build only the memvid service container image
+    preconditions:
+      - sh: command -v podman
+        msg: 'podman not found.'
+    cmds:
+      - ../scripts/build-memvid.sh {{.VERSION}}
+
+  build:ingest:
+    desc: Build only the ingest container image
+    preconditions:
+      - sh: command -v podman
+        msg: 'podman not found.'
+    cmds:
+      - ../scripts/build-ingest.sh {{.VERSION}}
+
   export:
     desc: Export container images as tar files
     preconditions:
