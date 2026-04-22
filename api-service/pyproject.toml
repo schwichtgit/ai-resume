@@ -43,7 +43,7 @@ lint = [
     "types-cachetools>=5.5.0",
 ]
 sbom = [
-    "poetry>=2.2.1"
+    "poetry>=2.3.4"
 ]
 
 [build-system]
