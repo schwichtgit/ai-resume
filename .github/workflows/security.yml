@@ -34,7 +34,7 @@ jobs:
         run: docker build -t ${{ matrix.image }}:scan ${{ matrix.context }}
 
       - name: Run Trivy vulnerability scanner (SARIF)
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: '${{ matrix.image }}:scan'
           format: 'sarif'
@@ -49,7 +49,7 @@ jobs:
           category: 'trivy-${{ matrix.image }}'
 
       - name: Trivy severity gate (CRITICAL/HIGH)
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         env:
           TRIVY_SEVERITY: CRITICAL,HIGH
           TRIVY_IGNORE_UNFIXED: 'true'
