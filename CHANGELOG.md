@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-alpha.16] - 2026-04-26
+
+### Changed
+
+- Dependency currency rollup consolidating 8 Dependabot PRs (#214)
+  - **api-service**: pydantic >=2.13.2 → >=2.13.3 (#207), opentelemetry-sdk >=1.29.0 → >=1.41.1 (#210), opentelemetry-exporter-otlp >=1.39.1 → >=1.41.1 (#209)
+  - **api-service (dev)**: pytest-cov >=6.0.0 → >=7.1.0 (#208), mypy >=1.20.1 → >=1.20.2 (#211)
+  - **frontend (minor-and-patch group, 10 updates)**: vite 8.0.8 → 8.0.10, vitest 4.1.4 → 4.1.5, @vitest/coverage-v8 4.1.4 → 4.1.5, @tanstack/react-query 5.99.2 → 5.100.5, lucide-react 1.8.0 → 1.11.0, react-hook-form 7.72.1 → 7.74.0, react-router-dom 7.14.1 → 7.14.2, tailwindcss 4.2.2 → 4.2.4, @tailwindcss/vite 4.2.2 → 4.2.4, typescript-eslint 8.58.2 → 8.59.0 (#213)
+  - **memvid-service**: axum 0.8.8 → 0.8.9, tokio 1.51.1 → 1.52.1 (#212)
+  - **github_actions**: aquasecurity/trivy-action 0.35.0 → v0.36.0 (#206)
+- Container base images bumped (#215)
+  - frontend builder: `node:24.13.1-bookworm-slim` → `node:24.15.0-bookworm-slim` (Node 24 Active LTS)
+  - frontend runtime: `alpine:3.23.3` → `alpine:3.23.4`
+  - memvid builder: `rust:1.93.1-slim` → `rust:1.95.0-slim` (satisfies axum 0.8.9 MSRV 1.80)
+  - Floating tags (`rockylinux:10-minimal`, `ubi10/ubi-micro`, `gcr.io/distroless/cc-debian12:nonroot`) unchanged; `cc-debian13:nonroot` not yet published as a stable rolling tag
+- poetry bumped from 2.3.3 to 2.3.4 in api-service (#201)
+- python-dotenv >=1.2.1 → >=1.2.2 in api-service and deployment (#199, #200)
+- rand bumped from 0.8.5 to 0.8.6 in memvid-service (#202) -- residual transitive dep via `tantivy 0.25 → tantivy-stacker 0.6 → rand_distr 0.4`; full remediation of GHSA-cq8v-f236-94qc (alert #542) is upstream-blocked pending `memvid-core` bumping to `tantivy 0.26`
+- rustls-webpki bumped from 0.103.12 to 0.103.13 in memvid-service (#203)
+
+### Security
+
+- postcss bumped from 8.5.8 to 8.5.10 in frontend (#204) -- closes Dependabot alert #58 (GHSA-qx2v-qp2m-jg93, XSS via unescaped `</style>` in CSS stringify output, dev dependency, transitive of vite)
+
+### Documentation
+
+- `docs/DEPLOYMENT.md`, `CLAUDE.md`: corrected stale runtime base-image claims (api-service / ingest are `ubi10/ubi-micro` with `rockylinux:10-minimal` builders, memvid-service is `gcr.io/distroless/cc-debian12:nonroot`)
+
 ## [0.1.0-alpha.15] - 2026-04-20
 
 ### Changed
