@@ -26,7 +26,7 @@ dependencies = [
     "cachetools>=5.5.0",
     "slowapi>=0.1.9",
     "fastmcp>=3.2.4",
-    "opentelemetry-exporter-otlp>=1.39.1",
+    "opentelemetry-exporter-otlp>=1.41.1",
 ]
 
 [project.optional-dependencies]
