@@ -8,7 +8,7 @@ The AI Resume stack consists of three runtime services plus a one-shot ingest pi
 | ------------------ | ---------------------------------------- | ----- | -------- | ---------- |
 | ai-resume-frontend | alpine:3.23 (OpenResty/nginx)            | 8080  | HTTP     | Long-lived |
 | ai-resume-api      | ubi10/ubi-micro (Rocky Linux 10 builder) | 3000  | HTTP     | Long-lived |
-| ai-resume-memvid   | gcr.io/distroless/cc-debian12:nonroot    | 50051 | gRPC     | Long-lived |
+| ai-resume-memvid   | gcr.io/distroless/cc-debian13:nonroot    | 50051 | gRPC     | Long-lived |
 | ai-resume-ingest   | ubi10/ubi-micro (Rocky Linux 10 builder) | --    | --       | One-shot   |
 
 Traffic flow: reverse proxy -> frontend (8080) -> api (3000) -> memvid (50051 gRPC)

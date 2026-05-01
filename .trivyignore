@@ -6,5 +6,3 @@
 #   CVE-2024-XXXXX  # accepted: no fix available, low exploitability in this context
 #
 # Reference: https://aquasecurity.github.io/trivy/latest/docs/configuration/filtering/#by-finding-ids
-
-CVE-2026-28390  # libssl3 in distroless/cc-debian12; fix available in Debian but distroless not yet rebuilt. Revisit 2026-04-30.

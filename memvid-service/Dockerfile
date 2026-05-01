@@ -59,8 +59,8 @@ ARG BUILD_VERSION
 ARG BUILD_COMMIT
 RUN printf '{"version":"%s","commit":"%s"}\n' "${BUILD_VERSION}" "${BUILD_COMMIT}" > /app/VERSION
 
-# Stage 2: Distroless runtime (glibc 2.36, UID 65534 nonroot)
-FROM gcr.io/distroless/cc-debian12:nonroot
+# Stage 2: Distroless runtime (glibc 2.41, UID 65534 nonroot)
+FROM gcr.io/distroless/cc-debian13:nonroot
 
 # Copy binary from builder
 COPY --from=builder /app/target/release/memvid-service /usr/local/bin/memvid-service
