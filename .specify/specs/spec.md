@@ -4622,3 +4622,25 @@ The following decisions were made during the spec and clarify phases:
 - [ ] E2E testing documented in `CLAUDE.md` and `docs/DEVELOPMENT.md`
 
 **Dependencies:** None
+
+---
+
+## Container Base Image Currency
+
+### INFRA-091: Memvid Distroless Base Currency (debian12 → debian13)
+
+**Description:** Bump the `memvid-service` runtime base image from `gcr.io/distroless/cc-debian12:nonroot` (Debian 12 Bookworm, glibc 2.36) to `gcr.io/distroless/cc-debian13:nonroot` (Debian 13 Trixie, glibc 2.41). Remediates five open glibc CVEs flagged by Trivy on the `library/ai-resume-memvid` image: CVE-2026-4046, CVE-2026-4437, CVE-2026-4438, CVE-2026-5450, CVE-2026-5928. Aligns with the Google distroless team's recommendation to pin explicit `-debianN` suffixes following the unsuffixed-default flip to debian13. Also retires the now-obsolete `CVE-2026-28390` libssl3 suppression in `.trivyignore` (libssl3 is absent from the cc-debian13 runtime).
+
+**Acceptance Criteria:**
+
+- [ ] `memvid-service/Dockerfile` line 63 references `gcr.io/distroless/cc-debian13:nonroot`
+- [ ] No other Dockerfile in the repo references `cc-debian12` or an unsuffixed `gcr.io/distroless/<image>` tag
+- [ ] `task container:build:memvid` succeeds and produces a multi-arch (`linux/amd64` + `linux/arm64`) podman manifest
+- [ ] `bash scripts/test-containers.sh` passes (memvid `--health` healthcheck and api↔memvid gRPC round-trip on port 50051)
+- [ ] Local Trivy scan against the rebuilt image (`--severity CRITICAL,HIGH --ignore-unfixed`) reports zero unfixed glibc vulnerabilities; any residual glibc CVE that remains unfixed in Trixie is recorded in `.trivyignore` with a `revisit-YYYY-MM-DD` comment and the GitHub alert number
+- [ ] `.github/workflows/security.yml` `container-scan (memvid-service)` job passes against the new image
+- [ ] `.trivyignore` no longer contains the `CVE-2026-28390` libssl3 suppression entry
+- [ ] `CLAUDE.md` line 353 and `docs/DEPLOYMENT.md` line 11 reference `cc-debian13:nonroot`
+- [ ] After merge to `main`, the next Security Scan workflow run on `main` (manual `workflow_dispatch` is acceptable) uploads a Trivy SARIF for `ai-resume-memvid` that no longer surfaces CVE-2026-4046, CVE-2026-4437, CVE-2026-4438, CVE-2026-5450, or CVE-2026-5928, and GitHub code-scanning alerts #539, #540, #541, #543, and #544 transition to `fixed`
+
+**Dependencies:** None
