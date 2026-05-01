@@ -3330,6 +3330,28 @@
       "passes": true,
       "dependencies": [],
       "verified": true
+    },
+    {
+      "id": "memvid-distroless-debian13",
+      "category": "infrastructure",
+      "title": "Memvid Distroless Base Currency (debian12 to debian13)",
+      "description": "Bump memvid-service runtime base from gcr.io/distroless/cc-debian12:nonroot (Bookworm, glibc 2.36) to gcr.io/distroless/cc-debian13:nonroot (Trixie, glibc 2.41). Remediates five open glibc CVEs on the library/ai-resume-memvid image (CVE-2026-4046, 4437, 4438, 5450, 5928) and retires the now-obsolete CVE-2026-28390 libssl3 suppression in .trivyignore. Pins explicit -debianN suffix per Google distroless team guidance.",
+      "testing_steps": [
+        "Verify memvid-service/Dockerfile line 63 reads 'FROM gcr.io/distroless/cc-debian13:nonroot'",
+        "Verify CLAUDE.md line 353 references 'gcr.io/distroless/cc-debian13:nonroot' (runs as nonroot user)",
+        "Verify docs/DEPLOYMENT.md line 11 table cell references 'gcr.io/distroless/cc-debian13:nonroot'",
+        "Verify .trivyignore no longer contains the CVE-2026-28390 libssl3 suppression entry",
+        "Run 'grep -rn cc-debian12 .' from repo root and confirm zero hits outside CHANGELOG.md and release notes",
+        "Run 'task container:build:memvid' and confirm the build succeeds",
+        "Run 'podman manifest inspect localhost/ai-resume-memvid:<version>' and confirm both linux/amd64 and linux/arm64 platform manifests are present",
+        "Run 'bash scripts/test-containers.sh' and confirm memvid healthcheck reports healthy and api-service successfully calls memvid gRPC on port 50051",
+        "Run 'trivy image --severity CRITICAL,HIGH --ignore-unfixed --trivyignores .trivyignore localhost/ai-resume-memvid:<version>' and confirm zero unfixed glibc CVE rows; any residual entry has a revisit-YYYY-MM-DD comment in .trivyignore",
+        "Push branch and run 'gh workflow run security.yml --ref fix/memvid-distroless-debian13' and confirm the container-scan (memvid-service) job passes",
+        "After merge to main, run 'gh workflow run security.yml --ref main' and confirm the uploaded SARIF for ai-resume-memvid does not surface CVE-2026-4046, 4437, 4438, 5450, or 5928",
+        "Confirm GitHub code-scanning alerts #539, #540, #541, #543, and #544 transition to state 'fixed' after the post-merge SARIF upload reconciles"
+      ],
+      "passes": false,
+      "dependencies": []
     }
   ]
 }

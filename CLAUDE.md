@@ -350,7 +350,7 @@ The application expects to be served at `frank-resume.schwichtenberg.us` when de
 - **Frontend build stage**: node:24-bookworm-slim for npm build
 - **API base**: ubi10/ubi-micro runtime, rockylinux:10-minimal builder (3-stage build)
 - **Ingest base**: ubi10/ubi-micro runtime, rockylinux:10-minimal builder (3-stage build)
-- **Memvid base**: gcr.io/distroless/cc-debian12:nonroot (runs as nonroot user)
+- **Memvid base**: gcr.io/distroless/cc-debian13:nonroot (runs as nonroot user)
 - **Frontend port**: 8080 (unprivileged)
 - **API port**: 3000
 - **Memvid port**: 50051 (gRPC)

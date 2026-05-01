@@ -1245,3 +1245,69 @@ Each feature has explicit testing_steps in `feature_list.json`. The frontend too
 6. Visual verification of key sections (Hero, Experience, FitAssessment, AIChat)
 
 The Rust crate migration (FUNC-095) follows the standard Rust verification: `cargo check`, `cargo clippy -- -D warnings`, `cargo test`.
+
+---
+
+### ADR-032: Pin Distroless Image with Explicit -debianN Suffix (INFRA-091)
+
+**Decision:** All `gcr.io/distroless/*` references in this repo MUST pin an explicit `-debianN` suffix (e.g., `cc-debian13`, never bare `cc`). The memvid-service runtime base advances from `gcr.io/distroless/cc-debian12:nonroot` (Bookworm, glibc 2.36) to `gcr.io/distroless/cc-debian13:nonroot` (Trixie, glibc 2.41) to remediate five open glibc CVEs (CVE-2026-4046, 4437, 4438, 5450, 5928) on the `library/ai-resume-memvid` image. The companion suppression for libssl3 (`CVE-2026-28390`) is removed from `.trivyignore` because libssl3 is absent from the cc-debian13 runtime.
+
+**Rationale:**
+
+1. Google's distroless team flipped the unsuffixed default tags from debian12 to debian13 in early 2026 and explicitly recommended pinning `-debianN` going forward to avoid silent major-Debian jumps. Pinning makes the base-image major version a versioned, reviewable change rather than a silent floating-tag drift.
+2. Trixie's glibc 2.41 carries upstream patches for the open CVEs against Bookworm's 2.36. Bumping is the lowest-risk remediation path -- no source-level workaround, no CVE suppression backlog.
+3. Constitution §6 mandates "critical/high CVEs patched within 7 days." Five HIGH-severity glibc alerts have been open against the memvid container; this bump satisfies the SLA and clears the security tab.
+4. The Rust binary is built against Debian Bookworm (`rust:1.95.0-slim` builder) but runs in distroless `cc-*`, which provides only libc/libgcc/libstdc++. The glibc/libstdc++/libgcc ABI contract is forward-compatible from Bookworm-built binaries to Trixie-runtime — provided the build step continues to use a `-slim` builder image whose glibc is no newer than the runtime's. (Trixie 2.41 ≥ Bookworm 2.36; the Rust binary's symbol versions resolve.)
+5. Removing the libssl3 suppression alongside the bump avoids a stale `.trivyignore` entry referring to a runtime layer that no longer exists.
+
+**Alternatives Considered:**
+
+1. **Stay on cc-debian12** and suppress the five CVEs in `.trivyignore` until upstream rebuilds. Rejected: violates constitution §6's 7-day SLA and grows the suppression list (one already pinned for libssl3 with an overdue revisit).
+2. **Use unsuffixed `gcr.io/distroless/cc:nonroot`** (now defaulting to debian13). Rejected: Google explicitly recommends against the unsuffixed form; future major-Debian flips would silently change the runtime ABI and surface regressions on a routine rebuild.
+3. **Switch to a different distroless variant** (e.g., `static`, `base`). Rejected: memvid links libstdc++ (tonic + tokio runtime native deps); `cc` is the minimal correct choice. Switching variants is unrelated to the CVE remediation goal.
+4. **Self-build a minimal Trixie runtime** (`rockylinux/rockylinux:10-minimal` pattern used for api/ingest). Rejected: distroless `cc` is already minimal, well-maintained, and signed; rolling our own adds maintenance burden with no security gain.
+
+**Consequences:**
+
+- Positive: Five HIGH-severity CVEs cleared. Suffix-pinning policy locks in deterministic base-image evolution. Removes a stale `.trivyignore` entry. No code changes, no test changes, isolated rollback.
+- Negative: Glibc 2.36 → 2.41 ABI step requires a one-time smoke-test gate (gRPC roundtrip + healthcheck) to confirm the Bookworm-built Rust binary loads correctly under the Trixie runtime. Adds one acceptance criterion (`scripts/test-containers.sh` pass) to release-gate.
+- Files: `memvid-service/Dockerfile`, `.trivyignore`, `CLAUDE.md`, `docs/DEPLOYMENT.md`
+
+---
+
+## Phase 9: Container Base Image Currency
+
+### Goal
+
+Keep distroless-based runtime container images current with their upstream Debian base, remediating CVEs as Debian rebases land. This phase is open-ended -- new INFRA features will be appended whenever a pinned `-debianN` tag falls behind the recommended default.
+
+### Implementation Order
+
+```text
+Phase 9 (single feature, no dependencies):
+  INFRA-091: Memvid distroless cc-debian12 -> cc-debian13 currency bump
+```
+
+### Feature Summary
+
+| ID        | Title                                                  | Category       | Dependencies |
+| --------- | ------------------------------------------------------ | -------------- | ------------ |
+| INFRA-091 | Memvid Distroless Base Currency (debian12 -> debian13) | infrastructure | None         |
+
+### Risk Assessment
+
+| Risk                                                      | Likelihood | Impact | Mitigation                                                                                          |
+| --------------------------------------------------------- | ---------- | ------ | --------------------------------------------------------------------------------------------------- |
+| Rust binary ABI breakage under Trixie glibc 2.41          | Low        | High   | `scripts/test-containers.sh` smoke test exercises gRPC roundtrip + healthcheck end-to-end           |
+| Multi-arch (amd64 + arm64) build regression               | Low        | Medium | `task container:build:memvid` produces both arches; build fails fast if either is broken            |
+| Trixie glibc missing one of the five upstream CVE patches | Low        | Low    | Re-clarify accepted: residual CVEs get a `revisit-YYYY-MM-DD` `.trivyignore` entry, not a hard fail |
+| Stale libssl3 suppression after layer removal             | Low        | Low    | `.trivyignore` line for `CVE-2026-28390` deleted as part of the same change                         |
+
+### Verification Strategy
+
+INFRA-091 verification mirrors the standard container-bump pattern (see ADR-014 for the pipeline):
+
+1. `task container:build:memvid` succeeds for `linux/amd64` + `linux/arm64`.
+2. `bash scripts/test-containers.sh` passes (memvid `--health` + api↔memvid gRPC).
+3. Local Trivy scan with `--severity CRITICAL,HIGH --ignore-unfixed --trivyignores .trivyignore` returns zero unfixed glibc rows.
+4. After merge to `main`, manual `gh workflow run security.yml` confirms the Trivy SARIF on `main` no longer surfaces the five CVE IDs and code-scanning alerts #539/540/541/543/544 transition to `fixed`.
