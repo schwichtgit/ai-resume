@@ -212,12 +212,14 @@ elif [ -n "$PROFILE" ]; then
     FAILED=1
 fi
 
-# Test 7: Check Rust received gRPC request
+# Test 7: Check Rust received gRPC request from chat endpoint
+# The chat endpoint calls memvid_client.ask() (Ask RPC with re-ranking),
+# not Search. memvid logs "Processing ask request" for that path.
 RUST_LOGS=$(podman logs test-memvid 2>&1)
-if echo "$RUST_LOGS" | grep -q "Processing search request"; then
-    log_pass "Rust service processed gRPC search request"
+if echo "$RUST_LOGS" | grep -q "Processing ask request"; then
+    log_pass "Rust service processed gRPC ask request"
 else
-    log_fail "Rust service did not receive gRPC request"
+    log_fail "Rust service did not process expected gRPC ask request"
     FAILED=1
 fi
 
