@@ -4644,3 +4644,29 @@ The following decisions were made during the spec and clarify phases:
 - [ ] After merge to `main`, the next Security Scan workflow run on `main` (manual `workflow_dispatch` is acceptable) uploads a Trivy SARIF for `ai-resume-memvid` that no longer surfaces CVE-2026-4046, CVE-2026-4437, CVE-2026-4438, CVE-2026-5450, or CVE-2026-5928, and GitHub code-scanning alerts #539, #540, #541, #543, and #544 transition to `fixed`
 
 **Dependencies:** None
+
+---
+
+### INFRA-092: Builder Image Currency (Bookworm → Trixie)
+
+**Description:** Bump the two Debian-based BUILDER images from Bookworm (Debian 12) to Trixie (Debian 13), aligning the entire build/runtime toolchain with the cc-debian13 runtime that landed in INFRA-091. Two changes:
+
+1. `frontend/Dockerfile` line 10: `node:24.15.0-bookworm-slim` → `node:24.15.0-trixie-slim`.
+2. `memvid-service/Dockerfile` line 8: `rust:1.95.0-slim` (currently the unsuffixed Bookworm default) → `rust:1.95.0-slim-trixie`.
+
+This is currency maintenance, not security remediation — no open CVEs drove this work. The motivation is preventing silent base-image drift (the `rust:*-slim` tag will silently flip from Bookworm to Trixie on a future DockerHub default change, identical to the gcr.io/distroless unsuffixed-tag risk addressed in ADR-032) and keeping builder/runtime glibc versions aligned (Trixie 2.41 builders producing for the Trixie 2.41 runtime, removing the cross-version forward-compat dance). Out of scope: api-service / ingest (Rocky/UBI bases, not Debian); frontend runtime (Alpine).
+
+**Acceptance Criteria:**
+
+- [ ] `frontend/Dockerfile` line 10 references `node:24.15.0-trixie-slim`
+- [ ] `memvid-service/Dockerfile` line 8 references `rust:1.95.0-slim-trixie` (explicit Trixie suffix, no longer relying on the unsuffixed default)
+- [ ] All Debian-based Dockerfile `FROM` lines in the repo explicitly pin a `-trixieN` suffix or equivalent (no unsuffixed tags that could silently drift across major Debian releases) — enforces ADR-032 across builders and runtimes alike
+- [ ] `task container:build:frontend` succeeds and produces a multi-arch (`linux/amd64` + `linux/arm64`) podman manifest
+- [ ] `task container:build:memvid` succeeds and produces a multi-arch (`linux/amd64` + `linux/arm64`) podman manifest
+- [ ] `bash scripts/test-containers.sh` (default mocked mode) passes all 11 checks
+- [ ] `MOCK_MEMVID_CLIENT=false bash scripts/test-containers.sh` (real api↔memvid gRPC roundtrip) passes all 11 checks
+- [ ] PR body includes a before/after Trivy summary for both `localhost/ai-resume-frontend` and `localhost/ai-resume-memvid` (`--severity CRITICAL,HIGH --ignore-unfixed`); any net-new CVEs introduced by the Trixie bump are explicitly listed and dispositioned (fix in this PR, or `wont-fix`/`revisit-YYYY-MM-DD` suppression in `.trivyignore` with rationale referencing the GitHub alert number once available)
+- [ ] `.trivyignore` is updated to suppress `CVE-2026-5435` (glibc 2.41 `ns_printrr`/`ns_printrrf`/`fp_nquery` deprecation, GitHub alert #547, severity `note`, unfixed upstream) with a `revisit-2026-08-01` comment referencing the alert number — residual from INFRA-091's cc-debian13 bump, surfaced by the post-merge Security Scan
+- [ ] After merge to `main`, the Security Scan workflow run on `main` succeeds for both `frontend` and `memvid` images, and the new `.trivyignore` entry causes Trivy to skip alert #547 in subsequent SARIF uploads
+
+**Dependencies:** INFRA-091 (the cc-debian13 runtime must already be in place so the memvid build/runtime glibc stays aligned, not skewed in the wrong direction; alert #547 also surfaces from the same runtime base and is dispositioned in this same PR)

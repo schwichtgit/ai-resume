@@ -1284,8 +1284,13 @@ Keep distroless-based runtime container images current with their upstream Debia
 ### Implementation Order
 
 ```text
-Phase 9 (single feature, no dependencies):
-  INFRA-091: Memvid distroless cc-debian12 -> cc-debian13 currency bump
+Phase 9a (shipped):
+  INFRA-091: Memvid distroless cc-debian12 -> cc-debian13 runtime bump
+
+Phase 9b (sequential, depends on 9a):
+  INFRA-092: Frontend node + memvid Rust BUILDER images Bookworm -> Trixie
+             + .trivyignore disposition of CVE-2026-5435 (alert #547,
+               residual unfixed glibc note from Phase 9a's runtime bump)
 ```
 
 ### Feature Summary
@@ -1293,21 +1298,27 @@ Phase 9 (single feature, no dependencies):
 | ID        | Title                                                  | Category       | Dependencies |
 | --------- | ------------------------------------------------------ | -------------- | ------------ |
 | INFRA-091 | Memvid Distroless Base Currency (debian12 -> debian13) | infrastructure | None         |
+| INFRA-092 | Builder Image Currency (Bookworm -> Trixie)            | infrastructure | INFRA-091    |
 
 ### Risk Assessment
 
-| Risk                                                      | Likelihood | Impact | Mitigation                                                                                          |
-| --------------------------------------------------------- | ---------- | ------ | --------------------------------------------------------------------------------------------------- |
-| Rust binary ABI breakage under Trixie glibc 2.41          | Low        | High   | `scripts/test-containers.sh` smoke test exercises gRPC roundtrip + healthcheck end-to-end           |
-| Multi-arch (amd64 + arm64) build regression               | Low        | Medium | `task container:build:memvid` produces both arches; build fails fast if either is broken            |
-| Trixie glibc missing one of the five upstream CVE patches | Low        | Low    | Re-clarify accepted: residual CVEs get a `revisit-YYYY-MM-DD` `.trivyignore` entry, not a hard fail |
-| Stale libssl3 suppression after layer removal             | Low        | Low    | `.trivyignore` line for `CVE-2026-28390` deleted as part of the same change                         |
+| Risk                                                       | Likelihood | Impact | Mitigation                                                                                          |
+| ---------------------------------------------------------- | ---------- | ------ | --------------------------------------------------------------------------------------------------- |
+| Rust binary ABI breakage under Trixie glibc 2.41           | Low        | High   | `scripts/test-containers.sh` smoke test exercises gRPC roundtrip + healthcheck end-to-end           |
+| Multi-arch (amd64 + arm64) build regression                | Low        | Medium | `task container:build:{memvid,frontend}` produces both arches; build fails fast if either is broken |
+| Trixie glibc missing one of the five upstream CVE patches  | Low        | Low    | Re-clarify accepted: residual CVEs get a `revisit-YYYY-MM-DD` `.trivyignore` entry, not a hard fail |
+| Stale libssl3 suppression after layer removal              | Low        | Low    | `.trivyignore` line for `CVE-2026-28390` deleted as part of the INFRA-091 change                    |
+| Node 24 + Trixie image surface drift (frontend builder)    | Low        | Medium | Frontend smoke (Test 8-11 in `test-containers.sh`) exercises served HTML and SPA routing            |
+| Net-new HIGH CVEs introduced by Trixie builder package set | Low        | Medium | INFRA-092 acceptance requires explicit before/after Trivy delta in PR body with disposition         |
 
 ### Verification Strategy
 
-INFRA-091 verification mirrors the standard container-bump pattern (see ADR-014 for the pipeline):
+Both features in this phase share the standard container-bump verification pipeline (see ADR-014 for the underlying CI pattern):
 
-1. `task container:build:memvid` succeeds for `linux/amd64` + `linux/arm64`.
-2. `bash scripts/test-containers.sh` passes (memvid `--health` + api↔memvid gRPC).
-3. Local Trivy scan with `--severity CRITICAL,HIGH --ignore-unfixed --trivyignores .trivyignore` returns zero unfixed glibc rows.
-4. After merge to `main`, manual `gh workflow run security.yml` confirms the Trivy SARIF on `main` no longer surfaces the five CVE IDs and code-scanning alerts #539/540/541/543/544 transition to `fixed`.
+1. `task container:build:{frontend,memvid}` succeeds for `linux/amd64` + `linux/arm64` on the affected service(s).
+2. `bash scripts/test-containers.sh` passes (default mocked mode -- binary-load smoke for both services).
+3. `MOCK_MEMVID_CLIENT=false bash scripts/test-containers.sh` passes (real api↔memvid gRPC ABI verification under the new toolchain).
+4. Local Trivy scan with `--severity CRITICAL,HIGH --ignore-unfixed --trivyignores .trivyignore` returns zero unfixed rows (or any net-new finding is dispositioned in the PR body and `.trivyignore`).
+5. After merge to `main`, manual `gh workflow run security.yml` confirms the Trivy SARIF on `main` no longer surfaces the corresponding CVE IDs.
+
+INFRA-091 specifically required that code-scanning alerts #539/540/541/543/544 transition to `fixed`. INFRA-092 specifically requires that alert #547 (CVE-2026-5435) is suppressed via `.trivyignore` with a `revisit-2026-08-01` comment, since it is unfixed upstream in Trixie at the time of this work.

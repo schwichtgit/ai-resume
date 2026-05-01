@@ -3352,6 +3352,28 @@
       ],
       "passes": false,
       "dependencies": []
+    },
+    {
+      "id": "builder-images-trixie",
+      "category": "infrastructure",
+      "title": "Builder Image Currency (Bookworm to Trixie)",
+      "description": "Bump the two Debian-based BUILDER images from Bookworm (Debian 12) to Trixie (Debian 13): frontend node:24.15.0-bookworm-slim -> -trixie-slim and memvid-service rust:1.95.0-slim (unsuffixed Bookworm default) -> rust:1.95.0-slim-trixie. Aligns the toolchain with the cc-debian13 runtime landed by INFRA-091, eliminates the unsuffixed-tag drift risk per ADR-032, and keeps builder/runtime glibc versions matched. Also dispositions GitHub code-scanning alert #547 (CVE-2026-5435, glibc deprecated ns_printrr family, severity note, unfixed upstream in Trixie) by adding it to .trivyignore with a revisit-2026-08-01 comment.",
+      "testing_steps": [
+        "Verify frontend/Dockerfile line 10 reads 'FROM node:24.15.0-trixie-slim AS builder'",
+        "Verify memvid-service/Dockerfile line 8 reads 'FROM rust:1.95.0-slim-trixie AS builder' (explicit Trixie suffix)",
+        "Run 'grep -rn bookworm .' from repo root --include=Dockerfile* and confirm zero hits in active Dockerfiles",
+        "Run 'task container:build:frontend' and confirm the build succeeds for linux/amd64 and linux/arm64",
+        "Run 'task container:build:memvid' and confirm the build succeeds for linux/amd64 and linux/arm64",
+        "Run 'bash scripts/test-containers.sh' (default mocked mode) and confirm all 11 checks pass including memvid binary startup and frontend SPA serving",
+        "Run 'MOCK_MEMVID_CLIENT=false bash scripts/test-containers.sh' and confirm Test 7 reports 'Memvid processed real gRPC traffic from api-service' (real ABI proof under Trixie builder + Trixie runtime)",
+        "Run 'trivy image --severity CRITICAL,HIGH --ignore-unfixed --trivyignores .trivyignore localhost/ai-resume-frontend:<version>' and capture the row count; record before/after delta in PR body",
+        "Run 'trivy image --severity CRITICAL,HIGH --ignore-unfixed --trivyignores .trivyignore localhost/ai-resume-memvid:<version>' and capture the row count; record before/after delta in PR body",
+        "Verify .trivyignore contains a CVE-2026-5435 entry referencing GitHub alert #547 with a revisit-2026-08-01 comment",
+        "Push branch and run 'gh workflow run security.yml --ref chore/builder-images-trixie' and confirm both container-scan (frontend) and container-scan (memvid-service) jobs pass",
+        "After merge to main, run 'gh workflow run security.yml --ref main' and confirm Trivy SARIF for ai-resume-memvid no longer surfaces CVE-2026-5435 (suppressed by .trivyignore) and the workflow remains green"
+      ],
+      "passes": false,
+      "dependencies": ["memvid-distroless-debian13"]
     }
   ]
 }
