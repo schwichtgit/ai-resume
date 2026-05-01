@@ -201,10 +201,12 @@ Binding to `0.0.0.0` is intentional and safe in this containerized deployment. T
 
 **Code Scanning Dismissal:**
 
-- Alert #2: <https://github.com/schwichtgit/ai-resume/security/code-scanning/2>
-- Alert #3: <https://github.com/schwichtgit/ai-resume/security/code-scanning/3>
-- Reason: `wont-fix` - Intentional design, safe in containerized deployment
-- Reviewed: 2026-02-06
+- Original alerts #2 and #3 dismissed on 2026-02-06; subsequently auto-fixed by CodeQL state-machine churn
+- Re-detected as alerts #545 and #546 in the post-2026-05-01 scan after a CodeQL ruleset update on the same code pattern
+- Alert #545: <https://github.com/schwichtgit/ai-resume/security/code-scanning/545>
+- Alert #546: <https://github.com/schwichtgit/ai-resume/security/code-scanning/546>
+- Reason: `wont-fix` -- Intentional design, safe in containerized deployment (rationale unchanged from original 2026-02-06 review; see "Why This Is Safe" above)
+- Reviewed: 2026-05-01
 
 ### Volume Mounts
 
@@ -305,6 +307,39 @@ The alert appears to be triggered by pattern matching on "random" operations in 
 
 **Status:** Fixed (enhanced implementation with better documentation)
 **Reviewed:** 2026-02-06
+
+#### Trivy: glibc Trixie unfixed-upstream batch (Alerts #539, #540, #541, #543, #544, #547, #548)
+
+**Alerts:**
+
+- [#539](https://github.com/schwichtgit/ai-resume/security/code-scanning/539) -- `CVE-2026-4046` (libc6 iconv() DoS via specific charsets)
+- [#540](https://github.com/schwichtgit/ai-resume/security/code-scanning/540) -- `CVE-2026-4437` (libc6 incorrect DNS response parsing via crafted server response)
+- [#541](https://github.com/schwichtgit/ai-resume/security/code-scanning/541) -- `CVE-2026-4438` (libc6 invalid DNS hostname returned via gethostbyaddr)
+- [#543](https://github.com/schwichtgit/ai-resume/security/code-scanning/543) -- `CVE-2026-5450` (libc6 heap buffer overflow in scanf `%mc` with large width)
+- [#544](https://github.com/schwichtgit/ai-resume/security/code-scanning/544) -- `CVE-2026-5928` (libc6 information disclosure or DoS via ungetwc with specific wide-char encodings)
+- [#547](https://github.com/schwichtgit/ai-resume/security/code-scanning/547) -- `CVE-2026-5435` (libc6 deprecated `ns_printrr`/`ns_printrrf`/`fp_nquery` family, severity note)
+- [#548](https://github.com/schwichtgit/ai-resume/security/code-scanning/548) -- `CVE-2026-6238` (libc6 note-severity finding, no fix published)
+
+**Tool:** Trivy
+**Path:** `library/ai-resume-memvid` (the deployed memvid container image)
+**Package:** `libc6` (glibc 2.41-12+deb13u2, Debian 13 Trixie)
+
+**Disposition:** All seven CVEs are suppressed via `.trivyignore`. Trivy filters them out of the SARIF upload, so GitHub's code-scanning state machine auto-transitions each alert to `fixed` on the next Security Scan run on `main` (this pattern was confirmed empirically when alert #547 closed automatically after #218 added a single-CVE entry).
+
+**Rationale:**
+
+- All seven CVEs are reported with `Fixed Version: (empty)` -- **unfixed upstream** by the Debian Trixie security team. There is no patch to apply.
+- Five of them (#539-541, #543-544) were originally registered as HIGH (`warning`) severity against the Bookworm glibc 2.36 baseline. The bump to Trixie's glibc 2.41 (#217, INFRA-091) picked up Debian's upstream mitigations, downgrading them to MEDIUM. The constitution's §6 SLA ("critical/high CVEs patched within 7 days") is satisfied in spirit -- we have applied the latest available upstream mitigation.
+- Two of them (#547, #548) are `note`-severity findings that emerged in post-bump scans (deprecated API warnings, no exploit path).
+- Every `.trivyignore` entry carries a `Revisit 2026-08-01` comment. Trixie security-team updates between now and that date should retire several of the entries automatically; remaining suppressions get re-evaluated and re-justified each quarter.
+
+**Container security context:**
+
+The `memvid-service` runtime is a distroless `cc-debian13:nonroot` image: only libc6, libgcc, and libstdc++ from the OS layer; no shell, no package manager, no network tooling. The compiled Rust binary does not call the affected glibc entry points -- `ns_printrr*` family is a syslog-related deprecated API not used by tonic/tokio; `ungetwc`, `iconv`, and `scanf %mc` are unused by the gRPC service paths. The deployed image runs as `nonroot` (UID 65534) inside an isolated container network namespace, behind a reverse proxy. The reverse proxy enforces TLS, authentication, and rate limiting; the container is not directly reachable from the internet.
+
+**Status:** Suppressed via `.trivyignore`
+**Reviewed:** 2026-05-01
+**Revisit:** 2026-08-01
 
 ## Dependency Security
 
