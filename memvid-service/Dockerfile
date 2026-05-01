@@ -5,7 +5,7 @@ ARG BUILD_COMMIT=unknown
 # Supports amd64 and arm64 architectures
 
 # Stage 1: Build the Rust binary
-FROM rust:1.95.0-slim AS builder
+FROM rust:1.95.0-slim-trixie AS builder
 
 ARG TARGETARCH
 ARG PROTOC_VERSION=28.3
