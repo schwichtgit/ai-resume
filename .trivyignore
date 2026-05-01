@@ -6,3 +6,5 @@
 #   CVE-2024-XXXXX  # accepted: no fix available, low exploitability in this context
 #
 # Reference: https://aquasecurity.github.io/trivy/latest/docs/configuration/filtering/#by-finding-ids
+
+CVE-2026-5435  # libc6 deprecated ns_printrr/ns_printrrf/fp_nquery family in glibc 2.41 (Trixie). Unfixed upstream. GitHub alert #547, severity note. Revisit 2026-08-01.

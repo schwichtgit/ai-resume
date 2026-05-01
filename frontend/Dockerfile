@@ -7,7 +7,7 @@ ARG BUILD_COMMIT=unknown
 # =============================================================================
 # Stage 1: Build React application
 # =============================================================================
-FROM node:24.15.0-bookworm-slim AS builder
+FROM node:24.15.0-trixie-slim AS builder
 
 WORKDIR /app
 
