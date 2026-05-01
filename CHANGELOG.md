@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-alpha.17] - 2026-05-01
+
+### Security
+
+- Memvid runtime base bumped from `gcr.io/distroless/cc-debian12:nonroot` (Debian 12 Bookworm, glibc 2.36) to `gcr.io/distroless/cc-debian13:nonroot` (Debian 13 Trixie, glibc 2.41) (#217). Improves the security posture of `library/ai-resume-memvid` against five glibc CVEs flagged by Trivy: `CVE-2026-4046` (alert #539, iconv DoS), `CVE-2026-4437` (#540, DNS response parsing), `CVE-2026-4438` (#541, gethostbyaddr), `CVE-2026-5450` (#543, scanf %mc overflow), `CVE-2026-5928` (#544, ungetwc disclosure). All five are unfixed upstream in either Bookworm or Trixie; the bump to Trixie 2.41 picks up the upstream mitigations Debian's security team applied, downgrading them from HIGH to MEDIUM. The five alerts remain `open` on the security tab as a SARIF state-machine artifact (severity downgrade is not auto-resolved by GitHub); a cleanup PR will codify them in `.trivyignore` with `revisit-YYYY-MM-DD` comments. Pins the explicit `-debianN` distroless suffix per ADR-032 to eliminate silent default-tag drift.
+- `.trivyignore` retired the obsolete `CVE-2026-28390` libssl3 suppression (libssl3 is absent from the cc-debian13 runtime) (#217).
+- `.trivyignore` extended to suppress `CVE-2026-5435` (alert #547, glibc deprecated `ns_printrr`/`ns_printrrf`/`fp_nquery` family, severity `note`, unfixed upstream in Trixie) with a `revisit-2026-08-01` comment (#218). GitHub code-scanning alert #547 auto-transitioned to `fixed` after the post-merge SARIF reconcile.
+
+### Changed
+
+- Frontend builder bumped from `node:24.15.0-bookworm-slim` to `node:24.15.0-trixie-slim` (#218).
+- Memvid builder bumped from `rust:1.95.0-slim` (unsuffixed Bookworm default) to `rust:1.95.0-slim-trixie` (#218). The explicit `-trixie` suffix eliminates the unsuffixed-default-tag drift risk per ADR-032 and aligns builder/runtime glibc versions (Trixie 2.41 builder + Trixie 2.41 runtime, no cross-version forward-compat dance).
+- `scripts/test-containers.sh` gained shell-overridable `MOCK_MEMVID`, `MOCK_MEMVID_CLIENT`, `MOCK_OPENROUTER`, and `RUST_LOG` env vars (#218); defaults preserve historical fully-mocked behaviour. Real api↔memvid gRPC verification now possible via `MOCK_MEMVID_CLIENT=false bash scripts/test-containers.sh`. Also corrected the stale Test 7 assertion (was grepping memvid logs for a `Search` RPC log line; the chat handler has called `Ask` since re-ranking landed).
+
+### Documentation
+
+- Tech-stack reference in the project guide updated from `Rust 1.93` to `Rust 1.95` to match the alpha.16 builder bump in #215.
+- `docs/DEPLOYMENT.md`: corrected the `api-service` arch-support row (was claiming `Python slim-bookworm multi-arch base`, which has not been accurate since the alpha.15 migration to `ubi10/ubi-micro` runtime + `rockylinux/rockylinux:10-minimal` builder).
+
+### Specforge
+
+- New features `INFRA-091` (Memvid Distroless Base Currency) and `INFRA-092` (Builder Image Currency, Bookworm to Trixie) added to `.specify/specs/spec.md` under "Container Base Image Currency".
+- New `ADR-032` (Pin Distroless Image with Explicit `-debianN` Suffix) and Phase 9 wrapper added to `.specify/specs/plan.md`.
+- `feature_list.json` extended with `memvid-distroless-debian13` and `builder-images-trixie` entries.
+
 ## [0.1.0-alpha.16] - 2026-04-26
 
 ### Changed

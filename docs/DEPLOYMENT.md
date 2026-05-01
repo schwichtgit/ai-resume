@@ -20,11 +20,11 @@ The ingest service runs once to build the `.mv2` vector database file from
 
 All service images build and run on both **amd64** and **arm64** architectures.
 
-| Service        | amd64 | arm64 | Notes                                       |
-| -------------- | ----- | ----- | ------------------------------------------- |
-| frontend       | Yes   | Yes   | Alpine + OpenResty available on both arches |
-| api-service    | Yes   | Yes   | Python slim-bookworm multi-arch base        |
-| memvid-service | Yes   | Yes   | Rust cross-compiles via `--platform` flag   |
+| Service        | amd64 | arm64 | Notes                                                     |
+| -------------- | ----- | ----- | --------------------------------------------------------- |
+| frontend       | Yes   | Yes   | Alpine + OpenResty available on both arches               |
+| api-service    | Yes   | Yes   | UBI 10 micro runtime + Rocky Linux 10 builder, multi-arch |
+| memvid-service | Yes   | Yes   | Rust cross-compiles via `--platform` flag                 |
 
 The memvid-service Dockerfile uses `ARG TARGETARCH` for platform-aware builds.
 The frontend and api-service use base images that natively support both architectures.
