@@ -7,4 +7,10 @@
 #
 # Reference: https://aquasecurity.github.io/trivy/latest/docs/configuration/filtering/#by-finding-ids
 
+CVE-2026-4046  # libc6 iconv() DoS via specific charsets. Originally HIGH on Bookworm, MEDIUM on Trixie. Unfixed upstream. GitHub alert #539. Revisit 2026-08-01.
+CVE-2026-4437  # libc6 incorrect DNS response parsing via crafted server response. MEDIUM on Trixie. Unfixed upstream. GitHub alert #540. Revisit 2026-08-01.
+CVE-2026-4438  # libc6 invalid DNS hostname returned via gethostbyaddr. MEDIUM on Trixie. Unfixed upstream. GitHub alert #541. Revisit 2026-08-01.
 CVE-2026-5435  # libc6 deprecated ns_printrr/ns_printrrf/fp_nquery family in glibc 2.41 (Trixie). Unfixed upstream. GitHub alert #547, severity note. Revisit 2026-08-01.
+CVE-2026-5450  # libc6 heap buffer overflow in scanf %mc with large width. MEDIUM on Trixie. Unfixed upstream. GitHub alert #543. Revisit 2026-08-01.
+CVE-2026-5928  # libc6 information disclosure or DoS via ungetwc with specific wide-char encodings. MEDIUM on Trixie. Unfixed upstream. GitHub alert #544. Revisit 2026-08-01.
+CVE-2026-6238  # libc6 (glibc 2.41-12+deb13u2) note-severity finding, no fixed version published. GitHub alert #548. Revisit 2026-08-01.
