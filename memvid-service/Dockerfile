@@ -59,7 +59,7 @@ ARG BUILD_VERSION
 ARG BUILD_COMMIT
 RUN printf '{"version":"%s","commit":"%s"}\n' "${BUILD_VERSION}" "${BUILD_COMMIT}" > /app/VERSION
 
-# Stage 2: Distroless runtime (glibc 2.41, UID 65534 nonroot)
+# Stage 2: Distroless runtime (glibc 2.41, UID 65532 nonroot)
 FROM gcr.io/distroless/cc-debian13:nonroot
 
 # Copy binary from builder
@@ -71,5 +71,7 @@ EXPOSE 50051
 
 # Expose Prometheus metrics port
 EXPOSE 9090
+
+USER nonroot
 
 ENTRYPOINT ["/usr/local/bin/memvid-service"]
