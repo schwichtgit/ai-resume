@@ -472,7 +472,7 @@ mod tests {
 
         assert!(searcher.is_ready());
         assert!(searcher.frame_count() > 0);
-        assert!(searcher.memvid_file().contains("resume.mv2"));
+        assert_eq!(searcher.memvid_file(), mv2_path);
     }
 
     #[tokio::test]
