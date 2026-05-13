@@ -15,7 +15,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@opentelemetry/context-zone": "^2.7.1",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.217.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.218.0",
     "@opentelemetry/instrumentation-fetch": "^0.217.0",
     "@opentelemetry/sdk-trace-base": "^2.6.1",
     "@opentelemetry/sdk-trace-web": "^2.5.1",
