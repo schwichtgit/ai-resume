@@ -643,6 +643,22 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # The ingest container drags in the full torch/nvidia CUDA wheel stack via
+      # sentence-transformers, which routinely exhausts the ~14 GB of free disk
+      # on the ubuntu-latest amd64 runner during `uv sync`. Reclaim ~30 GB by
+      # purging preinstalled toolchains we do not need here. Arm runner has
+      # more headroom and skips this step. Tracked: alpha.18 post-mortem.
+      - name: Free disk space on amd64 ingest runner
+        if: matrix.image == 'ingest' && matrix.platform == 'amd64'
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: false
+
       - name: Install cosign
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
         uses: sigstore/cosign-installer@v3
