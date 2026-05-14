@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-alpha.18] - 2026-05-14
+
+### Security
+
+- `urllib3` bumped from `2.6.3` to `2.7.0` in api-service (#247) -- closes Trivy code-scanning alerts for `CVE-2026-44431` (sensitive headers forwarded across origins) and `CVE-2026-44432` (decompression-bomb safeguards bypassed in parts of the streaming API), both HIGH severity. Until this landed, every Dependabot PR's `container-build (api, amd64/arm64)` job was failing the Trivy gate on these two CVEs; the rollup restored CI green on the api container path.
+- `python-multipart` bumped from `0.0.26` to `0.0.28` (constraint `>=0.0.27` → `>=0.0.28`; lock `0.0.26` → `0.0.28`) in api-service (#247) -- closes code-scanning alert #549 (`CVE-2026-42561`, HIGH, DoS via unbounded multipart part headers). Alert auto-transitioned to `fixed` after the post-merge SARIF reconcile.
+- `authlib` bumped from `1.6.11` to `1.6.12` in api-service (#247).
+
+### Changed
+
+- Dependency currency rollup consolidating 11 Dependabot PRs (#247)
+  - **api-service**: `urllib3` 2.6.3 → 2.7.0 (#244), `authlib` 1.6.11 → 1.6.12 (#245), `python-multipart` `>=0.0.27` → `>=0.0.28` (#233), `structlog` `>=24.4.0` → `>=25.5.0` (#234), `pydantic` `>=2.13.3` → `>=2.13.4` (#235)
+  - **api-service (dev)**: `black` `>=24.10.0` → `>=26.3.1` (#236), `ruff` `>=0.8.6` → `>=0.15.12` (#237)
+  - **frontend (minor-and-patch group, 12 updates)**: bundled (#240); `@opentelemetry/exporter-trace-otlp-http` 0.216 → 0.218 plus `protobufjs` removal as a transitive cleanup (#246)
+  - **memvid-service (minor-and-patch group, 6 updates)**: bundled (#238)
+  - Conflict resolution: the five api-service `pyproject.toml` constraint bumps touched adjacent lines and were merged into a single combined commit; the two frontend opentelemetry-touching PRs were merged by taking the newer exporter version and keeping the bumped instrumentation-fetch from the group.
+- Dependency currency rollup consolidating 8 Dependabot PRs (#229)
+  - **api-service**: `pydantic-settings` `>=2.13.1` → `>=2.14.0` (#222), `grpcio` `>=1.69.0` → `>=1.80.0` (#223), `prometheus-fastapi-instrumentator` `>=7.0.0` → `>=7.1.0` (#225), `python-multipart` `>=0.0.26` → `>=0.0.27` (#226) -- the python-multipart bump was a partial intermediate step; #247 advanced it to `>=0.0.28` to clear the CVE-2026-42561 fixed-version gate
+  - **api-service (dev)**: `types-cachetools` `>=5.5.0` → `>=7.0.0.20260503` (#224)
+  - **frontend (minor-and-patch group, 14 updates)**: bundled (#228)
+  - **memvid-service (cargo minor-and-patch group)**: `metrics` 0.24.3 → 0.24.5, `metrics-exporter-prometheus` 0.18.1 → 0.18.3 (#227)
+  - **github_actions**: `SonarSource/sonarqube-scan-action` 7.1.0 → 8.0.0 (#221)
+- `react-day-picker` bumped from `9.14.0` to `10.0.0` in frontend (#248) -- major bump that removes the v9-deprecated navigation/event props and the `DeprecatedUI` compatibility typing for `classNames`/`styles`. The repo's only consumer (`frontend/src/components/ui/calendar.tsx`, shadcn/ui boilerplate with zero imports in `src/`) was deleted rather than migrated. The dependency stays in `package.json` so the shadcn CLI can regenerate the component on demand if it's needed later.
+
+### Fixed
+
+- Memvid container release-gate compliance: added an explicit `USER nonroot` directive to `memvid-service/Dockerfile` so the release-gate check verifying a non-root final-stage user passes (#231). The distroless `gcr.io/distroless/cc-debian13:nonroot` base already runs as `nonroot` by default; the explicit directive removes the implicit-base-default dependency the gate flagged.
+- Memvid test isolation: `test_real_searcher_memvid_file_path` now asserts the searcher's `memvid_file` matches the isolated test-fixture path rather than the hardcoded production `resume.mv2` filename (#230). Was a latent assertion-vs-implementation mismatch that surfaced when alpha.17's release-gate work isolated the test fixture.
+
+### Excluded from this release
+
+- **#239 / #241 / #243** (`opentelemetry` / `opentelemetry-otlp` / `opentelemetry_sdk` 0.31 → 0.32 in memvid-service) -- must move as a triple, but `tracing-opentelemetry 0.32.1` (latest published) still depends on `opentelemetry 0.31` and the bump produces a `Tracer` trait mismatch from two concurrent `opentelemetry` versions in the dep graph. Parked until `tracing-opentelemetry 0.33` is released.
+
 ## [0.1.0-alpha.17] - 2026-05-01
 
 ### Security
