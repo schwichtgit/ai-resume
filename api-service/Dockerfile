@@ -70,6 +70,7 @@ RUN mkdir -p /python-runtime/usr/bin \
     libuuid.so* \
     libstdc++.so* \
     libgcc_s.so* \
+    'libgcc_s-*.so*' \
     ; do \
     find /usr/lib64 -maxdepth 1 -name "$lib" -exec cp -a {} /python-runtime/usr/lib64/ \; 2>/dev/null; \
     done
