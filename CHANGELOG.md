@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-alpha.19] - 2026-05-22
+
+### Changed
+
+- Dependency currency rollup consolidating 8 Dependabot PRs (#260)
+  - **api-service**: `fastapi` `>=0.115.6` → `>=0.136.1` (#252, floor bump spanning 21 minor versions; still 0.x), `fastmcp` `>=3.2.4` → `>=3.3.1` (#251)
+  - **api-service (dev)**: `ruff` `>=0.15.12` → `>=0.15.13` (#254), `poetry` (sbom) `>=2.3.4` → `>=2.4.1` (#256)
+  - **api-service (transitive)**: `idna` 3.11 → 3.16 (#258 asked for `>=3.15`; resolver chose 3.16). Lock regeneration also picked up `pydantic` 2.13.3 → 2.13.4 and `poetry-core` 2.3.2 → 2.4.0 as collateral.
+  - **ingest**: `idna` 3.11 → 3.15 (#259)
+  - **frontend (minor-and-patch group, 16 updates)**: bundled (#257)
+  - **memvid-service**: `metrics` 0.24.5 → 0.24.6 (#255, Cargo.lock-only)
+  - Conflict resolution: the four api-service `pyproject.toml` constraint bumps touched adjacent lines and were merged into a single combined commit with one paired `uv lock --upgrade-package …` regeneration.
+- Memvid OpenTelemetry stack bumped 0.31 → 0.32 (#261)
+  - `opentelemetry` 0.31 → 0.32 (#239), `opentelemetry-otlp` 0.31 → 0.32 (#241), `opentelemetry_sdk` 0.31 → 0.32 (#243)
+  - Manual paired bump: `tracing-opentelemetry` 0.32.1 → 0.33 (no Dependabot PR — `tracing-opentelemetry 0.33.0` published to crates.io 2026-05-18, pins `opentelemetry ^0.32.0`, which unblocked the previously parked triple from alpha.18's "Excluded from this release").
+  - Collateral lock updates: `opentelemetry-http` / `opentelemetry-proto` 0.31 → 0.32, `reqwest` 0.12 → 0.13 (transitive via `opentelemetry-otlp`), adds `tonic-types` 0.14.6 as a new transitive.
+  - No code changes — the API surface used in `memvid-service/src/otel.rs` (`SpanExporter::builder().with_tonic()`, `SdkTracerProvider::builder()`, `Resource::builder_empty()`, `OpenTelemetryLayer::new(tracer)`) is forward-compatible between 0.31 and 0.32.
+
+### Excluded from this release
+
+- **#253** (`starlette` `>=0.49.1` → `>=1.0.1` in api-service) — blocked by `prometheus-fastapi-instrumentator==7.1.0` (latest on PyPI) capping `starlette<1.0.0`. Upstream fix `trallnag/prometheus-fastapi-instrumentator#357` ("chore: Port to starlette 1.0") is open but unmerged as of 2026-05-21. Parked until a `prometheus-fastapi-instrumentator >7.1.0` is published with starlette-1.0 support.
+
 ## [0.1.0-alpha.18] - 2026-05-14
 
 ### Security
