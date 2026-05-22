@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0-alpha.19] - 2026-05-22
+## [0.1.0-alpha.20] - 2026-05-22
+
+> Supersedes the withdrawn `0.1.0-alpha.19` tag, which was published twice and withdrawn twice on 2026-05-21/2026-05-22. The first tag was withdrawn after the api container failed to start with `ImportError: libgcc_s.so.1: cannot open shared object file`; the re-cut tag (which included the libgcc Dockerfile fix in #263) was withdrawn after the release workflow's signature-verify job failed on `ai-resume-ingest` because release-validate raced two concurrent CI runs on the same SHA and selected the dev-versioned `push`-event run instead of the tag-event run. Cutting fresh as alpha.20 from current `main` HEAD avoids reusing a burned tag.
 
 ### Changed
 
@@ -24,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Manual paired bump: `tracing-opentelemetry` 0.32.1 → 0.33 (no Dependabot PR — `tracing-opentelemetry 0.33.0` published to crates.io 2026-05-18, pins `opentelemetry ^0.32.0`, which unblocked the previously parked triple from alpha.18's "Excluded from this release").
   - Collateral lock updates: `opentelemetry-http` / `opentelemetry-proto` 0.31 → 0.32, `reqwest` 0.12 → 0.13 (transitive via `opentelemetry-otlp`), adds `tonic-types` 0.14.6 as a new transitive.
   - No code changes — the API surface used in `memvid-service/src/otel.rs` (`SpanExporter::builder().with_tonic()`, `SdkTracerProvider::builder()`, `Resource::builder_empty()`, `OpenTelemetryLayer::new(tracer)`) is forward-compatible between 0.31 and 0.32.
+
+### Fixed
+
+- api Dockerfile: stage `libgcc_s` versioned target alongside the symlink so it resolves in the runtime image (#263). The python-deps stage's `find … -name "libgcc_s.so*"` glob matched the `libgcc_s.so.1` symlink but not its versioned target `libgcc_s-14-<snapshot>.so.1` (because of the `-14-` infix). This worked by coincidence as long as `rockylinux/rockylinux:10-minimal` and `registry.access.redhat.com/ubi10/ubi-micro` shipped the same libgcc snapshot; after ubi-micro rolled forward to `libgcc-14-20251022` while rocky-10-minimal stayed on `libgcc-14-20250617`, the symlink dangled in the final image and pydantic-core / grpcio / any native extension that dynamically links libgcc_s.so.1 failed to import at container startup. Added a second glob `'libgcc_s-*.so*'` to the find loop. Same pattern that already makes `libstdc++.so*` work (the versioned filename also matches because there's no infix). When rocky-10-minimal eventually moves to RHEL 10.2 (matching ubi-micro), this fix becomes a no-op — but it also hardens against the next time the two base images drift.
 
 ### Excluded from this release
 
