@@ -87,6 +87,24 @@ if [ -f "$OUTPUT_FILE" ]; then
     fi
 fi
 
+# Slow ingest e2e tests (retrieval accuracy + RAG smoke).
+# These are marked @pytest.mark.slow so they are deselected from the fast PR
+# loop; the release gate is where they run. Each self-orchestrates its own .mv2
+# by ingesting data/example_resume.md via a session fixture (no dependency on a
+# pre-existing artifact). LLM-dependent cases skip cleanly without OPENROUTER_API_KEY.
+echo ""
+log_info "Running slow ingest e2e tests (-m slow)..."
+# --no-cov: this is a retrieval-correctness subset, not a coverage run; the
+# 85% line-coverage gate belongs to the full `-m "not slow"` suite, and a
+# slow-only selection cannot reach it.
+if (cd "$PROJECT_ROOT/ingest" && uv run --extra test pytest -m slow -v --tb=short --no-cov); then
+    log_pass "Slow ingest e2e tests passed"
+    TESTS_PASSED=$((TESTS_PASSED + 1))
+else
+    log_fail "Slow ingest e2e tests failed"
+    TESTS_FAILED=$((TESTS_FAILED + 1))
+fi
+
 # Summary
 TOTAL=$((TESTS_PASSED + TESTS_FAILED))
 echo ""

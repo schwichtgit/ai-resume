@@ -126,6 +126,7 @@ RETRIEVAL_TEST_CASES = [
 ]
 
 
+@pytest.mark.slow
 def test_memvid_retrieval(isolated_mv2: str) -> None:
     """Test that memvid retrieves expected content for each test case."""
     print("\n" + "=" * 70)
@@ -195,6 +196,7 @@ def test_memvid_retrieval(isolated_mv2: str) -> None:
     assert failed == 0, f"{failed} retrieval test(s) failed"
 
 
+@pytest.mark.slow
 @pytest.mark.asyncio
 async def test_query_transformation_improves_retrieval(isolated_mv2: str) -> tuple[int, int]:
     """Test that query transformation improves retrieval for ambiguous queries."""
@@ -310,6 +312,7 @@ async def test_query_transformation_improves_retrieval(isolated_mv2: str) -> tup
     return passed, failed
 
 
+@pytest.mark.slow
 @pytest.mark.asyncio
 async def test_full_rag_pipeline(isolated_mv2: str) -> tuple[int, int]:
     """Test the complete RAG pipeline produces correct answers."""

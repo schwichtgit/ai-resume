@@ -8,6 +8,7 @@ Run with: uv run python test_memvid.py
 import os
 import tempfile
 
+import pytest
 import memvid_sdk
 
 
@@ -105,6 +106,7 @@ def test_create_and_query() -> None:
     print("\nTest completed successfully!")
 
 
+@pytest.mark.slow
 def test_open_existing(isolated_mv2: str) -> None:
     """Test opening an existing .mv2 file (if one exists)."""
     print("\n=== Open Existing Test ===")
