@@ -18,6 +18,7 @@ import pytest
 import memvid_sdk
 
 
+@pytest.mark.slow
 def test_index_status(isolated_mv2: str) -> None:
     """Check if indexes are enabled/disabled in the .mv2 file."""
     print("=" * 70)
