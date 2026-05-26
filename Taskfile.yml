@@ -115,11 +115,19 @@ tasks:
 
   lint:prettier:
     desc: Run prettier --check against the repo (matches CI ci-base/prettier)
+    # deps on frontend:setup so the `npm ci` that installs prettier completes
+    # before this reads node_modules. Without it, `task lint` schedules setup
+    # (which does `rm -rf node_modules`) concurrently with this task, and
+    # prettier dies mid-run with ERR_MODULE_NOT_FOUND on its own plugins.
+    deps: [frontend:setup]
     cmds:
       - npx --prefix frontend prettier --check .
 
   lint:markdown:
     desc: Run markdownlint-cli2 (matches CI ci-base/markdownlint)
+    # See lint:prettier — same npm-ci race; markdownlint-cli2 also lives in
+    # frontend/node_modules.
+    deps: [frontend:setup]
     cmds:
       - npx --prefix frontend markdownlint-cli2 '**/*.md'
 
