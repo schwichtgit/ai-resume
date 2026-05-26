@@ -13,7 +13,7 @@ EXAMPLE_RESUME = PROJECT_ROOT / "data" / "example_resume.md"
 
 
 @pytest.fixture(scope="session")
-def jane_mv2_base(tmp_path_factory) -> Path:
+def jane_mv2_base(tmp_path_factory: pytest.TempPathFactory) -> Path:
     """Ingest the shipped example resume (Jane Chen) into a .mv2 once per session."""
     out = tmp_path_factory.mktemp("mv2") / "jane.mv2"
     ingest_memory(input_path=EXAMPLE_RESUME, output_path=out, verbose=False)
