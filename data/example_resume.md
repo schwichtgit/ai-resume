@@ -325,6 +325,13 @@ Full-stack engineer at early-stage B2B SaaS startup. Transitioned from IC to tec
 - Databases: PostgreSQL, Redis
 - Cloud: AWS (pre-Kubernetes era)
 
+**AI Context:**
+
+- **Situation:** Early-stage B2B SaaS startup with a small engineering team and no formal technical leadership structure. Product was gaining traction but the codebase and infrastructure were not ready to scale.
+- **Approach:** Took ownership of backend architecture while gradually stepping into a tech lead role. Focused on building reliable API foundations and establishing engineering practices that would hold up under growth.
+- **Technical Work:** Designed and built the core REST API in Flask (later migrated critical paths to Django) backed by PostgreSQL and Redis for caching and rate limiting. Stood up AWS infrastructure with automated deployments, achieving 500K requests/day with sub-100ms p95 latency.
+- **Lessons Learned:** Early architectural decisions compound quickly at a startup. Investing in database indexing, caching strategy, and API versioning early saved months of rework later. Leading technical due diligence for Series B taught her that investors care more about operational maturity than clever code. Mentoring junior engineers was the most effective force multiplier on the team.
+
 ---
 
 ## Security Skills & Experience
