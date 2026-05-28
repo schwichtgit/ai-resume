@@ -488,19 +488,20 @@ wheels = [
 
 [[package]]
 name = "dulwich"
-version = "0.25.2"
+version = "1.2.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ba/b8/9c9bc6ac66007f8090b1da9079c0e4bbea5aa9583c3c12098e0f11462dd5/dulwich-0.25.2.tar.gz", hash = "sha256:bca22c8aa4cbecbe8493b76e3fd6101513f09cf405cd9b92e116a48d9469e55a", size = 1126499, upload-time = "2026-01-11T22:04:47.667Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7f/85/ceb8ecff5cdeee4ceeebb86b599476dee559041dacc6c2c50cc0d4711549/dulwich-1.2.5.tar.gz", hash = "sha256:0395b2c8924c3424bafe2d9c1edd5348cc4b21ce9c1d6655bf01f9a5c47164c8", size = 1253230, upload-time = "2026-05-28T22:27:55.17Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/da/8a/4ec87df697cf1af9172b015e1256ca93856d9454d7e24a4f9168d3667892/dulwich-0.25.2-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:ce00c68c4fcd7ea53641153a69aab9a010ae140387a39f13e9ecf05f60fefd77", size = 1318435, upload-time = "2026-01-11T22:04:21.97Z" },
-    { url = "https://files.pythonhosted.org/packages/e1/fe/1260a7217eb439bae33bae3af98b84ed53e0601e19bd87e580df09650021/dulwich-0.25.2-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:6ece907b40f503c68e27bd77c71d3de25ac5c6256c43b82f7843232e7769cebd", size = 1395034, upload-time = "2026-01-11T22:04:23.384Z" },
-    { url = "https://files.pythonhosted.org/packages/3f/24/e8cec93df1bfba4087919842a0754b50f0c6e605d620976d5d8625229caa/dulwich-0.25.2-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:e2d5cc06cc25d88f87fd966bee74c62903473f81a1646323bf1e4fe8fec4b797", size = 1423110, upload-time = "2026-01-11T22:04:24.937Z" },
-    { url = "https://files.pythonhosted.org/packages/4e/4b/f4ef7c2dcf7b47c27518461e0acf32eaf76fd357a1aa02ce3de0f1b04578/dulwich-0.25.2-cp312-cp312-win32.whl", hash = "sha256:62c7fe4931a5457745aaa263dea6388a6334ba03e65990fadd10b1857f5ad741", size = 982792, upload-time = "2026-01-11T22:04:26.929Z" },
-    { url = "https://files.pythonhosted.org/packages/87/2b/bee92d4c4dc8ccfdbe64a87464e5970c78ea9b201c7d57f15342330d32de/dulwich-0.25.2-cp312-cp312-win_amd64.whl", hash = "sha256:3977d089e4c68fc1589457d7a19a7637a1d8f173702f18eb1c198bb4d34e52b0", size = 1000183, upload-time = "2026-01-11T22:04:29.013Z" },
-    { url = "https://files.pythonhosted.org/packages/87/eb/153b2b32dca090e956a1e512293db3c7c144db50da439373d1be56880512/dulwich-0.25.2-py3-none-any.whl", hash = "sha256:19dd5a0e08a47483be7f404e2555136a9ebaf70781fee3280457f8e2d65b2388", size = 650045, upload-time = "2026-01-11T22:04:45.398Z" },
+    { url = "https://files.pythonhosted.org/packages/19/22/4f75770bbe5521cac61c4820ef46d4fbf8c2175d3519ba3d0378d4ba798e/dulwich-1.2.5-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:701a9ecf7a8a44f5e2459e46befa93530cf36a8b1ae3140aefc007db1d7d0207", size = 1396522, upload-time = "2026-05-28T22:27:09.997Z" },
+    { url = "https://files.pythonhosted.org/packages/e5/b1/c07c347681c0cf6acd4b189bf6e8d6207c71a1347b7a1e865eb40faa46b9/dulwich-1.2.5-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:2f90d68bfa97c4ca71de7507984365aefe27b6d248cb28dc99644d0f3ae8c60b", size = 1334826, upload-time = "2026-05-28T22:27:11.582Z" },
+    { url = "https://files.pythonhosted.org/packages/13/80/6818eb7ce492e18ab2efa92ab901d173b4b0b159e5681c1424f329600c40/dulwich-1.2.5-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:00b54a1d56ddbacdd8eadd6d4787a51b3a05fefa30eadbf9165fd283a00b90ed", size = 1416616, upload-time = "2026-05-28T22:27:13.195Z" },
+    { url = "https://files.pythonhosted.org/packages/14/a7/9790e60d19870f6554f7583722bb324c1355784316f20aeda1c0b5b1491a/dulwich-1.2.5-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:d8f7ea8f47e38e5b0de3fab97e07e9c9161ffddc90b3964512cab2b7749df4e6", size = 1441354, upload-time = "2026-05-28T22:27:14.683Z" },
+    { url = "https://files.pythonhosted.org/packages/91/44/0ea8a69c24aa1254ff5996d682eae2eab287d471b937dcdb26d9ea9720b4/dulwich-1.2.5-cp312-cp312-win32.whl", hash = "sha256:8929134acf4ff967203df7600b38535f9b5b590462067a7e30dbce01acb97af9", size = 1017058, upload-time = "2026-05-28T22:27:16.121Z" },
+    { url = "https://files.pythonhosted.org/packages/bd/9c/2fcddda7faec3bae52db7c64bfcb5dc756f597f33fae90e8d4e4b4d3b39b/dulwich-1.2.5-cp312-cp312-win_amd64.whl", hash = "sha256:9693d2c9e226b2ea855c1dc3a87e2f4d972f7523fc0f7924e5997e9f4c23d97f", size = 1031731, upload-time = "2026-05-28T22:27:17.633Z" },
+    { url = "https://files.pythonhosted.org/packages/07/4b/4a18a59ad230581cd0ef460e96001f90762e566dc2dfdba22aa358eb5a0e/dulwich-1.2.5-py3-none-any.whl", hash = "sha256:1679b376433a0fc7f36586afda1d4ed7427afa7a79d4bf17e5014474eea69fa4", size = 686745, upload-time = "2026-05-28T22:27:53.695Z" },
 ]
 
 [[package]]
