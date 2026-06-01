@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-alpha.22] - 2026-06-01
+
+### Changed
+
+- Dependency currency rollup consolidating 7 Dependabot PRs (#295)
+  - **api-service**: `opentelemetry-api` `>=1.29.0` → `>=1.42.1` (#289), `opentelemetry-sdk` `>=1.41.1` → `>=1.42.1` (#290), `prometheus-fastapi-instrumentator` `>=7.1.0` → `>=8.0.0` (#291 — raises the pyproject floor to match the `8.0.0` already locked in alpha.21's #286, which had auto-upgraded the instrumentator to unblock starlette 1.x; `starlette` stays `>=1.2.1`, no regression)
+  - **api-service (dev)**: `ruff` `>=0.15.13` → `>=0.15.15` (#288), `pytest-asyncio` `>=1.3.0` → `>=1.4.0` (#293)
+  - **memvid-service**: Rust builder base `rust:1.95.0-slim-trixie` → `rust:1.96.0-slim-trixie` (#287, `docker` ecosystem)
+  - **frontend**: Node builder base `node:24.15.0-trixie-slim` → `node:26.2.0-trixie-slim` (#292, `docker` ecosystem; major bump — the npm build stage and the full frontend test suite pass on Node 26). Node 26.3.0 released upstream the same day but its official Docker image was not yet published, so 26.2.0 is the latest buildable base.
+  - All container base-image `@sha256` digests were re-resolved fresh against current-latest (not just the two Dependabot proposed); only `node` and `rust` had drifted. `rockylinux:10-minimal` remains VERSION_ID 10.1 (Rocky 10.2 not yet shipped), so the load-bearing `'libgcc_s-*.so*'` glob in the api/ingest Dockerfiles stays.
+- Tech-stack reference in the project guide updated Rust `1.95` → `1.96` to match the bumped builder base (#295).
+
 ## [0.1.0-alpha.21] - 2026-05-31
 
 ### Security
@@ -504,7 +516,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.21...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.22...HEAD
+[0.1.0-alpha.22]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.21...v0.1.0-alpha.22
 [0.1.0-alpha.21]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.20...v0.1.0-alpha.21
 [0.1.0-alpha.12]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.11...v0.1.0-alpha.12
 [0.1.0-alpha.11]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.8...v0.1.0-alpha.11
