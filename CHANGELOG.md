@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-alpha.21] - 2026-05-31
+
+### Security
+
+- `dulwich` bumped from `0.25.2` to `1.2.6` (constraint floor `1.2.5`) in api-service (#286) -- resolves Dependabot alerts #73 (`Command Injection via Merge Driver Path`) and #74 (`arbitrary file write via NTFS-hostile tree entries on Windows`), both HIGH. `dulwich` is a transitive dependency; the bump was driven via `uv lock --upgrade-package dulwich`. Both alerts auto-transitioned to `fixed` after merge.
+
+### Changed
+
+- Dependency currency rollup consolidating 9 Dependabot PRs (#286)
+  - **api-service**: `starlette` `>=0.49.1` → `>=1.2.1` (#284), `uvicorn` `>=0.44.0` → `>=0.48.0` (#279), `python-multipart` `>=0.0.28` → `>=0.0.30` (#280, resolver advanced past the requested `>=0.0.29`), `opentelemetry-exporter-otlp` `>=1.41.1` → `>=1.42.1` (#281)
+  - **api-service (dev)**: `types-cachetools` → `>=7.0.0.20260518` (#282)
+  - **ingest**: `memvid-sdk` `2.0.159` → `2.0.160` (#278)
+  - **memvid-service (cargo minor-and-patch group)**: `h2` 0.4.13 → 0.4.14, `hyper` `1.9` → `1.10`, `opentelemetry_sdk` 0.32.0 → 0.32.1, `serial_test` 3.4.0 → 3.5.0 (#283); plus `memvid-core` `2.0.139` → `2.0.140` (manual bump alongside the group — the Rust crate's own version line, distinct from the 2.0.160 Python/npm packages)
+  - **frontend (minor-and-patch group, 6 updates)**: `date-fns` 4.4.0, `lucide-react` 1.17.0, `react-hook-form` 7.77.0, `react-router-dom` 7.16.0, `eslint` 10.4.1, `typescript-eslint` 8.60.0 (#285)
+  - **starlette 1.x unblocked**: the upgrade parked since alpha.18 (#239-era note) and explicitly "Excluded" in alpha.18 (#253) and alpha.20 cleared on its own — the resolver auto-upgraded `prometheus-fastapi-instrumentator` `7.1.0` → `8.0.0`, which dropped the `starlette<1.0.0` cap (upstream `trallnag/prometheus-fastapi-instrumentator#357`). No manual intervention beyond bumping the `starlette` floor.
+- Pin all container base images to immutable `@sha256` manifest-list digests across the four Dockerfiles (#286) -- `frontend` (`node:24.15.0-trixie-slim`, `alpine:3.23.4`), `api-service` / `ingest` (`rockylinux/rockylinux:10-minimal`, `ghcr.io/astral-sh/uv` pinned to `0.11.17`, `registry.access.redhat.com/ubi10/ubi-micro` which was previously untagged=`latest`), `memvid-service` (`rust:1.95.0-slim-trixie`, `gcr.io/distroless/cc-debian13:nonroot`). Multi-arch (amd64+arm64) preserved by pinning the image-index digest. This freezes the libgcc snapshots together and is the durable fix for the base-image drift previously patched with the `'libgcc_s-*.so*'` glob in #263 — the glob is retained because it remains structurally load-bearing (Rocky ships libgcc as `libgcc_s-14-<date>.so.1` plus a symlink; removing the glob dangles the symlink and the api container fails at startup with `ImportError: libgcc_s.so.1`).
+- Add a `docker` package-ecosystem to `.github/dependabot.yml` for all four service directories (#286) so the newly-pinned base-image digests continue to receive updates via Dependabot PRs.
+- Ingest e2e tests now self-orchestrate their own `.mv2` data from the shipped `data/example_resume.md` (Jane Chen persona) rather than depending on a developer-generated `data/.memvid/resume.mv2` artifact, and run at release time (#274). A session-scoped `jane_mv2_base` fixture ingests the template once via `ingest_memory()`; `isolated_mv2` copies it per-test to preserve exclusive-lock isolation.
+- Dependency currency rollup consolidating 7 Dependabot PRs (#273)
+  - **api-service**: `fastapi` `>=0.136.1` → `>=0.136.3` (#269), `cachetools` `>=5.5.0` → `>=7.1.4` (#266, aligns with `types-cachetools` 7.x), `setuptools` `>=80.10.2` → `>=82.0.1` (#268)
+  - **api-service (dev)**: `mypy` `>=1.20.2` → `>=2.1.0` (#267)
+  - **memvid-service (cargo)**: `tower-http` 0.6.10 → 0.6.11, `serde_json` 1.0.149 → 1.0.150 (#270)
+  - **frontend (minor-and-patch group, 11 updates)**: bundled (#272)
+  - **github_actions**: `SonarSource/sonarqube-scan-action` 8.0.0 → 8.1.0 (#265)
+
+### Fixed
+
+- `task lint` prettier/markdown race with `npm ci` (#275). `lint:prettier` and `lint:markdown` invoke `npx --prefix frontend …` but did not depend on `frontend:setup` (which runs `npm ci`, including `rm -rf node_modules`). With stale `node_modules` (e.g. after a branch switch), go-task scheduled the install concurrently with the lint tasks and prettier/markdownlint died with `ERR_MODULE_NOT_FOUND`. Declaring `deps: [frontend:setup]` makes go-task dedup the install so it completes once before any lint task runs.
+
+### Documentation
+
+- Added the missing `AI Context` block (Situation / Approach / Technical Work / Lessons Learned) to Jane Chen's early-stage B2B SaaS startup experience entry in `data/example_resume.md` (#276) -- every other experience entry in the template already had it.
+
 ## [0.1.0-alpha.20] - 2026-05-22
 
 > Supersedes the withdrawn `0.1.0-alpha.19` tag, which was published twice and withdrawn twice on 2026-05-21/2026-05-22. The first tag was withdrawn after the api container failed to start with `ImportError: libgcc_s.so.1: cannot open shared object file`; the re-cut tag (which included the libgcc Dockerfile fix in #263) was withdrawn after the release workflow's signature-verify job failed on `ai-resume-ingest` because release-validate raced two concurrent CI runs on the same SHA and selected the dev-versioned `push`-event run instead of the tag-event run. Cutting fresh as alpha.20 from current `main` HEAD avoids reusing a burned tag.
@@ -471,7 +504,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.12...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.21...HEAD
+[0.1.0-alpha.21]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.20...v0.1.0-alpha.21
 [0.1.0-alpha.12]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.11...v0.1.0-alpha.12
 [0.1.0-alpha.11]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.8...v0.1.0-alpha.11
 [0.1.0-alpha.8]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.7...v0.1.0-alpha.8
