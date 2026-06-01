@@ -51,6 +51,9 @@ claude-project-foundation-PLAN.md
 .claude/PLAN.md
 .claude/mind.*
 
+# Agent isolation worktrees (transient checkouts under .claude/)
+.claude/worktrees/
+
 # License (formatting is legally significant)
 LICENSE
 
