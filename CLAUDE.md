@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 **Description:** Polyglot web application enabling recruiters to query a candidate's experience via AI chat with semantic search retrieval
-**Tech Stack:** TypeScript (React 19), Python 3.12 (FastAPI), Rust 1.95 (memvid gRPC)
+**Tech Stack:** TypeScript (React 19), Python 3.12 (FastAPI), Rust 1.96 (memvid gRPC)
 **Repository:** <https://github.com/schwichtgit/ai-resume>
 
 This is an interactive AI-powered resume site built with Vite, React, TypeScript, shadcn/ui, and Tailwind CSS. The site showcases a candidate's experience with an AI chat interface that answers questions about their background, an honest fit assessment tool, and detailed experience cards.
