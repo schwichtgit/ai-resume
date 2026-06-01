@@ -8,10 +8,10 @@ readme = "README.md"
 license = {text = "MIT"}
 dependencies = [
     "fastapi>=0.136.3",
-    "starlette>=0.49.1",
+    "starlette>=1.2.1",
     "setuptools>=82.0.1",
-    "uvicorn[standard]>=0.44.0",
-    "python-multipart>=0.0.28",
+    "uvicorn[standard]>=0.48.0",
+    "python-multipart>=0.0.29",
     "httpx>=0.28.1",
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.0",
@@ -26,7 +26,7 @@ dependencies = [
     "cachetools>=7.1.4",
     "slowapi>=0.1.9",
     "fastmcp>=3.3.1",
-    "opentelemetry-exporter-otlp>=1.41.1",
+    "opentelemetry-exporter-otlp>=1.42.1",
 ]
 
 [project.optional-dependencies]
@@ -40,7 +40,7 @@ lint = [
     "isort>=8.0.1",
     "ruff>=0.15.13",
     "mypy>=2.1.0",
-    "types-cachetools>=7.0.0.20260503",
+    "types-cachetools>=7.0.0.20260518",
 ]
 sbom = [
     "poetry>=2.4.1"

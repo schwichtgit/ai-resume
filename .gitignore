@@ -22,6 +22,8 @@ dist-ssr
 .claude/mind.*
 .claude/*.mv2
 .claude/restart-*.md
+# Agent isolation worktrees (transient checkouts created by the Agent tool)
+.claude/worktrees/
 
 # Local working directories (for development, testing, temporary files)
 /local/

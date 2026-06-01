@@ -70,3 +70,59 @@ updates:
         update-types:
           - 'minor'
           - 'patch'
+
+  # Docker (frontend)
+  - package-ecosystem: 'docker'
+    directory: '/frontend'
+    schedule:
+      interval: 'weekly'
+    commit-message:
+      prefix: 'build'
+      include: 'scope'
+    groups:
+      minor-and-patch:
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  # Docker (api-service)
+  - package-ecosystem: 'docker'
+    directory: '/api-service'
+    schedule:
+      interval: 'weekly'
+    commit-message:
+      prefix: 'build'
+      include: 'scope'
+    groups:
+      minor-and-patch:
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  # Docker (ingest)
+  - package-ecosystem: 'docker'
+    directory: '/ingest'
+    schedule:
+      interval: 'weekly'
+    commit-message:
+      prefix: 'build'
+      include: 'scope'
+    groups:
+      minor-and-patch:
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  # Docker (memvid-service)
+  - package-ecosystem: 'docker'
+    directory: '/memvid-service'
+    schedule:
+      interval: 'weekly'
+    commit-message:
+      prefix: 'build'
+      include: 'scope'
+    groups:
+      minor-and-patch:
+        update-types:
+          - 'minor'
+          - 'patch'

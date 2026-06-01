@@ -5,7 +5,8 @@ ARG BUILD_COMMIT=unknown
 # Supports amd64 and arm64 architectures
 
 # Stage 1: Build the Rust binary
-FROM rust:1.95.0-slim-trixie AS builder
+# rust 1.95.0-slim-trixie, pinned 2026-05-31
+FROM rust:1.95.0-slim-trixie@sha256:e14e87345b4d5964ddcc3491d27ee046a0f23820f340c3c1e24da6880141f7c0 AS builder
 
 ARG TARGETARCH
 ARG PROTOC_VERSION=28.3
@@ -60,7 +61,8 @@ ARG BUILD_COMMIT
 RUN printf '{"version":"%s","commit":"%s"}\n' "${BUILD_VERSION}" "${BUILD_COMMIT}" > /app/VERSION
 
 # Stage 2: Distroless runtime (glibc 2.41, UID 65532 nonroot)
-FROM gcr.io/distroless/cc-debian13:nonroot
+# distroless cc-debian13:nonroot, pinned 2026-05-31
+FROM gcr.io/distroless/cc-debian13:nonroot@sha256:e1fd250ce83d94603e9887ec991156a6c26905a6b0001039b7a43699018c0733
 
 # Copy binary from builder
 COPY --from=builder /app/target/release/memvid-service /usr/local/bin/memvid-service
