@@ -16,7 +16,7 @@ permissions:
   id-token: write
 
 env:
-  NODE_VERSION: '22'
+  NODE_VERSION: '26'
 
 jobs:
   # CPF scaffold base checks (shellcheck, markdownlint, prettier, plugin-validation)

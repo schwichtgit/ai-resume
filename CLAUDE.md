@@ -347,7 +347,7 @@ The application expects to be served at `frank-resume.schwichtenberg.us` when de
 ### Container Architecture
 
 - **Frontend base**: alpine:3.23 with OpenResty (runs as nginx user)
-- **Frontend build stage**: node:24-trixie-slim for npm build
+- **Frontend build stage**: node:26.2.0-trixie-slim for npm build
 - **API base**: ubi10/ubi-micro runtime, rockylinux:10-minimal builder (3-stage build)
 - **Ingest base**: ubi10/ubi-micro runtime, rockylinux:10-minimal builder (3-stage build)
 - **Memvid base**: gcr.io/distroless/cc-debian13:nonroot (runs as nonroot user)

@@ -72,7 +72,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system design, dat
 
 | Tool    | Minimum | Required For                         |
 | ------- | ------- | ------------------------------------ |
-| Node.js | 22.14.0 | Frontend build and dev server        |
+| Node.js | 26.2.0  | Frontend build and dev server        |
 | uv      | 0.9.0   | Python package management            |
 | go-task | 3.48.0  | Build orchestration (`task` CLI)     |
 | Rust    | 1.93.0  | memvid-service only                  |
