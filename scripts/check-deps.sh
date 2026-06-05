@@ -121,8 +121,8 @@ tier_required() {
   echo "Checking required tools..."
   echo ""
 
-  check_tool "Node.js"   "node --version"    "22.14.0" "https://nodejs.org/"              || FAIL=$((FAIL + 1))
-  check_tool "npm"       "npm --version"     "10.9.0"  "(bundled with Node.js)"           || FAIL=$((FAIL + 1))
+  check_tool "Node.js"   "node --version"    "26.2.0" "https://nodejs.org/"              || FAIL=$((FAIL + 1))
+  check_tool "npm"       "npm --version"     "11.0.0"  "(bundled with Node.js)"           || FAIL=$((FAIL + 1))
   check_tool "uv"        "uv --version"      "0.9.0"   "curl -LsSf https://astral.sh/uv/install.sh | sh" || FAIL=$((FAIL + 1))
   check_tool "go-task"   "task --version"    "3.48.0"  "https://taskfile.dev/installation/" || FAIL=$((FAIL + 1))
 

@@ -11,8 +11,8 @@ All dependencies are checked by `task deps`. Three tiers:
 
 | Tool    | Minimum | Install                                            |
 | ------- | ------- | -------------------------------------------------- |
-| Node.js | 22.14.0 | <https://nodejs.org/>                              |
-| npm     | 10.9.0  | Bundled with Node.js                               |
+| Node.js | 26.2.0  | <https://nodejs.org/>                              |
+| npm     | 11.0.0  | Bundled with Node.js                               |
 | uv      | 0.9.0   | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | go-task | 3.48.0  | <https://taskfile.dev/installation/>               |
 

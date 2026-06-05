@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: '26'
       - run: npm install --prefix frontend
       - run: npx --prefix frontend prettier --check .
 
