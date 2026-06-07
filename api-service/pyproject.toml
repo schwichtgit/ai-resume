@@ -25,7 +25,7 @@ dependencies = [
     "structlog>=25.5.0",
     "cachetools>=7.1.4",
     "slowapi>=0.1.9",
-    "fastmcp>=3.3.1",
+    "fastmcp>=3.4.2",
     "opentelemetry-exporter-otlp>=1.42.1",
 ]
 
