@@ -4,7 +4,7 @@ ARG BUILD_COMMIT=unknown
 # --- Stage 1: Builder ---
 # Rocky 10 minimal (microdnf) with compilers and uv for building the production venv
 # rocky 10-minimal (10.1), libgcc-14-20250617, pinned 2026-05-31
-FROM rockylinux/rockylinux:10-minimal@sha256:cfa2812ec7151c2be393cfe46e50cf59426373d12f03f4ffbdd56becb8195a65 AS builder
+FROM rockylinux/rockylinux:10-minimal@sha256:bc5c1e7a2ec7f4bcef1e51c7f0ebb2d43f05409e0108cdd34f693921d0604360 AS builder
 
 # Install Python 3.12 + build toolchain for native extensions (grpcio)
 RUN microdnf install -y --nodocs \
@@ -37,7 +37,7 @@ RUN printf '{"version":"%s","commit":"%s"}\n' "${BUILD_VERSION}" "${BUILD_COMMIT
 # Rocky 10 minimal has microdnf to install Python + shared libraries, then we
 # stage everything into /python-runtime/ for a single COPY into ubi-micro.
 # rocky 10-minimal (10.1), libgcc-14-20250617, pinned 2026-05-31
-FROM rockylinux/rockylinux:10-minimal@sha256:cfa2812ec7151c2be393cfe46e50cf59426373d12f03f4ffbdd56becb8195a65 AS python-deps
+FROM rockylinux/rockylinux:10-minimal@sha256:bc5c1e7a2ec7f4bcef1e51c7f0ebb2d43f05409e0108cdd34f693921d0604360 AS python-deps
 
 RUN microdnf install -y --nodocs \
     python3.12 \

@@ -6,7 +6,7 @@ ARG BUILD_COMMIT=unknown
 
 # Stage 1: Build the Rust binary
 # rust 1.96.0-slim-trixie, pinned 2026-06-01
-FROM rust:1.96.0-slim-trixie@sha256:26abcef3d79b8d890c4ceb17093154573e1f6479cf6dd7c1450043b8458350f6 AS builder
+FROM rust:1.96.0-slim-trixie@sha256:3b05f7c617a200c41c3506097f0d15fc193a1c93bfd8f141007b47cac8f95d3c AS builder
 
 ARG TARGETARCH
 ARG PROTOC_VERSION=28.3
@@ -62,7 +62,7 @@ RUN printf '{"version":"%s","commit":"%s"}\n' "${BUILD_VERSION}" "${BUILD_COMMIT
 
 # Stage 2: Distroless runtime (glibc 2.41, UID 65532 nonroot)
 # distroless cc-debian13:nonroot, pinned 2026-05-31
-FROM gcr.io/distroless/cc-debian13:nonroot@sha256:e1fd250ce83d94603e9887ec991156a6c26905a6b0001039b7a43699018c0733
+FROM gcr.io/distroless/cc-debian13:nonroot@sha256:d3cda6e91129130d7229a1806b6a73d292ef245ab032da7851907798024cefba
 
 # Copy binary from builder
 COPY --from=builder /app/target/release/memvid-service /usr/local/bin/memvid-service
