@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-alpha.23] - 2026-06-15
+
+### Security
+
+- `@babel/core` bumped `7.29.0` → `7.29.7` (#327) -- resolves Dependabot alert #84 (GHSA-4x5r-pxfx-6jf8, low): `Arbitrary File Read via sourceMappingURL Comment` (CVE-2026-49356, vulnerable `<=7.29.0`, patched `7.29.6`). Transitive dev dependency pulled in by `eslint-plugin-react-hooks@7.1.1` (`@babel/core: ^7.24.4`); fixed lock-only via `npm update @babel/core` with **no** downgrade of `eslint-plugin-react-hooks` (Dependabot's auto-path would have downgraded it to 5.2.0, which is why it could not open the PR itself).
+- 15 memvid base-image `libssl3t64` CVEs cleared by the `gcr.io/distroless/cc-debian13:nonroot` digest re-pin in #321 (see below) -- the new digest ships `libssl3t64 3.5.6-1~deb13u2`. Confirmed by a fresh Trivy scan: GitHub code-scanning alerts #551 (CVE-2026-45447, HIGH), #552-555 (`-34182`/`-34183`/`-42764`/`-45445`, MEDIUM) and the low-severity batch (#556-565) all auto-transitioned to `fixed`. The remaining open alert is `torch` CVE-2025-3000 (no upstream fix available).
+
+### Changed
+
+- Dependency currency rollup consolidating 13 Dependabot PRs (#321)
+  - **api-service (pip)**: `python-multipart` `>=0.0.29` → `>=0.0.32` (#317), `pydantic-settings` `>=2.14.0` → `>=2.14.1` (#315), `structlog` `>=25.5.0` → `>=26.1.0` (#316)
+  - **api-service (dev)**: `black` `>=26.3.1` → `>=26.5.1` (#319), `ruff` `>=0.15.16` → `>=0.15.17` (#318)
+  - **frontend (npm minor-and-patch group, 14 updates)**: `@opentelemetry/*` (`context-zone` 2.7.1 → 2.8.0, `exporter-trace-otlp-http` & `instrumentation-fetch` 0.218.0 → 0.219.0), `lucide-react` 1.17.0 → 1.18.0, `react-hook-form` 7.77.0 → 7.79.0, `@tailwindcss/typography` 0.5.16 → 0.5.20, `@tailwindcss/vite` 4.3.0 → 4.3.1, `@types/node` 25.9.2 → 25.9.3, `eslint` 10.4.1 → 10.5.0, `prettier` 3.8.3 → 3.8.4, `typescript-eslint` 8.60.1 → 8.61.0 (#320)
+  - **docker**: `node:26.3.0-trixie-slim` digest re-pin (#313), `alpine` 3.23.4 → 3.24.0 (#312), `rockylinux/rockylinux:10-minimal` digest re-pin in api-service (#311) and ingest (#310), `rust:1.96.0-slim-trixie` digest re-pin (#309), `gcr.io/distroless/cc-debian13:nonroot` digest re-pin (#308 -- picks up the `libssl3t64` security fix noted above)
+  - **github_actions**: `SonarSource/sonarqube-scan-action` 8.1.0 → 8.2.0 (#314)
+- Dependency currency rollup consolidating 4 Dependabot PRs (#326)
+  - **api-service (pip)**: `starlette` `>=1.2.1` → `>=1.3.1` (#322); `cryptography` 46.0.7 → 49.0.0 (#323, transitive -- the resolver advanced past Dependabot's requested 48.0.1 to current-latest); `pyjwt` 2.12.0 → 2.13.0 (#324, transitive)
+  - **frontend (npm minor-and-patch group, 32 updates)**: `@radix-ui/*` component bumps (accordion, alert-dialog, avatar, select, tabs, tooltip, and others), `@playwright/test` 1.60.0 → 1.61.0, `@vitest/coverage-v8` 4.1.8 → 4.1.9, `eslint-plugin-react-refresh` 0.5.2 → 0.5.3, `typescript-eslint` 8.61.0 → 8.61.1 (#325)
+- Dependency currency rollup consolidating 8 Dependabot PRs (#306)
+  - **api-service (pip)**: `grpcio` `>=1.80.0` → `>=1.81.0` (#299), `uvicorn` `>=0.48.0` → `>=0.49.0` (#300), `opentelemetry-instrumentation-fastapi` `>=0.50b0` → `>=0.63b1` (#301), `fastmcp` `>=3.3.1` → `>=3.4.2` (#302)
+  - **api-service (dev)**: `ruff` `>=0.15.15` → `>=0.15.16` (#304)
+  - **frontend (npm minor-and-patch group, 37 updates)**: `@radix-ui/*`, `@tanstack/react-query`, and others (#305)
+  - **frontend (docker)**: `node` `26.2.0-trixie-slim` → `26.3.0-trixie-slim` (#298)
+  - **memvid-service (cargo minor-and-patch group)**: `chrono` 0.4.44 → 0.4.45, `prost`/`prost-derive` 0.14.3 → 0.14.4, transitive `windows-sys` bumps (#303)
+  - `api-service/uv.lock` regenerated to match the #306 `pyproject.toml` bumps in a follow-up sync (#307).
+- Align every Node.js pin on Node 26 (#297) -- CI ran `setup-node` on Node 22 while the frontend build container was already `node:26.2.0`. `ci.yml` / `ci-base.yml` `NODE_VERSION` and `setup-node` 22 → 26, `scripts/check-deps.sh` required-tier floors Node `22.14.0` → `26.2.0` / npm `10.9.0` → `11.0.0`, and the README / `docs/DEVELOPMENT.md` / project-guide prerequisites updated to match (also correcting a stale `node:24` frontend build-stage reference). `frontend/Dockerfile` was already on `node:26.2.0-trixie-slim` and is unchanged.
+
+### Fixed
+
+- Recurring `container-build (ingest, amd64)` `no space left on device` failures (#328). The ingest container drags in the full torch/nvidia CUDA wheel stack (~5-6 GB unpacked) via `sentence-transformers`, which exhausts the ~14 GB root volume while podman stores the `.venv` layer blob under `/var/tmp`. The `jlumbroso/free-disk-space` step now runs with `large-packages: true` and `swap-storage: true` (previously both `false`), reclaiming ~8-10 GB more. Stopgap; the durable image-size fix (pin Linux builds to CPU-only torch to drop the nvidia stack entirely) remains a tracked follow-up.
+
 ## [0.1.0-alpha.22] - 2026-06-01
 
 ### Changed
@@ -516,7 +547,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.22...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.23...HEAD
+[0.1.0-alpha.23]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.22...v0.1.0-alpha.23
 [0.1.0-alpha.22]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.21...v0.1.0-alpha.22
 [0.1.0-alpha.21]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.20...v0.1.0-alpha.21
 [0.1.0-alpha.12]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.11...v0.1.0-alpha.12
