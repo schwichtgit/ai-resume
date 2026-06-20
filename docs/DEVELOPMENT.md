@@ -24,11 +24,11 @@ environments and pins the Python version in each service's `pyproject.toml`.
 
 ### Service-level (Tier 2 -- warn only)
 
-| Tool   | Minimum | Notes                                |
-| ------ | ------- | ------------------------------------ |
-| rustc  | 1.93.0  | Required for memvid-service          |
-| cargo  | 1.93.0  | Bundled with Rust                    |
-| protoc | 32.1    | Required for gRPC proto regeneration |
+| Tool   | Minimum | Notes                                            |
+| ------ | ------- | ------------------------------------------------ |
+| rustc  | 1.96.0  | memvid-service (pinned in `rust-toolchain.toml`) |
+| cargo  | 1.96.0  | Bundled with Rust                                |
+| protoc | 32.1    | Required for gRPC proto regeneration             |
 
 ### Optional (Tier 3 -- informational)
 
@@ -120,7 +120,7 @@ Common per-service targets: `setup`, `lint`, `lint:fix`, `test`,
 
 ### Frontend (`frontend/`)
 
-TypeScript, React 19, Vite 8 (Rolldown), Tailwind CSS v4, shadcn/ui.
+TypeScript, React 19, Vite 8, Tailwind CSS v4, shadcn/ui.
 
 ```bash
 task frontend:dev             # Vite dev server on port 8080
@@ -143,9 +143,11 @@ npm test -- --run
 npm test -- --run --coverage
 ```
 
-**E2E tests** (Playwright, requires all services running):
+**E2E tests** (Playwright, requires all services running). Specs live in
+`frontend/e2e/*.spec.ts`, config in `frontend/playwright.config.ts`:
 
 ```bash
+cd frontend
 npx playwright install chromium  # first time only
 E2E_BASE_URL=http://localhost:8080 npx playwright test
 ```
@@ -183,7 +185,7 @@ venv activation automatically via `uv run`.
 
 ### Memvid Service (`memvid-service/`)
 
-Rust 1.93+, gRPC (tonic), port 50051.
+Rust 1.96 (pinned), gRPC (tonic), port 50051.
 
 ```bash
 task memvid:dev             # cargo run
@@ -309,8 +311,8 @@ task container:build      # Build all service images (frontend, api, memvid)
 This runs `scripts/build-all.sh` which builds each Dockerfile:
 
 - `frontend/Dockerfile` -- alpine + OpenResty, port 8080
-- `api-service/Dockerfile` -- python:3.12-slim, port 3000
-- `memvid-service/Dockerfile` -- debian:trixie-slim, port 50051
+- `api-service/Dockerfile` -- Rocky Linux 10 minimal builder + `ubi10/ubi-micro` runtime, port 3000
+- `memvid-service/Dockerfile` -- `rust:1.96.0-slim-trixie` builder + `gcr.io/distroless/cc-debian13:nonroot` runtime, port 50051
 
 ### Deploy Locally
 

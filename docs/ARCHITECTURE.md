@@ -48,7 +48,7 @@ The system uses a **three-container architecture**:
 │          ┌──────────────────────────────────────┐            │
 │          │ Container 3: Rust Memvid Service     │            │
 │          │ - gRPC port 50051 (internal)         │            │
-│          │ - Loads frank-resume-v1.0.0.mv2      │            │
+│          │ - Loads data/.memvid/resume.mv2      │            │
 │          │ - <5ms semantic search retrieval     │            │
 │          │ - Prometheus metrics on :9090        │            │
 │          │ - 15MB container, 20MB runtime       │            │
@@ -66,7 +66,7 @@ The system uses a **three-container architecture**:
 
 ### Frontend (React SPA + nginx)
 
-- **Technology:** React 19 + TypeScript + Vite 8 (Rolldown) + Tailwind CSS v4 + nginx/OpenResty (Alpine)
+- **Technology:** React 19 + TypeScript + Vite 8 + Tailwind CSS v4 + nginx/OpenResty (Alpine)
 - **Container Size:** ~35MB
 - **Responsibilities:**
   - Serve static files
@@ -89,11 +89,11 @@ The system uses a **three-container architecture**:
 
 ### Rust Memvid Service
 
-- **Technology:** Rust 1.93 + Tonic gRPC + tokio + memvid-core
+- **Technology:** Rust 1.96 + Tonic gRPC + tokio + memvid-core
 - **Container Size:** ~15MB (distroless)
 - **Memory:** ~20MB runtime
 - **Responsibilities:**
-  - Load `frank-resume.mv2` file on startup
+  - Load `data/.memvid/resume.mv2` file on startup
   - Expose gRPC API for semantic search
   - Return top-K relevant chunks with metadata
   - Prometheus metrics for retrieval latency
@@ -109,7 +109,7 @@ The system uses a **three-container architecture**:
 4. **Python calls Rust service** (gRPC: `Search(question)`)
 5. **Rust queries memvid** (<5ms) → Returns top 5 chunks with metadata
 6. **Python assembles prompt:**
-   - System prompt (from `master_resume.md` frontmatter)
+   - System prompt (from the resume markdown frontmatter)
    - Retrieved context (from Rust memvid)
    - Conversation history (last 5 messages)
    - User question
@@ -126,10 +126,10 @@ The system uses a **three-container architecture**:
 
 ## Memvid Query Modes: Find vs Ask
 
-**Current Implementation:** Find mode (basic vector similarity)
-**Planned Enhancement:** Ask mode (retrieval + re-ranking)
+Both modes are implemented: `find` (basic vector similarity) and `ask`
+(retrieval + re-ranking with engine selection and metadata filtering).
 
-### Find Mode (Current)
+### Find Mode
 
 The current implementation uses memvid's `find` operation which performs basic vector similarity search:
 
@@ -145,7 +145,7 @@ Query → Embedding → Vector Search → Top-K by Distance → Return
 - No metadata filtering (cannot filter by section, company, date)
 - No temporal queries (cannot filter by time ranges)
 
-### Ask Mode (Planned)
+### Ask Mode
 
 Ask mode adds a **cross-encoder re-ranking layer** after initial retrieval for precision:
 
@@ -236,7 +236,7 @@ message RerankedHit {
 - ✅ **Engine selection:** Choose HYBRID/VECTOR/LEXICAL based on query type
 - ✅ **Better precision:** Cross-encoder achieves up to 100% relevance for exact matches
 
-**Implementation Status:** 🚧 Planned (Phase 11 - see TODO.md)
+**Implementation Status:** Implemented -- the `Ask` gRPC RPC (`proto/memvid/v1/memvid.proto`) is served by `memvid-service` with HYBRID/SEM/LEX engine selection and metadata-scope filtering (`src/memvid/real.rs`).
 
 ## Benefits of Hybrid Approach
 
@@ -679,8 +679,6 @@ See `api-service/ai_resume_api/guardrails.py` for implementation.
 
 ### Phase 4: Ontology-Based Knowledge Graph RAG
 
-**Reference:** [ONTOLOGY-CONSIDERATIONS.md](./ONTOLOGY-CONSIDERATIONS.md)
-
 Evolution from "Simple RAG" (text similarity) to "Knowledge-Graph RAG" (structured relationships):
 
 - [ ] **Pydantic Ontology Schema:** Define typed entities (Skill, ExperienceFrame, NarrativeFrame, FitAssessmentFrame)
@@ -699,16 +697,14 @@ Evolution from "Simple RAG" (text similarity) to "Knowledge-Graph RAG" (structur
 
 ## Related Documentation
 
-Detailed specifications for implementation:
-
-- **[MASTER_DOCUMENT_SCHEMA.md](./MASTER_DOCUMENT_SCHEMA.md):** Optimal schema for resume data files, chunking strategy, and ingest pipeline
-- **[AGENTIC_FLOW.md](./AGENTIC_FLOW.md):** End-to-end query transformation, RAG retrieval, and LLM generation pipeline
-- **[ONTOLOGY-CONSIDERATIONS.md](./ONTOLOGY-CONSIDERATIONS.md):** Future evolution to Knowledge-Graph RAG with structured ontology extraction
+- **[DEVELOPMENT.md](./DEVELOPMENT.md):** Local development workflow, Taskfile, per-service commands
+- **[DEPLOYMENT.md](./DEPLOYMENT.md):** Container build and deployment
+- **[CI-CONTAINER-FLOW.md](./CI-CONTAINER-FLOW.md):** CI, release, and security workflows
+- **[OBSERVABILITY.md](./OBSERVABILITY.md):** OpenTelemetry tracing, metrics, and dashboards
+- **[SECURITY.md](./SECURITY.md):** Scanning, alert handling, and dismissal policy
 
 ## References
 
-- **PRD.md:** Comprehensive product requirements and language comparison
-- **Perplexity Analysis:** Edge deployment considerations (cold start, security, memory)
 - **Memvid:** <https://github.com/memvid/memvid>
 - **OpenRouter:** <https://openrouter.ai>
 - **LangChain:** <https://langchain.com> (for future use)

@@ -259,39 +259,38 @@ echo 'not json' | bash .claude/hooks/validate-bash.sh
 echo $?  # Expected: 0
 ```
 
-## Remaining Issues in ai-resume
+## Status in ai-resume
 
-`protect-files.sh` still uses `exit 1` for blocking protected file edits:
+Both `PreToolUse` hooks follow the convention. `protect-files.sh` blocks with
+`exit 2` and writes the message to stderr at all three block paths:
 
 ```bash
-# .claude/hooks/protect-files.sh -- lines 93-99
+# .claude/hooks/protect-files.sh
 case "$FILENAME" in
     .env*|*credentials*|*secret*|*password*|id_rsa*|id_ed25519*|*.pem|*.key)
-        echo "BLOCKED: This file type is protected and cannot be modified"
-        exit 1  # BUG: should be exit 2 with >&2
+        echo "BLOCKED: This file type is protected and cannot be modified" >&2
+        exit 2
         ;;
     *lock*)
-        echo "BLOCKED: Lock files should not be manually modified"
-        exit 1  # BUG: should be exit 2 with >&2
+        echo "BLOCKED: Lock files should not be manually modified" >&2
+        exit 2
         ;;
 esac
 
-# ... and line 116
-echo "BLOCKED: Files in $dir directory are protected"
-exit 1  # BUG: should be exit 2 with >&2
+# ... and the sensitive-directory path
+echo "BLOCKED: Files in $dir directory are protected" >&2
+exit 2
 ```
 
 ## Upstream Action Items (specforge)
 
-1. **Fix `protect-files.sh`**: change all `exit 1` to `exit 2`, redirect block
-   messages to stderr
-2. **Update hook templates**: specforge hook scaffolding should generate `exit 2`
+1. **Update hook templates**: specforge hook scaffolding should generate `exit 2`
    with stderr for block paths
-3. **Add hook testing guide**: include the stdin-pipe testing pattern in
+2. **Add hook testing guide**: include the stdin-pipe testing pattern in
    specforge documentation
-4. **Add a lint check**: CI could verify that no hook script uses `exit 1` in a
+3. **Add a lint check**: CI could verify that no hook script uses `exit 1` in a
    block path (grep for `exit 1` in `.claude/hooks/`)
-5. **Document the three-bug pattern**: input source (stdin not `$1`), output
+4. **Document the three-bug pattern**: input source (stdin not `$1`), output
    channel (stderr not stdout), exit code (`2` not `1`) -- these are the three
    things every new hook author gets wrong
 
