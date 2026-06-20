@@ -36,6 +36,7 @@ jobs:
       - name: Run Trivy vulnerability scanner (SARIF)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
+          version: 'v0.71.2'
           image-ref: '${{ matrix.image }}:scan'
           format: 'sarif'
           output: 'trivy-results.sarif'
@@ -54,6 +55,7 @@ jobs:
           TRIVY_SEVERITY: CRITICAL,HIGH
           TRIVY_IGNORE_UNFIXED: 'true'
         with:
+          version: 'v0.71.2'
           image-ref: '${{ matrix.image }}:scan'
           format: 'table'
           exit-code: '1'
