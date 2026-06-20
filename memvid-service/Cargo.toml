@@ -10,7 +10,7 @@ description = "Rust-based memvid retrieval service for AI Resume"
 axum = { version = "0.8", features = ["macros"] }
 tokio = { version = "1", features = ["full"] }
 tower = "0.5"
-tower-http = { version = "0.6", features = ["trace", "cors"] }
+tower-http = { version = "0.7", features = ["trace", "cors"] }
 
 # Memvid SDK
 memvid-core = { version = "2.0.140", features = ["lex"] }
