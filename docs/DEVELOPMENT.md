@@ -363,6 +363,23 @@ This sets `git config core.hooksPath .githooks`. Hooks include:
 Skip temporarily with `git commit --no-verify`. Uninstall with
 `git config --unset core.hooksPath`.
 
+### Claude Code Hooks
+
+Separate from git hooks, `.claude/hooks/` enforces quality and safety during
+Claude Code sessions (configured in `.claude/settings.json`):
+
+| Hook                | Trigger        | Purpose                                              |
+| ------------------- | -------------- | ---------------------------------------------------- |
+| `protect-files.sh`  | Pre Write/Edit | Blocks edits to secrets, keys, and lock files        |
+| `validate-bash.sh`  | Pre Bash       | Blocks destructive commands (`rm -rf /`, force push) |
+| `validate-pr.sh`    | Pre Bash       | Validates PR descriptions and targets                |
+| `format-changed.sh` | Stop           | Auto-formats changed files before quality checks     |
+| `verify-quality.sh` | Stop           | Runs lint, type check, and tests before session end  |
+
+Blocking hooks follow the Claude Code convention: `exit 2` with the message on
+stderr. See the [official hooks reference](https://code.claude.com/docs/en/hooks)
+for the exit-code and event semantics.
+
 ### Branch Strategy
 
 - Work on feature branches

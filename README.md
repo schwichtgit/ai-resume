@@ -190,15 +190,14 @@ ai-resume/
 
 ## Documentation
 
-| Document                                                         | Description                                  |
-| ---------------------------------------------------------------- | -------------------------------------------- |
-| [Architecture](docs/ARCHITECTURE.md)                             | System design, data flow, network topology   |
-| [Deployment](docs/DEPLOYMENT.md)                                 | Container builds, ARM64 edge, compose config |
-| [Development](docs/DEVELOPMENT.md)                               | Build system, per-service commands, testing  |
-| [Observability](docs/OBSERVABILITY.md)                           | Distributed tracing, dashboards, runbooks    |
-| [Security](docs/SECURITY.md)                                     | Threat model, prompt injection, hardening    |
-| [Hook Exit Codes](docs/hook-exit-code-conventions.md)            | Claude Code hook exit code conventions       |
-| [Post-Edit Hook Antipattern](docs/post-edit-hook-antipattern.md) | Hook design guidance                         |
+| Document                                         | Description                                  |
+| ------------------------------------------------ | -------------------------------------------- |
+| [Architecture](docs/ARCHITECTURE.md)             | System design, data flow, network topology   |
+| [Deployment](docs/DEPLOYMENT.md)                 | Container builds, ARM64 edge, compose config |
+| [Development](docs/DEVELOPMENT.md)               | Build system, per-service commands, testing  |
+| [Observability](docs/OBSERVABILITY.md)           | Distributed tracing, dashboards, runbooks    |
+| [Security](docs/SECURITY.md)                     | Threat model, prompt injection, hardening    |
+| [CI / Container Flow](docs/CI-CONTAINER-FLOW.md) | Multi-arch builds, Sigstore signing, SBOMs   |
 
 ## About This Project
 
