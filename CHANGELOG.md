@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.1] - 2026-06-20
+
+First **beta**. The feature set is complete; this line is bug-fix and
+stabilization only -- dependency currency, security hardening, CI/tooling, and a
+documentation overhaul. No new product features since alpha.23.
+
+### Security
+
+- `msgpack` bumped `1.1.2` → `1.2.1` (#345) -- resolves GHSA-6v7p-g79w-8964 (HIGH): out-of-bounds read / crash on `Unpacker` reuse. Transitive via `poetry[filecache]` → `cachecontrol` (present only under the `sbom` extra); surfaced by a Trivy lockfile scan, no Dependabot PR existed.
+- `undici` `7.25.0` → `7.28.0` and `brace-expansion` `5.0.2` → `5.0.6` in the frontend (#341) -- resolves GHSA-vmh5-mc38-953g (HIGH, undici TLS cert-validation bypass) plus six further undici advisories, and GHSA-jxxr-4gwj-5jf2 (moderate, brace-expansion ReDoS). `brace-expansion` was a deep transitive with no Dependabot PR; applied via `npm audit fix`. `npm audit` now reports 0 vulnerabilities.
+
+### Added
+
+- `task audit` -- a whole-SBOM vulnerability sweep across all ecosystems (#351): `npm audit`, `pip-audit` (environment mode, sidestepping the uv-standalone-Python `ensurepip` crash), and `cargo audit`. File-based suppressions via per-service `.pip-audit-ignore` (mirrors `.trivyignore`). A weekly `dependency-audit` job in `security.yml` runs it on schedule, catching newly-disclosed advisories against already-pinned deps -- the gap Dependabot misses.
+
+### Changed
+
+- Dependency currency rollup consolidating 8 Dependabot PRs plus transitive security fixes (#341): api-service `python-multipart`/`pydantic-settings`/`structlog`/`black`/`ruff`; frontend npm minor-and-patch group (14 updates); docker base-image digests (node, `alpine` 3.23→3.24, rockylinux ×2, rust, distroless); `SonarSource/sonarqube-scan-action` 8.1→8.2.
+- api-service: `starlette` `1.2.1` → `1.3.1`, `cryptography` `46.0.7` → `49.0.0`, `pyjwt` `2.12.0` → `2.13.0` (#341-era follow-up); `fastapi` `0.136.3` → `0.138.0`, `pytest` `9.0.3` → `9.1.1` (#347).
+- frontend: `@types/node` `25.9.3` → `26.0.0` (#348); npm minor-and-patch group (32 updates -- `@radix-ui/*`, `@playwright/test`, `@vitest/coverage-v8`, etc.).
+- memvid-service: `tower-http` `0.6.11` → `0.7.0` (#346, cargo 0.x semver-breaking; verified via build + clippy + tests).
+- **Require Rust 1.96** across the toolchain (#352): `memvid-service/rust-toolchain.toml` `1.93.0` → `1.96.0` (the pin that actually forced local rustc 1.93), a `Cargo.toml` `rust-version = "1.96"` MSRV gate, `check-deps.sh` floors, and all four `ci.yml` toolchain pins -- aligning local dev with the container build base.
+- CI: `actions/checkout` `v6` → `v7` (#349); Trivy scanner pinned to `v0.71.2` in `security.yml` (#350); the CI workflow is now named `CI` (was a bare `I`) (#354).
+
+### Fixed
+
+- Production `deployment/observability/prometheus.yml` scraped memvid metrics on `:50051` (the gRPC port, which serves no `/metrics`) instead of `:9090` (#353) -- prod memvid metrics were never collected. The dev config was already correct.
+
+### Documentation
+
+- README and `docs/` currency overhaul (#352): cross-referenced every claim against the code. Ask mode documented as implemented (was "Planned"); corrected Dockerfile base-image descriptions, the GitHub code-scanning dismissal-reason format, and the OBSERVABILITY metrics port; replaced the stale security-scan appendix with the live workflow. Removed the EOL `docs/archive/` set (11 files) and two generic Claude Code hook docs (~624 lines, folded into a concise DEVELOPMENT.md subsection); both preserved in git history.
+
 ## [0.1.0-alpha.23] - 2026-06-15
 
 ### Security
@@ -547,7 +579,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.23...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.1...HEAD
+[0.1.0-beta.1]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.23...v0.1.0-beta.1
 [0.1.0-alpha.23]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.22...v0.1.0-alpha.23
 [0.1.0-alpha.22]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.21...v0.1.0-alpha.22
 [0.1.0-alpha.21]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.20...v0.1.0-alpha.21
