@@ -60,3 +60,49 @@ jobs:
           format: 'table'
           exit-code: '1'
           trivyignores: '.trivyignore'
+
+  # Whole-SBOM dependency audit across all ecosystems (npm, pip, cargo) via
+  # `task audit`. Complements container-scan: this catches newly-disclosed
+  # advisories against already-pinned deps -- the case Dependabot misses
+  # (it only fires on dep *changes*), e.g. the msgpack/undici advisories that
+  # surfaced against unchanged lockfiles. Fails the run on any unsuppressed
+  # finding; suppressions live in per-service .pip-audit-ignore / .trivyignore.
+  dependency-audit:
+    name: Dependency vulnerability audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install go-task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '26'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Setup Rust (provides cargo for `cargo audit`)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+
+      - name: Install frontend deps (npm audit needs the lockfile resolved)
+        run: cd frontend && npm ci
+
+      - name: Run whole-SBOM dependency audit
+        run: task audit
