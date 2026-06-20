@@ -26,7 +26,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -153,7 +153,7 @@ jobs:
             ai-resume-ingest,
           ]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
@@ -261,7 +261,7 @@ jobs:
             ai-resume-ingest,
           ]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
@@ -299,7 +299,7 @@ jobs:
     needs: verify-signatures
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install skopeo
         run: |
@@ -324,7 +324,7 @@ jobs:
     needs: publish-tags
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Generate release notes with container images
         env:
