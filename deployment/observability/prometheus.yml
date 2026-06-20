@@ -12,9 +12,10 @@ scrape_configs:
   - job_name: memvid-service
     static_configs:
       - targets:
-          # Replace with actual memvid-service host:port
-          # e.g., "memvid-service:50051"
-          - 'host.containers.internal:50051'
+          # memvid metrics are on port 9090 (METRICS_PORT, default 9090);
+          # 50051 is the gRPC port and does not serve /metrics.
+          # e.g., "memvid-service:9090"
+          - 'host.containers.internal:9090'
 
   - job_name: tempo-metrics
     static_configs:
