@@ -205,7 +205,7 @@ Binding to `0.0.0.0` is intentional and safe in this containerized deployment. T
 - Re-detected as alerts #545 and #546 in the post-2026-05-01 scan after a CodeQL ruleset update on the same code pattern
 - Alert #545: <https://github.com/schwichtgit/ai-resume/security/code-scanning/545>
 - Alert #546: <https://github.com/schwichtgit/ai-resume/security/code-scanning/546>
-- Reason: `wont-fix` -- Intentional design, safe in containerized deployment (rationale unchanged from original 2026-02-06 review; see "Why This Is Safe" above)
+- Reason: `won't fix` -- Intentional design, safe in containerized deployment (rationale unchanged from original 2026-02-06 review; see "Why This Is Safe" above)
 - Reviewed: 2026-05-01
 
 ### Volume Mounts
@@ -259,7 +259,7 @@ This project uses GitHub Code Scanning with CodeQL to automatically detect secur
 All dismissed alerts must be documented in this file with:
 
 - Alert number and rule ID
-- Dismissal reason (false-positive, wont-fix, used-in-tests)
+- Dismissal reason (the GitHub API expects `false positive`, `won't fix`, or `used in tests` -- spaces and apostrophe, not hyphens)
 - Detailed rationale and security controls
 - Review schedule
 
@@ -361,31 +361,18 @@ grype dir:node_modules
 - **Medium**: Patch within 30 days
 - **Low**: Batch with next release
 
-## Appendix: Latest Scan Results
+## Automated Scanning
 
-**Last Scanned:** 2026-01-16
-**Tool:** Grype v0.105.0
+Scanning is automated by the **Security Scan** workflow
+(`.github/workflows/security.yml`), which runs weekly (Mondays 06:00 UTC) and on
+`workflow_dispatch`:
 
-### Summary
+- **`container-scan`** -- builds each of the four images and runs Trivy
+  (pinned `v0.71.2`): a SARIF scan uploaded to GitHub code scanning, plus a
+  `CRITICAL,HIGH` gate (`TRIVY_IGNORE_UNFIXED=true`, honoring `.trivyignore`).
+- **`dependency-audit`** -- runs `task audit`, a whole-SBOM dependency sweep
+  across npm (`npm audit`), Python (`pip-audit`), and Rust (`cargo audit`).
+  Suppressions live in per-service `.pip-audit-ignore` / `.trivyignore`.
 
-- **Production containers**: Clean (no vulnerabilities)
-- **Development dependencies**: Build-time only issues in esbuild (Go stdlib)
-
-### Production Container Security
-
-The production container contains only:
-
-- nginx base (~20MB)
-- Static HTML/CSS/JS (~12MB)
-- No node_modules, no build tools
-
-All build-time vulnerabilities (esbuild Go binaries) are excluded from production.
-
-### Known Issues (Development Only)
-
-| CVE            | Severity | Package        | Impact            |
-| -------------- | -------- | -------------- | ----------------- |
-| CVE-2025-22871 | Critical | esbuild (Go)   | Build-time only   |
-| js-yaml        | Medium   | Dev dependency | Not in production |
-
-These do not affect the deployed application.
+Live results are in the repository's **Security -> Code scanning** dashboard;
+that and the ignore files are the source of truth for current alert state.

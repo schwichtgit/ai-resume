@@ -138,8 +138,8 @@ tier_service() {
   echo "Checking service-level tools..."
   echo ""
 
-  check_tool_warn "rustc"   "rustc --version"   "1.93.0"  "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
-  check_tool_warn "cargo"   "cargo --version"   "1.93.0"  "(bundled with Rust)"
+  check_tool_warn "rustc"   "rustc --version"   "1.96.0"  "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+  check_tool_warn "cargo"   "cargo --version"   "1.96.0"  "(bundled with Rust)"
   check_tool_warn "protoc"  "protoc --version"  "32.1"    "https://github.com/protocolbuffers/protobuf/releases"
 
   echo ""

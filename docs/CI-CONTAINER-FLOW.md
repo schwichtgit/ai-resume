@@ -240,7 +240,18 @@ scripts/publish-ci.sh verify ghcr.io/schwichtgit ai-resume-frontend v1.0.0
 | Build timestamp dev tags                     | `dev-<sha>-B<YYYYMMDDHHMMSS>` guarantees uniqueness across re-runs. Plain sha tags would collide.                                                               |
 | `COSIGN_YES: "true"` env var                 | Single declaration at job level instead of `--yes` per invocation. Avoids interactive prompts in CI.                                                            |
 
+## Related Scanning
+
+This doc covers the build -> sign -> publish pipeline. Two adjacent scans run
+outside it:
+
+- **In-CI Trivy** -- the `container-build` job scans each image and gates on
+  unfixed CRITICAL/HIGH (steps above), uploading SARIF to GitHub code scanning.
+- **Weekly Security Scan** (`.github/workflows/security.yml`) -- re-scans the
+  published images with Trivy and runs `task audit` (npm/pip/cargo) on a
+  schedule. See [SECURITY.md](./SECURITY.md).
+
 ## Related
 
-- ADR-019: Native ARM Runner Multi-Arch Container Builds
-- ADR-020: Container Supply Chain Security via Sigstore
+- ADR-019: Native ARM Runner Multi-Arch Container Builds (see `.specify/specs/plan.md`)
+- ADR-020: Container Supply Chain Security via Sigstore (see `.specify/specs/plan.md`)

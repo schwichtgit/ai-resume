@@ -1267,11 +1267,11 @@ is unset, the corresponding feature is disabled with zero overhead.
 
 Prometheus scrapes three targets every 15 seconds:
 
-| Job              | Target (dev)            | Target (prod)                    | Metrics Endpoint |
-| ---------------- | ----------------------- | -------------------------------- | ---------------- |
-| `api-service`    | `ai-resume-api:3000`    | `host.containers.internal:3000`  | `/metrics`       |
-| `memvid-service` | `ai-resume-memvid:9090` | `host.containers.internal:50051` | `/metrics`       |
-| `tempo-metrics`  | `tempo:3200`            | `tempo:3200`                     | `/metrics`       |
+| Job              | Target (dev)            | Target (prod)                   | Metrics Endpoint |
+| ---------------- | ----------------------- | ------------------------------- | ---------------- |
+| `api-service`    | `ai-resume-api:3000`    | `host.containers.internal:3000` | `/metrics`       |
+| `memvid-service` | `ai-resume-memvid:9090` | `host.containers.internal:9090` | `/metrics`       |
+| `tempo-metrics`  | `tempo:3200`            | `tempo:3200`                    | `/metrics`       |
 
 ### Grafana Data Sources
 

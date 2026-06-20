@@ -4,17 +4,17 @@
 
 The AI Resume stack consists of three runtime services plus a one-shot ingest pipeline:
 
-| Service            | Runtime Base                             | Port  | Protocol | Lifecycle  |
-| ------------------ | ---------------------------------------- | ----- | -------- | ---------- |
-| ai-resume-frontend | alpine:3.23 (OpenResty/nginx)            | 8080  | HTTP     | Long-lived |
-| ai-resume-api      | ubi10/ubi-micro (Rocky Linux 10 builder) | 3000  | HTTP     | Long-lived |
-| ai-resume-memvid   | gcr.io/distroless/cc-debian13:nonroot    | 50051 | gRPC     | Long-lived |
-| ai-resume-ingest   | ubi10/ubi-micro (Rocky Linux 10 builder) | --    | --       | One-shot   |
+| Service            | Runtime Base                          | Port  | Protocol | Lifecycle  |
+| ------------------ | ------------------------------------- | ----- | -------- | ---------- |
+| ai-resume-frontend | alpine:3.24 (OpenResty/nginx)         | 8080  | HTTP     | Long-lived |
+| ai-resume-api      | ubi10/ubi-micro (Python 3.12 runtime) | 3000  | HTTP     | Long-lived |
+| ai-resume-memvid   | gcr.io/distroless/cc-debian13:nonroot | 50051 | gRPC     | Long-lived |
+| ai-resume-ingest   | ubi10/ubi-micro (Python 3.12 runtime) | none  | none     | One-shot   |
 
 Traffic flow: reverse proxy -> frontend (8080) -> api (3000) -> memvid (50051 gRPC)
 
 The ingest service runs once to build the `.mv2` vector database file from
-`master_resume.md`, then exits (`restart: "no"`).
+the resume markdown, then exits (`restart: "no"`).
 
 ## Container Image Architecture Support
 
@@ -31,7 +31,17 @@ The frontend and api-service use base images that natively support both architec
 
 ## Building Multi-Architecture Images
 
-### With Podman (recommended)
+The canonical path is the Taskfile, which builds amd64 + arm64 for every service
+(run `task deps` first to verify the toolchain):
+
+```bash
+task container:build            # all services
+task container:build:frontend   # or a single service
+```
+
+The manual `podman`/`docker` recipes below are equivalent fallbacks.
+
+### With Podman
 
 Build multi-arch manifests for all services:
 
@@ -152,12 +162,14 @@ podman compose ps
 
 The frontend is accessible at `http://<host-ip>:8080`.
 
-### Deploying with Docker Compose
+### Deploying with Compose
+
+`podman compose` is canonical (Docker Compose works as a drop-in if you prefer):
 
 ```bash
 cd deployment/
-docker compose up -d
-docker compose ps
+podman compose up -d
+podman compose ps
 ```
 
 ### Security Hardening
