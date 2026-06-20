@@ -34,6 +34,13 @@ tasks:
     cmds:
       - npx tsc --noEmit
 
+  audit:
+    desc: Scan npm dependencies for known vulnerabilities (lockfile)
+    # Reads package-lock.json directly; no node_modules required. Exits
+    # non-zero on any advisory at or above the level.
+    cmds:
+      - npm audit --audit-level=low
+
   test:
     desc: Run Vitest
     deps: [setup]

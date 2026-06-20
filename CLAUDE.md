@@ -70,6 +70,7 @@ task setup           # Bootstrap full dev environment
 task deps            # Check tool dependencies
 task lint            # Lint all services
 task test            # Test all services
+task audit           # Whole-SBOM vuln sweep (npm, pip-audit, cargo audit)
 task build           # Build all services
 task check           # Full quality sweep (lint + typecheck + test + build)
 task ci              # Reproduce CI pipeline locally

@@ -1,0 +1,10 @@
+# pip-audit ignore list for `task ingest:audit` (and task audit).
+# One advisory ID per line (GHSA / PYSEC / CVE). Blank lines and lines
+# starting with `#` are ignored. Keep an inline reason for every entry so
+# the suppression is auditable -- mirrors the .trivyignore convention.
+#
+# torch: no upstream fix available; ingest runs CPU embedding only.
+# Also tracked as GitHub code-scanning alert #550. Drop these when a fixed
+# torch release ships.
+PYSEC-2026-139
+CVE-2025-3000

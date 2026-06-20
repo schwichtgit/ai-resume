@@ -155,6 +155,7 @@ tier_optional() {
   check_tool_info "markdownlint-cli2" "markdownlint-cli2 --help"   "npm install -g markdownlint-cli2"
   check_tool_info "shellcheck"        "shellcheck --version"        "https://github.com/koalaman/shellcheck#installing"
   check_tool_info "cargo-tarpaulin"   "cargo-tarpaulin --version"   "cargo install cargo-tarpaulin"
+  check_tool_info "cargo-audit"       "cargo-audit --version"       "cargo install --locked cargo-audit"
 
   echo ""
   echo "Optional tool check complete (informational only)."
