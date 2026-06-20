@@ -38,6 +38,17 @@ tasks:
     cmds:
       - '{{.UV_RUN}} mypy .'
 
+  audit:
+    desc: Scan installed deps for known vulnerabilities (pip-audit, env mode)
+    # Env-mode audit of the synced venv -- avoids pip-audit's requirements-file
+    # path, whose ephemeral-venv ensurepip SIGABRTs on uv-managed standalone
+    # Python. --all-extras covers dev/sbom deps; --skip-editable drops the local
+    # project. Exits non-zero on any finding.
+    deps: [setup]
+    cmds:
+      - uv sync --all-extras
+      - '{{.UV_RUN}} --with pip-audit pip-audit --skip-editable'
+
   format:
     desc: Format with ruff
     deps: [setup]

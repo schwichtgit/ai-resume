@@ -53,6 +53,14 @@ tasks:
     cmds:
       - cargo tarpaulin --config tarpaulin-unit.toml
 
+  audit:
+    desc: Scan Rust dependencies for RUSTSEC advisories (Cargo.lock)
+    preconditions:
+      - sh: command -v cargo-audit
+        msg: 'cargo-audit not found. Install: cargo install --locked cargo-audit'
+    cmds:
+      - cargo audit
+
   dev:
     desc: Run memvid service
     cmds:

@@ -33,6 +33,21 @@ tasks:
     cmds:
       - '{{.UV_RUN}} mypy .'
 
+  audit:
+    desc: Scan installed deps for known vulnerabilities (pip-audit, env mode)
+    # See api-service audit -- env-mode pip-audit sidesteps the uv standalone
+    # Python ensurepip crash. Suppressed advisories are listed (with reasons) in
+    # .pip-audit-ignore -- file-based to mirror .trivyignore. Comments/blanks are
+    # stripped and the rest become --ignore-vuln flags. Any advisory NOT in that
+    # file still fails the task, so this stays a meaningful gate.
+    deps: [setup]
+    cmds:
+      - uv sync --all-extras
+      - >-
+        {{.UV_RUN}} --with pip-audit pip-audit --skip-editable
+        $(grep -vhE '^[[:space:]]*#|^[[:space:]]*$' .pip-audit-ignore 2>/dev/null
+        | sed 's/^/--ignore-vuln /' | tr '\n' ' ')
+
   format:
     desc: Format with ruff
     deps: [setup]
