@@ -24,7 +24,7 @@ dependencies = [
     "prometheus-fastapi-instrumentator>=8.0.0",
     "structlog>=26.1.0",
     "cachetools>=7.1.4",
-    "slowapi>=0.1.9",
+    "slowapi>=0.1.10",
     "fastmcp>=3.4.2",
     "opentelemetry-exporter-otlp>=1.42.1",
 ]
