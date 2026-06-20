@@ -24,7 +24,7 @@ jobs:
           - context: ingest
             image: ai-resume-ingest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Prepare build context
         if: matrix.context == 'memvid-service'
