@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.2] - 2026-06-29
+
+Stabilization release: dependency currency and CI signing fixes. No new
+product features.
+
+### Changed
+
+- Dependency currency rollup consolidating 9 Dependabot PRs (#366)
+  - **api-service (pip)**: OpenTelemetry core `opentelemetry-api`/`-sdk`/`-exporter-otlp` `>=1.42.1` → `>=1.43.0` and `-instrumentation-fastapi` `>=0.63b1` → `>=0.64b0` (bumped together to keep the otel stack aligned); `prometheus-fastapi-instrumentator` `>=8.0.0` → `>=8.0.2`; `ruff` `>=0.15.18` → `>=0.15.20` (dev).
+  - **frontend (npm minor-and-patch group, 10 updates)**: `recharts` 3.9.0, `eslint` 10.6.0, `prettier` 3.9.1, `typescript-eslint` 8.62.0, `vite` 8.1.0, `@tanstack/react-query`, `@playwright/test`, `@types/node`, `@vitejs/plugin-react`, `globals`. Lock regenerated from `main` to preserve the prior undici/brace-expansion security fixes; `npm audit` clean.
+  - **frontend (docker)**: `node` `26.3.1-trixie-slim` → `26.4.0`.
+  - **memvid-service (cargo)**: `anyhow` `1.0.102` → `1.0.103`.
+  - **github_actions**: `actions/cache` `v5` → `v6`.
+
+### Fixed
+
+- CI container registry login (#356, #367). Replaced the deprecated `redhat-actions/podman-login@v1` (declares Node 20, which GitHub Actions is sunsetting) with an inline `podman login` (#356), then added an inline `cosign login` alongside it (#367) -- the bare `podman login` authenticated podman for image push but not cosign (which uses go-containerregistry's docker-config keychain, not podman's `auth.json`), so `cosign attest`/`sign` failed with `UNAUTHORIZED`. Both now authenticate to ghcr.io via `GITHUB_TOKEN` at all sign sites in `ci.yml` and `release.yml`.
+- frontend `Dockerfile` cleanups (#369): corrected the stale builder base-image comment (`node 26.3.0` -> `26.4.0`) left by the #366 bump, and silenced hadolint DL3018 with a rationale (Alpine's rolling repo makes apk version pins break on refresh; `apk upgrade --no-cache` + the digest-pinned base already control the patch level).
+
 ## [0.1.0-beta.1] - 2026-06-20
 
 First **beta**. The feature set is complete; this line is bug-fix and
@@ -579,7 +598,8 @@ documentation overhaul. No new product features since alpha.23.
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.1...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.2...HEAD
+[0.1.0-beta.2]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.1...v0.1.0-beta.2
 [0.1.0-beta.1]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.23...v0.1.0-beta.1
 [0.1.0-alpha.23]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.22...v0.1.0-alpha.23
 [0.1.0-alpha.22]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.21...v0.1.0-alpha.22
