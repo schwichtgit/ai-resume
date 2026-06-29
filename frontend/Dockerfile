@@ -46,6 +46,10 @@ FROM alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6ee
 # OpenResty bundles lua-resty-dns, lua-resty-core, cjson, and LuaJIT.
 # lua-resty-http is installed via opm (not apk) to avoid the Alpine
 # nginx 1.28 / openresty nginx 1.27 package conflict.
+# DL3018: don't pin apk versions -- Alpine's rolling repo rotates exact
+# versions out (a pin breaks the build on the next refresh); the digest-pinned
+# base plus `apk upgrade --no-cache` already fix the patch level.
+# hadolint ignore=DL3018
 RUN apk upgrade --no-cache && \
     apk add --no-cache openresty curl && \
     curl -fsSL -o /usr/lib/nginx/lualib/resty/http.lua \
