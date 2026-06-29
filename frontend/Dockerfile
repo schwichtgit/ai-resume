@@ -7,7 +7,7 @@ ARG BUILD_COMMIT=unknown
 # =============================================================================
 # Stage 1: Build React application
 # =============================================================================
-# node 26.3.0-trixie-slim, pinned 2026-06-07
+# node 26.4.0-trixie-slim, pinned 2026-06-29
 FROM node:26.4.0-trixie-slim@sha256:a1d9d671994fc2d26e297ac56b4b1522a8bc7fa71c43b14cd1b1fe6c5116f7dc AS builder
 
 WORKDIR /app
