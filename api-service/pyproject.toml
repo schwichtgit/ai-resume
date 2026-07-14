@@ -15,8 +15,8 @@ dependencies = [
     "httpx>=0.28.1",
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.2",
-    "grpcio>=1.81.1",
-    "grpcio-tools>=1.81.1",
+    "grpcio>=1.82.1",
+    "grpcio-tools>=1.82.1",
     "opentelemetry-api>=1.43.0",
     "opentelemetry-sdk>=1.43.0",
     "opentelemetry-instrumentation-fastapi>=0.64b0",
@@ -25,7 +25,7 @@ dependencies = [
     "structlog>=26.1.0",
     "cachetools>=7.1.4",
     "slowapi>=0.1.10",
-    "fastmcp>=3.4.2",
+    "fastmcp>=3.4.4",
     "opentelemetry-exporter-otlp>=1.43.0",
 ]
 
@@ -38,8 +38,8 @@ test = [
 lint = [
     "black>=26.5.1",
     "isort>=8.0.1",
-    "ruff>=0.15.20",
-    "mypy>=2.1.0",
+    "ruff>=0.15.21",
+    "mypy>=2.2.0",
     "types-cachetools>=7.0.0.20260518",
 ]
 sbom = [
