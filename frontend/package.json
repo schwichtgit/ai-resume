@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "node ./node_modules/typescript-7/bin/tsc -b --noEmit"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
@@ -89,6 +90,7 @@
     "prettier": "3.9.5",
     "tailwindcss": "^4.1.0",
     "typescript": "^6.0.3",
+    "typescript-7": "npm:typescript@^7.0.2",
     "typescript-eslint": "^8.62.1",
     "vite": "^8.1.4",
     "vitest": "^4.0.18"

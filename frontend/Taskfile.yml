@@ -29,10 +29,13 @@ tasks:
       - npm run lint -- --fix
 
   typecheck:
-    desc: Run TypeScript type checking
+    desc: Run TypeScript type checking (TS7 via typescript-7 alias)
     deps: [setup]
     cmds:
-      - npx tsc --noEmit
+      # Validates under TypeScript 7 (typescript-7 alias). `tsc -b` traverses
+      # tsconfig.json project references; a bare `tsc --noEmit` on the root
+      # `files: []` solution config is a no-op.
+      - npm run typecheck
 
   audit:
     desc: Scan npm dependencies for known vulnerabilities (lockfile)
