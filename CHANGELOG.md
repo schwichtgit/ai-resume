@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.3] - 2026-07-15
+
+Stabilization release: dependency currency and toolchain modernization since
+beta.2. No new product features.
+
+### Changed
+
+- TypeScript 7 type-checking (#394). Adopted the TS7 native compiler for the
+  type-check gate via a `typescript-7` npm alias, while keeping TypeScript
+  `6.0.3` for ESLint and the IDE -- no released `typescript-eslint` supports TS7
+  yet (its peer range caps at `typescript <6.1.0`), so a straight bump crashes
+  the linter. Also fixed the gate itself: CI and the Taskfile ran a bare
+  `tsc --noEmit` against the root solution config (`files: []`), a no-op that
+  type-checked nothing; switched to `tsc -b`, which traverses the project
+  references and now covers all `src` files. Made `chart.tsx` recharts-3/TS7
+  compliant (the only file the real gate flagged).
+- Dependency currency rollups consolidating the open Dependabot queue across
+  #380, #392 and #395, plus standalone bumps (#370, #378, #381):
+  - **api-service (pip)**: `fastapi` `>=0.139.0`, `setuptools` `>=83.0.0`,
+    `uvicorn` `>=0.50.0`, `grpcio`/`grpcio-tools` `>=1.82.1` (protobuf cascaded
+    6.x → 7.x), `fastmcp` `>=3.4.4`; dev `ruff` `>=0.15.21`, `mypy` `>=2.3.0`.
+    `uv.lock` regenerated in the same commit as each manifest change.
+  - **frontend (npm)**: OpenTelemetry web `0.220`, Radix UI primitives,
+    `lucide-react` 1.24, `react-hook-form` 7.81, `react-router-dom` 7.18.1,
+    `recharts` 3.9.2, `react-resizable-panels` 4.12.2, `eslint` 10.7.0,
+    `prettier` 3.9.5, `typescript-eslint` 8.64.0, `vite` 8.1.4, `@types/node`
+    26.1. Locks regenerated from `main` to preserve prior security fixes;
+    `npm audit` clean.
+  - **ingest (uv)**: `transformers` `5.0` → `5.5` (transitive); dev tooling
+    (`pytest` 9.1.1, `pytest-cov` 7.1.0, `ruff` 0.15.21, `mypy` 2.3.0, `black`
+    26.5.1, `isort` 8.0.1) aligned with api-service so local and CI resolve
+    identically.
+  - **docker**: frontend `node` `26.4.0` → `26.5.0-trixie-slim`; api-service and
+    ingest `ubi10/ubi-micro` digest bump; memvid-service `rust` `1.96.0` →
+    `1.97.0-slim-trixie`.
+  - **github_actions**: `DavidAnson/markdownlint-cli2-action` v24,
+    `arduino/setup-task` v3.
+
 ## [0.1.0-beta.2] - 2026-06-29
 
 Stabilization release: dependency currency and CI signing fixes. No new
@@ -598,7 +636,8 @@ documentation overhaul. No new product features since alpha.23.
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.2...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.3...HEAD
+[0.1.0-beta.3]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.2...v0.1.0-beta.3
 [0.1.0-beta.2]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.1...v0.1.0-beta.2
 [0.1.0-beta.1]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.23...v0.1.0-beta.1
 [0.1.0-alpha.23]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.22...v0.1.0-alpha.23
