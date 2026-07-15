@@ -86,7 +86,11 @@ jobs:
         run: npm run lint
 
       - name: Type check
-        run: npx tsc --noEmit
+        # Validates under TypeScript 7 via the `typescript-7` alias (eslint/IDE
+        # stay on TS6, the latest typescript-eslint supports). `tsc -b` traverses
+        # tsconfig.json project references; a bare `tsc --noEmit` on the root
+        # `files: []` solution config is a no-op.
+        run: npm run typecheck
 
       - name: Test with coverage
         run: npm test -- --run --coverage 2>&1 | tee /tmp/test-output.txt

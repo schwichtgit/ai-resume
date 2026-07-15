@@ -34,3 +34,6 @@ blob-report/
 
 # Vite
 *.local
+
+# TypeScript incremental build info (emitted by tsc -b)
+*.tsbuildinfo

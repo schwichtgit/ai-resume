@@ -104,6 +104,11 @@ const ChartTooltipContent = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
     React.ComponentProps<'div'> & {
+      // recharts 3 moves these onto the tooltip content via context, so they
+      // are Omitted from the public Tooltip props; re-declare them explicitly.
+      active?: boolean;
+      payload?: RechartsPrimitive.TooltipPayload;
+      label?: string | number;
       hideLabel?: boolean;
       hideIndicator?: boolean;
       indicator?: 'line' | 'dot' | 'dashed';
@@ -190,7 +195,7 @@ const ChartTooltipContent = React.forwardRef<
 
             return (
               <div
-                key={item.dataKey}
+                key={String(item.dataKey ?? index)}
                 className={cn(
                   'flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground',
                   indicator === 'dot' && 'items-center',
@@ -258,11 +263,14 @@ const ChartLegend = RechartsPrimitive.Legend;
 
 const ChartLegendContent = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<'div'> &
-    Pick<RechartsPrimitive.LegendProps, 'payload' | 'verticalAlign'> & {
-      hideIcon?: boolean;
-      nameKey?: string;
-    }
+  React.ComponentProps<'div'> & {
+    // Pick<LegendProps, ...> no longer resolves under recharts 3 / TS 7;
+    // declare the two consumed props directly with recharts' own types.
+    payload?: RechartsPrimitive.LegendPayload[];
+    verticalAlign?: 'top' | 'bottom' | 'middle';
+    hideIcon?: boolean;
+    nameKey?: string;
+  }
 >(
   (
     { className, hideIcon = false, payload, verticalAlign = 'bottom', nameKey },
