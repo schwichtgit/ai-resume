@@ -99,7 +99,7 @@ requires-dist = [
     { name = "grpcio-tools", specifier = ">=1.82.1" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "isort", marker = "extra == 'lint'", specifier = ">=8.0.1" },
-    { name = "mypy", marker = "extra == 'lint'", specifier = ">=2.2.0" },
+    { name = "mypy", marker = "extra == 'lint'", specifier = ">=2.3.0" },
     { name = "opentelemetry-api", specifier = ">=1.43.0" },
     { name = "opentelemetry-exporter-otlp", specifier = ">=1.43.0" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = ">=0.64b0" },
