@@ -6,7 +6,7 @@ ARG BUILD_COMMIT=unknown
 
 # Stage 1: Build the Rust binary
 # rust 1.96.0-slim-trixie, pinned 2026-06-01
-FROM rust:1.97.0-slim-trixie@sha256:14c4fe50ea427dc42381a1a09a9a839c1d2346a2e508cd491bf02c659dbc0ed7 AS builder
+FROM rust:1.97.0-slim-trixie@sha256:686a437ead83701e8f871e66e838c3ec55f46b5fc235b025756396ac823bdc51 AS builder
 
 ARG TARGETARCH
 ARG PROTOC_VERSION=28.3
