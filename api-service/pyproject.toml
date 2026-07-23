@@ -27,6 +27,9 @@ dependencies = [
     "slowapi>=0.1.10",
     "fastmcp>=3.4.4",
     "opentelemetry-exporter-otlp>=1.44.0",
+    # Transitive pin (via uvicorn/typer) to remediate PYSEC-2026-2132; drop once
+    # an upstream requirer floors click >= 8.3.3.
+    "click>=8.3.3",
 ]
 
 [project.optional-dependencies]

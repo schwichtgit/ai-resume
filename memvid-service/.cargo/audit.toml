@@ -1,0 +1,23 @@
+# cargo-audit configuration for ai-resume-memvid.
+#
+# Suppressions below are transitive advisories that CANNOT be fixed downstream:
+# they are pinned by memvid-core 2.0.140 (latest published, 2026-05-27), which
+# caps lopdf ^0.39, quick-xml ^0.31, calamine ^0.22, and pdf-extract ^0.10 --
+# all below their patched releases. Upstream tracked at:
+#   https://github.com/memvid/memvid/issues/242
+#
+# Reachability: this service opens a pre-built, trusted .mv2 read-only and serves
+# vector/lexical search (Memvid::open_read_only + .ask). It never invokes the PDF
+# or spreadsheet/XML parsers at serving time -- document parsing happens offline
+# in the `ingest` pipeline, not on the gRPC request path with untrusted input.
+# src/ has zero references to lopdf/quick-xml/calamine/pdf-extract.
+#
+# Remove each ignore once memvid-core cuts a release that floors the patched
+# parser versions (see issue #242).
+
+[advisories]
+ignore = [
+    "RUSTSEC-2026-0187", # lopdf 0.38/0.39 stack overflow via deeply nested PDF objects; parser unreachable at serving time
+    "RUSTSEC-2026-0194", # quick-xml 0.30/0.31 quadratic run time on duplicate attribute names; parser unreachable at serving time
+    "RUSTSEC-2026-0195", # quick-xml 0.30/0.31 unbounded NsReader namespace allocation (DoS); parser unreachable at serving time
+]
