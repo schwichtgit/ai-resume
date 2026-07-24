@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.4] - 2026-07-24
+
+Stabilization release: security remediation and dependency currency since
+beta.3. No new product features.
+
+### Security
+
+- **react-router HIGH advisory GHSA-qwww-vcr4-c8h2** (RSC-mode CSRF bypass):
+  migrated the frontend from `react-router-dom` 7.18.1 to `react-router` 8.3.0
+  (#418). React Router v8 consolidated into the single `react-router` package
+  and no longer publishes `react-router-dom`, so Dependabot could not auto-fix
+  it; the three import sites were repointed with no API changes. The advisory
+  is RSC-mode specific and not reachable in this client-side `BrowserRouter`
+  SPA, but v8 is the durable fix and clears the alert.
+- **Whole-SBOM dependency audit greened** (#417), red since ~2026-06-29. Fixed
+  `click` `>=8.3.3` (PYSEC-2026-2132) via a direct transitive pin,
+  `crossbeam-epoch` 0.9.20 (RUSTSEC-2026-0204) and `memmap2` 0.9.11
+  (RUSTSEC-2026-0186) in memvid-service. The lopdf/quick-xml advisories
+  (RUSTSEC-2026-0187/0194/0195) are capped by `memvid-core` 2.0.140 and not
+  reachable at serving time (pre-built read-only `.mv2`); documented in
+  `memvid-service/.cargo/audit.toml` with upstream tracking at
+  memvid/memvid#242.
+- **setuptools** `>=83.0.0` in ingest (#413) with `uv.lock` regenerated (#416)
+  to clear CVE-2026-59890 (GHSA-h35f-9h28-mq5c) -- the pip PR only touched the
+  manifest, so the lock sync was required to close the alert.
+- **torch** `2.13.0` in ingest via the rollup (#412), clearing CVE-2025-3000.
+- **brace-expansion** 5.0.8 in frontend (HIGH) via the rollup (#412).
+
+### Changed
+
+- Dependency currency rollups consolidating the Dependabot queue across #412
+  (13 PRs, 6 ecosystems), #415 (frontend, 39 updates) and #414 (memvid cargo),
+  plus standalone bumps (#398, #400):
+  - **api-service (pip)**: `fastapi` `>=0.139.2`, `opentelemetry-api`/
+    `-exporter-otlp` `>=1.44.0`, `-instrumentation-fastapi` `>=0.65b0`, `mcp`
+    `1.28.1`; dev `ruff` `>=0.15.22`. `uv.lock` regenerated per manifest change.
+  - **frontend (npm)**: OpenTelemetry web `0.221`/`2.10`, Radix UI primitives,
+    `@tanstack/react-query` 5.101.4, `lucide-react` 1.26, `react-hook-form`
+    7.82, `@tailwindcss/vite` 4.3.3, `vite` 8.1.5, `react` 19.2.8. Locks
+    regenerated from `main` to preserve prior security fixes; `npm audit` clean.
+  - **memvid-service (cargo)**: `tokio` 1.53.1, `serde` 1.0.229, `anyhow`
+    1.0.104, `async-trait` 0.1.91, `thiserror` 2.0.19, `http-body-util` 0.1.4,
+    `crossbeam-epoch` 0.9.20, `memmap2` 0.9.11.
+  - **docker**: frontend `node` and memvid-service `rust` base-image digest
+    bumps (#401, #400).
+  - **github_actions**: `actions/setup-node` v6 → v7,
+    `SonarSource/sonarqube-scan-action` 8.2.1.
+- eslint configuration cleanup: ignore generated `coverage/` and scope the
+  shadcn `react-refresh/only-export-components` rule off for
+  `src/components/ui/**`; `eslint .` now reports zero warnings (#419).
+
 ## [0.1.0-beta.3] - 2026-07-15
 
 Stabilization release: dependency currency and toolchain modernization since
@@ -636,7 +687,8 @@ documentation overhaul. No new product features since alpha.23.
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.3...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.4...HEAD
+[0.1.0-beta.4]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.3...v0.1.0-beta.4
 [0.1.0-beta.3]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.2...v0.1.0-beta.3
 [0.1.0-beta.2]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.1...v0.1.0-beta.2
 [0.1.0-beta.1]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-alpha.23...v0.1.0-beta.1
