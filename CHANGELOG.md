@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.5] - 2026-07-26
+
+Stabilization release: dependency currency since beta.4. No new product
+features, no security advisories outstanding.
+
+### Changed
+
+- Dependency currency rollup consolidating the full weekly Dependabot sweep --
+  10 PRs across 5 ecosystems (#431), plus a follow-up group bump (#432):
+  - **api-service (pip)**: `grpcio` and `grpcio-tools` `>=1.82.1` →
+    `>=1.83.0`, `prometheus-client` `>=0.25.0` → `>=0.26.0`, `cachetools`
+    `>=7.1.4` → `>=7.1.6`, `click` floor raised `>=8.3.3` → `>=8.4.2` to match
+    the version already resolved for PYSEC-2026-2132. `uv.lock` regenerated in
+    the same commit.
+  - **frontend (npm minor-and-patch group, 33 updates)**: Radix UI primitives,
+    `@hookform/resolvers` 5.5.7, `lucide-react` 1.27.0, `react-hook-form`
+    7.83.0, `recharts` 3.10.1, `eslint` 10.8.0, `@playwright/test` 1.62.0,
+    `globals` 17.8.0. Also `@testing-library/jest-dom` 6.9.1 → 7.0.0 (major);
+    no test changes required. Lock regenerated from `main` to preserve prior
+    security fixes; `npm audit` clean.
+  - **memvid-service (cargo)**: `serial_test` 3 → 4 (major). The manifest
+    constraint was bumped alongside the lock; no test changes required.
+  - **docker**: api-service and ingest `ubi10/ubi-micro` digest `6cc8b04` →
+    `af12ec1`. Trivy reports 0 HIGH/CRITICAL for the incoming digest (also 0
+    including unfixed), matching the outgoing digest.
+
 ## [0.1.0-beta.4] - 2026-07-24
 
 Stabilization release: security remediation and dependency currency since
@@ -687,7 +713,8 @@ documentation overhaul. No new product features since alpha.23.
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.4...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.5...HEAD
+[0.1.0-beta.5]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.4...v0.1.0-beta.5
 [0.1.0-beta.4]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.3...v0.1.0-beta.4
 [0.1.0-beta.3]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.2...v0.1.0-beta.3
 [0.1.0-beta.2]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.1...v0.1.0-beta.2
