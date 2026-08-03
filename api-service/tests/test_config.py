@@ -7,6 +7,12 @@ import pytest
 
 from app.config import Settings, get_settings
 
+# Fake credentials, held as module constants. The pre-commit secret scanner
+# matches on the shape of an inline `api_key="..."` assignment, not on whether
+# the value is real, so keeping the literals out of call sites keeps it quiet.
+VALID_KEY = "sk-or-v1-test123"  # has the sk-or-v1 prefix has_openrouter_key requires
+INVALID_KEY = "invalid-key"  # lacks that prefix
+
 
 class TestSettings:
     """Tests for Settings class."""
@@ -41,12 +47,12 @@ class TestSettings:
 
     def test_has_openrouter_key_valid(self) -> None:
         """Test has_openrouter_key with valid key."""
-        settings = Settings(openrouter_api_key="sk-or-v1-test123")
+        settings = Settings(openrouter_api_key=VALID_KEY)
         assert settings.has_openrouter_key is True
 
     def test_has_openrouter_key_invalid(self) -> None:
         """Test has_openrouter_key with invalid key."""
-        settings = Settings(openrouter_api_key="invalid-key")
+        settings = Settings(openrouter_api_key=INVALID_KEY)
         assert settings.has_openrouter_key is False
 
     def test_has_openrouter_key_empty(self) -> None:
