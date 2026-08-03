@@ -49,12 +49,12 @@ case "$EDITED_FILE" in
         fi
         ;;
     *.py)
-        # Python files - use ruff if available
+        # Python files - ruff only. No black fallback: black disagrees with
+        # `ruff format`, so falling back would produce code that fails the
+        # `ruff format --check` CI gate.
         if command -v ruff &> /dev/null; then
             ruff format "$EDITED_FILE" 2>/dev/null || true
             ruff check --fix "$EDITED_FILE" 2>/dev/null || true
-        elif command -v black &> /dev/null; then
-            black "$EDITED_FILE" 2>/dev/null || true
         fi
         ;;
     *.rs)

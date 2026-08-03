@@ -4,13 +4,13 @@ from typing import Any
 from unittest.mock import patch
 
 from app.guardrails import (
-    _format_guardrail_response,
-    detect_injection,
-    filter_output,
-    check_input,
-    check_output,
     MAX_SUGGESTED_QUESTIONS,
     OutputFilterResult,
+    _format_guardrail_response,
+    check_input,
+    check_output,
+    detect_injection,
+    filter_output,
 )
 
 

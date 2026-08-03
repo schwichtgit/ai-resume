@@ -8,8 +8,8 @@ Run with: uv run python test_memvid.py
 import os
 import tempfile
 
-import pytest
 import memvid_sdk
+import pytest
 
 
 def test_sdk_info() -> None:

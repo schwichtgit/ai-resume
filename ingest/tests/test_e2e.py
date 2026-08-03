@@ -23,8 +23,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-import pytest
 import memvid_sdk
+import pytest
 
 # Project paths
 PROJECT_ROOT = Path(__file__).parent.parent.parent

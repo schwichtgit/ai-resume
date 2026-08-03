@@ -6,14 +6,14 @@ This module provides:
 - Structured logging helpers for LLM request/response correlation
 """
 
-import time
 import secrets
+import time
 from contextvars import ContextVar
 from dataclasses import dataclass
 
 import structlog
 from opentelemetry import trace as otel_trace
-from prometheus_client import Counter, Histogram, Gauge
+from prometheus_client import Counter, Gauge, Histogram
 
 logger = structlog.get_logger()
 

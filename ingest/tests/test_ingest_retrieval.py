@@ -13,8 +13,8 @@ import os
 import tempfile
 from pathlib import Path
 
-import pytest
 import memvid_sdk
+import pytest
 
 
 @pytest.mark.asyncio
@@ -32,10 +32,10 @@ async def test_profile_metadata_retrieval() -> bool:
     try:
         # Step 1: Run ingest
         print(f"  Ingesting: {input_file}")
-        from ingest import main as ingest_main
-
         # Mock sys.argv for ingest
         import sys
+
+        from ingest import main as ingest_main
 
         old_argv = sys.argv
         sys.argv = ["ingest.py", "--input", str(input_file), "--output", output_file, "--quiet"]

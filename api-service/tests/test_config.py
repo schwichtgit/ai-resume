@@ -101,8 +101,8 @@ class TestSettings:
     @pytest.mark.asyncio
     async def test_load_profile_from_memvid_success(self) -> None:
         """Test load_profile_from_memvid loads profile successfully."""
-        from unittest.mock import AsyncMock, MagicMock, patch
         import json
+        from unittest.mock import AsyncMock, MagicMock, patch
 
         settings = Settings()
 
@@ -244,8 +244,8 @@ class TestSettings:
 
     def test_get_system_prompt_from_profile_injects_ground_facts(self) -> None:
         """Test get_system_prompt_from_profile injects ground facts."""
-        import tempfile
         import json
+        import tempfile
 
         mock_profile = {
             "name": "Jane Doe",
@@ -291,8 +291,8 @@ class TestSettings:
 
     def test_get_system_prompt_from_profile_with_existing_ground_facts(self) -> None:
         """Test get_system_prompt doesn't duplicate GROUND FACTS."""
-        import tempfile
         import json
+        import tempfile
 
         mock_profile = {
             "name": "John Smith",

@@ -19,8 +19,6 @@ test = [
     "numpy>=1.24.0",
 ]
 lint = [
-    "black>=24.10.0",
-    "isort>=5.13.2",
     "ruff>=0.15.10",
     "mypy>=1.20.0",
 ]
@@ -45,7 +43,8 @@ line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "B", "C4"]
+# "I" replaces isort (removed); ruff format replaces black.
+select = ["E", "F", "W", "B", "C4", "I"]
 ignore = ["E501"]
 
 [tool.mypy]

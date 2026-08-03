@@ -3,16 +3,16 @@
 import json
 from collections.abc import AsyncIterator, Callable
 from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from ai_resume_api.openrouter_client import (
     LLMMessage,
     LLMResponse,
+    OpenRouterAuthError,
     OpenRouterClient,
     OpenRouterError,
-    OpenRouterAuthError,
     OpenRouterRateLimitError,
     StreamingChunk,
 )
@@ -292,13 +292,12 @@ class TestGlobalClientFunctions:
     @pytest.mark.asyncio
     async def test_get_openrouter_client_creates_singleton(self) -> None:
         """Test that get_openrouter_client creates a singleton."""
+        # Reset global state
+        import ai_resume_api.openrouter_client
         from ai_resume_api.openrouter_client import (
             close_openrouter_client,
             get_openrouter_client,
         )
-
-        # Reset global state
-        import ai_resume_api.openrouter_client
 
         ai_resume_api.openrouter_client._openrouter_client = None
 

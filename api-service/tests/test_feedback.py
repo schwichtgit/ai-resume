@@ -1,15 +1,14 @@
 """Tests for the chat feedback endpoint."""
 
-import pytest
 from collections.abc import Generator
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app, _feedback_seen
+from app.main import _feedback_seen, app
 from app.session_store import reset_session_store
-
 
 # Sample profile data for tests
 MOCK_PROFILE = {

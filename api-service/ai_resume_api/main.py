@@ -10,32 +10,21 @@ import structlog
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
-from starlette.middleware.base import RequestResponseEndpoint
 from prometheus_client import Counter as PromCounter
 from prometheus_fastapi_instrumentator import Instrumentator
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from starlette.middleware.base import RequestResponseEndpoint
 
-from ai_resume_api.version import get_version
-from ai_resume_api.role_classifier import classify_job_description
 from ai_resume_api.config import get_settings
+from ai_resume_api.guardrails import check_input, check_output
 from ai_resume_api.memvid_client import (
     MemvidConnectionError,
     MemvidSearchError,
     close_memvid_client,
     get_memvid_client,
 )
-from ai_resume_api.observability import (
-    generate_trace_id,
-    get_trace_id,
-    set_trace_id,
-    set_client_ip,
-    set_session_id,
-    log_llm_request,
-    log_llm_response,
-)
-from ai_resume_api.guardrails import check_input, check_output
 from ai_resume_api.models import (
     AssessFitRequest,
     AssessFitResponse,
@@ -52,14 +41,25 @@ from ai_resume_api.models import (
     SuggestedQuestionsResponse,
     UIConfig,
 )
-from ai_resume_api.otel import init_otel, get_tracer
+from ai_resume_api.observability import (
+    generate_trace_id,
+    get_trace_id,
+    log_llm_request,
+    log_llm_response,
+    set_client_ip,
+    set_session_id,
+    set_trace_id,
+)
 from ai_resume_api.openrouter_client import (
     OpenRouterAuthError,
     OpenRouterError,
     close_openrouter_client,
     get_openrouter_client,
 )
+from ai_resume_api.otel import get_tracer, init_otel
+from ai_resume_api.role_classifier import classify_job_description
 from ai_resume_api.session_store import get_session_store
+from ai_resume_api.version import get_version
 
 # Configure structlog
 structlog.configure(

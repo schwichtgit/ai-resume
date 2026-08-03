@@ -7,12 +7,11 @@ life_sciences, healthcare, sales_growth) with authentic JD samples.
 import pytest
 
 from ai_resume_api.role_classifier import (
-    classify_job_description,
     classify_domain,
+    classify_job_description,
     classify_role_level,
     extract_jd_title,
 )
-
 
 # =============================================================================
 # Sample Job Descriptions by Domain

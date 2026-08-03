@@ -20,8 +20,8 @@ import tempfile
 import textwrap
 from pathlib import Path
 
-import pytest
 import memvid_sdk
+import pytest
 
 from ingest import (
     build_profile_dict,
@@ -29,7 +29,6 @@ from ingest import (
     ingest_memory,
     verify,
 )
-
 
 # ============================================================================
 # Profile Building Tests (4 tests)

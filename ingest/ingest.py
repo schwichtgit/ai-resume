@@ -25,7 +25,6 @@ from typing import Any
 import memvid_sdk
 from memvid_sdk.embeddings import HuggingFaceEmbeddings
 
-
 # Embedding model configuration
 # BAAI/bge-small-en-v1.5 is optimized for asymmetric retrieval (short query → long document)
 # - Trained with hard negative mining (distinguishes "AI" from "Adobe Illustrator")
