@@ -16,7 +16,9 @@ updates:
           - 'patch'
 
   # Python (api-service)
-  - package-ecosystem: 'pip'
+  # 'uv', not 'pip': the pip ecosystem edits pyproject.toml without
+  # regenerating uv.lock, which leaves the two out of sync (see #436).
+  - package-ecosystem: 'uv'
     directory: '/api-service'
     schedule:
       interval: 'weekly'
@@ -30,7 +32,8 @@ updates:
           - 'patch'
 
   # Python (ingest)
-  - package-ecosystem: 'pip'
+  # See api-service above: 'uv' keeps uv.lock in step with pyproject.toml.
+  - package-ecosystem: 'uv'
     directory: '/ingest'
     schedule:
       interval: 'weekly'

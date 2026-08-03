@@ -134,6 +134,11 @@ jobs:
         with:
           enable-cache: true
 
+      # Must run before `uv sync`: sync silently re-resolves a stale lock, so
+      # pyproject.toml/uv.lock drift would otherwise pass CI unnoticed.
+      - name: Verify uv.lock is in sync with pyproject.toml
+        run: uv lock --check
+
       - name: Install dependencies
         run: uv sync --extra test --extra lint
 
@@ -185,6 +190,10 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
+
+      # See the api-service job: this must precede `uv sync`.
+      - name: Verify uv.lock is in sync with pyproject.toml
+        run: uv lock --check
 
       - name: Install dependencies
         run: uv sync --extra test --extra lint
