@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.6] - 2026-08-03
+
+Stabilization release: dependency currency plus developer-tooling and CI
+correctness fixes since beta.5. No new product features, no security
+advisories outstanding.
+
+### Changed
+
+- Dependency currency covering two weekly Dependabot sweeps -- 12 PRs
+  consolidated into two rollups (#442, #453), plus three bumps merged
+  individually (#436, #443, #444):
+  - **api-service (uv)**: `fastapi` `>=0.139.2` -> `>=0.141.1`,
+    `uvicorn[standard]` `>=0.51.0` -> `>=0.52.0`, `opentelemetry-sdk`
+    `>=1.43.0` -> `>=1.44.0`, `prometheus-fastapi-instrumentator` `>=8.0.2`
+    -> `>=8.1.0`, `fastmcp` `>=3.4.4` -> `>=3.4.5`, `ruff` `>=0.15.22` ->
+    `>=0.16.1`, `types-cachetools` `>=7.0.0.20260518` -> `>=7.0.0.20260713`.
+  - **ingest (uv)**: `sentence-transformers` `>=5.4.0` -> `>=5.6.1`, `numpy`
+    `>=1.24.0` -> `>=2.5.1`, `ruff` `>=0.15.10` -> `>=0.16.1` (level with
+    api-service, so local resolves what CI resolves). The first two sit on
+    the embedding path, which CI does not cover because it deselects
+    `slow`-marked tests; those were run explicitly and all pass.
+  - **frontend (npm)**: minor-and-patch group -- `lucide-react` 1.28.0,
+    `@types/node` 26.1.2, `@vitejs/plugin-react` 6.0.5, `vite` 8.2.0,
+    `@playwright/test` 1.62.1, `@types/react` 19.2.18, `@types/react-dom`
+    19.2.4. Also `jsdom` 29.1.1 -> 30.0.1 (major); no test changes required.
+  - **docker**: frontend `node` 26.5.0-trixie-slim -> 26.5.1-trixie-slim.
+  - **github-actions**: `taiki-e/install-action` v2 -> v2.85.5,
+    `DavidAnson/markdownlint-cli2-action` 24 -> 24.1.0.
+- Python formatting and import ordering consolidated on ruff (#445). `black`
+  and `isort` were installed but wired into no CI job, Taskfile or git hook,
+  and `black` actively disagreed with `ruff format` -- running it produced
+  code that failed the `ruff format --check` gate CI enforces. Both removed;
+  ruff's `I` rules now carry import ordering.
+- Fake API-key fixtures in the api-service tests moved to module-level
+  constants (#448). The pre-commit secret scanner matches the shape of an
+  inline `api_key="..."` assignment rather than the value, and reads whole
+  staged files, so it blocked every commit touching those files regardless
+  of what changed.
+
+### Fixed
+
+- `task check` and `task ci` aborted at their final step with
+  `Task "build" does not exist` -- no root `build` target was ever defined,
+  so neither had run to completion (#446). Added, mirroring the CI build
+  steps.
+- Dependabot left `uv.lock` stale on every Python update (#447). The `pip`
+  ecosystem edits `pyproject.toml` without regenerating the lock, and CI's
+  `uv sync` silently re-resolved the stale lock instead of failing, so the
+  drift stayed invisible until it surfaced locally. Both Python directories
+  moved to `package-ecosystem: uv`, and `uv lock --check` now runs ahead of
+  `uv sync` in CI so drift fails the build regardless of how it got there.
+- Removed the `black` fallback from the post-edit hook (#445), which
+  silently reformatted Python files into a state failing the CI format gate
+  whenever ruff was absent from `PATH`.
+
 ## [0.1.0-beta.5] - 2026-07-26
 
 Stabilization release: dependency currency since beta.4. No new product
@@ -713,7 +768,8 @@ documentation overhaul. No new product features since alpha.23.
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.5...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.6...HEAD
+[0.1.0-beta.6]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.5...v0.1.0-beta.6
 [0.1.0-beta.5]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.4...v0.1.0-beta.5
 [0.1.0-beta.4]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.3...v0.1.0-beta.4
 [0.1.0-beta.3]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.2...v0.1.0-beta.3
