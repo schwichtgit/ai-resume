@@ -170,10 +170,15 @@ tasks:
       - task: test
       - task: build
 
+  lock:check:
+    desc: Verify every uv.lock is in sync with its pyproject.toml (matches CI)
+    deps: [api:lock:check, ingest:lock:check]
+
   ci:
     desc: Reproduce CI pipeline locally
     cmds:
       - task: deps:required
+      - task: lock:check
       - task: lint
       - task: frontend:typecheck
       - task: api:typecheck

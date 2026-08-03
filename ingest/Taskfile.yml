@@ -13,6 +13,13 @@ tasks:
     status:
       - test -d {{.VENV}}
 
+  lock:check:
+    desc: Verify uv.lock is in sync with pyproject.toml (matches CI)
+    # See api-service/Taskfile.yml -- no `deps: [setup]`, since `uv sync`
+    # would re-resolve the lock and hide the drift.
+    cmds:
+      - uv lock --check
+
   lint:
     desc: Run ruff lint + format check
     deps: [setup]
