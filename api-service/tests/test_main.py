@@ -1,15 +1,14 @@
 """Tests for FastAPI main application."""
 
-import pytest
 from collections.abc import AsyncIterator, Generator
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
 from app.session_store import reset_session_store
-
 
 # Sample profile data for tests
 MOCK_PROFILE = {
@@ -615,6 +614,7 @@ class TestChatEndpointEdgeCases:
     def test_chat_with_profile_loading_fallback(self) -> None:
         """Test chat when memvid profile loading fails, falls back to profile.json."""
         from unittest.mock import AsyncMock, patch
+
         from ai_resume_api.openrouter_client import LLMResponse
 
         reset_session_store()
@@ -792,8 +792,8 @@ class TestChatEndpointEdgeCases:
 
     def test_openrouter_auth_error_non_streaming(self) -> None:
         """Test OpenRouter auth error in non-streaming mode."""
-        from ai_resume_api.openrouter_client import OpenRouterAuthError, reset_openrouter_client
         from ai_resume_api.memvid_client import reset_memvid_client
+        from ai_resume_api.openrouter_client import OpenRouterAuthError, reset_openrouter_client
 
         reset_session_store()
         reset_memvid_client()
@@ -847,8 +847,8 @@ class TestStreamingErrorHandling:
 
     def test_streaming_with_openrouter_auth_error(self) -> None:
         """Test streaming chat handles OpenRouter auth errors."""
-        from ai_resume_api.openrouter_client import OpenRouterAuthError, reset_openrouter_client
         from ai_resume_api.memvid_client import reset_memvid_client
+        from ai_resume_api.openrouter_client import OpenRouterAuthError, reset_openrouter_client
 
         reset_session_store()
         reset_memvid_client()
@@ -905,8 +905,8 @@ class TestStreamingErrorHandling:
 
     def test_streaming_with_generic_openrouter_error(self) -> None:
         """Test streaming chat handles generic OpenRouter errors."""
-        from ai_resume_api.openrouter_client import OpenRouterError, reset_openrouter_client
         from ai_resume_api.memvid_client import reset_memvid_client
+        from ai_resume_api.openrouter_client import OpenRouterError, reset_openrouter_client
 
         reset_session_store()
         reset_memvid_client()
@@ -1024,6 +1024,7 @@ class TestMockResponseHelpers:
     def test_mock_stream_response_generator(self) -> None:
         """Test _mock_stream_response generates proper SSE events."""
         import asyncio
+
         from app.main import _mock_stream_response
 
         async def run_test() -> list[str]:
@@ -1280,8 +1281,8 @@ class TestAssessFitErrorHandling:
 
     def test_assess_fit_openrouter_auth_error(self) -> None:
         """Test assess_fit handles OpenRouter auth errors."""
-        from ai_resume_api.openrouter_client import OpenRouterAuthError, reset_openrouter_client
         from ai_resume_api.memvid_client import reset_memvid_client
+        from ai_resume_api.openrouter_client import OpenRouterAuthError, reset_openrouter_client
 
         reset_session_store()
         reset_memvid_client()
@@ -1330,8 +1331,8 @@ class TestAssessFitErrorHandling:
 
     def test_assess_fit_openrouter_generic_error(self) -> None:
         """Test assess_fit handles generic OpenRouter errors."""
-        from ai_resume_api.openrouter_client import OpenRouterError, reset_openrouter_client
         from ai_resume_api.memvid_client import reset_memvid_client
+        from ai_resume_api.openrouter_client import OpenRouterError, reset_openrouter_client
 
         reset_session_store()
         reset_memvid_client()
@@ -1385,6 +1386,7 @@ class TestAssessFitEndpoint:
     def test_assess_fit_success(self, client: TestClient) -> None:
         """Test successful fit assessment."""
         from unittest.mock import AsyncMock, patch
+
         from ai_resume_api.openrouter_client import LLMResponse
 
         # Mock memvid search
@@ -1528,6 +1530,7 @@ RECOMMENDATION: Excellent fit for this VP Platform Engineering role. The candida
     def test_assess_fit_malformed_llm_response(self, client: TestClient) -> None:
         """Test handling when LLM returns malformed response."""
         from unittest.mock import AsyncMock, patch
+
         from ai_resume_api.openrouter_client import LLMResponse
 
         mock_search_response = AsyncMock()

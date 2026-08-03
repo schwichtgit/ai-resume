@@ -39,8 +39,6 @@ test = [
     "pytest-cov>=7.1.0",
 ]
 lint = [
-    "black>=26.5.1",
-    "isort>=8.0.1",
     "ruff>=0.16.1",
     "mypy>=2.3.0",
     "types-cachetools>=7.0.0.20260713",
@@ -55,15 +53,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["ai_resume_api"]
-
-[tool.black]
-line-length = 100
-target-version = ["py312"]
-include = "\\.pyi?$"
-
-[tool.isort]
-profile = "black"
-line_length = 100
 
 [tool.mypy]
 python_version = "3.12"
@@ -108,7 +97,8 @@ target-version = "py312"
 exclude = ["ai_resume_api/proto/"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "B", "C4"]
+# "I" replaces isort (removed); ruff format replaces black.
+select = ["E", "F", "W", "B", "C4", "I"]
 ignore = ["E501"]
 
 [tool.pytest.ini_options]

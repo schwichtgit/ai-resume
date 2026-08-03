@@ -12,23 +12,23 @@ valid API key (sk-*) is configured.
 import os
 from collections.abc import AsyncGenerator
 
+import httpx
 import pytest
 import pytest_asyncio
-import httpx
-
 
 # Enable mock OpenRouter for chat/assess-fit tests
 os.environ.setdefault("MOCK_OPENROUTER", "true")
 
-from ai_resume_api.main import app  # noqa: E402
 from fixtures.job_descriptions import STRONG_MATCH_JD, WEAK_MATCH_JD  # noqa: E402
+
+from ai_resume_api.main import app  # noqa: E402
 
 
 @pytest_asyncio.fixture
 async def client() -> AsyncGenerator[httpx.AsyncClient, None]:
     """Async httpx client wired to the ASGI app with lifespan handling."""
-    from ai_resume_api.memvid_client import get_memvid_client, close_memvid_client
-    from ai_resume_api.openrouter_client import get_openrouter_client, close_openrouter_client
+    from ai_resume_api.memvid_client import close_memvid_client, get_memvid_client
+    from ai_resume_api.openrouter_client import close_openrouter_client, get_openrouter_client
 
     # Manually trigger startup (ASGITransport does not handle lifespan)
     try:

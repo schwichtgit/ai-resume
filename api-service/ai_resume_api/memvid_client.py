@@ -6,12 +6,12 @@ from typing import Any, cast
 
 import grpc
 import structlog
+from opentelemetry.propagate import inject
 from prometheus_client import Histogram
 
 from ai_resume_api.config import get_settings
 from ai_resume_api.models import MemvidHealthResponse, MemvidSearchHit, MemvidSearchResponse
-from ai_resume_api.observability import get_trace_id, get_session_id, get_client_ip
-from opentelemetry.propagate import inject
+from ai_resume_api.observability import get_client_ip, get_session_id, get_trace_id
 
 logger = structlog.get_logger()
 

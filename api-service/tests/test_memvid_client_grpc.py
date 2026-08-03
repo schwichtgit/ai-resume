@@ -2,12 +2,11 @@
 
 from collections.abc import Callable
 from typing import Any
-
-from ai_resume_api.config import Settings
-
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+from ai_resume_api.config import Settings
 from ai_resume_api.memvid_client import (
     CorrelationInterceptor,
     MemvidClient,

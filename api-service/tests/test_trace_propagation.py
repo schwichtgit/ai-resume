@@ -21,12 +21,11 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi.testclient import TestClient
 from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider, ReadableSpan
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExporter, SpanExportResult
 from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExporter, SpanExportResult
 
 from app.main import app
-
 
 # ---------------------------------------------------------------------------
 # Custom InMemorySpanExporter
@@ -284,7 +283,7 @@ class TestTraceparentGrpcPropagation:
     ) -> None:
         """CorrelationInterceptor also propagates x-trace-id, x-session-id, x-client-ip."""
         from ai_resume_api.memvid_client import CorrelationInterceptor
-        from ai_resume_api.observability import set_trace_id, set_session_id, set_client_ip
+        from ai_resume_api.observability import set_client_ip, set_session_id, set_trace_id
 
         interceptor = CorrelationInterceptor()
         set_trace_id("trace-abc")

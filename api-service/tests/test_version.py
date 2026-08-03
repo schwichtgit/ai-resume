@@ -9,7 +9,6 @@ import ai_resume_api.version as version_mod
 from app.main import app
 from app.session_store import reset_session_store
 
-
 MOCK_PROFILE = {
     "name": "Test User",
     "title": "Test Title",

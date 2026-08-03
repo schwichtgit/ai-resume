@@ -12,8 +12,8 @@ Supports environment variables:
 
 import os
 import socket
-import sys
 import subprocess
+import sys
 
 # Ensure we're in /app for module imports
 # The ai_resume_api module needs to be importable
@@ -73,8 +73,9 @@ def main() -> None:
     # Start uvicorn programmatically to control socket options
     if host == "::":
         # Use programmatic API to ensure IPV6_V6ONLY=0 is set
-        import uvicorn
         import asyncio
+
+        import uvicorn
 
         print(f"Starting uvicorn with dual-stack socket [::]:{port}", file=sys.stderr)
         print("Note: Setting IPV6_V6ONLY=0 for dual-stack support", file=sys.stderr)

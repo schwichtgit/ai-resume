@@ -69,8 +69,9 @@ def test_main_runs_without_errors(
     Uses pytest fixtures (monkeypatch, capsys) for clean mocking.
     Marked as slow due to model download. Run with: pytest -m slow
     """
-    from compare_models import main
     import sys
+
+    from compare_models import main
 
     # Mock CLI arguments using monkeypatch (safe, auto-restored)
     test_args = [
