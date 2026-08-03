@@ -145,6 +145,13 @@ tasks:
         ingest:test:coverage,
       ]
 
+  build:
+    desc: Build all services
+    # Mirrors the CI build steps: frontend production bundle (`npm run build`)
+    # and the memvid release binary (`cargo build --release`). api-service and
+    # ingest are pure Python -- they have no compile step, so nothing to build.
+    deps: [frontend:build, memvid:build:release]
+
   audit:
     desc: Whole-SBOM vulnerability sweep across all ecosystems (npm, pip, cargo)
     # Native per-ecosystem scanners against each lockfile / synced venv:
