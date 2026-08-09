@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "httpx>=0.28.1",
     "memvid-sdk==2.0.160",
-    "sentence-transformers>=5.6.1",
+    "sentence-transformers>=5.7.0",
     "setuptools>=83.0.0",
 ]
 
