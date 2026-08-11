@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.7] - 2026-08-11
+
+Security release: remediates a HIGH-severity advisory in `cryptography` that
+shipped in beta.6, plus two transitive npm advisories. Also carries routine
+dependency currency. No new product features.
+
+### Security
+
+- **`cryptography` 49.0.0 -> 50.0.0** (#463), remediating CVE-2026-69247 /
+  PYSEC-2026-3552 (HIGH). This shipped in beta.6 and was the sole finding
+  behind three failing gates: the scheduled Security Scan's Trivy
+  container-scan of api-service (`Total: 1 (HIGH: 1, CRITICAL: 0)`), the
+  whole-SBOM pip-audit, and the `container-build (api)` job on any open PR.
+  The package is transitive, so the lock required an explicit upgrade rather
+  than moving on its own.
+- **`brace-expansion`** GHSA-rgw5-rvv9-x895 (DoS via unbounded intermediate
+  arrays, bypassing the CVE-2026-14257 mitigation) and **`nanoid`**
+  GHSA-2v37-7h3g-55p8 (custom generators loop indefinitely when size is zero)
+  resolved in the frontend lockfile (#463). Both transitive; `package.json`
+  is unchanged by the fix.
+
+With these, `task audit` and `npm audit` are clean again -- the scheduled
+Security Scan had failed every run since 2026-08-03.
+
+### Changed
+
+- Dependency currency -- 12 PRs consolidated into two rollups (#463, #468):
+  - **api-service (uv)**: `starlette` `>=1.3.1` -> `>=1.4.1` (resolves
+    1.6.0), `fastmcp` `>=3.4.5` -> `>=3.4.6` (resolves 3.4.7), `cachetools`
+    `>=7.1.6` -> `>=7.1.7`, `uvicorn[standard]` `>=0.52.0` -> `>=0.52.1`,
+    `pydantic-settings` `>=2.14.2` -> `>=2.15.0`, `ruff` `>=0.16.1` ->
+    `>=0.16.2`.
+  - **ingest (uv)**: `sentence-transformers` `>=5.6.1` -> `>=5.7.0`, `ruff`
+    `>=0.16.1` -> `>=0.16.2`. The former sits on the embedding path, which CI
+    does not cover because it deselects `slow`-marked tests; those were run
+    explicitly and pass.
+  - **frontend (npm)**: `@hookform/resolvers` 5.7.1, `lucide-react` 1.29.0,
+    `react-hook-form` 7.84.0, `globals` 17.9.0, `typescript-eslint` 8.66.0,
+    `@types/node` 26.2.0, `eslint` 10.8.1, `vite` 8.2.1.
+  - **docker**: frontend `node` 26.5.1 -> 26.7.0-trixie-slim; memvid
+    `rust:1.97.1-slim-trixie` digest `5c6f46a` -> `3b28790`.
+  - **github-actions**: `DavidAnson/markdownlint-cli2-action` v24.1.0 ->
+    v24.2.0, `taiki-e/install-action` v2.85.5 -> v2.85.10.
+
+### Notes
+
+- `RUSTSEC-2025-0141` (bincode unmaintained) now appears in `cargo audit`
+  output alongside the three advisories suppressed in `.cargo/audit.toml`.
+  It is a warning within the allowed set; `cargo audit` still passes and no
+  action is required.
+
 ## [0.1.0-beta.6] - 2026-08-03
 
 Stabilization release: dependency currency plus developer-tooling and CI
@@ -768,7 +819,8 @@ documentation overhaul. No new product features since alpha.23.
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.6...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.7...HEAD
+[0.1.0-beta.7]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.6...v0.1.0-beta.7
 [0.1.0-beta.6]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.5...v0.1.0-beta.6
 [0.1.0-beta.5]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.4...v0.1.0-beta.5
 [0.1.0-beta.4]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.3...v0.1.0-beta.4
