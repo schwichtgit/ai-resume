@@ -9,7 +9,7 @@ license = {text = "MIT"}
 dependencies = [
     "fastapi>=0.141.1",
     "starlette>=1.4.1",
-    "setuptools>=83.0.0",
+    "setuptools>=84.0.0",
     "uvicorn[standard]>=0.52.1",
     "python-multipart>=0.0.32",
     "httpx>=0.28.1",
