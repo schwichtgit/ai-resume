@@ -108,6 +108,11 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --cov=ai_resume_api --cov-report=term-missing"
+# An xfail that starts passing is a signal, not a pass. Without this, closing a
+# known guardrail gap reports XPASS and goes unnoticed, and a later regression
+# reopens it just as quietly. Tests documenting a genuinely architectural limit
+# opt out with an explicit strict=False on the marker.
+xfail_strict = true
 markers = [
     "slow: marks tests that require external services (deselect with '-m \"not slow\"')",
     "e2e: end-to-end acceptance tests (deselect with '-m \"not e2e\"')",

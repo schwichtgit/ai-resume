@@ -8,7 +8,10 @@ This module provides:
 Defense strategy follows OWASP LLM Top 10 recommendations.
 """
 
+import base64
+import binascii
 import re
+import unicodedata
 from dataclasses import dataclass
 
 import structlog
@@ -96,12 +99,165 @@ INJECTION_PATTERNS = [
     # Delimiter breaking attempts
     r"```.*(?:system|ignore|override)",
     r"</?(?:system|admin|root|sudo)>",
+    # Possessive-object override ("ignore your instructions"). The override
+    # patterns above all require previous|above|all|prior|earlier between the
+    # verb and the object, so this phrasing slipped through even once an
+    # obfuscated payload was decoded.
+    r"(?:ignore|disregard|forget|override)\s+(?:your|the|these|those|its|any)\s+"
+    r"(?:instruction|directive|prompt|rule|command|guideline|constraint)",
 ]
 
 # Compile patterns for efficiency
 _compiled_injection_patterns = [
     re.compile(pattern, re.IGNORECASE) for pattern in INJECTION_PATTERNS
 ]
+
+
+# =============================================================================
+# Obfuscation normalization
+# =============================================================================
+#
+# Pattern matching alone is defeated by trivial rewrites of the same payload.
+# Rather than enumerate every variant as its own pattern, we derive a small set
+# of normalized views of the input and match the existing patterns against each.
+# A hit on any view is a hit.
+#
+# Each transform is deliberately narrow, because these run on recruiter-supplied
+# text (including pasted job descriptions) where a false positive silently
+# blocks a legitimate user.
+
+# Homoglyphs that render as Latin letters but carry different codepoints.
+# NFKC alone does not fold these -- Cyrillic 'о' (U+043E) is a distinct letter,
+# not a compatibility variant of 'o'.
+_CONFUSABLES = str.maketrans(
+    {
+        # Cyrillic
+        "а": "a",
+        "в": "b",
+        "е": "e",
+        "к": "k",
+        "м": "m",
+        "н": "h",
+        "о": "o",
+        "р": "p",
+        "с": "c",
+        "т": "t",
+        "у": "y",
+        "х": "x",
+        "і": "i",
+        "ѕ": "s",
+        "ј": "j",
+        "ԁ": "d",
+        "ӏ": "l",
+        "г": "r",
+        # Greek
+        "α": "a",
+        "β": "b",
+        "ε": "e",
+        "ι": "i",
+        "κ": "k",
+        "ν": "v",
+        "ο": "o",
+        "ρ": "p",
+        "τ": "t",
+        "υ": "u",
+        "χ": "x",
+        "ѵ": "v",
+    }
+)
+
+# Leetspeak digit/symbol substitutions.
+_LEET = str.maketrans(
+    {"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", "$": "s"}
+)
+
+# Runs of isolated single characters ("i g n o r e"). Requires at least four in
+# a row so ordinary text ("a 5 x 3 grid", "CI / CD") is untouched.
+_SPACED_CHARS_RE = re.compile(r"(?:(?<=\s)|^)(?:[a-z0-9]\s+){3,}[a-z0-9](?=\s|$)")
+
+# Base64 candidates: long enough to carry a payload, and standard alphabet only.
+_BASE64_CANDIDATE_RE = re.compile(r"[A-Za-z0-9+/]{16,}={0,2}")
+
+# Upper bound on text we will normalize. Guards against a pathological input
+# making every request pay for several full-text transforms.
+MAX_NORMALIZE_CHARS = 8000
+
+
+def _fold_confusables(text: str) -> str:
+    """Fold Unicode look-alikes to their Latin equivalents."""
+    return unicodedata.normalize("NFKC", text).translate(_CONFUSABLES)
+
+
+def _fold_leet(text: str) -> str:
+    """Fold common leetspeak substitutions to letters."""
+    return text.translate(_LEET)
+
+
+def _collapse_spaced_chars(text: str) -> str:
+    """Collapse runs of space-separated single characters into words."""
+    return _SPACED_CHARS_RE.sub(lambda m: re.sub(r"\s+", "", m.group()), text)
+
+
+def _decode_base64_segments(text: str) -> str:
+    """Return decoded text for any base64 segments that carry printable ASCII.
+
+    Only segments that decode cleanly to mostly-printable ASCII are returned,
+    so ordinary long tokens (hashes, IDs, digests) contribute nothing.
+    """
+    decoded_parts: list[str] = []
+    for match in _BASE64_CANDIDATE_RE.finditer(text):
+        segment = match.group()
+        # Standard base64 needs length % 4 == 0; tolerate missing padding.
+        padded = segment + "=" * (-len(segment) % 4)
+        try:
+            raw = base64.b64decode(padded, validate=True)
+        except (binascii.Error, ValueError):
+            continue
+        try:
+            candidate = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            continue
+        if not candidate:
+            continue
+        printable = sum(1 for ch in candidate if ch.isprintable() or ch.isspace())
+        if printable / len(candidate) >= 0.9:
+            decoded_parts.append(candidate)
+    return " ".join(decoded_parts)
+
+
+def _detection_views(text: str) -> list[tuple[str, str]]:
+    """Build the set of normalized views to match patterns against.
+
+    Returns a list of (view_name, text) pairs, always including the plain
+    whitespace-normalized view first so ordinary inputs take the cheap path.
+    """
+    plain = " ".join(text.lower().split())
+    views: list[tuple[str, str]] = [("plain", plain)]
+
+    if len(plain) > MAX_NORMALIZE_CHARS:
+        return views
+
+    seen = {plain}
+
+    def add(name: str, value: str) -> None:
+        value = " ".join(value.split())
+        if value and value not in seen:
+            seen.add(value)
+            views.append((name, value))
+
+    folded = _fold_confusables(plain)
+    add("confusables", folded)
+    # Apply the remaining transforms on top of the folded text so a payload
+    # combining techniques (leetspeak + homoglyphs) still reduces.
+    add("leet", _fold_leet(folded))
+    add("despaced", _collapse_spaced_chars(folded))
+    add("leet+despaced", _collapse_spaced_chars(_fold_leet(folded)))
+
+    decoded = _decode_base64_segments(text)
+    if decoded:
+        add("base64", " ".join(decoded.lower().split()))
+
+    return views
 
 
 @dataclass
@@ -111,6 +267,7 @@ class InjectionDetectionResult:
     is_injection: bool
     matched_pattern: str | None = None
     confidence: str = "low"  # low, medium, high
+    matched_view: str | None = None
 
 
 def detect_injection(text: str) -> InjectionDetectionResult:
@@ -122,11 +279,11 @@ def detect_injection(text: str) -> InjectionDetectionResult:
     Returns:
         InjectionDetectionResult with detection status and matched pattern.
     """
-    text_normalized = " ".join(text.lower().split())  # Normalize whitespace
-
-    for pattern in _compiled_injection_patterns:
-        match = pattern.search(text_normalized)
-        if match:
+    for view_name, view_text in _detection_views(text):
+        for pattern in _compiled_injection_patterns:
+            match = pattern.search(view_text)
+            if not match:
+                continue
             # Log the detection with trace ID for correlation
             trace_id = get_trace_id()
             logger.warning(
@@ -134,12 +291,20 @@ def detect_injection(text: str) -> InjectionDetectionResult:
                 trace_id=trace_id,
                 pattern=pattern.pattern[:50],
                 matched_text=match.group()[:100],
+                matched_view=view_name,
                 input_preview=text[:100],
             )
             return InjectionDetectionResult(
                 is_injection=True,
                 matched_pattern=pattern.pattern,
-                confidence="high" if "ignore" in match.group().lower() else "medium",
+                # A hit that only surfaces after de-obfuscation is stronger
+                # evidence of intent than one in plain text, not weaker.
+                confidence=(
+                    "high"
+                    if view_name != "plain" or "ignore" in match.group().lower()
+                    else "medium"
+                ),
+                matched_view=view_name,
             )
 
     return InjectionDetectionResult(is_injection=False)
