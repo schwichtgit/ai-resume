@@ -18,7 +18,7 @@ from slowapi.util import get_remote_address
 from starlette.middleware.base import RequestResponseEndpoint
 
 from ai_resume_api.config import get_settings
-from ai_resume_api.guardrails import check_input, check_output
+from ai_resume_api.guardrails import check_input, check_output, fence_untrusted
 from ai_resume_api.memvid_client import (
     MemvidConnectionError,
     MemvidSearchError,
@@ -918,6 +918,35 @@ async def assess_fit(request: Request, assess_request: AssessFitRequest) -> Asse
 
     tracer = get_tracer()
 
+    # Input guardrail: a submitted job description is attacker-controlled text.
+    # Checked before the memvid search and the LLM call so a rejected payload
+    # costs nothing and never reaches the model.
+    with tracer.start_as_current_span("guardrail.check_input") as guard_span:
+        guard_span.set_attribute("job_description.length", len(assess_request.job_description))
+        is_safe, _ = check_input(assess_request.job_description)
+        guard_span.set_attribute("guardrail.passed", is_safe)
+    if not is_safe:
+        logger.warning(
+            "Fit assessment blocked by guardrail",
+            job_description_preview=assess_request.job_description[:100],
+        )
+        # AssessFitResponse is structured, so the chat-style redirect string
+        # does not fit. Report the refusal in the response's own vocabulary.
+        return AssessFitResponse(
+            verdict="⭐ Unable to assess - job description rejected",
+            key_matches=[],
+            gaps=[
+                "The submitted text contains instructions directed at this assistant "
+                "rather than role requirements, so it was not evaluated."
+            ],
+            recommendation=(
+                "Please resubmit the job description with only the role's "
+                "responsibilities, requirements and qualifications."
+            ),
+            chunks_retrieved=0,
+            tokens_used=0,
+        )
+
     # Get OpenRouter client
     openrouter_client = await get_openrouter_client()
 
@@ -1005,15 +1034,20 @@ async def assess_fit(request: Request, assess_request: AssessFitRequest) -> Asse
         jd_title=role_info["jd_title"],
     )
 
-    # Build fit assessment prompt
-    fit_assessment_prompt = f"""Analyze the candidate's fit for this job description. Be brutally honest.
+    # The job description is untrusted. Fence it with a per-request nonce so a
+    # payload cannot forge a section boundary by writing its own header --
+    # plain "JOB DESCRIPTION:" / "INSTRUCTIONS:" markers are not a boundary,
+    # since attacker text can contain them verbatim.
+    fenced_job_description = fence_untrusted(
+        assess_request.job_description, label="job_description"
+    )
 
-JOB DESCRIPTION:
-{assess_request.job_description}
+    # Instructions and rubric live in the system role, away from the untrusted
+    # text they govern. Only data belongs in the user turn.
+    fit_assessment_instructions = f"""{role_info["persona"]}
 
-CANDIDATE CONTEXT (from resume):
-{context}
-{domain_context}
+Analyze the candidate's fit for the supplied job description. Be brutally honest.
+
 INSTRUCTIONS:
 
 Step 1: DOMAIN CHECK (critical — do this first).
@@ -1063,6 +1097,14 @@ GAPS:
 RECOMMENDATION: [2-3 sentences. Address whether the candidate should be considered, the seniority gap if any, and what would need to be true for this to work. Stop after this section.]
 """
 
+    # User turn carries data only: the fenced job description and the resume
+    # context retrieved for it.
+    fit_assessment_prompt = f"""{fenced_job_description}
+
+CANDIDATE CONTEXT (from resume):
+{context}
+{domain_context}"""
+
     # Call OpenRouter LLM
     try:
         with tracer.start_as_current_span("llm.openrouter_call") as llm_span:
@@ -1071,7 +1113,7 @@ RECOMMENDATION: [2-3 sentences. Address whether the candidate should be consider
             llm_span.set_attribute("llm.context_chunks", chunks_retrieved)
 
             response = await openrouter_client.chat(
-                system_prompt=role_info["persona"],
+                system_prompt=fit_assessment_instructions,
                 context="",  # Context already in user message
                 user_message=fit_assessment_prompt,
                 history=[],
@@ -1079,6 +1121,11 @@ RECOMMENDATION: [2-3 sentences. Address whether the candidate should be consider
             )
 
             llm_span.set_attribute("llm.tokens_used", response.tokens_used)
+
+        # Output guardrail: strip internal-structure leakage before parsing,
+        # matching the protection already applied on the chat endpoint.
+        with tracer.start_as_current_span("guardrail.check_output"):
+            response.content = check_output(response.content)
 
         # Parse structured response
         with tracer.start_as_current_span("response.parse") as parse_span:
