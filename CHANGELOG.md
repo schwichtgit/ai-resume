@@ -7,6 +7,96 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.8] - 2026-08-18
+
+Hardening release: closes four working prompt-injection bypasses, extends the
+guardrails to the fit-assessment endpoint, and fixes two pattern false
+positives that were rejecting legitimate job descriptions. No new product
+features, no outstanding advisories.
+
+### Security
+
+- **Fit assessment was unguarded.** `/api/v1/assess-fit` accepted an arbitrary
+  job description, interpolated it into an LLM prompt and returned the result,
+  calling neither `check_input` nor `check_output` -- only `/api/v1/chat` was
+  protected (#484). The endpoint now checks input _before_ the memvid search
+  and the LLM call, so a rejected payload costs nothing and never reaches the
+  model, and filters the response on the way out. A refusal is reported in the
+  response's own vocabulary (a one-star verdict with an explanatory gap and
+  recommendation) rather than the chat endpoint's redirect text.
+- **Untrusted job descriptions are now fenced** with a per-request nonce
+  (#484). The prompt previously used plain-text section headers
+  (`JOB DESCRIPTION:`, `INSTRUCTIONS:`) and inserted the untrusted text raw, so
+  a payload could write its own header and forge a section boundary. A
+  delimiter the submitter cannot predict is a boundary; a literal header is
+  not. This defense does not depend on pattern matching at all.
+- **Rubric and instructions moved into the system role** (#484). They governed
+  the untrusted text while sharing a conversation turn with it; the user turn
+  now carries data only.
+- **Four injection bypasses closed** (#483). Detection matched patterns against
+  a single whitespace-normalized view, so any rewrite of the same payload
+  evaded it. Input is now reduced to several normalized views -- homoglyph
+  folded (NFKC alone does not fold Cyrillic look-alikes), leetspeak folded,
+  de-spaced, and base64 decoded -- with the patterns run against each. The
+  transforms compose, so stacked techniques still reduce. A hit that only
+  appears after de-obfuscation is reported as high confidence: needing to
+  decode it is evidence of intent.
+- **Possessive-object overrides are now detected** (#483). Every existing
+  override pattern required `previous|above|all|prior|earlier` between the verb
+  and its object, so "ignore your instructions" evaded detection even once an
+  obfuscated payload had been decoded.
+
+### Fixed
+
+- **Two pattern false positives that blocked legitimate job descriptions**
+  (#484). `enter.*mode` matched real postings across the wildcard --
+  "ENTERprise customers ... scale machine learning MODEls" -- and the
+  context-extraction pattern rejected "Show us your data engineering
+  portfolio", because bare "data" is ubiquitous in job descriptions. Both gaps
+  are now bounded and the object must name an internal structure, except for
+  `dump`/`output`, where "dump your data" remains an attack while "show us
+  your data" does not. A false positive silently refuses a real recruiter, so
+  both directions are pinned by tests.
+- `xfail_strict = true` is now set (#483). An `xfail` that started passing
+  reported `XPASS` and went unnoticed, so a closed gap looked identical to an
+  open one and a later regression would reopen it just as quietly. The single
+  remaining `xfail` documents an architectural limit -- context-free
+  per-message detection cannot observe multi-turn escalation -- and opts out
+  explicitly.
+
+### Changed
+
+- Dependency currency -- 12 PRs consolidated into two rollups (#479, #482):
+  - **api-service (uv)**: `setuptools` `>=83.0.0` -> `>=84.0.0`,
+    `uvicorn[standard]` `>=0.52.1` -> `>=0.52.3`, `pydantic-settings`
+    `>=2.14.2` -> `>=2.15.0`, `ruff` `>=0.16.1` -> `>=0.16.3`.
+  - **ingest (uv)**: `setuptools` `>=83.0.0` -> `>=84.0.0` (bumped in both the
+    dependency list and the build-system requires), `numpy` `>=2.5.1` ->
+    `>=2.5.2`, `ruff` `>=0.16.1` -> `>=0.16.3`.
+  - **frontend (npm)**: `@hookform/resolvers` 5.9.1, `sonner` 2.0.8,
+    `@testing-library/jest-dom` 7.0.1, `eslint-plugin-react-refresh` 0.5.4,
+    `globals` 17.11.0, `@types/node` 26.2.0, `eslint` 10.8.1, `vite` 8.2.1.
+  - **memvid-service (cargo)**: `async-trait` 0.1.92, `thiserror` 2.0.20,
+    `http-body-util` 0.1.5. Applied as a targeted `cargo update -p`; a bare
+    `cargo update` moved 163 packages, including `aws-lc-sys` 0.39.1 ->
+    0.44.0, far outside the proposed scope.
+  - **docker**: frontend `node` 26.5.1 -> 26.7.0-trixie-slim; memvid
+    `rust:1.97.1-slim-trixie` and api-service/ingest `ubi10/ubi-micro`
+    (`af12ec1` -> `cabedb5`) digests refreshed. Trivy reports 0 HIGH/CRITICAL
+    for the incoming ubi-micro digest, matching the outgoing one.
+  - **github-actions**: `DavidAnson/markdownlint-cli2-action` v24.2.0,
+    `taiki-e/install-action` v2.85.13.
+
+### Notes
+
+- api-service test count moves from 501 to 533 with coverage held at 87%. The
+  increase is four `xfail`s converted to passes plus new regression coverage:
+  the normalization transforms and the inputs they must leave alone, the
+  false-positive corpus, and endpoint-level tests that drive
+  `/api/v1/assess-fit` itself. The previous "indirect injection" tests called
+  the guardrail functions directly, which proved the functions worked while the
+  endpoint invoked neither -- coverage in appearance only.
+
 ## [0.1.0-beta.7] - 2026-08-11
 
 Security release: remediates a HIGH-severity advisory in `cryptography` that
@@ -819,7 +909,8 @@ documentation overhaul. No new product features since alpha.23.
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.7...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.8...HEAD
+[0.1.0-beta.8]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.7...v0.1.0-beta.8
 [0.1.0-beta.7]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.6...v0.1.0-beta.7
 [0.1.0-beta.6]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.5...v0.1.0-beta.6
 [0.1.0-beta.5]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.4...v0.1.0-beta.5
