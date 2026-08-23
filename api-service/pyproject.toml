@@ -40,7 +40,7 @@ test = [
 ]
 lint = [
     "ruff>=0.16.3",
-    "mypy>=2.3.0",
+    "mypy>=2.3.1",
     "types-cachetools>=7.0.0.20260713",
 ]
 sbom = [
