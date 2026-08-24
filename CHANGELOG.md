@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.9] - 2026-08-24
+
+Security release: remediates a DoS advisory in the `h2` HTTP/2 stack that was
+already failing the dependency audit on `main`. Also carries dependency
+currency, including a major on the ingest embedding path. No new product
+features.
+
+### Security
+
+- **`h2` 0.4.14 -> 0.4.18** (#492), remediating
+  [RUSTSEC-2026-0258](https://rustsec.org/advisories/RUSTSEC-2026-0258) --
+  "h2 unbounded empty DATA frames", a denial-of-service affecting the HTTP/2
+  server stack the memvid gRPC service is built on. The advisory was published
+  2026-08-17, after the previous audit ran, so it was already failing
+  `task audit` on `main` and would have failed the next scheduled security
+  scan. `h2` is a transitive dependency of the hyper/tonic stack, so `cargo
+update` alone did not move it -- the fix required targeting the crate
+  directly.
+
+### Changed
+
+- Dependency currency -- 8 PRs consolidated into two rollups (#492, #494):
+  - **ingest (uv)**: `sentence-transformers` 5.7.0 -> **6.0.0** (major),
+    `mypy` 2.3.0 -> 2.3.1, `ruff` `>=0.16.3` -> `>=0.16.4`. Both ingest
+    dependency PRs changed only the lockfile: the declared floors already
+    admitted the new versions, so resolution had to be pointed at each
+    package explicitly.
+  - **api-service (uv)**: `uvicorn[standard]` `>=0.52.3` -> `>=0.52.4`,
+    `mypy` `>=2.3.0` -> `>=2.3.1`, `ruff` `>=0.16.3` -> `>=0.16.4`.
+  - **frontend (npm)**: `input-otp` 1.5.0, `lucide-react` 1.33.0,
+    `react-resizable-panels` 4.12.3, `@vitejs/plugin-react` 6.1.0,
+    `@vitest/coverage-v8` 4.1.11, `vite` 8.2.2, `vitest` 4.1.11.
+  - **github-actions**: `taiki-e/install-action` v2.85.13 -> v2.86.5.
+
+### Notes
+
+- `sentence-transformers` 6.0.0 is a major release on the ingest embedding
+  path, and `memvid_sdk` calls the deprecated
+  `get_sentence_embedding_dimension`. That method is still present in 6.0.0,
+  and the `slow`-marked ingest tests that CI deselects -- the ones that
+  exercise real embeddings -- were run explicitly and pass.
+- `ruff` 0.16.4 introduces no formatting drift; `ruff format --check` is clean
+  on both Python services without reformatting.
+
 ## [0.1.0-beta.8] - 2026-08-18
 
 Hardening release: closes four working prompt-injection bypasses, extends the
@@ -909,7 +953,8 @@ documentation overhaul. No new product features since alpha.23.
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.8...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.9...HEAD
+[0.1.0-beta.9]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.8...v0.1.0-beta.9
 [0.1.0-beta.8]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.7...v0.1.0-beta.8
 [0.1.0-beta.7]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.6...v0.1.0-beta.7
 [0.1.0-beta.6]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.5...v0.1.0-beta.6
