@@ -10,7 +10,7 @@ dependencies = [
     "fastapi>=0.141.1",
     "starlette>=1.4.1",
     "setuptools>=84.0.0",
-    "uvicorn[standard]>=0.52.3",
+    "uvicorn[standard]>=0.52.4",
     "python-multipart>=0.0.32",
     "httpx>=0.28.1",
     "pydantic>=2.13.4",
@@ -40,7 +40,7 @@ test = [
 ]
 lint = [
     "ruff>=0.16.3",
-    "mypy>=2.3.0",
+    "mypy>=2.3.1",
     "types-cachetools>=7.0.0.20260713",
 ]
 sbom = [
