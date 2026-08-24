@@ -39,7 +39,7 @@ test = [
     "pytest-cov>=7.1.0",
 ]
 lint = [
-    "ruff>=0.16.3",
+    "ruff>=0.16.4",
     "mypy>=2.3.1",
     "types-cachetools>=7.0.0.20260713",
 ]
