@@ -89,6 +89,7 @@ tasks:
         lint:markdown,
         lint:prettier,
         lint:shellcheck,
+        lint:trivyignore,
       ]
 
   lint:fix:
@@ -151,6 +152,11 @@ tasks:
     # and the memvid release binary (`cargo build --release`). api-service and
     # ingest are pure Python -- they have no compile step, so nothing to build.
     deps: [frontend:build, memvid:build:release]
+
+  lint:trivyignore:
+    desc: Fail if a .trivyignore suppression has passed its revisit date
+    cmds:
+      - ./scripts/check-trivyignore-expiry.sh
 
   audit:
     desc: Whole-SBOM vulnerability sweep across all ecosystems (npm, pip, cargo)
