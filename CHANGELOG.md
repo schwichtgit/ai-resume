@@ -7,6 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-25
+
+First stable release. Graduates the 0.1.0 line after nine beta and twenty-three
+alpha iterations; the changes below are those since `0.1.0-beta.9`, and the
+entries beneath this one record how the line got here.
+
+Unlike every prior tag on this line, `v0.1.0` is not a pre-release: the release
+workflow's changelog gate and full (non-pre-release) GitHub release path apply
+to it for the first time.
+
+### Security
+
+- **memvid runtime rebased onto `distroless/static`** with a statically linked
+  musl binary (#496). The service uses `rustls` + `aws-lc-rs` and has never
+  linked OpenSSL, but on a glibc base it inherited every advisory filed against
+  the userland beside it -- 17 vulnerabilities, of which **zero** had an
+  upstream fix available, so no base-image bump could clear them. Removing
+  libc, OpenSSL and zlib removed the finding class outright rather than
+  suppressing it: **17 OS-package vulnerabilities to 0**, image size 12.6 MB.
+  Closes code-scanning alerts #567 through #571, including CVE-2026-14456
+  (HIGH, OpenSSL QUIC denial of service).
+- **All seven `.trivyignore` suppressions removed** (#497). Each was a
+  libc6/Trixie finding inherited from the previous memvid base and no longer
+  exists to suppress. Verified against every current runtime image and a fully
+  built api-service image: all report zero vulnerabilities and none of the
+  seven CVEs appear. A suppression for a finding that cannot occur is a blind
+  spot, not protection.
+
+At this release the project carries **zero open code-scanning alerts and zero
+active vulnerability suppressions**, and every finding closed above is recorded
+by GitHub as `fixed` rather than `dismissed`.
+
+### Changed
+
+- **Rust toolchain 1.96.0 to 1.98.0** (#496), with the builder image aligned to
+  match. The two had drifted -- `rust-toolchain.toml` pinned 1.96.0 while the
+  Dockerfile `FROM` was `rust:1.97.1` -- so every container build downloaded the
+  pinned toolchain and the image's bundled one went unused, meaning dependency
+  bumps to the `rust:` tag had no effect on the compiler actually in use.
+
+### Added
+
+- `scripts/check-trivyignore-expiry.sh` (#497) fails when a `.trivyignore`
+  suppression has passed its revisit date, or carries no date at all. The
+  revisit date is what stops a suppression becoming permanent, and nothing had
+  been enforcing it -- the seven entries removed in this release were 24 days
+  overdue when that was noticed. Runs in the security workflow ahead of the
+  audit and in `task lint`.
+- `scripts/test-containers.sh` Test 12 (#496) asserts the memvid runtime image
+  contains zero shared libraries, which covers both the static link and the
+  absence of libc/OpenSSL/zlib. Reverting to a `*-gnu` target or a `cc` base
+  reintroduces them and fails the test.
+
+### Known limitations
+
+- Prompt-injection detection is pattern-based over several normalized views of
+  the input. It cannot observe multi-turn escalation, which is tracked as a
+  strict `xfail` rather than closed. The durable protections are structural:
+  the model has no tool or function calling, the retrieval corpus is a fixed
+  trusted file, and untrusted job descriptions are fenced with a per-request
+  nonce.
+
 ## [0.1.0-beta.9] - 2026-08-24
 
 Security release: remediates a DoS advisory in the `h2` HTTP/2 stack that was
@@ -953,7 +1015,8 @@ documentation overhaul. No new product features since alpha.23.
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.9...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.9...v0.1.0
 [0.1.0-beta.9]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.8...v0.1.0-beta.9
 [0.1.0-beta.8]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.7...v0.1.0-beta.8
 [0.1.0-beta.7]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.6...v0.1.0-beta.7
