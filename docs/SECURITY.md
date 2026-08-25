@@ -147,6 +147,30 @@ security_opt:
 user: nonroot # or nginx
 ```
 
+### Base Image Attack Surface
+
+The memvid service is a statically linked musl binary on
+`gcr.io/distroless/static`, which ships no libc, no OpenSSL and no zlib.
+
+This is deliberate. The service uses `rustls` + `aws-lc-rs` and has never
+linked OpenSSL -- `Cargo.lock` contains no `openssl`, `openssl-sys` or
+`native-tls` crate. On the previous `distroless/cc` base it nonetheless
+inherited every advisory filed against the glibc/OpenSSL userland sitting
+beside it, none of which were reachable and none of which Debian had fixed.
+At the point of the change that was 17 vulnerabilities, of which **zero** had
+a fixed version available upstream, so no base-image bump could clear them.
+
+Removing the libraries removes the finding class rather than suppressing it.
+The runtime image now reports 0 OS-package vulnerabilities.
+
+`scripts/test-containers.sh` (Test 12) asserts the property structurally: the
+runtime image must contain **zero** shared libraries. Reverting to a `*-gnu`
+target or a `cc`/`base` runtime reintroduces them and fails the test. For
+reference, `distroless/cc` carries roughly 290 shared objects.
+
+The api-service, ingest and frontend images are unaffected; they run on
+`ubi-micro` and `alpine` respectively and require a libc.
+
 ### Network Isolation
 
 ```text

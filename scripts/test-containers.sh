@@ -236,8 +236,9 @@ fi
 # Test 7: Memvid post-condition.
 # Behaviour depends on MOCK_MEMVID_CLIENT:
 #   - true  (default): no real api->memvid gRPC traffic flows. Verify the
-#                      memvid binary loaded its runtime deps (libc/libgcc/
-#                      libstdc++) and reached the gRPC listen loop.
+#                      memvid binary started and reached the gRPC listen loop.
+#                      (It is statically linked against musl, so there are no
+#                      runtime deps to load -- see Test 12.)
 #   - false (real):    chat + profile endpoints exercised real RPCs. Verify
 #                      memvid logged "Processing ask|get_state|search request".
 RUST_LOGS=$(podman logs test-memvid 2>&1)
@@ -318,6 +319,32 @@ if [ -n "$FRONTEND_SPA" ] && echo "$FRONTEND_SPA" | grep -q 'id="root"'; then
     log_pass "Frontend SPA routing works (returns index.html for all routes)"
 elif [ -n "$FRONTEND_SPA" ]; then
     log_fail "Frontend SPA routing broken"
+    FAILED=1
+fi
+
+# Test 12: memvid runtime image carries no shared libraries.
+#
+# The binary is statically linked against musl and ships on distroless/static,
+# which has no libc, no OpenSSL and no zlib. That is the whole reason this image
+# has no OS-package CVE surface: the service uses rustls + aws-lc-rs and never
+# linked OpenSSL, but on a glibc base it inherited every advisory filed against
+# it anyway.
+#
+# This asserts the property structurally rather than trusting the Dockerfile.
+# Reverting to a *-gnu target or a cc/base runtime reintroduces those libraries
+# and this count goes non-zero. For reference, distroless/cc carries ~290.
+SO_CONTAINER="test-memvid-solibs-$$"
+if podman create --name "${SO_CONTAINER}" "${REGISTRY}/ai-resume-memvid:${VERSION}" >/dev/null 2>&1; then
+    SO_COUNT=$(podman export "${SO_CONTAINER}" 2>/dev/null | tar -t 2>/dev/null | grep -cE '\.so($|\.)' || true)
+    podman rm "${SO_CONTAINER}" >/dev/null 2>&1 || true
+    if [ "${SO_COUNT:-0}" -eq 0 ]; then
+        log_pass "Memvid image is fully static (0 shared libraries)"
+    else
+        log_fail "Memvid image contains ${SO_COUNT} shared libraries; expected 0 (static musl build)"
+        FAILED=1
+    fi
+else
+    log_fail "Could not create container to inspect memvid image layers"
     FAILED=1
 fi
 
