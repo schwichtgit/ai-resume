@@ -1,16 +1,29 @@
 # Trivy ignore file
 # Add CVE IDs (one per line) to suppress specific vulnerabilities.
-# Each entry should include a comment explaining why it is accepted.
 #
-# Example:
-#   CVE-2024-XXXXX  # accepted: no fix available, low exploitability in this context
+# Every entry MUST carry:
+#   - why it is accepted (unfixed upstream, unreachable in this context, ...)
+#   - the GitHub code-scanning alert number, where one exists
+#   - a "Revisit YYYY-MM-DD" date
+#
+# The revisit date is the control that stops a suppression becoming permanent.
+# scripts/check-trivyignore-expiry.sh fails once a date has passed, so an
+# expired entry breaks the security workflow instead of ageing quietly.
+#
+# Format:
+#   CVE-2024-XXXXX  # accepted: <reason>. GitHub alert #NNN. Revisit YYYY-MM-DD.
 #
 # Reference: https://aquasecurity.github.io/trivy/latest/docs/configuration/filtering/#by-finding-ids
 
-CVE-2026-4046  # libc6 iconv() DoS via specific charsets. Originally HIGH on Bookworm, MEDIUM on Trixie. Unfixed upstream. GitHub alert #539. Revisit 2026-08-01.
-CVE-2026-4437  # libc6 incorrect DNS response parsing via crafted server response. MEDIUM on Trixie. Unfixed upstream. GitHub alert #540. Revisit 2026-08-01.
-CVE-2026-4438  # libc6 invalid DNS hostname returned via gethostbyaddr. MEDIUM on Trixie. Unfixed upstream. GitHub alert #541. Revisit 2026-08-01.
-CVE-2026-5435  # libc6 deprecated ns_printrr/ns_printrrf/fp_nquery family in glibc 2.41 (Trixie). Unfixed upstream. GitHub alert #547, severity note. Revisit 2026-08-01.
-CVE-2026-5450  # libc6 heap buffer overflow in scanf %mc with large width. MEDIUM on Trixie. Unfixed upstream. GitHub alert #543. Revisit 2026-08-01.
-CVE-2026-5928  # libc6 information disclosure or DoS via ungetwc with specific wide-char encodings. MEDIUM on Trixie. Unfixed upstream. GitHub alert #544. Revisit 2026-08-01.
-CVE-2026-6238  # libc6 (glibc 2.41-12+deb13u2) note-severity finding, no fixed version published. GitHub alert #548. Revisit 2026-08-01.
+# No active suppressions.
+#
+# The seven libc6/Trixie entries that lived here were all inherited from the
+# memvid runtime when it was based on distroless/cc-debian13. That base was
+# replaced with distroless/static in #496, which removed libc entirely, so the
+# findings no longer exist to suppress. Verified against every current runtime
+# base and against a fully built api-service image: all report zero
+# vulnerabilities, and none of the seven CVEs appear anywhere.
+#
+# They were removed rather than re-dated: a suppression for a finding that
+# cannot occur is not protection, it is a blind spot. If any of them resurface
+# under a future base image, Trivy should fail loudly rather than stay quiet.

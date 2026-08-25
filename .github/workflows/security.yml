@@ -104,5 +104,11 @@ jobs:
       - name: Install frontend deps (npm audit needs the lockfile resolved)
         run: cd frontend && npm ci
 
+      - name: Check .trivyignore suppressions have not expired
+        # A suppression without an enforced review date silently becomes
+        # permanent. Runs before the audit so an expired entry is reported even
+        # when the audit itself passes.
+        run: ./scripts/check-trivyignore-expiry.sh
+
       - name: Run whole-SBOM dependency audit
         run: task audit
