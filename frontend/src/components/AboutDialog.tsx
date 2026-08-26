@@ -36,6 +36,19 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
               </span>
             </div>
           )}
+          {version?.model && (
+            /* Model ids are long ("nvidia/nemotron-3.5-lightning:free"), so the
+               value is allowed to wrap rather than overflow the dialog. */
+            <div className="flex items-start justify-between gap-4">
+              <span className="text-muted-foreground shrink-0">Model</span>
+              <span
+                data-testid="about-model"
+                className="font-mono text-xs text-right break-all"
+              >
+                {version.model}
+              </span>
+            </div>
+          )}
           <div className="border-t pt-4 space-y-3">
             <a
               href="https://github.com/schwichtgit/ai-resume"

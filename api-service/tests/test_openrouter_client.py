@@ -31,7 +31,7 @@ class TestOpenRouterClient:
     def test_init_default_values(self) -> None:
         """Test client initialization with defaults."""
         client = OpenRouterClient()
-        assert client._model == "nvidia/nemotron-nano-9b-v2:free"
+        assert client._model == "nvidia/nemotron-3.5-lightning:free"
         assert client._max_tokens == 1024
         assert client._temperature == 0.7
 
@@ -686,5 +686,125 @@ class TestOpenRouterChatSuccess:
         call_args = mock_client.post.call_args
         assert call_args[0][0] == "/chat/completions"
         payload = call_args[1]["json"]
-        assert payload["model"] == "nvidia/nemotron-nano-9b-v2:free"
+        assert payload["model"] == "nvidia/nemotron-3.5-lightning:free"
         assert payload["stream"] is False
+
+
+class TestModelAvailability:
+    """The configured model must exist upstream, and say so plainly when it does not.
+
+    Free-tier models are retired periodically. When that happens OpenRouter
+    answers a completion request with 404 on a perfectly valid endpoint URL, so
+    the raw error reads as though the URL were wrong.
+    """
+
+    def test_404_maps_to_model_not_found_naming_the_model(self) -> None:
+        """A 404 is reported as a retired model, not a missing URL."""
+        import httpx
+
+        from ai_resume_api.openrouter_client import OpenRouterModelNotFoundError
+
+        client = OpenRouterClient(api_key=VALID_KEY, model="vendor/retired-model:free")
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_response.json.return_value = {"error": {"message": "No endpoints found"}}
+
+        error = httpx.HTTPStatusError(
+            message="404 Not Found", request=MagicMock(), response=mock_response
+        )
+
+        with pytest.raises(OpenRouterModelNotFoundError) as exc_info:
+            client._handle_http_error(error)
+
+        message = str(exc_info.value)
+        assert "vendor/retired-model:free" in message, "must name the offending model"
+        assert "no longer available" in message
+        # The old behaviour leaked the completions URL, which pointed readers at
+        # the wrong problem.
+        assert "chat/completions" not in message
+
+    def test_model_not_found_is_an_openrouter_error(self) -> None:
+        """Existing except OpenRouterError handlers must keep catching it."""
+        from ai_resume_api.openrouter_client import (
+            OpenRouterError,
+            OpenRouterModelNotFoundError,
+        )
+
+        assert issubclass(OpenRouterModelNotFoundError, OpenRouterError)
+
+    @pytest.mark.asyncio
+    async def test_validate_model_accepts_a_listed_model(self) -> None:
+        """A model present in the catalogue validates."""
+        client = OpenRouterClient(api_key=VALID_KEY, model="vendor/live-model:free")
+        payload = {"data": [{"id": "vendor/live-model:free"}, {"id": "other/model"}]}
+
+        with patch("httpx.AsyncClient") as mock_cls:
+            mock_client = AsyncMock()
+            mock_resp = MagicMock()
+            mock_resp.json.return_value = payload
+            mock_resp.raise_for_status = MagicMock()
+            mock_client.get = AsyncMock(return_value=mock_resp)
+            mock_cls.return_value.__aenter__.return_value = mock_client
+
+            ok, detail = await client.validate_model()
+
+        assert ok is True
+        assert "vendor/live-model:free" in detail
+
+    @pytest.mark.asyncio
+    async def test_validate_model_rejects_a_retired_model(self) -> None:
+        """A model absent from the catalogue is reported, in user-facing wording."""
+        client = OpenRouterClient(api_key=VALID_KEY, model="vendor/retired-model:free")
+        payload = {"data": [{"id": "other/model"}]}
+
+        with patch("httpx.AsyncClient") as mock_cls:
+            mock_client = AsyncMock()
+            mock_resp = MagicMock()
+            mock_resp.json.return_value = payload
+            mock_resp.raise_for_status = MagicMock()
+            mock_client.get = AsyncMock(return_value=mock_resp)
+            mock_cls.return_value.__aenter__.return_value = mock_client
+
+            ok, detail = await client.validate_model()
+
+        assert ok is False
+        assert "vendor/retired-model:free" in detail
+        assert "no longer available" in detail
+
+    @pytest.mark.asyncio
+    async def test_unreachable_catalogue_is_inconclusive_not_a_failure(self) -> None:
+        """A network problem must not be reported as a retired model.
+
+        Claiming the model is gone because the catalogue was unreachable would
+        turn a transient outage into a misleading, alarming message.
+        """
+        client = OpenRouterClient(api_key=VALID_KEY, model="vendor/live-model:free")
+
+        with patch("httpx.AsyncClient") as mock_cls:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(side_effect=Exception("connection refused"))
+            mock_cls.return_value.__aenter__.return_value = mock_client
+
+            ok, detail = await client.validate_model()
+
+        assert ok is True, "inconclusive must not read as unavailable"
+        assert "Could not verify" in detail
+
+
+@pytest.mark.slow
+class TestModelAvailabilityLive:
+    """Sanity check against the real OpenRouter catalogue.
+
+    Marked slow so it is opt-in locally, but it is cheap: the catalogue endpoint
+    needs no API key and performs no inference. This is the check that would
+    have caught the retirement of nvidia/nemotron-nano-9b-v2:free before a user
+    hit a 404 in the chat UI.
+    """
+
+    @pytest.mark.asyncio
+    async def test_configured_model_exists_upstream(self) -> None:
+        from ai_resume_api.config import get_settings
+
+        client = OpenRouterClient(api_key=VALID_KEY, model=get_settings().llm_model)
+        is_available, detail = await client.validate_model()
+        assert is_available, detail

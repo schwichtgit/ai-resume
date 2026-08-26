@@ -112,3 +112,27 @@ jobs:
 
       - name: Run whole-SBOM dependency audit
         run: task audit
+
+  model-availability:
+    # The configured LLM model can be retired upstream at any time, which
+    # surfaces to users as a bare 404 from a valid endpoint URL. Free-tier
+    # models are retired routinely, so this runs on the weekly schedule to
+    # catch it before a user does. The catalogue and endpoint APIs need no
+    # API key and perform no inference, so this costs nothing.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api-service
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --extra test
+
+      - name: Verify the configured LLM model is available
+        run: uv run pytest -v -m slow tests/test_openrouter_client.py

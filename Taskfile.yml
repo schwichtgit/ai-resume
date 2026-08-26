@@ -153,6 +153,13 @@ tasks:
     # ingest are pure Python -- they have no compile step, so nothing to build.
     deps: [frontend:build, memvid:build:release]
 
+  llm:check:
+    desc: Verify the configured LLM model answers (needs OPENROUTER_API_KEY)
+    # Complements the catalogue check in CI, which needs no credentials but
+    # cannot tell you whether your key works or the round-trip succeeds.
+    cmds:
+      - ./scripts/check-llm-live.sh
+
   lint:trivyignore:
     desc: Fail if a .trivyignore suppression has passed its revisit date
     cmds:

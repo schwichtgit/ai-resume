@@ -5,7 +5,11 @@ import { AboutDialog } from '../AboutDialog';
 // Mock useAppVersion
 vi.mock('@/hooks/useAppVersion', () => ({
   useAppVersion: () => ({
-    version: { version: '1.0.0', commit: 'abc1234567890' },
+    version: {
+      version: '1.0.0',
+      commit: 'abc1234567890',
+      model: 'nvidia/nemotron-3.5-lightning:free',
+    },
     loading: false,
   }),
 }));
@@ -19,6 +23,15 @@ describe('AboutDialog', () => {
   it('renders commit SHA (truncated)', () => {
     render(<AboutDialog open={true} onOpenChange={() => {}} />);
     expect(screen.getByText('abc1234')).toBeInTheDocument();
+  });
+
+  it('renders the configured model', () => {
+    // A live incident surfaced only as a bare 404 in the chat UI, with no way
+    // to see which model was configured. Showing it makes that diagnosable.
+    render(<AboutDialog open={true} onOpenChange={() => {}} />);
+    expect(screen.getByTestId('about-model')).toHaveTextContent(
+      'nvidia/nemotron-3.5-lightning:free',
+    );
   });
 
   it('renders GitHub link', () => {
@@ -42,5 +55,22 @@ describe('AboutDialog', () => {
   it('does not render when closed', () => {
     render(<AboutDialog open={false} onOpenChange={() => {}} />);
     expect(screen.queryByText('About AI Resume')).not.toBeInTheDocument();
+  });
+});
+
+describe('AboutDialog without model', () => {
+  it('omits the model row when the API does not report one', async () => {
+    // An older api-service build returns {version, commit} only. The dialog
+    // must not render an empty row or "undefined".
+    vi.resetModules();
+    vi.doMock('@/hooks/useAppVersion', () => ({
+      useAppVersion: () => ({
+        version: { version: '1.0.0', commit: 'abc1234567890' },
+        loading: false,
+      }),
+    }));
+    const { AboutDialog: Fresh } = await import('../AboutDialog');
+    render(<Fresh open={true} onOpenChange={() => {}} />);
+    expect(screen.queryByTestId('about-model')).not.toBeInTheDocument();
   });
 });

@@ -103,7 +103,7 @@ def mock_profile_loading() -> Generator[AsyncMock, None, None]:
         mock_settings.load_profile = lambda: MOCK_PROFILE
         mock_settings.get_system_prompt_from_profile = lambda: "You are an AI assistant."
         mock_settings.max_history_messages = 10
-        mock_settings.llm_model = "nvidia/nemotron-nano-9b-v2:free"
+        mock_settings.llm_model = "nvidia/nemotron-3.5-lightning:free"
         mock_settings.rate_limit_per_minute = 1000
         mock_settings.mock_memvid_client = False
         mock_get_settings.return_value = mock_settings

@@ -25,6 +25,16 @@ class OpenRouterAuthError(OpenRouterError):
     pass
 
 
+class OpenRouterModelNotFoundError(OpenRouterError):
+    """The configured model does not exist upstream.
+
+    OpenRouter answers a request for an unknown model id with 404 on a valid
+    endpoint URL, which surfaces to users as a bare "404 Not Found" naming the
+    completions URL -- misleading, since the URL is correct. Free-tier models
+    are retired periodically, so this is a routine failure worth naming.
+    """
+
+
 class OpenRouterRateLimitError(OpenRouterError):
     """Raised when rate limit is exceeded."""
 
@@ -123,6 +133,94 @@ class OpenRouterClient:
             await self._client.aclose()
             self._client = None
             logger.info("OpenRouter client closed")
+
+    async def validate_model(self) -> tuple[bool, str]:
+        """Check the configured model still exists upstream.
+
+        Queries OpenRouter's public model catalogue. That endpoint needs no
+        authentication and performs no inference, so this is cheap enough to run
+        on a schedule and catch a retirement before a user does.
+
+        Returns:
+            (is_available, detail). detail names the model and, when it is
+            missing, is phrased for display to a user.
+        """
+        model = (self._model or "").strip()
+
+        if not model:
+            return False, "No AI model is configured."
+
+        # A bare id without the vendor prefix is a common misconfiguration and
+        # fails identically to a retired model, so name it specifically.
+        if "/" not in model:
+            return False, (
+                f"The configured AI model '{model}' is missing its vendor prefix "
+                "(model ids look like 'vendor/model:variant')."
+            )
+        if model != self._model:
+            logger.warning(
+                "Configured model id has surrounding whitespace",
+                configured=repr(self._model),
+            )
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                catalogue = (await client.get(f"{self._base_url}/models")).json()
+                available = {m.get("id") for m in catalogue.get("data", [])}
+                if model not in available:
+                    logger.error(
+                        "Configured model is not in the provider catalogue",
+                        model=model,
+                        catalogue_size=len(available),
+                    )
+                    return False, (
+                        f"The configured AI model '{model}' is no longer available "
+                        "from the provider. This usually means the model was "
+                        "retired upstream and a currently available model must "
+                        "be configured."
+                    )
+
+                # Being listed is necessary but not sufficient: a model can be
+                # catalogued with no serving endpoint, or with every endpoint
+                # deranked, and a completion request then fails with the same
+                # 404 as an unknown model.
+                endpoints_resp = await client.get(f"{self._base_url}/models/{model}/endpoints")
+                endpoints = ((endpoints_resp.json().get("data") or {}).get("endpoints")) or []
+        except Exception as e:  # network, timeout, malformed payload
+            # Inconclusive, not a failure: do not report a model as missing
+            # because the provider could not be reached.
+            logger.warning("Could not reach OpenRouter", error=str(e))
+            return True, f"Could not verify model '{model}': {e}"
+
+        if not endpoints:
+            logger.error("Configured model has no serving endpoints", model=model)
+            return False, (
+                f"The configured AI model '{model}' has no available providers "
+                "right now, so requests to it will fail."
+            )
+
+        healthy = [e for e in endpoints if (e.get("status") or 0) >= 0]
+        if not healthy:
+            logger.error(
+                "All endpoints for the configured model are deranked",
+                model=model,
+                endpoint_count=len(endpoints),
+            )
+            return False, (
+                f"Every provider for the configured AI model '{model}' is "
+                "currently unavailable, so requests to it will fail."
+            )
+
+        logger.info(
+            "Configured model is available",
+            model=model,
+            healthy_endpoints=len(healthy),
+            total_endpoints=len(endpoints),
+        )
+        return True, (
+            f"Model '{model}' is available "
+            f"({len(healthy)} of {len(endpoints)} provider endpoints healthy)"
+        )
 
     def _build_messages(
         self,
@@ -380,6 +478,13 @@ Use the context above to answer the user's question. If the context doesn't cont
             raise OpenRouterAuthError(f"Authentication failed: {detail}")
         elif status == 429:
             raise OpenRouterRateLimitError(f"Rate limit exceeded: {detail}")
+        elif status == 404:
+            # The endpoint URL is fine; 404 here means the model id is unknown.
+            raise OpenRouterModelNotFoundError(
+                f"The configured AI model '{self._model}' is no longer available "
+                "from the provider. This usually means the model was retired "
+                "upstream and a currently available model must be configured."
+            )
         else:
             raise OpenRouterError(f"API error ({status}): {detail}")
 

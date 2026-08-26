@@ -201,22 +201,22 @@ podman compose down
 
 ## Compose Environment Variables (.env)
 
-| Variable             | Purpose                                       | Default                           |
-| -------------------- | --------------------------------------------- | --------------------------------- |
-| `PROJECT_BASE_DIR`   | Host path to project root (volume mount)      | `/opt/ai-resume`                  |
-| `OPENROUTER_API_KEY` | LLM API key (required unless MOCK_OPENROUTER) | none                              |
-| `MEMVID_FILENAME`    | .mv2 filename inside data/.memvid/            | `resume.mv2`                      |
-| `LLM_MODEL`          | OpenRouter model ID                           | `nvidia/nemotron-nano-9b-v2:free` |
-| `REGISTRY`           | Container image registry prefix               | `localhost`                       |
-| `VERSION`            | Image tag                                     | `latest`                          |
-| `SESSION_TTL`        | Chat session lifetime (seconds)               | `1800`                            |
-| `RATE_LIMIT`         | Requests per minute per IP                    | `10`                              |
-| `LOG_LEVEL`          | Service log level                             | `INFO`                            |
-| `API_BACKEND_HOST`   | Frontend->API hostname (for macvlan/no-DNS)   | `ai-resume-api`                   |
-| `API_BACKEND_PORT`   | Frontend->API port                            | `3000`                            |
-| `MEMVID_GRPC_HOST`   | API->memvid hostname                          | `ai-resume-memvid`                |
-| `MEMVID_GRPC_PORT`   | API->memvid port                              | `50051`                           |
-| `BIND_ADDRESS`       | IPv4/IPv6 bind (auto/0.0.0.0/::)              | `auto`                            |
+| Variable             | Purpose                                       | Default                              |
+| -------------------- | --------------------------------------------- | ------------------------------------ |
+| `PROJECT_BASE_DIR`   | Host path to project root (volume mount)      | `/opt/ai-resume`                     |
+| `OPENROUTER_API_KEY` | LLM API key (required unless MOCK_OPENROUTER) | none                                 |
+| `MEMVID_FILENAME`    | .mv2 filename inside data/.memvid/            | `resume.mv2`                         |
+| `LLM_MODEL`          | OpenRouter model ID                           | `nvidia/nemotron-3.5-lightning:free` |
+| `REGISTRY`           | Container image registry prefix               | `localhost`                          |
+| `VERSION`            | Image tag                                     | `latest`                             |
+| `SESSION_TTL`        | Chat session lifetime (seconds)               | `1800`                               |
+| `RATE_LIMIT`         | Requests per minute per IP                    | `10`                                 |
+| `LOG_LEVEL`          | Service log level                             | `INFO`                               |
+| `API_BACKEND_HOST`   | Frontend->API hostname (for macvlan/no-DNS)   | `ai-resume-api`                      |
+| `API_BACKEND_PORT`   | Frontend->API port                            | `3000`                               |
+| `MEMVID_GRPC_HOST`   | API->memvid hostname                          | `ai-resume-memvid`                   |
+| `MEMVID_GRPC_PORT`   | API->memvid port                              | `50051`                              |
+| `BIND_ADDRESS`       | IPv4/IPv6 bind (auto/0.0.0.0/::)              | `auto`                               |
 
 ## Container Details
 

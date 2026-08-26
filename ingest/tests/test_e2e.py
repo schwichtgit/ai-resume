@@ -252,7 +252,7 @@ async def test_query_transformation_improves_retrieval(isolated_mv2: str) -> tup
                 response = await client.post(
                     "/chat/completions",
                     json={
-                        "model": os.environ.get("LLM_MODEL", "nvidia/nemotron-nano-9b-v2:free"),
+                        "model": os.environ.get("LLM_MODEL", "nvidia/nemotron-3.5-lightning:free"),
                         "messages": [
                             {
                                 "role": "system",
@@ -381,7 +381,7 @@ async def test_full_rag_pipeline(isolated_mv2: str) -> tuple[int, int]:
                 response = await client.post(
                     "/chat/completions",
                     json={
-                        "model": os.environ.get("LLM_MODEL", "nvidia/nemotron-nano-9b-v2:free"),
+                        "model": os.environ.get("LLM_MODEL", "nvidia/nemotron-3.5-lightning:free"),
                         "messages": [
                             {
                                 "role": "system",

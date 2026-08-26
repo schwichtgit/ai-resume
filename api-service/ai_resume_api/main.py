@@ -286,8 +286,13 @@ async def health_check() -> HealthResponse:
 @app.get("/api/v1/version")
 @limiter.limit(lambda: f"{get_settings().rate_limit_per_minute}/minute")
 async def version(request: Request) -> dict:
-    """Return build version and commit SHA."""
-    return get_version()
+    """Return build version, commit SHA and the configured LLM model.
+
+    The model is read from settings on each call rather than folded into
+    get_version(), which caches a build-time file: the model is runtime
+    configuration and can differ per deployment via LLM_MODEL.
+    """
+    return {**get_version(), "model": get_settings().llm_model}
 
 
 # =============================================================================

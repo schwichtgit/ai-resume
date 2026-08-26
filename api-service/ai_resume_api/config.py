@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     # OpenRouter configuration
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
-    llm_model: str = "nvidia/nemotron-nano-9b-v2:free"
+    llm_model: str = "nvidia/nemotron-3.5-lightning:free"
     llm_max_tokens: int = 1024
     llm_temperature: float = 0.7
 
