@@ -101,7 +101,7 @@ machine-readable fields:
   "event": "llm_response",
   "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
   "span_id": "00f067aa0ba902b7",
-  "model": "nvidia/nemotron-3.5-lightning:free",
+  "model": "google/gemma-4-26b-a4b-it",
   "tokens_total": 342,
   "latency_ms": 2150,
   "level": "info",

@@ -8,7 +8,7 @@ vi.mock('@/hooks/useAppVersion', () => ({
     version: {
       version: '1.0.0',
       commit: 'abc1234567890',
-      model: 'nvidia/nemotron-3.5-lightning:free',
+      model: 'google/gemma-4-26b-a4b-it',
     },
     loading: false,
   }),
@@ -30,7 +30,7 @@ describe('AboutDialog', () => {
     // to see which model was configured. Showing it makes that diagnosable.
     render(<AboutDialog open={true} onOpenChange={() => {}} />);
     expect(screen.getByTestId('about-model')).toHaveTextContent(
-      'nvidia/nemotron-3.5-lightning:free',
+      'google/gemma-4-26b-a4b-it',
     );
   });
 

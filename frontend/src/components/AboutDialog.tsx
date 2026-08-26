@@ -37,7 +37,7 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
             </div>
           )}
           {version?.model && (
-            /* Model ids are long ("nvidia/nemotron-3.5-lightning:free"), so the
+            /* Model ids are long ("google/gemma-4-26b-a4b-it"), so the
                value is allowed to wrap rather than overflow the dialog. */
             <div className="flex items-start justify-between gap-4">
               <span className="text-muted-foreground shrink-0">Model</span>

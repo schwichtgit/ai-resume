@@ -31,7 +31,7 @@ class TestOpenRouterClient:
     def test_init_default_values(self) -> None:
         """Test client initialization with defaults."""
         client = OpenRouterClient()
-        assert client._model == "nvidia/nemotron-3.5-lightning:free"
+        assert client._model == "google/gemma-4-26b-a4b-it"
         assert client._max_tokens == 1024
         assert client._temperature == 0.7
 
@@ -686,7 +686,7 @@ class TestOpenRouterChatSuccess:
         call_args = mock_client.post.call_args
         assert call_args[0][0] == "/chat/completions"
         payload = call_args[1]["json"]
-        assert payload["model"] == "nvidia/nemotron-3.5-lightning:free"
+        assert payload["model"] == "google/gemma-4-26b-a4b-it"
         assert payload["stream"] is False
 
 
@@ -808,3 +808,62 @@ class TestModelAvailabilityLive:
         client = OpenRouterClient(api_key=VALID_KEY, model=get_settings().llm_model)
         is_available, detail = await client.validate_model()
         assert is_available, detail
+
+
+class TestTimeoutHandling:
+    """A slow provider must be distinguishable from an outage or a disconnect.
+
+    A live incident sat at ~60s and was logged only as "cancelled_by_client",
+    which said nothing about whether the model had produced anything.
+    """
+
+    def test_timeout_budget_comes_from_settings(self) -> None:
+        """The budget is configurable rather than a hard-coded 60s."""
+        from ai_resume_api.config import get_settings
+
+        settings = get_settings()
+        assert settings.llm_timeout_seconds > 0
+        # 60s is far too long to hold a user-facing chat connection open.
+        assert settings.llm_timeout_seconds <= 45
+        assert settings.llm_connect_timeout_seconds < settings.llm_timeout_seconds
+
+    @pytest.mark.asyncio
+    async def test_connect_applies_the_configured_timeout(self) -> None:
+        from ai_resume_api.config import get_settings
+
+        settings = get_settings()
+        client = OpenRouterClient(api_key=VALID_KEY)
+        await client.connect()
+        try:
+            assert client._client is not None
+            assert client._client.timeout.read == settings.llm_timeout_seconds
+            assert client._client.timeout.connect == settings.llm_connect_timeout_seconds
+        finally:
+            await client.close()
+
+    @pytest.mark.asyncio
+    async def test_timeout_raises_a_named_error_not_a_generic_one(self) -> None:
+        """A stalled provider is reported as a timeout, in user-facing wording."""
+        import httpx
+
+        from ai_resume_api.openrouter_client import OpenRouterTimeoutError
+
+        client = OpenRouterClient(api_key=VALID_KEY, model="vendor/slow-model")
+        with patch.object(client, "_client") as mock_client:
+            mock_client.post = AsyncMock(side_effect=httpx.ReadTimeout("timed out"))
+
+            with pytest.raises(OpenRouterTimeoutError) as exc_info:
+                await client.chat(system_prompt="p", context="c", user_message="hello")
+
+        message = str(exc_info.value)
+        assert "vendor/slow-model" in message
+        assert "did not respond in time" in message
+
+    def test_timeout_error_is_an_openrouter_error(self) -> None:
+        """Existing except OpenRouterError handlers must keep catching it."""
+        from ai_resume_api.openrouter_client import (
+            OpenRouterError,
+            OpenRouterTimeoutError,
+        )
+
+        assert issubclass(OpenRouterTimeoutError, OpenRouterError)

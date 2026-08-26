@@ -26,7 +26,7 @@ class TestSettings:
         )
 
         assert settings.openrouter_base_url == "https://openrouter.ai/api/v1"
-        assert settings.llm_model == "nvidia/nemotron-3.5-lightning:free"
+        assert settings.llm_model == "google/gemma-4-26b-a4b-it"
         assert settings.llm_max_tokens == 1024
         assert settings.llm_temperature == 0.7
         assert settings.memvid_timeout_seconds == 5.0

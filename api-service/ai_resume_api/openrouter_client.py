@@ -35,6 +35,15 @@ class OpenRouterModelNotFoundError(OpenRouterError):
     """
 
 
+class OpenRouterTimeoutError(OpenRouterError):
+    """The provider did not respond within the configured budget.
+
+    Distinct from a client disconnect: this is the service giving up on a slow
+    provider, not the user going away. Free-tier endpoints are served behind
+    paying traffic and can stall well past a usable latency for a chat UI.
+    """
+
+
 class OpenRouterRateLimitError(OpenRouterError):
     """Raised when rate limit is exceeded."""
 
@@ -115,6 +124,7 @@ class OpenRouterClient:
 
     async def connect(self) -> None:
         """Create the HTTP client."""
+        settings = get_settings()
         self._client = httpx.AsyncClient(
             base_url=self._base_url,
             headers={
@@ -123,7 +133,10 @@ class OpenRouterClient:
                 "HTTP-Referer": "https://frank-resume.schwichtenberg.us",
                 "X-Title": "AI Resume Chat",
             },
-            timeout=httpx.Timeout(60.0, connect=10.0),
+            timeout=httpx.Timeout(
+                settings.llm_timeout_seconds,
+                connect=settings.llm_connect_timeout_seconds,
+            ),
         )
         logger.info("OpenRouter client connected", model=self._model)
 
@@ -354,6 +367,14 @@ Use the context above to answer the user's question. If the context doesn't cont
                 finish_reason=finish_reason,
             )
 
+        except httpx.TimeoutException as e:
+            # Surfaces as a distinct error rather than a generic failure, so a
+            # slow provider is not mistaken for an outage or a client disconnect.
+            logger.error("OpenRouter request timed out", model=self._model, error=str(e))
+            raise OpenRouterTimeoutError(
+                f"The AI model '{self._model}' did not respond in time. "
+                "The provider may be busy; please try again."
+            ) from e
         except httpx.HTTPStatusError as e:
             self._handle_http_error(e)
             raise  # Re-raise after logging
@@ -460,6 +481,14 @@ Use the context above to answer the user's question. If the context doesn't cont
 
             logger.info("Streaming response completed", tokens=total_tokens)
 
+        except httpx.TimeoutException as e:
+            # Surfaces as a distinct error rather than a generic failure, so a
+            # slow provider is not mistaken for an outage or a client disconnect.
+            logger.error("OpenRouter request timed out", model=self._model, error=str(e))
+            raise OpenRouterTimeoutError(
+                f"The AI model '{self._model}' did not respond in time. "
+                "The provider may be busy; please try again."
+            ) from e
         except httpx.HTTPStatusError as e:
             self._handle_http_error(e)
             raise

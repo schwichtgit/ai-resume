@@ -652,9 +652,22 @@ async def _stream_chat_response(
         yield "event: end\ndata: [DONE]\n\n"
 
     except CancelledError:
+        # A cancellation reaches here when the connection goes away -- the
+        # browser navigating off, or a proxy giving up. On its own that is
+        # ambiguous: it does not say whether the model was answering fine and
+        # the user left, or whether nothing ever arrived and they gave up
+        # waiting. Recording time-to-first-token separates the two, which is
+        # the fact that was missing while diagnosing a slow provider.
+        waited_ms = int((time.monotonic() - stream_start) * 1000)
+        if first_token_time is None:
+            error = f"cancelled_before_first_token_after_{waited_ms}ms"
+        else:
+            ttft_ms = int((first_token_time - stream_start) * 1000)
+            error = f"cancelled_by_client_after_{waited_ms}ms_ttft_{ttft_ms}ms"
         log_llm_response(
             request_log=request_log,
-            error="cancelled_by_client",
+            tokens_total=tokens_used,
+            error=error,
         )
         raise
 

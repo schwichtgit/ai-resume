@@ -27,7 +27,13 @@ class Settings(BaseSettings):
     # OpenRouter configuration
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
-    llm_model: str = "nvidia/nemotron-3.5-lightning:free"
+    llm_model: str = "google/gemma-4-26b-a4b-it"
+    # Total budget for an LLM call. For streaming this is the read budget
+    # between chunks, so it doubles as "how long to wait for the next token".
+    # 60s was too generous for a user-facing chat: a wedged request held a
+    # connection for a full minute before anyone learned anything.
+    llm_timeout_seconds: float = 30.0
+    llm_connect_timeout_seconds: float = 10.0
     llm_max_tokens: int = 1024
     llm_temperature: float = 0.7
 
