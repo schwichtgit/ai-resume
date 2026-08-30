@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 export interface VersionInfo {
   version: string;
   commit: string;
+  /** Configured LLM model id. Optional: an older API build omits it. */
+  model?: string;
 }
 
 export function useAppVersion() {

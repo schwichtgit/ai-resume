@@ -103,7 +103,7 @@ def mock_profile_loading() -> Generator[AsyncMock, None, None]:
         mock_settings.load_profile = lambda: MOCK_PROFILE
         mock_settings.get_system_prompt_from_profile = lambda: "You are an AI assistant."
         mock_settings.max_history_messages = 10
-        mock_settings.llm_model = "nvidia/nemotron-nano-9b-v2:free"
+        mock_settings.llm_model = "google/gemma-4-26b-a4b-it"
         mock_settings.rate_limit_per_minute = 1000
         mock_settings.mock_memvid_client = False
         mock_get_settings.return_value = mock_settings
@@ -636,3 +636,41 @@ class TestStreamLeakage:
                 actual_fields = set(parsed.keys())
                 unexpected = actual_fields - allowed_fields
                 assert not unexpected, f"Token event has unexpected fields: {unexpected}"
+
+
+class TestCancellationDiagnostics:
+    """A cancelled stream must record whether the model produced anything.
+
+    "cancelled_by_client" alone is ambiguous: it does not distinguish a user
+    navigating away mid-answer from a provider that never emitted a token and
+    a browser or proxy giving up. Time-to-first-token separates the two, and
+    its absence is what made a slow-provider incident hard to diagnose.
+    """
+
+    def test_cancellation_before_any_token_is_labelled_distinctly(self) -> None:
+        source = _read_main_source()
+        assert "cancelled_before_first_token_after_" in source, (
+            "a cancellation with no first token must be distinguishable"
+        )
+
+    def test_cancellation_after_tokens_records_time_to_first_token(self) -> None:
+        source = _read_main_source()
+        assert "cancelled_by_client_after_" in source
+        assert "_ttft_" in source, "time-to-first-token must be recorded"
+
+    def test_cancellation_still_reports_tokens_used(self) -> None:
+        """Partial progress is worth knowing when a stream is cut short."""
+        source = _read_main_source()
+        start = source.index("except CancelledError:")
+        # Slice to the re-raise that ends the handler rather than a fixed
+        # window, which a comment can push the assertion out of.
+        cancel_block = source[start : source.index("raise", start)]
+        assert "tokens_total=tokens_used" in cancel_block
+
+
+def _read_main_source() -> str:
+    from pathlib import Path
+
+    import ai_resume_api.main as main_module
+
+    return Path(main_module.__file__).read_text()

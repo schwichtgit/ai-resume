@@ -20,6 +20,7 @@ Or run with pytest:
 import asyncio
 import os
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -51,16 +52,36 @@ def load_env_file(env_path: Path) -> dict[str, str]:
     return env_vars
 
 
-# Load and set environment variables before importing app modules
-env_vars: dict[str, str] = load_env_file(DEPLOYMENT_ENV)
-for key, value in env_vars.items():
-    if key not in os.environ:  # Don't override existing env vars
-        os.environ[key] = value
-
-# Now import app modules (after env is set)
 from ai_resume_api.config import get_settings  # noqa: E402
 from ai_resume_api.openrouter_client import OpenRouterClient  # noqa: E402
 from ai_resume_api.query_transform import transform_query  # noqa: E402
+
+# These tests call the real OpenRouter API and need deployment/.env, so they
+# are external-service tests by the repo's definition of the marker.
+pytestmark = pytest.mark.slow
+
+
+@pytest.fixture(autouse=True)
+def _deployment_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Apply deployment/.env for the duration of each test in this module.
+
+    This used to run at import time and write straight into os.environ with no
+    cleanup, so merely collecting this file leaked every key in that file into
+    the rest of the suite. Once deployment/.env carried an LLM_MODEL differing
+    from the code default, unrelated default-value assertions began failing --
+    and the suite's outcome depended on a gitignored local file, so it behaved
+    differently here than in CI.
+
+    monkeypatch undoes the changes after each test. get_settings is lru_cached,
+    so the cache is cleared on both sides of the change.
+    """
+    get_settings.cache_clear()
+    for key, value in load_env_file(DEPLOYMENT_ENV).items():
+        if key not in os.environ:  # Don't override an explicitly-set variable
+            monkeypatch.setenv(key, value)
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 @pytest.mark.asyncio
@@ -267,8 +288,14 @@ async def main() -> None:
     print("=" * 60)
     print("AI Resume API - Integration Tests")
     print("=" * 60)
+    # Standalone runs load the env here; under pytest the _deployment_env
+    # fixture does it per-test so nothing leaks into the wider suite.
+    standalone_env = load_env_file(DEPLOYMENT_ENV)
+    for key, value in standalone_env.items():
+        os.environ.setdefault(key, value)
+    get_settings.cache_clear()
     print(f"Environment file: {DEPLOYMENT_ENV}")
-    print(f"Environment loaded: {len(env_vars)} variables")
+    print(f"Environment loaded: {len(standalone_env)} variables")
 
     test_names = [
         "OpenRouter Connection",

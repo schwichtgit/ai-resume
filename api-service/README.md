@@ -34,7 +34,7 @@ source .venv/bin/activate
 # Set environment variables
 export OPENROUTER_API_KEY="sk-or-v1-..."
 export MEMVID_GRPC_URL="localhost:50051"
-export LLM_MODEL="nvidia/nemotron-nano-9b-v2:free"
+export LLM_MODEL="google/gemma-4-26b-a4b-it"
 
 # Run with hot reload
 uvicorn ai_resume_api.main:app --reload --host 0.0.0.0 --port 3000
@@ -150,16 +150,16 @@ Prometheus metrics exposition.
 
 Environment variables:
 
-| Variable                | Default                           | Description                     |
-| ----------------------- | --------------------------------- | ------------------------------- |
-| `OPENROUTER_API_KEY`    | Required                          | OpenRouter API key              |
-| `MEMVID_GRPC_URL`       | `localhost:50051`                 | memvid service gRPC endpoint    |
-| `LLM_MODEL`             | `nvidia/nemotron-nano-9b-v2:free` | OpenRouter model ID             |
-| `SESSION_TTL`           | `1800`                            | Session TTL in seconds (30 min) |
-| `RATE_LIMIT_PER_MINUTE` | `10`                              | Rate limit per IP address       |
-| `PORT`                  | `3000`                            | HTTP server port                |
-| `LOG_LEVEL`             | `INFO`                            | Logging level (DEBUG/INFO/WARN) |
-| `MOCK_MEMVID_CLIENT`    | `false`                           | Use mock client for testing     |
+| Variable                | Default                     | Description                     |
+| ----------------------- | --------------------------- | ------------------------------- |
+| `OPENROUTER_API_KEY`    | Required                    | OpenRouter API key              |
+| `MEMVID_GRPC_URL`       | `localhost:50051`           | memvid service gRPC endpoint    |
+| `LLM_MODEL`             | `google/gemma-4-26b-a4b-it` | OpenRouter model ID             |
+| `SESSION_TTL`           | `1800`                      | Session TTL in seconds (30 min) |
+| `RATE_LIMIT_PER_MINUTE` | `10`                        | Rate limit per IP address       |
+| `PORT`                  | `3000`                      | HTTP server port                |
+| `LOG_LEVEL`             | `INFO`                      | Logging level (DEBUG/INFO/WARN) |
+| `MOCK_MEMVID_CLIENT`    | `false`                     | Use mock client for testing     |
 
 ## Testing
 

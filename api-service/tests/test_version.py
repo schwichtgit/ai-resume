@@ -165,3 +165,49 @@ class TestVersionEndpoint:
                 assert resp.status_code == 429
 
         reset_session_store()
+
+
+class TestVersionEndpointModel:
+    """The version endpoint exposes the configured LLM model.
+
+    The About dialog reads this. A live incident where the configured model had
+    been retired upstream surfaced as a bare 404 in the chat UI with no way to
+    see which model was in use, so the model id is reported alongside the build
+    version.
+    """
+
+    def test_version_endpoint_includes_model(self) -> None:
+        """The endpoint reports the configured model id."""
+        from fastapi.testclient import TestClient
+
+        from app.main import app
+
+        with TestClient(app) as client:
+            data = client.get("/api/v1/version").json()
+
+        assert "model" in data
+        assert isinstance(data["model"], str)
+        assert data["model"]
+
+    def test_model_is_read_from_settings_not_the_build_file(self) -> None:
+        """The model is runtime config, so it must not be baked into the cache.
+
+        get_version() caches a build-time file for the life of the process. If
+        the model were folded into it, a deployment overriding LLM_MODEL would
+        report the wrong value.
+        """
+        from unittest.mock import patch
+
+        from fastapi.testclient import TestClient
+
+        from app.main import app
+
+        with TestClient(app) as client:
+            first = client.get("/api/v1/version").json()["model"]
+
+            with patch("app.main.get_settings") as mock_settings:
+                mock_settings.return_value.llm_model = "vendor/some-other-model:free"
+                second = client.get("/api/v1/version").json()["model"]
+
+        assert second == "vendor/some-other-model:free"
+        assert second != first
