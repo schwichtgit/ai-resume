@@ -1,0 +1,65 @@
+name: Production Smoke
+
+# Drives the Playwright UI smoke suite against the deployed site.
+#
+# This is the only check that exercises the real LLM. CI holds no
+# OPENROUTER_API_KEY -- `test-e2e-real.sh` runs with MOCK_OPENROUTER=true and
+# every unit suite mocks the client -- so no pre-merge job can tell that the
+# configured model has been retired upstream. The 2026-08-29 outage (#499) was
+# exactly that: OpenRouter answers an unknown model id with a 404, and nothing
+# in the pipeline called OpenRouter for real. The deployed host holds the key,
+# so pointing Playwright at it closes the gap without adding a secret here.
+#
+# Each run costs one real completion against the configured model.
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Site to smoke test'
+        required: false
+        default: 'https://frank-ai-resume.schwichtenberg.us'
+  schedule:
+    - cron: '17 */6 * * *' # Every 6 hours, off the hour
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '26'
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Run UI smoke suite
+        env:
+          E2E_BASE_URL: ${{ inputs.base_url || 'https://frank-ai-resume.schwichtenberg.us' }}
+        run: npx playwright test
+
+      - name: Upload report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 14

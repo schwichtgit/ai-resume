@@ -241,7 +241,10 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
         >
           {/* Backend unavailable warning */}
           {backendStatus === 'unavailable' && (
-            <div className="flex items-center gap-2 p-3 bg-destructive/10 text-destructive rounded-lg text-sm">
+            <div
+              data-testid="chat-backend-unavailable"
+              className="flex items-center gap-2 p-3 bg-destructive/10 text-destructive rounded-lg text-sm"
+            >
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               <span>
                 Backend service is unavailable. Please try again later.
@@ -280,6 +283,7 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
           {messages.map((msg, i) => (
             <div
               key={i}
+              data-testid={`chat-message-${msg.role}`}
               className={cn(
                 'flex flex-col',
                 msg.role === 'user' ? 'items-end' : 'items-start',
@@ -363,7 +367,10 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
 
           {/* Error message */}
           {error && !isWaiting && (
-            <div className="flex items-center gap-2 p-3 bg-destructive/10 text-destructive rounded-lg text-sm">
+            <div
+              data-testid="chat-error"
+              className="flex items-center gap-2 p-3 bg-destructive/10 text-destructive rounded-lg text-sm"
+            >
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               <span className="flex-1">{error.message}</span>
               <button
