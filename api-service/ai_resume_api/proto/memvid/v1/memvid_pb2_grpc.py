@@ -5,7 +5,7 @@ import warnings
 
 from ai_resume_api.proto.memvid.v1 import memvid_pb2 as memvid_dot_v1_dot_memvid__pb2
 
-GRPC_GENERATED_VERSION = '1.76.0'
+GRPC_GENERATED_VERSION = '1.83.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -25,7 +25,7 @@ if _version_not_supported:
     )
 
 
-class MemvidServiceStub(object):
+class MemvidServiceStub:
     """MemvidService provides semantic search over resume content stored in .mv2 files.
     """
 
@@ -52,7 +52,7 @@ class MemvidServiceStub(object):
                 _registered_method=True)
 
 
-class MemvidServiceServicer(object):
+class MemvidServiceServicer:
     """MemvidService provides semantic search over resume content stored in .mv2 files.
     """
 
@@ -106,7 +106,7 @@ def add_MemvidServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class MemvidService(object):
+class MemvidService:
     """MemvidService provides semantic search over resume content stored in .mv2 files.
     """
 
@@ -192,7 +192,7 @@ class MemvidService(object):
             _registered_method=True)
 
 
-class HealthStub(object):
+class HealthStub:
     """Health provides service health checking following gRPC health checking protocol.
     """
 
@@ -209,7 +209,7 @@ class HealthStub(object):
                 _registered_method=True)
 
 
-class HealthServicer(object):
+class HealthServicer:
     """Health provides service health checking following gRPC health checking protocol.
     """
 
@@ -236,7 +236,7 @@ def add_HealthServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class Health(object):
+class Health:
     """Health provides service health checking following gRPC health checking protocol.
     """
 
