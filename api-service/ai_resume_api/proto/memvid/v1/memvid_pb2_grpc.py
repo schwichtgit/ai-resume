@@ -5,7 +5,7 @@ import warnings
 
 from ai_resume_api.proto.memvid.v1 import memvid_pb2 as memvid_dot_v1_dot_memvid__pb2
 
-GRPC_GENERATED_VERSION = '1.83.0'
+GRPC_GENERATED_VERSION = '1.83.1'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
