@@ -110,6 +110,10 @@ npm run test:watch   # Run tests in watch mode
 - Requires all three services running (frontend, api-service, memvid-service)
 - Tests are data-driven (resume-agnostic) -- work with any `.mv2` file
 - Components use `data-testid` attributes for stable Playwright selectors
+- Runs in CI via `.github/workflows/e2e-production.yml` -- against the deployed
+  site every 6 hours and on `workflow_dispatch`. This is the only check that
+  calls the real LLM; CI holds no `OPENROUTER_API_KEY`, so nothing pre-merge
+  can detect that the configured model has been retired upstream.
 
 ```bash
 # Install browser (first time only)
@@ -120,6 +124,11 @@ E2E_BASE_URL=http://localhost:8080 npx playwright test
 
 # Run against production
 E2E_BASE_URL=https://frank-ai-resume.schwichtenberg.us npx playwright test
+
+# Run a locally built frontend against the deployed backend -- the only way to
+# exercise a UI change against the real LLM before it ships
+VITE_API_PROXY_TARGET=https://frank-ai-resume.schwichtenberg.us npm run dev
+E2E_BASE_URL=http://localhost:8080 npx playwright test
 
 # View HTML report after run
 npx playwright show-report
