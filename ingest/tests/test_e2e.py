@@ -196,6 +196,34 @@ def test_memvid_retrieval(isolated_mv2: str) -> None:
     assert failed == 0, f"{failed} retrieval test(s) failed"
 
 
+def _normalise_keywords(raw: str, limit: int = 7) -> str:
+    """Reduce raw model output to a query that is safe for lexical search.
+
+    Mirrors `transform_query_keywords` in
+    `api-service/ai_resume_api/query_transform.py`. It is duplicated rather
+    than imported because ingest does not depend on api-service, and this test
+    previously had no normalisation at all -- it passed raw model output to
+    `mem.find()`, which is why a reasoning preamble broke it.
+
+    The rule that matters: drop memvid query-syntax characters anywhere in a
+    token, not just at its edges. An unbalanced `"` raises `MV999: Invalid
+    query: unterminated quoted string`, and `*` is a wildcard that forces the
+    lexical index (`MV004` when it is not enabled) -- which markdown-emitting
+    models trigger constantly with `**bold**`. Apostrophes, colons, `+` and
+    `-` are left alone; they return no hits rather than raising.
+    """
+    seen: set[str] = set()
+    words: list[str] = []
+    for word in raw.split():
+        cleaned = word.lower().replace('"', "").replace("*", "").strip(".,!?;:'")
+        if cleaned and cleaned not in seen and len(cleaned) > 2:
+            words.append(cleaned)
+            seen.add(cleaned)
+            if len(words) >= limit:
+                break
+    return " ".join(words)
+
+
 @pytest.mark.slow
 @pytest.mark.asyncio
 async def test_query_transformation_improves_retrieval(isolated_mv2: str) -> tuple[int, int]:
@@ -268,47 +296,67 @@ async def test_query_transformation_improves_retrieval(isolated_mv2: str) -> tup
                     },
                 )
                 response.raise_for_status()
-                transformed_query = response.json()["choices"][0]["message"]["content"].strip()
+                raw_output = response.json()["choices"][0]["message"]["content"].strip()
             except Exception as e:
                 print(f"  Transform failed: {e}")
                 failed += 1
                 continue
 
-            print(f"  Transformed: {transformed_query[:60]}")
+            print(f"  Raw: {raw_output[:60]!r}")
 
-            # Skip if transformation returned empty
-            if not transformed_query.strip():
-                print("  WARN: Empty transformation, skipping")
-                passed += 1  # Don't fail - this is a transformation quality issue
+            # Normalise before searching, exactly as production does. Reasoning
+            # models ignore "output only keywords" and answer with a preamble;
+            # feeding that straight to mem.find() raises "MV999: Invalid query:
+            # unterminated quoted string" on the unbalanced double quote. That
+            # is a defect in this test, not in retrieval -- the real chat path
+            # never passes raw model output to search.
+            transformed_query = _normalise_keywords(raw_output)
+            print(f"  Normalised: {transformed_query[:60]!r}")
+
+            # Invariants the normaliser must hold, whatever the model emitted.
+            assert '"' not in transformed_query, (
+                f"unbalanced quote would break lexical search: {transformed_query!r}"
+            )
+            assert len(transformed_query.split()) <= 7, f"query not bounded: {transformed_query!r}"
+
+            if not transformed_query:
+                print("  WARN: model returned nothing usable, skipping")
                 continue
 
-            # Get retrieval score with transformed query
-            transformed_result = mem.find(transformed_query, k=1)
+            # The point of the test: a normalised query is always safe to
+            # search with. A weaker score is a model-quality question and is
+            # deliberately not a failure here; raising is.
+            try:
+                transformed_result = mem.find(transformed_query, k=1)
+            except Exception as e:
+                failed += 1
+                raise AssertionError(
+                    f"normalised query {transformed_query!r} was rejected by "
+                    f"memvid: {type(e).__name__}: {e}"
+                ) from e
+
             transformed_hits = transformed_result.get("hits", [])
             transformed_score = transformed_hits[0].get("score", 0) if transformed_hits else 0
             transformed_title = (
                 transformed_hits[0].get("title", "N/A") if transformed_hits else "N/A"
             )
 
-            print(f"  Result: [{transformed_score:.2f}] {transformed_title[:50]}")
-
-            # Check if transformation improved score
-            improvement = transformed_score - original_score
-            if improvement > 0:
-                print(f"  PASSED: Score improved by {improvement:.2f}")
-                passed += 1
-            elif transformed_score >= original_score:
-                print(f"  PASSED: Score maintained ({improvement:.2f})")
-                passed += 1
-            else:
-                print(f"  WARN: Score decreased by {-improvement:.2f}")
-                # Don't fail - transformation isn't always better
-                passed += 1
+            print(
+                f"  Result: [{transformed_score:.2f}] {transformed_title[:50]} "
+                f"(was {original_score:.2f})"
+            )
+            passed += 1
 
     mem.close()
 
     print(f"\n{'=' * 70}")
     print(f"Transformation Tests: {passed} passed, {failed} failed")
+
+    # This test used to count every outcome as a pass, so it could only fail by
+    # raising. Make the result actually assertable.
+    assert failed == 0, f"{failed} of {len(test_cases)} transformations failed"
+    assert passed > 0, "no transformation was exercised"
+
     return passed, failed
 
 

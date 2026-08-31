@@ -159,6 +159,90 @@ class TestTransformQueryKeywords:
         # Punctuation should be stripped
         assert result == "python programming backend development api"
 
+    @pytest.mark.asyncio
+    async def test_interior_double_quote_cannot_reach_the_index(self) -> None:
+        """An unbalanced double quote must never survive into the query.
+
+        memvid rejects it outright -- `MV999: Invalid query: unterminated
+        quoted string`. Stripping only the ends of a token is not enough: a
+        quote *inside* a word survives that, and reasoning-capable models do
+        emit quoted phrases mid-sentence. Apostrophes are deliberately left
+        alone; they return no hits rather than raising.
+        """
+        mock_client = MagicMock()
+        mock_client.is_configured = True
+        mock_client.chat = AsyncMock(
+            return_value=LLMResponse(
+                content='she said pro"gramming languages python golang rust extra',
+                tokens_used=50,
+                finish_reason="stop",
+            )
+        )
+
+        result = await transform_query_keywords(
+            "What programming languages does she know?",
+            mock_client,
+        )
+
+        assert '"' not in result
+        assert "programming" in result
+
+    @pytest.mark.asyncio
+    async def test_markdown_asterisks_cannot_reach_the_index(self) -> None:
+        """`*` is a wildcard: it forces memvid onto the lexical index.
+
+        Where that index is not enabled the search raises
+        `MV004: Lexical index is not enabled`. Models emit `**bold**`
+        constantly, so the asterisks have to be removed here rather than
+        surviving into the query.
+        """
+        mock_client = MagicMock()
+        mock_client.is_configured = True
+        mock_client.chat = AsyncMock(
+            return_value=LLMResponse(
+                content="**Analyze:** python golang rust development backend",
+                tokens_used=50,
+                finish_reason="stop",
+            )
+        )
+
+        result = await transform_query_keywords(
+            "What programming languages does she know?",
+            mock_client,
+        )
+
+        assert "*" not in result
+        assert "python" in result
+
+    @pytest.mark.asyncio
+    async def test_reasoning_preamble_is_bounded(self) -> None:
+        """A model that narrates its reasoning must not blow up the query.
+
+        Reasoning-capable models ignore "output only keywords" and reply with
+        a preamble. The 7-word cap is what keeps that prose from becoming an
+        enormous lexical query; this pins that the cap applies to the whole
+        response, not just to well-formed keyword lists.
+        """
+        mock_client = MagicMock()
+        mock_client.is_configured = True
+        mock_client.chat = AsyncMock(
+            return_value=LLMResponse(
+                content=(
+                    "Here's a thinking process:\n\n"
+                    '1.  **Analyze User Input:** the user asks about "programming '
+                    'languages", so I should extract skills terms.\n'
+                    "2.  **Output:** python golang rust\n"
+                ),
+                tokens_used=50,
+                finish_reason="stop",
+            )
+        )
+
+        result = await transform_query_keywords("What does she know?", mock_client)
+
+        assert len(result.split()) <= 7
+        assert '"' not in result
+
 
 class TestTransformQuery:
     """Tests for transform_query dispatcher function."""
