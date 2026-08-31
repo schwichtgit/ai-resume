@@ -84,6 +84,7 @@ tasks:
       [
         frontend:lint,
         api:lint,
+        api:proto:check,
         memvid:lint,
         ingest:lint,
         lint:markdown,

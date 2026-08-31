@@ -17,6 +17,11 @@ dependencies = [
     "pydantic-settings>=2.15.0",
     "grpcio>=1.83.0",
     "grpcio-tools>=1.83.0",
+    # Not transitive-by-accident: the committed stubs under
+    # ai_resume_api/proto/ call ValidateProtobufRuntimeVersion(7, 35, 1) at
+    # import, so this floor is a hard runtime requirement of this package.
+    # scripts/check-proto-drift.sh keeps it honest.
+    "protobuf>=7.35.1",
     "opentelemetry-api>=1.44.0",
     "opentelemetry-sdk>=1.44.0",
     "opentelemetry-instrumentation-fastapi>=0.65b0",

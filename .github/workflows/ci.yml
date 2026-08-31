@@ -150,6 +150,12 @@ jobs:
       - name: Type check with mypy
         run: uv run mypy .
 
+      - name: Verify protobuf stubs match the locked grpcio-tools
+        # The stubs are committed generated artifacts carrying import-time
+        # version guards; bumping grpcio-tools without regenerating them drifts
+        # silently until an older runtime hits the guard and fails at import.
+        run: ../scripts/check-proto-drift.sh
+
       - name: Test with pytest
         run: uv run pytest -v --tb=short --cov --cov-report=term-missing 2>&1 | tee /tmp/test-output.txt
 

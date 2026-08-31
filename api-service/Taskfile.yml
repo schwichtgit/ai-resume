@@ -26,6 +26,12 @@ tasks:
     cmds:
       - uv lock --check
 
+  proto:check:
+    desc: Verify committed protobuf stubs match the locked grpcio-tools
+    deps: [setup]
+    cmds:
+      - ../scripts/check-proto-drift.sh
+
   lint:
     desc: Run ruff lint + format check
     deps: [setup]

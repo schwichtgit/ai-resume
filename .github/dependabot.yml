@@ -37,6 +37,21 @@ updates:
       prefix: 'build'
       include: 'scope'
     groups:
+      # Listed before minor-and-patch: the first matching group wins, and this
+      # family must not be split into per-dependency PRs. grpcio-tools
+      # generates the stubs committed under ai_resume_api/proto/, and those
+      # stubs carry an import-time guard -- GRPC_GENERATED_VERSION plus
+      # ValidateProtobufRuntimeVersion -- that raises RuntimeError, not a
+      # warning, when the installed runtime is older than the generator. One
+      # PR for the whole family keeps generator and runtime moving together.
+      grpc:
+        patterns:
+          - 'grpcio'
+          - 'grpcio-*'
+          - 'protobuf'
+        update-types:
+          - 'minor'
+          - 'patch'
       minor-and-patch:
         group-by: 'dependency-name'
         update-types:
