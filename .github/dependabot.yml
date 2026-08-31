@@ -15,11 +15,22 @@ updates:
           - 'minor'
           - 'patch'
 
-  # Python (api-service)
+  # Python (api-service + ingest)
+  #
   # 'uv', not 'pip': the pip ecosystem edits pyproject.toml without
   # regenerating uv.lock, which leaves the two out of sync (see #436).
+  #
+  # One entry covering both directories, not one entry each. The services
+  # share their dev tooling (ruff, mypy, pytest*), and split entries bumped
+  # each copy in its own PR -- #486/#488 were the same mypy bump twice. Merge
+  # one and not the other and the two services silently lint under different
+  # rules, which is how ruff ended up at 0.16.5 in api-service and 0.16.4 in
+  # ingest. 'group-by: dependency-name' puts a shared dependency in a single
+  # PR that updates every directory at once, so they cannot drift apart.
   - package-ecosystem: 'uv'
-    directory: '/api-service'
+    directories:
+      - '/api-service'
+      - '/ingest'
     schedule:
       interval: 'weekly'
     commit-message:
@@ -27,21 +38,7 @@ updates:
       include: 'scope'
     groups:
       minor-and-patch:
-        update-types:
-          - 'minor'
-          - 'patch'
-
-  # Python (ingest)
-  # See api-service above: 'uv' keeps uv.lock in step with pyproject.toml.
-  - package-ecosystem: 'uv'
-    directory: '/ingest'
-    schedule:
-      interval: 'weekly'
-    commit-message:
-      prefix: 'build'
-      include: 'scope'
-    groups:
-      minor-and-patch:
+        group-by: 'dependency-name'
         update-types:
           - 'minor'
           - 'patch'
@@ -74,9 +71,19 @@ updates:
           - 'minor'
           - 'patch'
 
-  # Docker (frontend)
+  # Docker (all services)
+  #
+  # Same reasoning as the uv entry above: api-service and ingest share the
+  # ubi10/ubi-micro runtime base, and split entries opened the identical
+  # digest bump twice (#501/#502). 'group-by: dependency-name' collapses a
+  # shared base image into one PR spanning every directory that uses it;
+  # images unique to one service (node, rust) still get their own PR.
   - package-ecosystem: 'docker'
-    directory: '/frontend'
+    directories:
+      - '/frontend'
+      - '/api-service'
+      - '/ingest'
+      - '/memvid-service'
     schedule:
       interval: 'weekly'
     commit-message:
@@ -84,48 +91,7 @@ updates:
       include: 'scope'
     groups:
       minor-and-patch:
-        update-types:
-          - 'minor'
-          - 'patch'
-
-  # Docker (api-service)
-  - package-ecosystem: 'docker'
-    directory: '/api-service'
-    schedule:
-      interval: 'weekly'
-    commit-message:
-      prefix: 'build'
-      include: 'scope'
-    groups:
-      minor-and-patch:
-        update-types:
-          - 'minor'
-          - 'patch'
-
-  # Docker (ingest)
-  - package-ecosystem: 'docker'
-    directory: '/ingest'
-    schedule:
-      interval: 'weekly'
-    commit-message:
-      prefix: 'build'
-      include: 'scope'
-    groups:
-      minor-and-patch:
-        update-types:
-          - 'minor'
-          - 'patch'
-
-  # Docker (memvid-service)
-  - package-ecosystem: 'docker'
-    directory: '/memvid-service'
-    schedule:
-      interval: 'weekly'
-    commit-message:
-      prefix: 'build'
-      include: 'scope'
-    groups:
-      minor-and-patch:
+        group-by: 'dependency-name'
         update-types:
           - 'minor'
           - 'patch'

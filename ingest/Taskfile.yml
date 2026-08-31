@@ -7,11 +7,17 @@ vars:
 tasks:
   setup:
     desc: Create venv and install dependencies
+    # Fingerprint the manifest and lock, not "does .venv exist". A bare
+    # existence check never re-synced after a lockfile bump, so `task lint`
+    # kept running whatever tool versions were already installed while CI --
+    # which always runs an explicit `uv sync` -- used the locked ones. That is
+    # how ruff 0.16.5 sat in uv.lock while `task ingest:lint` ran 0.16.4.
+    sources:
+      - pyproject.toml
+      - uv.lock
     cmds:
       - uv venv {{.VENV}}
       - uv sync --extra test --extra lint
-    status:
-      - test -d {{.VENV}}
 
   lock:check:
     desc: Verify uv.lock is in sync with pyproject.toml (matches CI)
