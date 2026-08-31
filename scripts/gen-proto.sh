@@ -16,12 +16,27 @@ source "$API_DIR/.venv/bin/activate"
 
 cd "$API_DIR"
 
+# Resolve the proto directory the way memvid-service/build.rs already does.
+# The authoritative copy is <repo>/proto (the only one tracked in git);
+# api-service/proto is a gitignored copy that exists solely for container
+# builds, where the build context is the service directory. Hardcoding the
+# service-local path meant this script only worked on a machine that already
+# had that untracked copy -- it failed on a fresh clone and in CI.
+if [ -d "$PROJECT_ROOT/proto" ]; then
+    PROTO_DIR="$PROJECT_ROOT/proto"
+elif [ -d "$API_DIR/proto" ]; then
+    PROTO_DIR="$API_DIR/proto"
+else
+    echo "error: no proto directory at $PROJECT_ROOT/proto or $API_DIR/proto" >&2
+    exit 1
+fi
+
 # Generate Python stubs from proto definition
 python -m grpc_tools.protoc \
-    -I./proto \
+    -I"$PROTO_DIR" \
     --python_out=./ai_resume_api/proto \
     --grpc_python_out=./ai_resume_api/proto \
-    ./proto/memvid/v1/memvid.proto
+    "$PROTO_DIR/memvid/v1/memvid.proto"
 
 # Create __init__.py files for the package hierarchy
 touch ai_resume_api/proto/__init__.py
