@@ -293,6 +293,59 @@ All dismissed alerts must be documented in this file with:
 - Common alert types: `.claude/skills/gh-code-scanning/reference/alert-types.md`
 - Fix examples: `.claude/skills/gh-code-scanning/examples/`
 
+### Known Coverage Gap: Rust generated code
+
+CodeQL analyses Rust with `build-mode: none` and offers no alternative --
+attempting `manual` fails outright:
+
+```text
+A fatal error occurred: Rust does not support the manual build mode.
+Please try using one of the following build modes instead: none.
+```
+
+(CodeQL 2.26.4, verified 2026-09-01.)
+
+Because no build runs, `build.rs` never executes and `OUT_DIR` is never set,
+so this line in both `memvid-service/src/lib.rs` and `src/main.rs` does not
+resolve:
+
+```rust
+include!(concat!(env!("OUT_DIR"), "/memvid.v1.rs"));
+```
+
+CodeQL reports it as:
+
+```text
+WARN memvid-service/src/lib.rs:17:35: `OUT_DIR` not set, build scripts may
+     have failed to run
+```
+
+**What this means.** The generated `memvid::v1` module is absent from CodeQL's
+view, so gRPC handlers taking `SearchRequest` or `AskRequest` are extracted
+incompletely. The Rust analysis passes while unable to see part of the
+request-handling surface -- it is quieter than it looks, which is why this is
+written down rather than left as an unexplained warning.
+
+**Why it is accepted rather than fixed.** Advanced setup does not help: the
+limitation is in CodeQL's Rust extractor, not in how the scan is configured.
+Advanced setup was attempted and abandoned (PR #521). The remaining option --
+committing the 993-line generated `memvid.v1.rs` so the `include!` resolves
+without `OUT_DIR` -- trades a generated artifact into source control and would
+need its own drift guard, the same problem solved for the Python protobuf
+stubs in #515. That cost is not currently judged worth the coverage.
+
+**Compensating controls.** The same code is covered by:
+
+- `cargo clippy -- -D warnings` in CI, which fails the build on any lint
+- `cargo audit` over the whole dependency tree (`task audit`)
+- The memvid-service test suite, including gRPC integration tests that
+  exercise the handlers over a real connection
+- `scripts/test-e2e-real.sh`, which drives real ingest through the Rust server
+  over gRPC
+
+**Review trigger.** Re-check when CodeQL adds build-mode support for Rust; the
+gap closes by switching `build-mode` and nothing else.
+
 ### Dismissed Code Scanning Alerts
 
 #### Alert #4: js/insecure-randomness (False Positive)
