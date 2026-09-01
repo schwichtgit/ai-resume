@@ -1,0 +1,98 @@
+name: CodeQL
+
+# Advanced setup, replacing GitHub's default setup.
+#
+# The move exists for one reason: Rust. Default setup analyses Rust with
+# `build-mode: none`, so `build.rs` never runs and `OUT_DIR` is never set.
+# Both memvid-service entry points open with
+#
+#   include!(concat!(env!("OUT_DIR"), "/memvid.v1.rs"));
+#
+# so the generated `memvid::v1` module does not resolve, and every gRPC
+# handler taking a SearchRequest or AskRequest is extracted incompletely --
+# precisely the request-handling surface worth analysing. The scan was quieter
+# than it looked, which is the worst failure mode for a security check. The
+# 2026-09-01 extractor update surfaced it as:
+#
+#   WARN memvid-service/src/lib.rs:17:35: `OUT_DIR` not set, build scripts
+#        may have failed to run
+#
+# Default and advanced setup are mutually exclusive per repository, so Rust
+# cannot be fixed on its own -- every language default setup covered has to
+# move here with it.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  pull_request:
+    branches: [main]
+  schedule:
+    # Keep a scheduled scan, as default setup ran one. Offset from the Monday
+    # 06:00 security workflow so the two do not contend for runners.
+    - cron: '43 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+      packages: read
+      actions: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # `javascript-typescript` covers both JS and TS; default setup listed
+          # javascript, typescript and javascript-typescript, which are the same
+          # extractor.
+          - language: actions
+            build-mode: none
+          - language: javascript-typescript
+            build-mode: none
+          - language: python
+            build-mode: none
+          - language: rust
+            build-mode: manual
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      # Rust only: the build has to run for real, otherwise this workflow buys
+      # nothing over the default setup it replaces.
+      - name: Install protobuf compiler
+        if: matrix.language == 'rust'
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: Cache cargo
+        if: matrix.language == 'rust'
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: memvid-service
+
+      - name: Build memvid-service
+        if: matrix.language == 'rust'
+        # No toolchain pin here: memvid-service/rust-toolchain.toml declares
+        # 1.98.0 and rustup honours it. Running build.rs is the whole point --
+        # it populates OUT_DIR with the generated proto module.
+        working-directory: memvid-service
+        run: cargo build --locked
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:${{ matrix.language }}
