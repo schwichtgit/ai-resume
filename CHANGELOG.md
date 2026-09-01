@@ -7,6 +7,103 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-31
+
+A patch release built around one production incident and the gaps it exposed.
+Chat was down: OpenRouter answers an unknown model id with a bare 404, and the
+configured model had been retired upstream. The fix shipped in `v0.1.0`'s wake
+but was never released, so it has been sitting on `main` unreleased since.
+
+Most of what follows is not the fix itself but the checks that would have
+caught it, and the drift they found once they existed.
+
+### Fixed
+
+- **Chat outage: the configured model had been retired upstream** (#499). The
+  completions URL was fine -- OpenRouter returns 404 for an unknown model id.
+  The default is now `google/gemma-4-26b-a4b-it`, and `validate_model()`
+  checks both catalogue membership _and_ endpoint health, because a model can
+  be listed with every endpoint deranked and fail identically. LLM latency is
+  now bounded rather than stalling at ~60s, and the configured model is
+  surfaced in the About dialog.
+- **`tests/test_integration.py` leaked `deployment/.env` into `os.environ` at
+  import time** (#499), so collecting it changed the environment for the whole
+  suite -- outcomes depended on a gitignored local file and diverged from CI.
+  Replaced with a per-test `monkeypatch` fixture.
+- **Protobuf stubs were seven grpcio minors and a protobuf major behind the
+  tooling declared to generate them** (#515) -- gencode `protobuf 6.31.1 /
+grpc 1.76.0` against locked `grpcio-tools 1.83.0 / protobuf 7.35.1`. Stubs
+  carry import-time guards that raise `RuntimeError`, so this class of drift
+  does not fail a check, it fails to start the service. It still worked only
+  because protobuf accepts gencode one major behind the runtime, a window that
+  closes at protobuf 8.x.
+- **`scripts/gen-proto.sh` had never worked on a fresh clone** (#515). It
+  resolved `-I./proto` relative to `api-service`, which is gitignored -- the
+  authoritative proto is `proto/memvid/v1/memvid.proto` at the repo root, and
+  the service-local copy exists only for container builds. Regeneration
+  therefore only succeeded on a machine that had already run it, which is the
+  most likely reason the stubs went stale. Now resolves the way
+  `memvid-service/build.rs` does.
+- **Query transformation could emit an unparseable search query** (#519).
+  `transform_query_keywords` stripped punctuation only from token _edges_, so
+  an interior `"` survived unbalanced (`MV999: Invalid query: unterminated
+quoted string`) and `*` was not handled at all (a wildcard that forces the
+  lexical index, `MV004` when it is not enabled). Reasoning-capable models emit
+  `**bold**` routinely. Dormant rather than live -- `main.py` has the transform
+  commented out pending re-enable -- and fixed before that TODO is actioned.
+
+### Added
+
+- **A production smoke workflow** (#508) driving the Playwright UI suite
+  against the deployed site every six hours and on demand. This is the only
+  check that exercises the real LLM: CI holds no `OPENROUTER_API_KEY`, so no
+  pre-merge job can detect a model retired upstream. The deployed host has the
+  key.
+- **`scripts/check-proto-drift.sh`** (#515), wired into `task lint` and the
+  api-service CI job. Regenerates, compares and restores, leaving the working
+  tree untouched either way. It earned its place immediately: it refused the
+  `grpcio-tools` bump in #517 until the stubs were regenerated -- the exact
+  move that had silently left them behind before.
+
+### Changed
+
+- **The chat smoke test could not fail on the outage it exists to catch**
+  (#508). It waited for `chat-stats`, but the error banner and the stats line
+  are independent siblings -- stats render on retrieval alone. During the
+  outage retrieval returned five chunks while the LLM call 404'd, so both
+  rendered and the assertion passed on a chat that answered nothing. It now
+  requires no error banner and an assistant turn carrying real text, with a
+  stubbed companion test that replays the outage SSE shape directly.
+- **The ingest transform e2e test could not fail either** (#519). Every branch
+  of its score comparison incremented `passed`, and it never asserted, so only
+  an exception could sink it -- which is how the query-syntax bug above
+  surfaced, eight months on. It now asserts real invariants; retrieval _score_
+  is deliberately not asserted, being a property of whichever model is
+  configured.
+- **Dependabot groups shared dependencies across directories** (#511) via
+  `directories` plus `group-by: dependency-name`. One entry per directory meant
+  a shared dependency produced two independent PRs -- #486/#488 were the same
+  mypy bump twice, #501/#502 the same base-image digest -- and merging one
+  without the other let the services drift. That is how `ruff` reached 0.16.5 in
+  api-service and 0.16.4 in ingest. Nine `updates` entries become five.
+- **`protobuf` is a declared dependency of api-service** (#515) rather than
+  arriving transitively through `grpcio-tools`, a build tool. The committed
+  stubs require it at import.
+- **Python `setup` tasks fingerprint `pyproject.toml` and `uv.lock`** (#511)
+  instead of checking whether `.venv` exists. A lockfile bump never re-synced
+  an existing venv, so `task lint` ran whatever tool versions were installed
+  while CI, which always runs `uv sync`, used the locked ones.
+
+### Dependencies
+
+Four rollups across every ecosystem (#507, #510, #517, #518), including
+`grpcio`/`grpcio-tools` 1.83.1, `protobuf` 7.36.0, `click` 8.5.0, `ruff`
+0.16.5, `eslint` 10.9.1, `typescript-eslint` 8.68.0, and base-image digest
+bumps for `rust`, `node` and `ubi10/ubi-micro`.
+
+At this release the project continues to carry **zero open code-scanning
+alerts and zero active vulnerability suppressions**.
+
 ## [0.1.0] - 2026-08-25
 
 First stable release. Graduates the 0.1.0 line after nine beta and twenty-three
@@ -1015,7 +1112,8 @@ documentation overhaul. No new product features since alpha.23.
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.9...v0.1.0
 [0.1.0-beta.9]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.8...v0.1.0-beta.9
 [0.1.0-beta.8]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.7...v0.1.0-beta.8
