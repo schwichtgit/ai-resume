@@ -7,7 +7,6 @@ ARG BUILD_COMMIT=unknown
 # =============================================================================
 # Stage 1: Build React application
 # =============================================================================
-# node 26.4.0-trixie-slim, pinned 2026-06-29
 FROM node:26.8.1-trixie-slim@sha256:c0753125a3789977aefe869cbebccf70e3cfd7ea84ca48547458f02e4f1d7146 AS builder
 
 WORKDIR /app
@@ -38,7 +37,6 @@ RUN printf '{"version":"%s","commit":"%s"}\n' "${BUILD_VERSION}" "${BUILD_COMMIT
 # =============================================================================
 # Stage 2: Production OpenResty server (Alpine package)
 # =============================================================================
-# alpine 3.23.4, pinned 2026-05-31
 FROM alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
 
 # Install OpenResty and lua-resty-http, then create directories

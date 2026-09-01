@@ -356,14 +356,22 @@ The application expects to be served at `frank-resume.schwichtenberg.us` when de
 
 ### Container Architecture
 
-- **Frontend base**: alpine:3.23 with OpenResty (runs as nginx user)
-- **Frontend build stage**: node:26.2.0-trixie-slim for npm build
+- **Frontend base**: alpine with OpenResty (runs as nginx user)
+- **Frontend build stage**: node trixie-slim for npm build
 - **API base**: ubi10/ubi-micro runtime, rockylinux:10-minimal builder (3-stage build)
 - **Ingest base**: ubi10/ubi-micro runtime, rockylinux:10-minimal builder (3-stage build)
-- **Memvid base**: gcr.io/distroless/cc-debian13:nonroot (runs as nonroot user)
+- **Memvid base**: gcr.io/distroless/static-debian13:nonroot (runs as nonroot
+  user). `static`, not `cc`: the binary is statically linked against musl, so
+  the runtime ships no libc, no OpenSSL and no zlib.
 - **Frontend port**: 8080 (unprivileged)
 - **API port**: 3000
 - **Memvid port**: 50051 (gRPC)
+
+Base image versions are deliberately absent here and from the Dockerfile
+comments: every base is digest-pinned and bumped by Dependabot, which updates
+the `FROM` line and nothing else, so any restated version rots silently. Read
+the `FROM` lines for versions; `git log` for when a pin last moved.
+
 - **Health check**: GET /health endpoint
 
 ### Nginx Configuration
