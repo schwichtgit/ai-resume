@@ -73,7 +73,17 @@ async def transform_query_keywords(
         unique_words = []
         seen = set()
         for word in words:
-            word_clean = word.lower().strip(".,!?;:\"'")
+            # Remove memvid query-syntax characters anywhere in the token,
+            # not only at its ends -- stripping edges is not enough, and a
+            # model that emits markdown or a quoted phrase mid-sentence will
+            # otherwise take the whole chat request down:
+            #   "  ->  MV999: Invalid query: unterminated quoted string
+            #   *  ->  wildcard, forces the lexical index (MV004 when it is
+            #          not enabled)
+            # Apostrophes, colons, + and - are safe -- verified against
+            # memvid: they return no hits rather than raising.
+            word_clean = word.lower().replace('"', "").replace("*", "")
+            word_clean = word_clean.strip(".,!?;:'")
             if word_clean and word_clean not in seen and len(word_clean) > 2:
                 unique_words.append(word_clean)
                 seen.add(word_clean)
