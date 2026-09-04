@@ -16,7 +16,9 @@ Run with: uv run python ingest.py [--output PATH]
 """
 
 import argparse
+import errno
 import json
+import os
 import re
 from datetime import datetime
 from pathlib import Path
@@ -662,6 +664,15 @@ def ingest_memory(
 
     # Ensure output directory exists
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Fail fast when the output directory is not writable. Path.exists() (and
+    # is_file()/is_dir()) suppress OSError and return False on Python 3.14+, so
+    # an unwritable directory would otherwise slip past this guard and surface
+    # from memvid_sdk.create() as an opaque "MV999: I/O error" -- which is not
+    # an OSError, so callers cannot handle it as one. Checking explicitly keeps
+    # the failure the same errno-accurate exception on every supported Python.
+    if not os.access(output_path.parent, os.W_OK | os.X_OK):
+        raise PermissionError(errno.EACCES, os.strerror(errno.EACCES), str(output_path.parent))
 
     # Remove existing file if present
     if output_path.exists():
