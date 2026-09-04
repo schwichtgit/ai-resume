@@ -8,7 +8,7 @@ Once established, these principles do not change without explicit human approval
 
 **Project Name:** ai-resume
 **One-Line Description:** Polyglot web application enabling recruiters to query a candidate's experience via AI chat with semantic search retrieval
-**Primary Language(s):** TypeScript (React 19), Python 3.12 (FastAPI), Rust 1.93 (memvid gRPC)
+**Primary Language(s):** TypeScript (React 19), Python 3.14 (FastAPI), Rust 1.93 (memvid gRPC)
 **Target Platform(s):** Linux (amd64, arm64), macOS (amd64, arm64 -- development only)
 
 ## Non-Negotiable Principles

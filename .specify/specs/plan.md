@@ -194,7 +194,7 @@ ai-resume/
 
 | Component       | Choice                             | Version             | Rationale                                                  |
 | --------------- | ---------------------------------- | ------------------- | ---------------------------------------------------------- |
-| Runtime         | Python                             | >=3.12, <3.13       | f-string improvements; match/case; typing generics         |
+| Runtime         | Python                             | >=3.14              | f-string improvements; match/case; typing generics         |
 | Web Framework   | FastAPI                            | >=0.115.6           | Async-first; auto OpenAPI docs; Pydantic v2 integration    |
 | ASGI Server     | Uvicorn                            | >=0.34.0            | Standard extras for HTTP/1.1 + uvloop                      |
 | Data Validation | Pydantic                           | >=2.10.6            | 14 request/response models with Field constraints          |
@@ -230,7 +230,7 @@ ai-resume/
 
 | Component   | Choice                | Version  | Rationale                                          |
 | ----------- | --------------------- | -------- | -------------------------------------------------- |
-| Runtime     | Python                | >=3.12   | Matches api-service; ecosystem for ML tooling      |
+| Runtime     | Python                | >=3.14   | Matches api-service; ecosystem for ML tooling      |
 | Memvid SDK  | memvid-sdk            | 2.0.153  | Parses markdown, chunks, embeds, writes .mv2 files |
 | Embeddings  | sentence-transformers | >=3.0.0  | HuggingFace models; NPU acceleration on macOS      |
 | HTTP Client | httpx                 | >=0.28.1 | Downloads or pushes artifacts                      |
@@ -401,7 +401,7 @@ Host nginx (TLS) --> 192.168.100.10:8080 (frontend/OpenResty)
 
 2. **Language runtimes:**
    - **Node.js 22.x** (CI uses `NODE_VERSION: "22"`; jsdom 27 requires Node 20.19+ minimum)
-   - **Python 3.12** (api-service `requires-python = ">=3.12,<3.13"`; constitution specifies Python 3.12)
+   - **Python 3.14** (api-service `requires-python = ">=3.14"`; constitution specifies Python 3.14)
    - **Rust 1.92.0** (pinned in `memvid-service/rust-toolchain.toml`)
 
 3. **Package installation:**

@@ -5,9 +5,9 @@ ARG BUILD_COMMIT=unknown
 # Rocky 10 minimal (microdnf) with compilers and uv for building the production venv
 FROM rockylinux/rockylinux:10-minimal@sha256:bc5c1e7a2ec7f4bcef1e51c7f0ebb2d43f05409e0108cdd34f693921d0604360 AS builder
 
-# Install Python 3.12 + build toolchain for native extensions
+# Install Python 3.14 + build toolchain for native extensions
 RUN microdnf install -y --nodocs \
-        python3.12 python3.12-devel \
+        python3.14 python3.14-devel \
         gcc gcc-c++ \
     && microdnf clean all
 
@@ -16,7 +16,7 @@ COPY --from=ghcr.io/astral-sh/uv:0.11.17@sha256:03bdc89bb9798628846e60c3a9ad1900
 
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
-    UV_PYTHON=/usr/bin/python3.12
+    UV_PYTHON=/usr/bin/python3.14
 
 WORKDIR /app
 
@@ -44,7 +44,7 @@ RUN printf '{"version":"%s","commit":"%s"}\n' "${BUILD_VERSION}" "${BUILD_COMMIT
 FROM rockylinux/rockylinux:10-minimal@sha256:bc5c1e7a2ec7f4bcef1e51c7f0ebb2d43f05409e0108cdd34f693921d0604360 AS python-deps
 
 RUN microdnf install -y --nodocs \
-        python3.12 \
+        python3.14 \
         libstdc++ \
         libffi \
         openssl-libs \
@@ -60,14 +60,14 @@ RUN microdnf install -y --nodocs \
 RUN mkdir -p /python-runtime/usr/bin \
              /python-runtime/usr/lib64 \
              /python-runtime/usr/lib \
-    && cp /usr/bin/python3.12 /python-runtime/usr/bin/python3.12 \
-    && ln -s python3.12 /python-runtime/usr/bin/python3 \
-    && cp -a /usr/lib64/python3.12 /python-runtime/usr/lib64/python3.12 \
-    && if [ -d /usr/lib/python3.12 ]; then \
-         cp -a /usr/lib/python3.12 /python-runtime/usr/lib/python3.12; \
+    && cp /usr/bin/python3.14 /python-runtime/usr/bin/python3.14 \
+    && ln -s python3.14 /python-runtime/usr/bin/python3 \
+    && cp -a /usr/lib64/python3.14 /python-runtime/usr/lib64/python3.14 \
+    && if [ -d /usr/lib/python3.14 ]; then \
+         cp -a /usr/lib/python3.14 /python-runtime/usr/lib/python3.14; \
        fi \
     && for lib in \
-         libpython3.12.so* \
+         libpython3.14.so* \
          libffi.so* \
          libssl.so* \
          libcrypto.so* \

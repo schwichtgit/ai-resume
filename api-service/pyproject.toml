@@ -3,7 +3,7 @@ name = "api-service"
 version = "1.0.1"
 description = "Python FastAPI service for AI Resume - handles API orchestration and OpenRouter LLM integration"
 authors = []
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.14"
 readme = "README.md"
 license = {text = "MIT"}
 dependencies = [
@@ -60,7 +60,7 @@ build-backend = "hatchling.build"
 packages = ["ai_resume_api"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.14"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -98,6 +98,11 @@ ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 100
+# Deliberately below requires-python. At py314 the formatter rewrites
+# `except (A, B):` into PEP 758 `except A, B:`, which does not parse on 3.12 or
+# 3.13 and so forecloses a rollback. The lint set here (E/F/W/B/C4/I) has no
+# version-dependent rules, so the only effect of raising this is that rewrite.
+# Raise it as a separate, deliberate change if that trade is ever wanted.
 target-version = "py312"
 exclude = ["ai_resume_api/proto/"]
 

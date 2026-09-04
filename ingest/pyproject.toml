@@ -3,7 +3,7 @@ name = "ingest"
 version = "0.1.1"
 description = "Memvid ingestion pipeline for AI Resume - runs natively on MacOS for NPU acceleration"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = [
     "httpx>=0.28.1",
     "memvid-sdk==2.0.160",
@@ -40,6 +40,11 @@ py-modules = ["ingest", "compare_models"]
 
 [tool.ruff]
 line-length = 100
+# Deliberately below requires-python. At py314 the formatter rewrites
+# `except (A, B):` into PEP 758 `except A, B:`, which does not parse on 3.12 or
+# 3.13 and so forecloses a rollback. The lint set here (E/F/W/B/C4/I) has no
+# version-dependent rules, so the only effect of raising this is that rewrite.
+# Raise it as a separate, deliberate change if that trade is ever wanted.
 target-version = "py312"
 
 [tool.ruff.lint]
@@ -48,7 +53,7 @@ select = ["E", "F", "W", "B", "C4", "I"]
 ignore = ["E501"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.14"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
