@@ -13,7 +13,7 @@ dependencies = [
     "uvicorn[standard]>=0.52.4",
     "python-multipart>=0.0.32",
     "httpx>=0.28.1",
-    "pydantic>=2.13.4",
+    "pydantic>=2.13.5",
     "pydantic-settings>=2.15.0",
     "grpcio>=1.83.1",
     "grpcio-tools>=1.83.1",
@@ -21,14 +21,14 @@ dependencies = [
     # ai_resume_api/proto/ call ValidateProtobufRuntimeVersion(7, 35, 1) at
     # import, so this floor is a hard runtime requirement of this package.
     # scripts/check-proto-drift.sh keeps it honest.
-    "protobuf>=7.36.0",
+    "protobuf>=7.36.1",
     "opentelemetry-api>=1.44.0",
     "opentelemetry-sdk>=1.44.0",
     "opentelemetry-instrumentation-fastapi>=0.65b0",
     "prometheus-client>=0.26.0",
     "prometheus-fastapi-instrumentator>=8.1.0",
     "structlog>=26.1.0",
-    "cachetools>=7.1.7",
+    "cachetools>=7.1.8",
     "slowapi>=0.1.10",
     "fastmcp>=3.4.6",
     "opentelemetry-exporter-otlp>=1.44.0",
@@ -49,7 +49,7 @@ lint = [
     "types-cachetools>=7.0.0.20260713",
 ]
 sbom = [
-    "poetry>=2.4.1"
+    "poetry>=2.4.2"
 ]
 
 [build-system]
