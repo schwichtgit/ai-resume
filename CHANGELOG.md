@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-09-04
+
+A single-fix patch release. An unwritable ingest output directory failed with
+an opaque error that callers could not handle as an I/O error; it now fails
+fast with an accurate one. Nothing else changed.
+
+### Fixed
+
+- **Ingest fails fast when the output directory is not writable** (#540).
+  `ingest_memory()` guarded on `if output_path.exists():`. `Path.exists()`,
+  `is_file()` and `is_dir()` suppress `OSError` and return `False` on Python
+  3.14+, so an unwritable directory slipped past that guard and surfaced from
+  `memvid_sdk.create()` as `MemvidError: MV999: I/O error`. `MemvidError` does
+  not subclass `OSError` (its MRO is `MemvidError` -> `Exception` ->
+  `BaseException`), so callers could not handle it as one. Writability is now
+  checked explicitly with `os.access()`, raising a `PermissionError` carrying
+  `errno.EACCES`.
+
+  This is a CPython stdlib change, not a `memvid_sdk` incompatibility: the SDK
+  raises the identical error on 3.12 and 3.14. The behaviour was bisected
+  against a pure-stdlib probe -- 3.12 and 3.13 raise from `Path.exists()`,
+  3.14 returns `False`, and `Path.stat()` still raises on all three.
+
+  The improvement is not limited to 3.14. On 3.12 the guard only appeared to
+  work because pathlib happened to raise first; anything that got past it hit
+  the same opaque `MV999`.
+
+- **The test covering that path could not have caught it** (#540). It asserted
+  bare `OSError`, which passes on 3.12 for the wrong reason and cannot match
+  the non-`OSError` `MemvidError` raised on 3.14. It now asserts
+  `PermissionError` with `errno.EACCES`.
+
 ## [0.1.2] - 2026-09-04
 
 A patch release of dependency currency and documentation accuracy. Three
@@ -1194,7 +1226,8 @@ documentation overhaul. No new product features since alpha.23.
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/schwichtgit/ai-resume/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/schwichtgit/ai-resume/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0-beta.9...v0.1.0
