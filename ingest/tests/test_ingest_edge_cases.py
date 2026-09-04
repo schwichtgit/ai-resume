@@ -14,6 +14,7 @@ Run with:
     uv run pytest test_ingest_edge_cases.py -v
 """
 
+import errno
 import json
 import os
 import tempfile
@@ -673,9 +674,14 @@ def test_ingest_directory_permission_error() -> None:
         output_path = readonly_dir / "output.mv2"
 
         try:
-            # Should raise PermissionError or similar
-            with pytest.raises(OSError):  # PermissionError is a subclass of OSError
+            # Must fail fast with an errno-accurate PermissionError. Asserting
+            # bare OSError is too weak: on Python 3.14+ Path.exists() suppresses
+            # OSError, so without the explicit writability guard this reaches
+            # memvid_sdk.create() and raises MemvidError -- which is NOT an
+            # OSError, and so would not be caught by a broader assertion here.
+            with pytest.raises(PermissionError) as exc_info:
                 ingest_memory(input_path, output_path, verbose=False)
+            assert exc_info.value.errno == errno.EACCES
         finally:
             # Restore permissions for cleanup
             os.chmod(readonly_dir, 0o755)
