@@ -56,7 +56,7 @@ body:
         - OS: macOS 15.3 / Ubuntu 24.04
         - Shell: bash 5.x / zsh 5.x
         - Browser: Chrome 130 / Firefox 133
-        - Node.js: 22.x / Python: 3.12 / Rust: 1.93
+        - Node.js: 22.x / Python: 3.14 / Rust: 1.93
     validations:
       required: false
 
