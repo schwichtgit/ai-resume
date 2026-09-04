@@ -16,14 +16,14 @@ This project uses the [specforge](https://github.com/schwichtgit/claude-project-
 
 ### Specforge Phases
 
-| Phase | Command                   | Artifact                          | Status                  |
-| ----- | ------------------------- | --------------------------------- | ----------------------- |
-| 0     | `/specforge constitution` | `.specify/memory/constitution.md` | Complete                |
-| 1     | `/specforge spec`         | `.specify/specs/spec.md`          | Complete                |
-| 2     | `/specforge plan`         | `.specify/specs/plan.md`          | Complete (Approved)     |
-| 3     | `/specforge features`     | `feature_list.json`               | Complete (124 features) |
-| 4     | `/specforge analyze`      | Score report                      | Complete (87.4/100)     |
-| 5     | `/specforge setup`        | Setup checklist                   | Complete                |
+| Phase | Command                   | Artifact                          | Status              |
+| ----- | ------------------------- | --------------------------------- | ------------------- |
+| 0     | `/specforge constitution` | `.specify/memory/constitution.md` | Complete            |
+| 1     | `/specforge spec`         | `.specify/specs/spec.md`          | Complete            |
+| 2     | `/specforge plan`         | `.specify/specs/plan.md`          | Complete (Approved) |
+| 3     | `/specforge features`     | `feature_list.json`               | Complete            |
+| 4     | `/specforge analyze`      | Score report                      | Complete (87.4/100) |
+| 5     | `/specforge setup`        | Setup checklist                   | Complete            |
 
 ### Implementation Rules
 
@@ -32,7 +32,15 @@ This project uses the [specforge](https://github.com/schwichtgit/claude-project-
 - **Session bootstrap:** At the start of each coding session, read: constitution, plan, `feature_list.json`
 - **Feature tracking:** `feature_list.json` is the single source of truth for feature status
 - **Feature verification gate:** A feature may only be marked `"passes": true` and `"verified": true` AFTER every entry in its `testing_steps` array has been executed and confirmed passing in the current session. Never set these flags speculatively.
-- **Brownfield awareness:** 90 features have `verified: false` (existing code, not yet validated). 34 features are greenfield (no `verified` field)
+- **Feature counts are not restated here.** `feature_list.json` is the single
+  source of truth and changes with every feature pass, so a count copied into
+  this file goes stale silently -- it previously claimed 124 features with 90
+  unverified, long after the real numbers had moved. Query the file instead:
+
+```bash
+jq '.features | length' feature_list.json                      # total
+jq '[.features[] | select(.verified)] | length' feature_list.json  # verified
+```
 
 ## Subagent Policy
 
