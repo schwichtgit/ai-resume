@@ -16,14 +16,20 @@ This project uses the [specforge](https://github.com/schwichtgit/claude-project-
 
 ### Specforge Phases
 
-| Phase | Command                   | Artifact                          | Status              |
-| ----- | ------------------------- | --------------------------------- | ------------------- |
-| 0     | `/specforge constitution` | `.specify/memory/constitution.md` | Complete            |
-| 1     | `/specforge spec`         | `.specify/specs/spec.md`          | Complete            |
-| 2     | `/specforge plan`         | `.specify/specs/plan.md`          | Complete (Approved) |
-| 3     | `/specforge features`     | `feature_list.json`               | Complete            |
-| 4     | `/specforge analyze`      | Score report                      | Complete (87.4/100) |
-| 5     | `/specforge setup`        | Setup checklist                   | Complete            |
+| Phase | Command                   | Artifact                          |
+| ----- | ------------------------- | --------------------------------- |
+| 0     | `/specforge constitution` | `.specify/memory/constitution.md` |
+| 1     | `/specforge spec`         | `.specify/specs/spec.md`          |
+| 2     | `/specforge plan`         | `.specify/specs/plan.md`          |
+| 3     | `/specforge features`     | `feature_list.json`               |
+| 4     | `/specforge analyze`      | Score report                      |
+| 5     | `/specforge setup`        | Setup checklist                   |
+
+Phase status is deliberately not a column here. It was one, and it rotted the
+same way the feature counts did -- every row read "Complete", two of them
+carrying detail (`Approved`, `87.4/100`) that nothing updates when the phase is
+re-run. A phase's real status is whether its artifact exists and is current, so
+check the artifact.
 
 ### Implementation Rules
 
