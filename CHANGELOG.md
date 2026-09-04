@@ -7,6 +7,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-04
+
+Python 3.14 across every Python service. A minor rather than a patch release:
+SemVer reserves PATCH for backwards-compatible bug fixes, and replacing the
+interpreter in two runtime images is not one. Nothing on the public surface
+changes -- the REST/SSE endpoints, the MCP server and the `.mv2` format are
+untouched -- but `requires-python` moves, so a contributor on 3.12 can no
+longer sync the environment.
+
+### Changed
+
+- **All Python services moved to 3.14** (#542). `api-service` and `ingest`
+  from 3.12, `deployment` from 3.13. Rocky 10 ships `python3.14` (3.14.7)
+  with the `-devel` and `-libs` subpackages on both x86_64 and aarch64, so
+  the container bases follow the distribution rather than working around it.
+
+- **The `api-service` upper bound is gone.** It read `>=3.12,<3.13` and dated
+  to the initial commit with no recorded rationale -- no issue, comment or
+  pull request justified it, and the full suite passes on 3.14.
+
+- **Lockfiles resolve byte-identical package versions.** All three were
+  regenerated and compared as sorted name-version sets: 141, 77 and 4
+  packages, unchanged. Only the `requires-python` markers moved, so the
+  migration carries no dependency-upgrade risk and no new vulnerability
+  surface. The large line diff in the lockfiles is resolution-fork churn from
+  dropping the 3.12 fork, not package movement.
+
+- **Every compiled dependency already supported 3.14.** `memvid-sdk` and
+  `protobuf` ship stable-ABI `abi3` wheels, which are version-independent;
+  `grpcio`, `grpcio-tools`, `pydantic-core` and `torch` ship native `cp314`
+  manylinux wheels for both architectures.
+
+- **ruff `target-version` deliberately stays at `py312`**, below
+  `requires-python`, and is commented in both manifests. At `py314` the
+  formatter rewrites parenthesised multi-exception `except` clauses into the
+  PEP 758 unparenthesised form, which does not parse on 3.12 or 3.13 and so
+  would foreclose a rollback. The lint set in use has no version-dependent
+  rules, so raising it buys nothing else.
+
+### Dependencies
+
+- **Frontend dev tooling, minor-and-patch group** (#544). `@types/node`
+  26.4.0 to 26.4.1 and `eslint-plugin-react-refresh` 0.5.5 to 0.5.6. Both are
+  development dependencies and neither reaches the built bundle.
+
+- **`taiki-e/install-action` 2.87.3 to 2.87.4** (#545), pinned in the security
+  workflow. CI tooling only.
+
+### Known issues
+
+- **The `ingest` container image cannot import `memvid_sdk` on aarch64.** The
+  extension module fails to load with a static TLS block allocation error.
+  This is **pre-existing and unrelated to the Python version** -- an image
+  built from the previous release on 3.12 fails identically -- and is
+  aarch64-specific, since the same wheel imports correctly on amd64. It is a
+  consequence of the module being flagged as requiring static thread-local
+  storage, which glibc then refuses to place.
+
+  The cause is a build defect in the aarch64 wheel rather than a limitation of
+  the architecture: the maintainer's own amd64 wheel links the same C++ runtime
+  dynamically and loads correctly. Reported upstream; see the tracking issue.
+
+  It went unnoticed because the image is referenced by neither the compose
+  file nor the container test script: CI builds and scans it but never runs
+  it, and the ingest pipeline normally runs natively on macOS. Tracked
+  separately; no production impact.
+
 ## [0.1.3] - 2026-09-04
 
 A single-fix patch release. An unwritable ingest output directory failed with
@@ -1226,7 +1293,8 @@ documentation overhaul. No new product features since alpha.23.
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/schwichtgit/ai-resume/compare/v0.1.3...v0.2.0
 [0.1.3]: https://github.com/schwichtgit/ai-resume/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/schwichtgit/ai-resume/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/schwichtgit/ai-resume/compare/v0.1.0...v0.1.1
