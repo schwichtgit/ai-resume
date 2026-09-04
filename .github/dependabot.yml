@@ -1,10 +1,20 @@
 version: 2
+
+# Every ecosystem below lands on Saturday. A bare 'weekly' with no 'day'
+# put the batch on Sunday, which collides with project maintenance; Saturday
+# delivers the PRs a day ahead of it. Verified 2026-09-04 across three weeks
+# of Sunday batches (2026-08-16/23/30, ~12:33 UTC).
+#
+# Editing this file also triggers an immediate Dependabot re-check of every
+# ecosystem, independent of the schedule -- that is the only way to force a
+# run from a commit, since there is no public API for it.
 updates:
   # npm (frontend)
   - package-ecosystem: 'npm'
     directory: '/frontend'
     schedule:
       interval: 'weekly'
+      day: 'saturday'
     commit-message:
       prefix: 'build'
       prefix-development: 'build'
@@ -33,6 +43,7 @@ updates:
       - '/ingest'
     schedule:
       interval: 'weekly'
+      day: 'saturday'
     commit-message:
       prefix: 'build'
       include: 'scope'
@@ -63,6 +74,7 @@ updates:
     directory: '/memvid-service'
     schedule:
       interval: 'weekly'
+      day: 'saturday'
     commit-message:
       prefix: 'build'
       include: 'scope'
@@ -77,6 +89,7 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
+      day: 'saturday'
     commit-message:
       prefix: 'build'
       include: 'scope'
@@ -101,6 +114,7 @@ updates:
       - '/memvid-service'
     schedule:
       interval: 'weekly'
+      day: 'saturday'
     commit-message:
       prefix: 'build'
       include: 'scope'
