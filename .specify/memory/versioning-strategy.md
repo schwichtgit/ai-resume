@@ -101,11 +101,13 @@ Zero unpatched critical/high CVEs:
 
 Clean baseline:
 
-- Base images up-to-date
-  - alpine:3.23
-  - node:24-bookworm-slim
-  - python:3.12-slim-bookworm
-  - debian:trixie-slim
+- Base images up-to-date. Versions are deliberately not restated here --
+  every base is digest-pinned in its Dockerfile and bumped by Dependabot, so a
+  version copied into this file goes stale silently. Read the `FROM` lines:
+  - `frontend/Dockerfile` -- node builder, alpine runtime
+  - `api-service/Dockerfile`, `ingest/Dockerfile` -- rockylinux builder,
+    ubi-micro runtime
+  - `memvid-service/Dockerfile` -- rust builder, distroless static runtime
 - No unpatched vulnerabilities in any layer
 - All layers scanned by Grype and Trivy
 - No policy violations

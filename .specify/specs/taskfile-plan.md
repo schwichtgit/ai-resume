@@ -103,12 +103,12 @@ correct Python version from `.python-version`.
 
 ### Tier 1 -- Required (fail if missing or below minimum)
 
-| Tool    | Minimum | Source                                   | Install Hint                                       |
-| ------- | ------- | ---------------------------------------- | -------------------------------------------------- |
-| Node.js | 22.12.0 | jsdom 27 peer dep; CI `NODE_VERSION: 22` | `https://nodejs.org/`                              |
-| npm     | 10.0.0  | Ships with Node 22+                      | (bundled with Node.js)                             |
-| uv      | 0.4.0   | Manages Python + venvs for all services  | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
-| go-task | 3.0.0   | Build orchestration                      | `https://taskfile.dev/installation/`               |
+| Tool    | Minimum | Source                                         | Install Hint                                       |
+| ------- | ------- | ---------------------------------------------- | -------------------------------------------------- |
+| Node.js | 26.2.0  | CI `NODE_VERSION: 26`; matches `check-deps.sh` | `https://nodejs.org/`                              |
+| npm     | 11.0.0  | Ships with Node 26+                            | (bundled with Node.js)                             |
+| uv      | 0.4.0   | Manages Python + venvs for all services        | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| go-task | 3.0.0   | Build orchestration                            | `https://taskfile.dev/installation/`               |
 
 ### Tier 2 -- Service-specific (warn if missing; required for that service)
 

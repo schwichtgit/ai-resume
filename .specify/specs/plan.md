@@ -400,7 +400,7 @@ Host nginx (TLS) --> 192.168.100.10:8080 (frontend/OpenResty)
      - macOS: `brew install podman`
 
 2. **Language runtimes:**
-   - **Node.js 22.x** (CI uses `NODE_VERSION: "22"`; jsdom 27 requires Node 20.19+ minimum)
+   - **Node.js 26.x** (CI uses `NODE_VERSION: "26"`; `scripts/check-deps.sh` floors 26.2.0)
    - **Python 3.14** (api-service `requires-python = ">=3.14"`; constitution specifies Python 3.14)
    - **Rust 1.92.0** (pinned in `memvid-service/rust-toolchain.toml`)
 
