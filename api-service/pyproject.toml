@@ -44,12 +44,12 @@ test = [
     "pytest-cov>=7.1.0",
 ]
 lint = [
-    "ruff>=0.16.5",
+    "ruff>=0.16.6",
     "mypy>=2.3.1",
     "types-cachetools>=7.0.0.20260713",
 ]
 sbom = [
-    "poetry>=2.4.2"
+    "poetry>=2.4.3"
 ]
 
 [build-system]
