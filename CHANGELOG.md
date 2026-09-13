@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-13
+
+A patch release of dependency currency. Nothing in the application changed --
+outside `CHANGELOG.md`, this release moves lockfiles, manifests, one
+Dockerfile pin, and a test-only import.
+
+### Dependencies
+
+- **Six Dependabot pull requests rolled up across four ecosystems** (#555):
+  `node` (frontend Dockerfile builder stage) 26.8.1 to 26.8.2, `ruff` 0.16.5
+  to 0.16.7 and `poetry` 2.4.2 to 2.4.3 in `api-service`, `numpy` 2.5.2 to
+  2.5.3 in `ingest`, `taiki-e/install-action` 2.87.4 to 2.87.9 in the
+  security workflow, and seven frontend dev/type packages -- `lucide-react`
+  1.43.0, `react-resizable-panels` 4.12.4, `@playwright/test` 1.63.0,
+  `@types/node` 26.5.0, `@types/react-dom` 19.2.7, `eslint` 10.10.0,
+  `typescript-eslint` 8.70.0. `ruff` resolved to 0.16.7 rather than the
+  proposed 0.16.6 since a newer patch already satisfied the raised floor.
+  Lockfiles were regenerated on top of `main` rather than taken from the
+  Dependabot branches, so no fix merged after a branch was cut gets reverted
+  by adopting that branch's older lockfile.
+
+- **`vitest` and `@vitest/coverage-v8` 4.1.11 to 5.0.0** (#556). The two
+  packages must move together as a matched major-version pair --
+  `@vitest/coverage-v8` 5.0.0 requires `vitest` 5.x as a peer -- which is why
+  Dependabot's individual PRs for each were red: `npm ci` installs a
+  mismatched pair with only a peer-dependency warning rather than a hard
+  error, so the lockfile from either PR alone "installs" but the resulting
+  toolchain does not run cleanly. Bumping both together resolves with no
+  peer warnings.
+
+  Bumping both surfaced a second, pre-existing defect independent of the
+  version-mismatch: `frontend/src/test/setup.ts` imported the generic
+  `@testing-library/jest-dom`, which resolves to the package's Jest-namespace
+  type augmentation rather than its vitest-specific one. That happened to
+  typecheck against vitest 4.x's `Assertion<T>` shape by coincidence -- the
+  two were never correctly wired together -- and stopped working once vitest
+  5 changed the shape to `Assertion<R, T>`. Fixed by importing
+  `@testing-library/jest-dom/vitest`, the package's documented integration
+  path for vitest, correct regardless of vitest version. Verified empirically
+  against `main`: `npm run typecheck` passes there today with vitest 4.1.11
+  and the generic import, fails with 17 `TS2339` errors on vitest 5.0.0 alone,
+  and passes again once both changes land together. No source changes were
+  needed for vitest 5's other breaking changes (`test.for`/`test.each` title
+  quoting, the `sequential` option removal, the `attachmentsDir` rename,
+  `loupe.inspect`); none are used in this codebase.
+
 ## [0.2.0] - 2026-09-04
 
 Python 3.14 across every Python service. A minor rather than a patch release:
@@ -1293,7 +1339,8 @@ documentation overhaul. No new product features since alpha.23.
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/schwichtgit/ai-resume/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/schwichtgit/ai-resume/compare/v0.1.3...v0.2.0
 [0.1.3]: https://github.com/schwichtgit/ai-resume/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/schwichtgit/ai-resume/compare/v0.1.1...v0.1.2
