@@ -76,7 +76,7 @@ The system uses a **three-container architecture**:
 
 ### Python FastAPI Service
 
-- **Technology:** Python 3.12 + FastAPI + httpx + gRPC client
+- **Technology:** Python 3.14 + FastAPI + httpx + gRPC client
 - **Container Size:** ~500MB
 - **Memory:** ~150-200MB runtime
 - **Responsibilities:**

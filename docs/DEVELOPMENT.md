@@ -24,11 +24,11 @@ environments and pins the Python version in each service's `pyproject.toml`.
 
 ### Service-level (Tier 2 -- warn only)
 
-| Tool   | Minimum | Notes                                            |
-| ------ | ------- | ------------------------------------------------ |
-| rustc  | 1.96.0  | memvid-service (pinned in `rust-toolchain.toml`) |
-| cargo  | 1.96.0  | Bundled with Rust                                |
-| protoc | 32.1    | Required for gRPC proto regeneration             |
+| Tool   | Minimum | Notes                                           |
+| ------ | ------- | ----------------------------------------------- |
+| rustc  | 1.96.0  | memvid-service MSRV (`Cargo.toml` rust-version) |
+| cargo  | 1.96.0  | Bundled with Rust                               |
+| protoc | 32.1    | Required for gRPC proto regeneration            |
 
 ### Optional (Tier 3 -- informational)
 
@@ -157,7 +157,7 @@ content) and works against any deployed instance.
 
 ### API Service (`api-service/`)
 
-Python 3.12, FastAPI, uvicorn. The Python package name is `ai_resume_api`
+Python 3.14, FastAPI, uvicorn. The Python package name is `ai_resume_api`
 (not `app`).
 
 ```bash
@@ -312,7 +312,9 @@ This runs `scripts/build-all.sh` which builds each Dockerfile:
 
 - `frontend/Dockerfile` -- alpine + OpenResty, port 8080
 - `api-service/Dockerfile` -- Rocky Linux 10 minimal builder + `ubi10/ubi-micro` runtime, port 3000
-- `memvid-service/Dockerfile` -- `rust:1.96.0-slim-trixie` builder + `gcr.io/distroless/cc-debian13:nonroot` runtime, port 50051
+- `memvid-service/Dockerfile` -- Rust slim-trixie builder + distroless static
+  runtime, port 50051 (see the `FROM` lines for the pinned tags/digests --
+  restated here they'd drift the next time either bumps)
 
 ### Deploy Locally
 

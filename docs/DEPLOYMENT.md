@@ -4,12 +4,12 @@
 
 The AI Resume stack consists of three runtime services plus a one-shot ingest pipeline:
 
-| Service            | Runtime Base                          | Port  | Protocol | Lifecycle  |
-| ------------------ | ------------------------------------- | ----- | -------- | ---------- |
-| ai-resume-frontend | alpine:3.24 (OpenResty/nginx)         | 8080  | HTTP     | Long-lived |
-| ai-resume-api      | ubi10/ubi-micro (Python 3.12 runtime) | 3000  | HTTP     | Long-lived |
-| ai-resume-memvid   | gcr.io/distroless/cc-debian13:nonroot | 50051 | gRPC     | Long-lived |
-| ai-resume-ingest   | ubi10/ubi-micro (Python 3.12 runtime) | none  | none     | One-shot   |
+| Service            | Runtime Base                              | Port  | Protocol | Lifecycle  |
+| ------------------ | ----------------------------------------- | ----- | -------- | ---------- |
+| ai-resume-frontend | alpine:3.24 (OpenResty/nginx)             | 8080  | HTTP     | Long-lived |
+| ai-resume-api      | ubi10/ubi-micro (Python 3.14 runtime)     | 3000  | HTTP     | Long-lived |
+| ai-resume-memvid   | gcr.io/distroless/static-debian13:nonroot | 50051 | gRPC     | Long-lived |
+| ai-resume-ingest   | ubi10/ubi-micro (Python 3.14 runtime)     | none  | none     | One-shot   |
 
 Traffic flow: reverse proxy -> frontend (8080) -> api (3000) -> memvid (50051 gRPC)
 

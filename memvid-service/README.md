@@ -46,7 +46,7 @@ See full proto definition: [`proto/memvid/v1/memvid.proto`](proto/memvid/v1/memv
 
 ## Prerequisites
 
-- **Rust 1.70+** - Install via [rustup](https://rustup.rs/)
+- **Rust 1.96+** - Install via [rustup](https://rustup.rs/)
 - **cargo** - Comes with Rust installation
 - **cargo-llvm-cov** (optional, for coverage) - `cargo install cargo-llvm-cov`
 - **grpcurl** (optional, for testing) - [Installation guide](https://github.com/fullstorydev/grpcurl)
