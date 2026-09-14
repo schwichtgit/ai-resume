@@ -21,7 +21,7 @@ Host browser
 ai-resume-frontend (OpenResty/Alpine, .10:8080)
   |  /api/* proxied via Lua DNS resolver
   v
-ai-resume-api (FastAPI/Python 3.12, .11:3000)
+ai-resume-api (FastAPI/Python 3.14, .11:3000)
   |  gRPC (protobuf)
   v
 ai-resume-memvid (Rust binary, .12:50051)

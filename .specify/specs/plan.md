@@ -94,7 +94,7 @@ ai-resume/
 │   ├── build.rs                     # tonic-build proto compilation
 │   ├── Dockerfile
 │   ├── Cargo.toml
-│   └── rust-toolchain.toml          # Pinned to Rust 1.92.0
+│   └── rust-toolchain.toml          # Pins the Rust dev toolchain
 │
 ├── ingest/                          # Python data ingestion pipeline
 │   ├── ingest.py                    # Parses master_resume.md -> .mv2 file
@@ -211,20 +211,20 @@ ai-resume/
 
 ### Memvid Service (Rust)
 
-| Component             | Choice                                | Version                         | Rationale                                                     |
-| --------------------- | ------------------------------------- | ------------------------------- | ------------------------------------------------------------- |
-| Language              | Rust                                  | Edition 2021 (toolchain 1.92.0) | Memory safety; sub-millisecond search; zero-cost abstractions |
-| Async Runtime         | Tokio                                 | 1 (full features)               | Industry-standard async runtime for gRPC + HTTP servers       |
-| gRPC Framework        | Tonic                                 | 0.12                            | Pure-Rust gRPC; tonic-build for codegen from .proto           |
-| gRPC Health           | tonic-health                          | 0.12                            | Standard gRPC health checking protocol                        |
-| Serialization (Proto) | Prost                                 | 0.13                            | Protobuf code generation paired with tonic                    |
-| HTTP Framework        | Axum                                  | 0.7                             | Metrics endpoint; tower middleware compatibility              |
-| Middleware            | Tower + tower-http                    | 0.4 / 0.5                       | Layered middleware: tracing, CORS                             |
-| Memvid SDK            | memvid-core                           | 2.0.136                         | Native .mv2 file loading; hybrid/semantic/lexical search      |
-| Error Handling        | thiserror + anyhow                    | 2.0 / 1.0                       | Typed errors (ServiceError -> tonic::Status)                  |
-| Observability         | tracing + tracing-subscriber          | 0.1 / 0.3                       | Structured logging with env-filter and JSON output            |
-| Metrics               | metrics + metrics-exporter-prometheus | 0.24 / 0.16                     | Prometheus-compatible metric export                           |
-| Serialization (JSON)  | serde + serde_json                    | 1.0                             | Profile metadata deserialization from .mv2 state              |
+| Component             | Choice                                | Version                                | Rationale                                                     |
+| --------------------- | ------------------------------------- | -------------------------------------- | ------------------------------------------------------------- |
+| Language              | Rust                                  | Edition 2021 (MSRV 1.96, `Cargo.toml`) | Memory safety; sub-millisecond search; zero-cost abstractions |
+| Async Runtime         | Tokio                                 | 1 (full features)                      | Industry-standard async runtime for gRPC + HTTP servers       |
+| gRPC Framework        | Tonic                                 | 0.12                                   | Pure-Rust gRPC; tonic-build for codegen from .proto           |
+| gRPC Health           | tonic-health                          | 0.12                                   | Standard gRPC health checking protocol                        |
+| Serialization (Proto) | Prost                                 | 0.13                                   | Protobuf code generation paired with tonic                    |
+| HTTP Framework        | Axum                                  | 0.7                                    | Metrics endpoint; tower middleware compatibility              |
+| Middleware            | Tower + tower-http                    | 0.4 / 0.5                              | Layered middleware: tracing, CORS                             |
+| Memvid SDK            | memvid-core                           | 2.0.136                                | Native .mv2 file loading; hybrid/semantic/lexical search      |
+| Error Handling        | thiserror + anyhow                    | 2.0 / 1.0                              | Typed errors (ServiceError -> tonic::Status)                  |
+| Observability         | tracing + tracing-subscriber          | 0.1 / 0.3                              | Structured logging with env-filter and JSON output            |
+| Metrics               | metrics + metrics-exporter-prometheus | 0.24 / 0.16                            | Prometheus-compatible metric export                           |
+| Serialization (JSON)  | serde + serde_json                    | 1.0                                    | Profile metadata deserialization from .mv2 state              |
 
 ### Data Ingestion Pipeline
 
@@ -296,21 +296,21 @@ Rust side: `ServiceError` variants map to gRPC status codes (`NotFound`, `Intern
 
 ## Testing Strategy
 
-| Type                | Framework                               | Coverage Target                 | Command                                                                 |
-| ------------------- | --------------------------------------- | ------------------------------- | ----------------------------------------------------------------------- |
-| Frontend Unit       | Vitest 3.2 + RTL 16 + jsdom 27          | 85% line                        | `cd frontend && npm test`                                               |
-| API Service Unit    | pytest 8.3 + pytest-asyncio 0.25        | 85% line                        | `cd api-service && uv run pytest -v --tb=short`                         |
-| Ingest Unit         | pytest 8.3 + pytest-asyncio 0.25        | 85% line                        | `cd ingest && uv run pytest -v --tb=short -m "not slow"`                |
-| Memvid Service Unit | cargo test + serial_test 3              | 85% line                        | `cd memvid-service && cargo test`                                       |
-| API Lint/Type       | ruff 0.8 + mypy 1.14 (strict)           | Zero errors                     | `cd api-service && uv run ruff check . && uv run mypy .`                |
-| Ingest Lint/Type    | ruff 0.8 + mypy 1.14 (strict)           | Zero errors                     | `cd ingest && uv run ruff check . && uv run mypy .`                     |
-| Memvid Lint         | clippy + rustfmt (1.92)                 | Zero warnings                   | `cd memvid-service && cargo clippy -- -D warnings && cargo fmt --check` |
-| Frontend Lint/Type  | ESLint 9 + TypeScript 5.8               | Zero errors                     | `cd frontend && npm run lint && npx tsc --noEmit`                       |
-| Integration (Mock)  | Bash + curl + Python assertions         | All assertions pass             | `./scripts/test-e2e-integration.sh`                                     |
-| E2E Mock Gates      | Bash + curl (mock permutations)         | All 6 gate scenarios            | `./scripts/test-e2e-mock-gates.sh`                                      |
-| E2E Real            | Bash + curl + real ingest + real memvid | 100% coverage, 0% hallucination | `./scripts/test-e2e-real.sh`                                            |
-| Commit Standards    | Bash regex (CI-only)                    | Conventional Commits            | CI job `commit-standards`                                               |
-| SonarQube           | SonarSource action                      | Quality gate                    | `.github/workflows/sonarqube.yml`                                       |
+| Type                | Framework                                       | Coverage Target                 | Command                                                                 |
+| ------------------- | ----------------------------------------------- | ------------------------------- | ----------------------------------------------------------------------- |
+| Frontend Unit       | Vitest 5.0 + RTL 16 + jsdom 30                  | 85% line                        | `cd frontend && npm test`                                               |
+| API Service Unit    | pytest 9.1 + pytest-asyncio 1.4                 | 85% line                        | `cd api-service && uv run pytest -v --tb=short`                         |
+| Ingest Unit         | pytest 9.1 + pytest-asyncio 1.4                 | 85% line                        | `cd ingest && uv run pytest -v --tb=short -m "not slow"`                |
+| Memvid Service Unit | cargo test + serial_test 4                      | 85% line                        | `cd memvid-service && cargo test`                                       |
+| API Lint/Type       | ruff 0.16 + mypy 2.3 (strict)                   | Zero errors                     | `cd api-service && uv run ruff check . && uv run mypy .`                |
+| Ingest Lint/Type    | ruff 0.16 + mypy 2.3 (strict)                   | Zero errors                     | `cd ingest && uv run ruff check . && uv run mypy .`                     |
+| Memvid Lint         | clippy + rustfmt (MSRV 1.96)                    | Zero warnings                   | `cd memvid-service && cargo clippy -- -D warnings && cargo fmt --check` |
+| Frontend Lint/Type  | ESLint 10 + TypeScript 6 (lint) / 7 (typecheck) | Zero errors                     | `cd frontend && npm run lint && npm run typecheck`                      |
+| Integration (Mock)  | Bash + curl + Python assertions                 | All assertions pass             | `./scripts/test-e2e-integration.sh`                                     |
+| E2E Mock Gates      | Bash + curl (mock permutations)                 | All 6 gate scenarios            | `./scripts/test-e2e-mock-gates.sh`                                      |
+| E2E Real            | Bash + curl + real ingest + real memvid         | 100% coverage, 0% hallucination | `./scripts/test-e2e-real.sh`                                            |
+| Commit Standards    | Bash regex (CI-only)                            | Conventional Commits            | CI job `commit-standards`                                               |
+| SonarQube           | SonarSource action                              | Quality gate                    | `.github/workflows/sonarqube.yml`                                       |
 
 ### Coverage
 
@@ -402,7 +402,8 @@ Host nginx (TLS) --> 192.168.100.10:8080 (frontend/OpenResty)
 2. **Language runtimes:**
    - **Node.js 26.x** (CI uses `NODE_VERSION: "26"`; `scripts/check-deps.sh` floors 26.2.0)
    - **Python 3.14** (api-service `requires-python = ">=3.14"`; constitution specifies Python 3.14)
-   - **Rust 1.92.0** (pinned in `memvid-service/rust-toolchain.toml`)
+   - **Rust 1.98.0** (pinned in `memvid-service/rust-toolchain.toml`; MSRV floor is
+     1.96, see `Cargo.toml` rust-version)
 
 3. **Package installation:**
 

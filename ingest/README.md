@@ -6,7 +6,7 @@ This directory contains the **data ingestion pipeline** for creating memvid memo
 
 ## Prerequisites
 
-- Python 3.12+
+- Python 3.14+
 - UV package manager (for dependency management)
 
 ## Quick Start
