@@ -16,7 +16,7 @@ dependencies = [
     "pydantic>=2.13.5",
     "pydantic-settings>=2.15.0",
     "grpcio>=1.83.1",
-    "grpcio-tools>=1.83.1",
+    "grpcio-tools>=1.84.0",
     # Not transitive-by-accident: the committed stubs under
     # ai_resume_api/proto/ call ValidateProtobufRuntimeVersion(7, 35, 1) at
     # import, so this floor is a hard runtime requirement of this package.
