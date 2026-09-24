@@ -7,6 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-09-24
+
+A patch release of security fixes and dependency currency. Three advisories
+are closed, one of them CRITICAL. Nothing in the application changed: outside
+`CHANGELOG.md`, this release moves lockfiles, manifests, one workflow pin, one
+line of generated protobuf stub, and documentation prose.
+
+### Security
+
+- **`anyio` 4.12.1 -> 4.14.2 in `api-service` and `ingest`** (#566).
+  CVE-2026-63374 (CRITICAL) -- TLSStream IDNA 2003 host name encoding enables
+  host name confusion -- and CVE-2026-64847 (MEDIUM), both fixed in 4.14.2.
+  `anyio` is transitive in both services and appears in neither
+  `pyproject.toml`, so the fix is a lockfile regeneration rather than a
+  manifest edit; uv forks the resolution into 4.14.2 and 4.15.1, both at or
+  above the fixed version. These were all four open Dependabot alerts.
+
+  This advisory is also why the open Dependabot pull requests were red in
+  unrelated places -- a ruff bump in `ingest` failed the **api** container
+  build. The Trivy CRITICAL/HIGH gate fails every image carrying the
+  vulnerable lockfile, and every branch cut from `main` inherited it.
+
+- **`rustls` 0.23.36 -> 0.23.45 in `memvid-service`** (#566).
+  RUSTSEC-2026-0285 (MEDIUM) -- TLS 1.3 handshake messages incorrectly accepted
+  across encryption level boundaries. This one appeared in no Dependabot alert
+  and no Dependabot pull request: it was found by re-running the whole-SBOM
+  `task audit` before merge. `cargo audit` reads the RustSec database directly,
+  and advisories there reach GitHub's advisory database later -- which is the
+  gap the audit step exists to close.
+
+  `rustls` comes from `metrics-exporter-prometheus`, this project's own
+  dependency for the `:9090` metrics endpoint, not from `memvid-core`, so there
+  was nothing to raise upstream. The targeted update also moved three of
+  `rustls`'s own dependencies that 0.23.45 requires, among them `aws-lc-sys`
+  0.39.1 -> 0.45.0. That crate compiles C sources, and memvid is a musl static
+  build -- the combination the distroless ADR named as the risk -- so it was
+  verified with a real `linux/arm64` container build and a runtime smoke test
+  of the metrics endpoint, with CI covering amd64.
+
+### Dependencies
+
+- **Five Dependabot pull requests rolled up** (#566): the frontend
+  minor-and-patch group -- `react` and `react-dom` 19.3.0, `react-router`
+  8.4.0, `@tanstack/react-query` 5.103.0, `react-hook-form` 7.88.0, `zod`
+  4.6.5, `lucide-react` 1.46.0, `tailwind-merge` 3.7.0, `vite` 8.3.0,
+  `prettier` 3.9.7, `@types/node` 26.6.1, `@testing-library/dom` 10.4.2,
+  `eslint-plugin-react-refresh` 0.5.7, `@vitest/coverage-v8` 5.0.1 -- and
+  `taiki-e/install-action` 2.87.13 in the security workflow.
+
+- **`ruff` 0.16.8 in both Python services** (#566). Dependabot proposed only
+  the `ingest` bump; `api-service` was raised with it so both services lint
+  with one ruff, keeping local runs in step with CI.
+
+- **Regenerating lockfiles kept the vitest pair matched** (#566). The
+  frontend group moved `@vitest/coverage-v8` to 5.0.1 while leaving `vitest`
+  at 5.0.0 -- the same split that made the individual 5.0.0 pull requests
+  unmergeable in 0.2.1. Resolving on `main` pulled `vitest` to 5.0.1 as well.
+
+- **`grpcio` and `grpcio-tools` 1.83.1 -> 1.84.0, stubs regenerated** (#567).
+  Kept out of the rollup because the stub _generator_ moved, which puts the
+  committed stubs in scope. Regeneration changed exactly one line --
+  `GRPC_GENERATED_VERSION` in `memvid_pb2_grpc.py` -- and `memvid_pb2.py` is
+  byte-identical.
+
+### Documentation
+
+- **Stale version references swept across the project** (#558). Python 3.12
+  mentions left behind by the 3.14 migration, Rust versions that matched no
+  source file, and the memvid runtime base still described as
+  `distroless/cc-debian13` long after it moved to `distroless/static`. Two
+  documents cited `rust-toolchain.toml` for a number that file does not
+  contain: this crate deliberately runs a 1.96 MSRV (`Cargo.toml`, tested in
+  CI) beneath a newer pinned dev toolchain, and the citations now say which
+  is which. The testing-strategy table in the plan was several major versions
+  behind and named a typecheck command that bypasses the TypeScript 7 path.
+
+- **Corrected the 0.2.0 known-issue entry.** It said the aarch64 `memvid_sdk`
+  defect had been reported upstream with a tracking issue. No report had been
+  filed; the entry now says so.
+
 ## [0.2.1] - 2026-09-13
 
 A patch release of dependency currency. Nothing in the application changed --
@@ -113,7 +193,7 @@ longer sync the environment.
 
   The cause is a build defect in the aarch64 wheel rather than a limitation of
   the architecture: the maintainer's own amd64 wheel links the same C++ runtime
-  dynamically and loads correctly. Reported upstream; see the tracking issue.
+  dynamically and loads correctly. Not yet reported upstream.
 
   It went unnoticed because the image is referenced by neither the compose
   file nor the container test script: CI builds and scans it but never runs
@@ -1339,7 +1419,8 @@ documentation overhaul. No new product features since alpha.23.
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/schwichtgit/ai-resume/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/schwichtgit/ai-resume/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/schwichtgit/ai-resume/compare/v0.1.3...v0.2.0
 [0.1.3]: https://github.com/schwichtgit/ai-resume/compare/v0.1.2...v0.1.3
