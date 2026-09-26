@@ -671,7 +671,7 @@ jobs:
       # step. Tracked: alpha.18 post-mortem; reclaim maxed in alpha.23.
       - name: Free disk space on amd64 ingest runner
         if: matrix.image == 'ingest' && matrix.platform == 'amd64'
-        uses: jlumbroso/free-disk-space@v1.3.1
+        uses: jlumbroso/free-disk-space@v2.0.0
         with:
           tool-cache: true
           android: true
