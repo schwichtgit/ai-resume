@@ -8,7 +8,7 @@ readme = "README.md"
 license = {text = "MIT"}
 dependencies = [
     "fastapi>=0.141.1",
-    "starlette>=1.4.1",
+    "starlette>=1.7.0",
     "setuptools>=84.0.0",
     "uvicorn[standard]>=0.52.4",
     "python-multipart>=0.0.32",
@@ -21,14 +21,14 @@ dependencies = [
     # ai_resume_api/proto/ call ValidateProtobufRuntimeVersion(7, 35, 1) at
     # import, so this floor is a hard runtime requirement of this package.
     # scripts/check-proto-drift.sh keeps it honest.
-    "protobuf>=7.36.1",
+    "protobuf>=7.36.2",
     "opentelemetry-api>=1.44.0",
     "opentelemetry-sdk>=1.44.0",
     "opentelemetry-instrumentation-fastapi>=0.65b0",
     "prometheus-client>=0.26.0",
     "prometheus-fastapi-instrumentator>=8.1.0",
     "structlog>=26.1.0",
-    "cachetools>=7.1.8",
+    "cachetools>=7.2.0",
     "slowapi>=0.1.10",
     "fastmcp>=3.4.6",
     "opentelemetry-exporter-otlp>=1.44.0",
@@ -49,7 +49,7 @@ lint = [
     "types-cachetools>=7.0.0.20260713",
 ]
 sbom = [
-    "poetry>=2.4.3"
+    "poetry>=2.5.1"
 ]
 
 [build-system]
