@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-09-28
+
+A patch release of dependency currency. No advisories are open; nothing in the
+application changed. Outside `CHANGELOG.md`, this release moves lockfiles,
+manifests, two base-image pins and three workflow pins.
+
+### Dependencies
+
+- **memvid OpenTelemetry moved as a matched set** (#583). `opentelemetry`,
+  `opentelemetry_sdk` and `opentelemetry-otlp` 0.32 -> 0.33,
+  `tracing-opentelemetry` 0.33 -> 0.34. Dependabot filed these as four separate
+  pull requests, and each was red on its own: `tracing-opentelemetry` 0.34
+  requires `opentelemetry` 0.33, so any single bump left two incompatible
+  copies in the tree and memvid failed to compile. Together they compile with
+  no source change and no duplicated `tonic`, `prost` or `hyper` versions.
+
+  Compiling was not the realistic risk for a pre-1.0 minor of the tracing
+  pipeline -- spans silently not reaching Tempo was, and the unit tests only
+  assert that the tracing layer is constructed. Export was verified end to end
+  against a local OTLP collector: real `Search` and `GetState` RPCs produced
+  four spans, each with its own trace ID, carrying
+  `service.name: ai-resume-memvid`.
+
+- **`jlumbroso/free-disk-space` v1.3.1 -> v2.0.0** (#583), the action that
+  keeps the amd64 ingest build from running out of disk. v2 renames
+  `tool-cache` to `preinstalled-runtimes` and flips the `swap-storage` default
+  to `false`. An unrecognised input in Actions is only a warning, so a missed
+  rename would silently stop reclaiming space; the input is renamed here --
+  Dependabot's pull request left the deprecated name -- and `swap-storage`
+  was already set explicitly. The first run under v2 emitted no warnings and
+  reclaimed 32 GiB, the renamed input accounting for 4.9 GiB of it.
+
+- **`protobuf` 7.36.1 -> 7.36.2** (#583). Runtime only: the stub generator
+  stays at `grpcio-tools` 1.84.0 and the committed stubs are unchanged, so,
+  unlike the 1.84.0 generator bump in 0.2.2, this needed no separate change.
+
+- **Also** (#583): `starlette` 1.7.0, `cachetools` 7.2.0 and `poetry` 2.5.1
+  in `api-service`; `sentence-transformers` 6.1.0 in `ingest`, verified with
+  the unfiltered test suite because CI deselects the embedding path; the
+  frontend group -- `react-resizable-panels` 4.13.2, `eslint` 10.11.0, `jsdom`
+  30.1.1, `prettier` 3.9.9, `typescript-eslint` 8.70.1 -- where `jsdom` pulls
+  four transitive majors, all its own development-only dependencies; the
+  `node` 26.10.0 builder and `alpine` 3.24.2 runtime base images; and
+  `taiki-e/install-action` 2.87.19 and `sonarqube-scan-action` 8.2.2. Every new
+  image digest and action SHA was checked against its registry rather than
+  copied from the pull request.
+
 ## [0.2.2] - 2026-09-24
 
 A patch release of security fixes and dependency currency. Three advisories
@@ -1419,7 +1466,8 @@ documentation overhaul. No new product features since alpha.23.
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/schwichtgit/ai-resume/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/schwichtgit/ai-resume/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/schwichtgit/ai-resume/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/schwichtgit/ai-resume/compare/v0.1.3...v0.2.0
