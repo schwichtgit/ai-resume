@@ -9,11 +9,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.3] - 2026-09-28
 
-A patch release of dependency currency. No advisories are open; nothing in the
-application changed. Outside `CHANGELOG.md`, this release moves lockfiles,
-manifests, two base-image pins and three workflow pins.
+A patch release of dependency currency and development tooling. No advisories
+are open; nothing in the application changed. Outside `CHANGELOG.md`, this
+release moves lockfiles, manifests, base-image and workflow pins, and replaces
+the project's quality checks -- the git hooks, the CI base workflow and the
+agent stop hook -- with the cpf alpha.14 checks runtime.
+
+### Changed
+
+- **Quality checks moved to the cpf alpha.14 checks runtime** (#585). The
+  scaffold was upgraded from alpha.10, and the git hooks, the CI base
+  workflow and the agent stop hook now all call the same
+  `.cpf/runtime/verify.sh`, so a check that passes locally passes in CI. The
+  upgrade was prompted by the plugin's stop hook failing on every session:
+  with no `.cpf/policy.json` it fell back to running mypy from the
+  repository root, where each service's own mypy config does not load, so it
+  reported missing type stubs for `grpc`, `protobuf` and `memvid_sdk` that
+  both services handle. Nothing was wrong with the code -- mypy was clean in
+  both services run as CI runs it.
+
+  `.cpf/policy.json` was seeded by inference from the existing lint configs
+  rather than from the plugin's defaults, which reproduces the 41
+  `.prettierignore` entries exactly; the defaults carry six, and would have
+  put lockfiles, `node_modules`, the virtual environments and the `.mv2` data
+  under prettier. The stop hook now hands off to the Taskfile.
+
+- **The new commit-msg hook is stricter where it should be** (#585). Compared
+  case by case against the hook it replaces, it now rejects the
+  generated-with emoji trailer the old hook let through, and no longer
+  falsely rejects a message that names the project instructions file.
+  Everything else behaves the same.
+
+- **CI adopted the alpha.14 base workflow, adapted** (#585). Its static
+  checks run through the runtime instead of separate prettier,
+  markdownlint, shellcheck and plugin-validation jobs. As scaffolded it
+  would have regressed two things, both fixed before adopting it: it pinned
+  `actions/checkout` and `setup-node` at v6 and Node 22 against the v7 and
+  Node 26 the rest of CI uses; and, with no root `package.json` here, it
+  would have fallen back to an unpinned `npm install prettier@3`, so CI
+  would format-check with a different prettier than local runs. Node
+  tooling now installs from `frontend/package-lock.json`.
+
+  The policy's prettier scope listed only Markdown, YAML and JSON. The job
+  it replaced ran `prettier --check .`, which also covered 99 TypeScript,
+  HTML, CSS and JavaScript files that no other CI job format-checks. Adopted
+  unchanged, CI would have stopped checking TypeScript formatting without
+  failing anything; the scope now includes them, and CI checks 197 files
+  where the scaffold would have checked 98.
 
 ### Dependencies
+
+- **`markdownlint-cli2` 0.23.3, pinned in `frontend`** (#585). It had been
+  pinned nowhere: CI used the markdownlint action's bundled copy and local
+  runs fetched one through `npx`. Pinned at 0.23.3 rather than the 0.23.2
+  the action bundles, because 0.23.2 pulls `smol-toml` 1.7.0 --
+  GHSA-7w5x-hrqm-74c2, a high-severity denial of service via malformed TOML.
+  The CI markdownlint step had been running that version.
 
 - **memvid OpenTelemetry moved as a matched set** (#583). `opentelemetry`,
   `opentelemetry_sdk` and `opentelemetry-otlp` 0.32 -> 0.33,
