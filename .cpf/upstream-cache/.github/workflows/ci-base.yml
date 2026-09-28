@@ -1,0 +1,92 @@
+name: CI Base
+
+# CI boundary of the cpf checks runtime. Every check runs through
+# .cpf/runtime/ (projected by /cpf:specforge), the same code the Claude
+# Code hooks and git hooks run, so a change that passes locally passes
+# here. Scope comes from .cpf/policy.json; tool versions from the
+# project's package-lock.json and .tool-versions.
+#
+# Project-specific jobs belong in the host ci.yml that calls this
+# workflow, not in this file (upgrade manages it).
+
+on:
+  workflow_call:
+
+# A called workflow cannot hold more than its caller grants: keep this
+# within the host ci.yml's permissions (contents: read), or every run
+# ends in startup_failure.
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Static checks: prettier, markdownlint, shellcheck (policy-scoped)
+  # ---------------------------------------------------------------------------
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Install pinned node linters (package-lock.json)
+        if: hashFiles('package-lock.json') != ''
+        run: npm ci
+      - name: Install node linters (no lockfile; unpinned)
+        if: hashFiles('package-lock.json') == ''
+        run: npm install --no-save --no-package-lock prettier@3 markdownlint-cli2
+      - name: cpf checks (ci boundary)
+        run: bash .cpf/runtime/verify.sh --boundary ci
+
+  # ---------------------------------------------------------------------------
+  # Commit standards (PR only): every commit and the PR title, which
+  # becomes the squash-merge subject
+  # ---------------------------------------------------------------------------
+  commit-standards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Validate commits and PR title
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [[ -z "$BASE" || -z "$HEAD" ]]; then
+            echo "Not a pull request context -- skipping commit validation."
+            exit 0
+          fi
+          # Run both checks so every problem is reported, then fail.
+          rc=0
+          bash .cpf/runtime/commit-check.sh --range "$BASE..$HEAD" || rc=1
+          bash .cpf/runtime/commit-check.sh --title "$TITLE" --pr "$PR_NUMBER" || rc=1
+          exit "$rc"
+
+  # ---------------------------------------------------------------------------
+  # Summary (ONLY job to require in branch protection)
+  # ---------------------------------------------------------------------------
+  # Plugin validation is NOT part of the scaffold base. Downstream projects
+  # consume the cpf plugin from the Claude Code plugin cache and have no
+  # plugin source of their own. Projects that author their own Claude Code
+  # plugin can add a plugin-validation job to the host ci.yml (see the
+  # commented example there).
+  # ---------------------------------------------------------------------------
+  summary:
+    if: always()
+    needs: [checks, commit-standards]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check results
+        run: |
+          echo "Checks:  ${{ needs.checks.result }}"
+          echo "Commits: ${{ needs.commit-standards.result }}"
+          for result in "${{ needs.checks.result }}" "${{ needs.commit-standards.result }}"; do
+            if [[ "$result" == "failure" ]]; then
+              echo "One or more checks failed."
+              exit 1
+            fi
+          done
+          echo "All checks passed."

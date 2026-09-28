@@ -1,0 +1,137 @@
+#!/bin/bash
+set -euo pipefail
+
+# Git pre-commit hook.
+# Checks staged files for forbidden files, secrets, and lint issues.
+
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+
+if [[ -z "$STAGED_FILES" ]]; then
+    exit 0
+fi
+
+# --- Block commits to protected branches ---
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == "master" ]]; then
+    if [[ "${CPF_ALLOW_MAIN_COMMIT:-0}" != "1" ]]; then
+        echo "ERROR: Direct commits to '$CURRENT_BRANCH' are blocked." >&2
+        echo "  Create a feature branch instead:" >&2
+        echo "    git checkout -b feat/my-feature origin/main" >&2
+        echo "" >&2
+        echo "  To override (release/CI only):" >&2
+        echo "    CPF_ALLOW_MAIN_COMMIT=1 git commit ..." >&2
+        exit 1
+    fi
+fi
+
+ERRORS=0
+
+# --- Check for forbidden files ---
+check_forbidden_files() {
+    local file="$1"
+    local basename
+    basename=$(basename "$file")
+
+    case "$basename" in
+        # Committed templates, not secrets. Must precede the .env.* block.
+        .env.sample|.env.example|.env.template|.env.dist) ;;
+        .env|.env.*) return 1 ;;
+        id_rsa*|id_ed25519*|id_ecdsa*|authorized_keys|known_hosts) return 1 ;;
+        *.pem|*.key|*.crt|*.p12|*.pfx|*.keystore) return 1 ;;
+        credentials.json|service-account*.json|aws-credentials) return 1 ;;
+    esac
+
+    if echo "$file" | grep -qE '/(\.ssh|\.gnupg|\.aws|\.gcloud)/'; then
+        return 1
+    fi
+
+    return 0
+}
+
+# --- Check for secrets in staged content ---
+check_for_secrets() {
+    local file="$1"
+    local content
+    content=$(git show ":$file" 2>/dev/null || echo "")
+
+    if [[ -z "$content" ]]; then
+        return 0
+    fi
+
+    # AWS keys
+    if echo "$content" | grep -qE 'AKIA[0-9A-Z]{16}'; then
+        echo "  SECRET: AWS key pattern in $file" >&2
+        return 1
+    fi
+
+    # OpenAI keys
+    if echo "$content" | grep -qE 'sk-[a-zA-Z0-9]{48}'; then
+        echo "  SECRET: OpenAI key pattern in $file" >&2
+        return 1
+    fi
+
+    # GitHub tokens
+    if echo "$content" | grep -qE '(ghp_|gho_)[a-zA-Z0-9]{36}'; then
+        echo "  SECRET: GitHub token pattern in $file" >&2
+        return 1
+    fi
+
+    # GitLab tokens
+    if echo "$content" | grep -qE 'glpat-[a-zA-Z0-9_-]{20}'; then
+        echo "  SECRET: GitLab token pattern in $file" >&2
+        return 1
+    fi
+
+    # Slack tokens
+    if echo "$content" | grep -qE 'xoxb-[0-9]{10,}'; then
+        echo "  SECRET: Slack token pattern in $file" >&2
+        return 1
+    fi
+
+    # Generic password/secret/token assignments
+    if echo "$content" | grep -qiE '(password|secret|api_key|token)\s*[=:]\s*["\x27][^\s"'\'']{8,}'; then
+        echo "  SECRET: Possible credential assignment in $file" >&2
+        return 1
+    fi
+
+    return 0
+}
+
+# --- Main ---
+echo "Pre-commit: checking staged files..."
+
+for file in $STAGED_FILES; do
+    # Check forbidden files
+    if ! check_forbidden_files "$file"; then
+        echo "BLOCKED: Forbidden file: $file" >&2
+        ERRORS=$((ERRORS + 1))
+        continue
+    fi
+
+    # Check for secrets
+    if ! check_for_secrets "$file"; then
+        ERRORS=$((ERRORS + 1))
+        continue
+    fi
+done
+
+# Lint: the cpf checks runtime (the same checks the Stop hook and CI run),
+# on staged content.
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+RUNTIME="$REPO_ROOT/.cpf/runtime/verify.sh"
+if [[ -f "$RUNTIME" ]]; then
+    if ! CLAUDE_PROJECT_DIR="$REPO_ROOT" bash "$RUNTIME" --boundary git --staged; then
+        ERRORS=$((ERRORS + 1))
+    fi
+else
+    echo "Pre-commit: .cpf/runtime/verify.sh not found; lint skipped" \
+        "(run /cpf:specforge upgrade)" >&2
+fi
+
+if [[ "$ERRORS" -gt 0 ]]; then
+    echo "" >&2
+    echo "Pre-commit failed: $ERRORS issue(s) found." >&2
+    exit 1
+fi
+
+exit 0
