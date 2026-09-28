@@ -79,15 +79,14 @@ declare -a CLAUDE_PATHS=(
   "src/test/setup.ts|frontend/src/test/setup.ts"
 
   # Frontend config files
-  "tailwind.config.ts|frontend/tailwind.config.ts"
   "vite.config.ts|frontend/vite.config.ts"
   "tsconfig.json|frontend/tsconfig.json"
   "tsconfig.app.json|frontend/tsconfig.app.json"
   "tsconfig.node.json|frontend/tsconfig.node.json"
 
-  # Hook files referenced in Git Hooks Distribution section
-  ".githooks/|.githooks/"
-  "scripts/install-hooks.sh|scripts/install-hooks.sh"
+  # Hook files referenced in the Git Hooks section
+  ".cpf/scripts/hooks/|.cpf/scripts/hooks/"
+  ".cpf/policy.json|.cpf/policy.json"
 
   # API service
   "api-service/ai_resume_api/main.py|api-service/ai_resume_api/main.py"

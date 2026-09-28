@@ -311,15 +311,23 @@ See `data/example_resume.md` for a complete template.
 
 ## Quality Standards
 
-Quality is enforced by Claude Code hooks configured in `.claude/settings.json`:
+Quality is enforced by Claude Code hooks that the cpf plugin registers
+itself (not `.claude/settings.json`). They call the cpf checks runtime in
+`.cpf/runtime/`, the same code the git hooks and the CI base workflow run:
 
 | Hook                | Trigger               | Purpose                                                                      |
 | ------------------- | --------------------- | ---------------------------------------------------------------------------- |
 | `protect-files.sh`  | Pre-edit (Write/Edit) | Blocks modification of sensitive files (.env, keys, credentials, lock files) |
 | `validate-bash.sh`  | Pre-bash              | Blocks destructive commands (rm -rf /, force push, hard reset)               |
-| `validate-pr.sh`    | Pre-bash              | Validates PR descriptions and targets                                        |
+| `validate-pr.sh`    | Pre-bash              | Validates PR titles and descriptions                                         |
+| `post-edit.sh`      | Post-edit             | Auto-formats the edited file                                                 |
 | `format-changed.sh` | On stop               | Auto-formats changed files by detected language (runs before quality checks) |
-| `verify-quality.sh` | On stop               | Runs lint, type check, and test suite before session end                     |
+| `verify-quality.sh` | On stop               | `verify.sh --boundary agent`: `task lint` (blocking), `task test` (advisory) |
+
+What the stop hook runs is set in `.cpf/policy.json` (project-owned;
+`verify-quality.orchestrator` is `task`, so the Taskfile is the source of
+truth). `.claude/settings.json` additionally wires the project's own
+`format-changed.sh` on stop.
 
 ### Coverage Threshold
 
@@ -470,15 +478,25 @@ gh api --method PATCH repos/schwichtgit/ai-resume/code-scanning/alerts/1 \
 - Fix example: `.claude/skills/gh-code-scanning/examples/fix-example.md`
 - Dismiss example: `.claude/skills/gh-code-scanning/examples/dismiss-example.md`
 
-## Git Hooks Distribution
+## Git Hooks
 
-- `.githooks/` is tracked in git and contains all project git hooks (`pre-commit`, `commit-msg`)
-- `scripts/install-hooks.sh` sets `git config core.hooksPath .githooks` (no manual file copying needed)
-- To install hooks after cloning: `./scripts/install-hooks.sh`
+- The git hooks come from the cpf checks runtime: sources in
+  `.cpf/scripts/hooks/` (`pre-commit`, `commit-msg`), installed into git's
+  hooks directory (`.git/hooks`) by `task setup:hooks`. Run it after cloning;
+  it is a no-op when the installed hooks already match their sources.
+- `pre-commit` blocks forbidden files (`.env`, keys, credentials) and known
+  token patterns, blocks direct commits to `main`, and lints staged files.
+  eslint, prettier and markdownlint are skipped locally with a warning:
+  the runtime only resolves node tools from a root `node_modules`, and ours
+  live in `frontend/`. CI checks them.
+- `commit-msg` enforces Conventional Commits and rejects emoji, AI-isms,
+  Co-Authored-By trailers and a standalone "Claude" ("Claude Code" is
+  allowed).
+- Everything under `.cpf/scripts/` and `.cpf/runtime/` is cpf-managed:
+  upgrades replace it, and a local edit is parked in `.cpf/pending/` instead.
+  Change behavior through `.cpf/policy.json` (project-owned) or an upstream
+  change request to cpf, not by editing these files.
 - To skip hooks temporarily: `git commit --no-verify`
-- To uninstall: `git config --unset core.hooksPath`
-- Pre-commit ESLint: don't use `--max-warnings 0` (shadcn/ui warnings are expected)
-- Pre-commit path fix: strip `frontend/` prefix before passing to ESLint when cd'd into frontend/
 
 ## Git Commit Guidelines
 

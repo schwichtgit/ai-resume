@@ -56,8 +56,8 @@
         ".claude/mind.*",
         ".claude/worktrees/",
         "LICENSE",
-        "scripts/hooks/pre-commit",
-        "scripts/hooks/commit-msg"
+        ".cpf/scripts/hooks/pre-commit",
+        ".cpf/scripts/hooks/commit-msg"
       ],
       "orchestrator": "none",
       "severity": "error"

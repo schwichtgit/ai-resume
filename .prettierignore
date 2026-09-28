@@ -42,5 +42,5 @@ claude-project-foundation-PLAN.md
 .claude/mind.*
 .claude/worktrees/
 LICENSE
-scripts/hooks/pre-commit
-scripts/hooks/commit-msg
+.cpf/scripts/hooks/pre-commit
+.cpf/scripts/hooks/commit-msg

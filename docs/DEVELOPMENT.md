@@ -349,34 +349,45 @@ Subject line: 72 characters max, imperative mood, no emoji.
 
 ### Git Hooks
 
-Project hooks live in `.githooks/` (tracked in git). Install them:
+The git hooks come from the cpf checks runtime. Their sources live in
+`.cpf/scripts/hooks/`; install them into git's hooks directory after cloning:
 
 ```bash
 task setup:hooks
-# or directly:
-./scripts/install-hooks.sh
 ```
 
-This sets `git config core.hooksPath .githooks`. Hooks include:
+It is a no-op when the installed hooks already match their sources, and
+reinstalls them when they have drifted. Hooks include:
 
-- `pre-commit` -- runs ESLint on staged frontend files
-- `commit-msg` -- validates Conventional Commits format
+- `pre-commit` -- blocks forbidden files (`.env`, keys, credentials) and
+  known token patterns, blocks direct commits to `main`, and lints staged
+  files. eslint, prettier and markdownlint are skipped locally with a warning
+  because the runtime resolves node tools only from a root `node_modules`;
+  CI checks them.
+- `commit-msg` -- enforces Conventional Commits and rejects emoji, AI-isms
+  and Co-Authored-By trailers
 
-Skip temporarily with `git commit --no-verify`. Uninstall with
-`git config --unset core.hooksPath`.
+Both are cpf-managed: upgrades replace them. Change behavior through
+`.cpf/policy.json`, not by editing the hook files. Skip temporarily with
+`git commit --no-verify`.
 
 ### Claude Code Hooks
 
-Separate from git hooks, `.claude/hooks/` enforces quality and safety during
-Claude Code sessions (configured in `.claude/settings.json`):
+Separate from git hooks, the cpf plugin registers hooks that enforce
+quality and safety during Claude Code sessions. They call the same checks
+runtime (`.cpf/runtime/`) as the git hooks and CI:
 
-| Hook                | Trigger        | Purpose                                              |
-| ------------------- | -------------- | ---------------------------------------------------- |
-| `protect-files.sh`  | Pre Write/Edit | Blocks edits to secrets, keys, and lock files        |
-| `validate-bash.sh`  | Pre Bash       | Blocks destructive commands (`rm -rf /`, force push) |
-| `validate-pr.sh`    | Pre Bash       | Validates PR descriptions and targets                |
-| `format-changed.sh` | Stop           | Auto-formats changed files before quality checks     |
-| `verify-quality.sh` | Stop           | Runs lint, type check, and tests before session end  |
+| Hook                | Trigger         | Purpose                                                                   |
+| ------------------- | --------------- | ------------------------------------------------------------------------- |
+| `protect-files.sh`  | Pre Write/Edit  | Blocks edits to secrets, keys, and lock files                             |
+| `validate-bash.sh`  | Pre Bash        | Blocks destructive commands (`rm -rf /`, force push)                      |
+| `validate-pr.sh`    | Pre Bash        | Validates PR titles and descriptions                                      |
+| `post-edit.sh`      | Post Write/Edit | Auto-formats the edited file                                              |
+| `format-changed.sh` | Stop            | Auto-formats changed files before quality checks                          |
+| `verify-quality.sh` | Stop            | `task lint` (blocking) and `task test` (advisory), per `.cpf/policy.json` |
+
+`.claude/settings.json` additionally wires the project's own
+`format-changed.sh` on stop.
 
 Blocking hooks follow the Claude Code convention: `exit 2` with the message on
 stderr. See the [official hooks reference](https://code.claude.com/docs/en/hooks)
