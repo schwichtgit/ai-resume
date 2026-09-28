@@ -33,6 +33,8 @@ check_forbidden_files() {
     basename=$(basename "$file")
 
     case "$basename" in
+        # Committed templates, not secrets. Must precede the .env.* block.
+        .env.sample|.env.example|.env.template|.env.dist) ;;
         .env|.env.*) return 1 ;;
         id_rsa*|id_ed25519*|id_ecdsa*|authorized_keys|known_hosts) return 1 ;;
         *.pem|*.key|*.crt|*.p12|*.pfx|*.keystore) return 1 ;;
@@ -95,99 +97,6 @@ check_for_secrets() {
     return 0
 }
 
-# --- Find nearest project root for a file ---
-find_project_root() {
-    local dir="$1"
-    while [[ "$dir" != "." ]] && [[ "$dir" != "/" ]]; do
-        if [[ -f "$dir/package.json" ]] || [[ -f "$dir/Cargo.toml" ]] || \
-           [[ -f "$dir/pyproject.toml" ]] || [[ -f "$dir/go.mod" ]]; then
-            echo "$dir"
-            return 0
-        fi
-        dir=$(dirname "$dir")
-    done
-    # Check current directory
-    for marker in package.json Cargo.toml pyproject.toml go.mod; do
-        if [[ -f "./$marker" ]]; then
-            echo "."
-            return 0
-        fi
-    done
-    return 1
-}
-
-# --- Lint staged files ---
-lint_staged_files() {
-    local file="$1"
-    local ext="${file##*.}"
-    local dir
-    dir=$(dirname "$file")
-
-    # Skip generated files
-    case "$file" in
-        *_pb2.py|*_pb2_grpc.py) return 0 ;;
-    esac
-
-    local project_root
-    project_root=$(find_project_root "$dir") || return 0
-
-    case "$ext" in
-        ts|tsx|js|jsx)
-            if [[ -f "$project_root/node_modules/.bin/eslint" ]]; then
-                npx --prefix "$project_root" eslint "$file" --quiet 2>/dev/null || return 1
-            fi
-            ;;
-        py)
-            if command -v ruff >/dev/null 2>&1; then
-                ruff check "$file" 2>/dev/null || return 1
-            fi
-            ;;
-        rs)
-            # Clippy runs on the whole crate, skip per-file
-            ;;
-        sh)
-            if command -v shellcheck >/dev/null 2>&1; then
-                shellcheck "$file" 2>/dev/null || return 1
-            fi
-            ;;
-        go)
-            if command -v gofmt >/dev/null 2>&1; then
-                if [[ -n "$(gofmt -l "$file" 2>/dev/null)" ]]; then
-                    gofmt -w "$file"
-                    git add "$file"
-                    echo "  FORMATTED: $file"
-                fi
-            fi
-            if command -v golangci-lint >/dev/null 2>&1; then
-                (cd "$project_root" && golangci-lint run "./$dir/...") || return 1
-            elif command -v go >/dev/null 2>&1; then
-                (cd "$project_root" && go vet "./$dir/..." 2>/dev/null) || return 1
-            fi
-            ;;
-        md)
-            if [[ -f "$project_root/node_modules/.bin/markdownlint-cli2" ]]; then
-                git show ":$file" 2>/dev/null \
-                    | npx --prefix "$project_root" markdownlint-cli2 - 2>/dev/null || return 1
-            fi
-            ;;
-        yml|yaml)
-            if command -v python3 >/dev/null 2>&1; then
-                git show ":$file" 2>/dev/null \
-                    | python3 -c "
-import sys, yaml
-try:
-    yaml.safe_load(sys.stdin.read())
-except yaml.YAMLError as e:
-    print(f'  YAML error: {e}', file=sys.stderr)
-    sys.exit(1)
-" 2>/dev/null || return 1
-            fi
-            ;;
-    esac
-
-    return 0
-}
-
 # --- Main ---
 echo "Pre-commit: checking staged files..."
 
@@ -204,13 +113,20 @@ for file in $STAGED_FILES; do
         ERRORS=$((ERRORS + 1))
         continue
     fi
+done
 
-    # Lint
-    if ! lint_staged_files "$file"; then
-        echo "LINT FAIL: $file" >&2
+# Lint: the cpf checks runtime (the same checks the Stop hook and CI run),
+# on staged content.
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+RUNTIME="$REPO_ROOT/.cpf/runtime/verify.sh"
+if [[ -f "$RUNTIME" ]]; then
+    if ! CLAUDE_PROJECT_DIR="$REPO_ROOT" bash "$RUNTIME" --boundary git --staged; then
         ERRORS=$((ERRORS + 1))
     fi
-done
+else
+    echo "Pre-commit: .cpf/runtime/verify.sh not found; lint skipped" \
+        "(run /cpf:specforge upgrade)" >&2
+fi
 
 if [[ "$ERRORS" -gt 0 ]]; then
     echo "" >&2

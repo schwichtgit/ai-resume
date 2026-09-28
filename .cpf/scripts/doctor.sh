@@ -25,10 +25,37 @@ parse_args() {
   fi
   [[ -z "$PROJECT_DIR" ]] && PROJECT_DIR="$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")"
   if [[ -z "$REGISTRY_PATH" ]]; then
-    REGISTRY_PATH="$PROJECT_DIR/.specify/doctor-registry.json"
+    # INFRA-031: registry is no longer projected to the host; resolve
+    # via cpf-resolve-asset.sh, which checks
+    # .cpf/overrides/.specify/doctor-registry.json first and then
+    # falls back to the bundled copy in the plugin install dir.
+    REGISTRY_PATH="$(resolve_registry_path "$PROJECT_DIR")" \
+      || { echo "ERROR: cannot locate doctor-registry.json (set CLAUDE_PLUGIN_ROOT or pass --registry <path>)" >&2; exit 1; }
   elif [[ "$REGISTRY_PATH" != /* ]]; then
     REGISTRY_PATH="$PROJECT_DIR/$REGISTRY_PATH"
   fi
+}
+
+# Resolve the doctor-registry path via cpf-resolve-asset.sh.
+# Echoes the absolute path on success; returns nonzero on failure.
+# Honors CLAUDE_PROJECT_DIR for the override lookup (set explicitly
+# so the resolver looks under the host's .cpf/overrides/, not under
+# the script's invocation cwd).
+resolve_registry_path() {
+  local project_dir="$1"
+  local plugin_root="${CLAUDE_PLUGIN_ROOT:-}"
+  if [[ -z "$plugin_root" ]]; then
+    return 1
+  fi
+  # CLAUDE_PLUGIN_ROOT is the install root; assets live in .claude-plugin/.
+  if [[ -d "$plugin_root/.claude-plugin" ]]; then
+    plugin_root="$plugin_root/.claude-plugin"
+  fi
+  local resolver="$plugin_root/lib/cpf-resolve-asset.sh"
+  if [[ ! -f "$resolver" ]]; then
+    return 1
+  fi
+  CLAUDE_PROJECT_DIR="$project_dir" bash "$resolver" .specify/doctor-registry.json 2>/dev/null
 }
 
 detect_platform() { uname -s | tr '[:upper:]' '[:lower:]'; }
@@ -101,6 +128,7 @@ check_tool() {
 output_text() {
   local platform="$1" project_types_str="$2" results="$3"
   local passed="$4" warnings="$5" failures="$6" missing_required="$7"
+  local policy_warn_msg="${8:-}"
   echo "specforge doctor"
   echo "================"
   echo ""
@@ -140,6 +168,11 @@ output_text() {
       j=$((j + 1))
     done
   done
+  if [[ -n "$policy_warn_msg" ]]; then
+    echo ""
+    echo "Checks"
+    echo "  $policy_warn_msg"
+  fi
   echo ""
   echo "Summary: $passed passed, $warnings warning, $failures failure"
   if [[ $failures -eq 0 ]]; then
@@ -152,6 +185,7 @@ output_text() {
 output_json() {
   local platform="$1" project_types_str="$2" results="$3"
   local passed="$4" warnings="$5" failures="$6"
+  local policy_present="${7:-true}"
   local ptypes_json="[]"
   [[ -n "$project_types_str" ]] && ptypes_json="$(echo "$project_types_str" | tr ' ' '\n' | jq -R . | jq -s .)"
   local ready_val="true"
@@ -159,9 +193,10 @@ output_json() {
   jq -n --arg platform "$platform" --argjson ptypes "$ptypes_json" \
     --argjson tools "$results" --argjson passed "$passed" \
     --argjson warnings "$warnings" --argjson failures "$failures" \
-    --argjson ready "$ready_val" \
+    --argjson ready "$ready_val" --argjson policy_present "$policy_present" \
     '{platform:$platform,project_types:$ptypes,tools:$tools,
-      summary:{passed:$passed,warnings:$warnings,failures:$failures},ready:$ready}'
+      summary:{passed:$passed,warnings:$warnings,failures:$failures},
+      checks:{policy_present:$policy_present},ready:$ready}'
 }
 
 main() {
@@ -208,10 +243,25 @@ main() {
     fi
     i=$((i + 1))
   done
+  # Policy-presence check (INFRA-017). Hardcoded for now; a future
+  # changepoint item generalizes this into a registry-driven file_checks
+  # array. Suppressed when run inside the cpf source repo (plugin.json
+  # name == cpf) so dogfood runs stay quiet.
+  local policy_warn_msg="" policy_present="true" is_cpf_source_repo="false"
+  if [[ -f "$PROJECT_DIR/.claude-plugin/plugin.json" ]]; then
+    local plugin_name
+    plugin_name="$(jq -r '.name // empty' "$PROJECT_DIR/.claude-plugin/plugin.json" 2>/dev/null || true)"
+    [[ "$plugin_name" == "cpf" ]] && is_cpf_source_repo="true"
+  fi
+  if [[ "$is_cpf_source_repo" == "false" && ! -f "$PROJECT_DIR/.cpf/policy.json" ]]; then
+    policy_warn_msg="WARN: .cpf/policy.json missing -- run /cpf:specforge init to bootstrap"
+    policy_present="false"
+    warnings=$((warnings + 1))
+  fi
   if [[ "$OUTPUT_FORMAT" == "json" ]]; then
-    output_json "$platform" "$project_types_str" "$results" "$passed" "$warnings" "$failures"
+    output_json "$platform" "$project_types_str" "$results" "$passed" "$warnings" "$failures" "$policy_present"
   else
-    output_text "$platform" "$project_types_str" "$results" "$passed" "$warnings" "$failures" "$missing_required"
+    output_text "$platform" "$project_types_str" "$results" "$passed" "$warnings" "$failures" "$missing_required" "$policy_warn_msg"
   fi
   [[ $failures -gt 0 ]] && exit 1
   exit 0

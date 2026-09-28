@@ -1,0 +1,15 @@
+#!/bin/bash
+set -euo pipefail
+
+# Git commit-msg hook. The rules live in the cpf checks runtime
+# (.cpf/runtime/commit-check.sh), shared with the Claude Code PR hook and
+# the CI commit-standards jobs.
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+CHECK="$REPO_ROOT/.cpf/runtime/commit-check.sh"
+if [[ ! -f "$CHECK" ]]; then
+    echo "commit-msg: .cpf/runtime/commit-check.sh not found; checks skipped" \
+        "(run /cpf:specforge upgrade)" >&2
+    exit 0
+fi
+exec bash "$CHECK" --message-file "$1"

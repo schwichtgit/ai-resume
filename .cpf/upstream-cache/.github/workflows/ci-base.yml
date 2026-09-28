@@ -25,22 +25,16 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: '26'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-      # Local adaptation: this monorepo keeps its node tooling in frontend/,
-      # not at the root, and the runtime resolves node tools from
-      # <root>/node_modules/.bin or $PATH. Installing from the frontend
-      # lockfile and exposing its .bin keeps CI on the same pinned prettier
-      # and markdownlint-cli2 as local runs (the runtime labels a $PATH hit
-      # "unpinned"; the versions are still the lockfile's).
-      - name: Install pinned node linters (frontend/package-lock.json)
-        run: |
-          npm ci --prefix frontend
-          echo "$GITHUB_WORKSPACE/frontend/node_modules/.bin" >> "$GITHUB_PATH"
+          node-version: '22'
+      - name: Install pinned node linters (package-lock.json)
+        if: hashFiles('package-lock.json') != ''
+        run: npm ci
+      - name: Install node linters (no lockfile; unpinned)
+        if: hashFiles('package-lock.json') == ''
+        run: npm install --no-save --no-package-lock prettier@3 markdownlint-cli2
       - name: cpf checks (ci boundary)
         run: bash .cpf/runtime/verify.sh --boundary ci
 
@@ -51,7 +45,7 @@ jobs:
   commit-standards:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Validate commits and PR title

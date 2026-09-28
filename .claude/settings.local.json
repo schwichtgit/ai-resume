@@ -25,7 +25,6 @@
       "Bash(echo:*)",
       "Bash(ruff check:*)",
       "Bash(ruff format:*)",
-      "Bash(bash .claude/hooks/verify-quality.sh)",
       "Bash(npm test:*)",
       "Bash(npx tsc:*)",
       "Bash(npx eslint:*)",

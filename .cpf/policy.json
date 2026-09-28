@@ -1,0 +1,104 @@
+{
+  "_comment": "cpf hook policy, owned by this project: init seeds it and upgrade never overwrites it. Edit include/exclude globs, severity, and the verify-quality orchestrator here; .prettierignore, .markdownlint-cli2.yaml, and .cpf/shellcheck-excludes.txt are generated from it. The checks runtime (.cpf/runtime/) reads it at every boundary.",
+  "hooks": {
+    "prettier": {
+      "include": [
+        "**/*.md",
+        "**/*.yml",
+        "**/*.yaml",
+        "**/*.json",
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*.js",
+        "**/*.jsx",
+        "**/*.mjs",
+        "**/*.cjs",
+        "**/*.css",
+        "**/*.html"
+      ],
+      "exclude": [
+        "node_modules/",
+        "**/node_modules/",
+        ".venv/",
+        "**/.venv/",
+        "dist/",
+        "dist-ssr/",
+        "build/",
+        "**/dist/",
+        "**/build/",
+        "**/target/",
+        "coverage/",
+        "htmlcov/",
+        ".nyc_output/",
+        "**/coverage/",
+        "playwright-report/",
+        "test-results/",
+        ".cache/",
+        ".vite/",
+        ".turbo/",
+        ".next/",
+        ".pytest_cache/",
+        ".mypy_cache/",
+        ".ruff_cache/",
+        "**/.pytest_cache/",
+        "**/.mypy_cache/",
+        "**/.ruff_cache/",
+        "package-lock.json",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "uv.lock",
+        "Cargo.lock",
+        "poetry.lock",
+        "data/.memvid/",
+        "*.mv2",
+        "claude-project-foundation-PLAN.md",
+        ".claude/PLAN.md",
+        ".claude/mind.*",
+        ".claude/worktrees/",
+        "LICENSE",
+        ".cpf/scripts/hooks/pre-commit",
+        ".cpf/scripts/hooks/commit-msg"
+      ],
+      "orchestrator": "none",
+      "severity": "error"
+    },
+    "markdownlint": {
+      "include": ["**/*.md"],
+      "exclude": [
+        ".claude/PLAN.md",
+        ".claude/worktrees/**",
+        "node_modules/**",
+        "**/node_modules/**",
+        ".venv/**",
+        "**/.venv/**",
+        "**/target/**"
+      ],
+      "orchestrator": "none",
+      "severity": "error"
+    },
+    "shellcheck": {
+      "include": ["**/*.sh"],
+      "exclude": [
+        "./.git/*",
+        "*/.venv/*",
+        "*/node_modules/*",
+        "*/target/*",
+        "*/dist/*"
+      ],
+      "orchestrator": "none",
+      "severity": "error"
+    },
+    "verify-quality": {
+      "orchestrator": "task",
+      "severity": "error",
+      "on_missing_runner": "warn",
+      "on_missing_tests": "skip"
+    },
+    "format-changed": {
+      "severity": "warning"
+    },
+    "post-edit": {
+      "severity": "warning"
+    }
+  }
+}

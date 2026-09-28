@@ -12,8 +12,9 @@ PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || { echo "Not in a git
 
 echo "Installing hooks for: $PROJECT_ROOT"
 
-# Copy git hooks
-GIT_HOOKS_DIR="$PROJECT_ROOT/.git/hooks"
+# Copy git hooks. `git rev-parse --git-path hooks` honors worktrees
+# (where .git is a file) and core.hooksPath.
+GIT_HOOKS_DIR="$(cd "$PROJECT_ROOT" && git rev-parse --path-format=absolute --git-path hooks)"
 mkdir -p "$GIT_HOOKS_DIR"
 
 for hook in pre-commit commit-msg; do

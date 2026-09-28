@@ -72,11 +72,12 @@ tasks:
       - task: setup:hooks
 
   setup:hooks:
-    desc: Install git hooks
+    desc: Install the cpf git hooks (.cpf/scripts/hooks -> git's hooks dir)
     cmds:
-      - ./scripts/install-hooks.sh
+      - ./.cpf/scripts/install-hooks.sh
     status:
-      - test "$(git config core.hooksPath)" = ".githooks"
+      - cmp -s "$(git rev-parse --git-path hooks)/pre-commit" .cpf/scripts/hooks/pre-commit
+      - cmp -s "$(git rev-parse --git-path hooks)/commit-msg" .cpf/scripts/hooks/commit-msg
 
   lint:
     desc: Lint all services and root assets (matches CI ci-base coverage)
