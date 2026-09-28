@@ -1,53 +1,52 @@
 name: CI Base
 
+# CI boundary of the cpf checks runtime. Every check runs through
+# .cpf/runtime/ (projected by /cpf:specforge), the same code the Claude
+# Code hooks and git hooks run, so a change that passes locally passes
+# here. Scope comes from .cpf/policy.json; tool versions from the
+# project's package-lock.json and .tool-versions.
+#
+# Project-specific jobs belong in the host ci.yml that calls this
+# workflow, not in this file (upgrade manages it).
+
 on:
   workflow_call:
 
+# A called workflow cannot hold more than its caller grants: keep this
+# within the host ci.yml's permissions (contents: read), or every run
+# ends in startup_failure.
 permissions:
   contents: read
-  pull-requests: read
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Markdown lint
+  # Static checks: prettier, markdownlint, shellcheck (policy-scoped)
   # ---------------------------------------------------------------------------
-  markdownlint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: DavidAnson/markdownlint-cli2-action@v24.2.0
-        with:
-          globs: '**/*.md'
-
-  # ---------------------------------------------------------------------------
-  # Prettier format check
-  # ---------------------------------------------------------------------------
-  prettier:
+  checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: '26'
-      - run: npm install --prefix frontend
-      - run: npx --prefix frontend prettier --check .
-
-  # ---------------------------------------------------------------------------
-  # Shell script lint
-  # ---------------------------------------------------------------------------
-  shellcheck:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - name: Install shellcheck
-        run: sudo apt-get install -y shellcheck
-      - name: Run shellcheck
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      # Local adaptation: this monorepo keeps its node tooling in frontend/,
+      # not at the root, and the runtime resolves node tools from
+      # <root>/node_modules/.bin or $PATH. Installing from the frontend
+      # lockfile and exposing its .bin keeps CI on the same pinned prettier
+      # and markdownlint-cli2 as local runs (the runtime labels a $PATH hit
+      # "unpinned"; the versions are still the lockfile's).
+      - name: Install pinned node linters (frontend/package-lock.json)
         run: |
-          find . -name '*.sh' -not -path './.git/*' -not -path '*/.venv/*' -not -path '*/node_modules/*' -print0 | xargs -0 shellcheck -x
-          find scripts/hooks -type f -not -name '*.md' -print0 | xargs -0 shellcheck -x
+          npm ci --prefix frontend
+          echo "$GITHUB_WORKSPACE/frontend/node_modules/.bin" >> "$GITHUB_PATH"
+      - name: cpf checks (ci boundary)
+        run: bash .cpf/runtime/verify.sh --boundary ci
 
   # ---------------------------------------------------------------------------
-  # Commit standards (PR only)
+  # Commit standards (PR only): every commit and the PR title, which
+  # becomes the squash-merge subject
   # ---------------------------------------------------------------------------
   commit-standards:
     runs-on: ubuntu-latest
@@ -55,154 +54,45 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - name: Validate commits
+      - name: Validate commits and PR title
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          BASE="${{ github.event.pull_request.base.sha }}"
-          HEAD="${{ github.event.pull_request.head.sha }}"
-
-          # Skip when not in PR context (push to main, etc.)
-          if [[ -z "$BASE" ]] || [[ -z "$HEAD" ]]; then
+          if [[ -z "$BASE" || -z "$HEAD" ]]; then
             echo "Not a pull request context -- skipping commit validation."
             exit 0
           fi
-
-          ERRORS=0
-          while IFS= read -r sha; do
-            MSG=$(git log --format='%s' -n 1 "$sha")
-
-            # Skip merge commits (e.g. from branch updates, Dependabot)
-            if echo "$MSG" | grep -qE '^Merge '; then
-              continue
-            fi
-
-            # Conventional commit format
-            if ! echo "$MSG" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+'; then
-              echo "FAIL [$sha]: Not conventional commit format: $MSG"
-              ERRORS=$((ERRORS + 1))
-            fi
-
-            # Subject length
-            if [ ${#MSG} -gt 72 ]; then
-              echo "WARN [$sha]: Subject exceeds 72 chars: $MSG"
-            fi
-
-            # Emoji
-            if echo "$MSG" | python3 -c "
-          import sys, re
-          text = sys.stdin.read()
-          pattern = re.compile('[\U0001F300-\U0001F9FF\U00002600-\U000027BF]+', re.UNICODE)
-          sys.exit(0 if pattern.search(text) else 1)
-          " 2>/dev/null; then
-              echo "FAIL [$sha]: Emoji in commit message: $MSG"
-              ERRORS=$((ERRORS + 1))
-            fi
-
-            # AI-isms
-            if echo "$MSG" | grep -qiE '\b(I have|I'\''ve|I updated|I fixed|Certainly|seamless|robust|powerful|elegant)\b'; then
-              echo "FAIL [$sha]: AI-ism detected: $MSG"
-              ERRORS=$((ERRORS + 1))
-            fi
-
-          done < <(git rev-list "$BASE".."$HEAD")
-
-          if [ $ERRORS -gt 0 ]; then
-            echo ""
-            echo "Commit standards check failed: $ERRORS error(s)."
-            exit 1
-          fi
-
-  # ---------------------------------------------------------------------------
-  # Plugin validation
-  # ---------------------------------------------------------------------------
-  plugin-validation:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - name: Validate plugin.json
-        run: |
-          if [ ! -f .claude-plugin/plugin.json ]; then
-            echo "SKIP: .claude-plugin/plugin.json not found"
-            exit 0
-          fi
-          echo "--- plugin.json structure ---"
-          jq empty .claude-plugin/plugin.json
-          echo "PASS: plugin.json is valid JSON"
-
-          # Verify required fields
-          jq -e '.name' .claude-plugin/plugin.json > /dev/null
-          jq -e '.version' .claude-plugin/plugin.json > /dev/null
-          jq -e '.hooks' .claude-plugin/plugin.json > /dev/null
-          echo "PASS: required fields present"
-      - name: Validate referenced file paths
-        if: hashFiles('.claude-plugin/plugin.json') != ''
-        run: |
-          echo "--- Checking skill paths ---"
-          for path in $(jq -r '.skills[]?.path // empty' .claude-plugin/plugin.json); do
-            if [ ! -f ".claude-plugin/$path" ]; then
-              echo "FAIL: .claude-plugin/$path not found"
-              exit 1
-            fi
-            echo "  OK: $path"
-          done
-
-          echo "--- Checking agent paths ---"
-          for path in $(jq -r '.agents[]?.path // empty' .claude-plugin/plugin.json); do
-            if [ ! -f ".claude-plugin/$path" ]; then
-              echo "FAIL: .claude-plugin/$path not found"
-              exit 1
-            fi
-            echo "  OK: $path"
-          done
-          echo "PASS: all referenced paths exist"
-      - name: Validate hooks.json
-        if: hashFiles('.claude-plugin/plugin.json') != ''
-        run: |
-          HOOKS_REL=$(jq -r '.hooks' .claude-plugin/plugin.json)
-          HOOKS_PATH=".claude-plugin/$HOOKS_REL"
-
-          echo "--- hooks.json structure ---"
-          jq empty "$HOOKS_PATH"
-          echo "PASS: hooks.json is valid JSON"
-
-          echo "--- Checking hook script paths ---"
-          jq -r '.. | .command? // empty' "$HOOKS_PATH" | while IFS= read -r cmd; do
-            SCRIPT=$(echo "$cmd" | sed 's|\${CLAUDE_PLUGIN_ROOT}|.claude-plugin|g')
-            if [ ! -f "$SCRIPT" ]; then
-              echo "FAIL: $SCRIPT not found (from $cmd)"
-              exit 1
-            fi
-            echo "  OK: $cmd"
-          done
-          echo "PASS: all hook scripts exist"
-      - name: Validate SKILL.md exists
-        if: hashFiles('.claude-plugin/plugin.json') != ''
-        run: |
-          SKILL_PATH=$(jq -r '.skills[0].path' .claude-plugin/plugin.json)
-          test -f ".claude-plugin/$SKILL_PATH"
-          echo "PASS: SKILL.md exists at $SKILL_PATH"
+          # Run both checks so every problem is reported, then fail.
+          rc=0
+          bash .cpf/runtime/commit-check.sh --range "$BASE..$HEAD" || rc=1
+          bash .cpf/runtime/commit-check.sh --title "$TITLE" --pr "$PR_NUMBER" || rc=1
+          exit "$rc"
 
   # ---------------------------------------------------------------------------
   # Summary (ONLY job to require in branch protection)
   # ---------------------------------------------------------------------------
+  # Plugin validation is NOT part of the scaffold base. Downstream projects
+  # consume the cpf plugin from the Claude Code plugin cache and have no
+  # plugin source of their own. Projects that author their own Claude Code
+  # plugin can add a plugin-validation job to the host ci.yml (see the
+  # commented example there).
+  # ---------------------------------------------------------------------------
   summary:
     if: always()
-    needs:
-      [markdownlint, prettier, shellcheck, commit-standards, plugin-validation]
+    needs: [checks, commit-standards]
     runs-on: ubuntu-latest
     steps:
       - name: Check results
         run: |
-          echo "Markdown:  ${{ needs.markdownlint.result }}"
-          echo "Prettier:  ${{ needs.prettier.result }}"
-          echo "Shell:     ${{ needs.shellcheck.result }}"
-          echo "Commits:   ${{ needs.commit-standards.result }}"
-          echo "Plugin:    ${{ needs.plugin-validation.result }}"
-
-          for result in "${{ needs.markdownlint.result }}" "${{ needs.prettier.result }}" "${{ needs.shellcheck.result }}" "${{ needs.commit-standards.result }}" "${{ needs.plugin-validation.result }}"; do
+          echo "Checks:  ${{ needs.checks.result }}"
+          echo "Commits: ${{ needs.commit-standards.result }}"
+          for result in "${{ needs.checks.result }}" "${{ needs.commit-standards.result }}"; do
             if [[ "$result" == "failure" ]]; then
               echo "One or more checks failed."
               exit 1
             fi
           done
-
           echo "All checks passed."

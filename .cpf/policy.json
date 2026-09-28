@@ -2,7 +2,20 @@
   "_comment": "cpf hook policy, owned by this project: init seeds it and upgrade never overwrites it. Edit include/exclude globs, severity, and the verify-quality orchestrator here; .prettierignore, .markdownlint-cli2.yaml, and .cpf/shellcheck-excludes.txt are generated from it. The checks runtime (.cpf/runtime/) reads it at every boundary.",
   "hooks": {
     "prettier": {
-      "include": ["**/*.md", "**/*.yml", "**/*.yaml", "**/*.json"],
+      "include": [
+        "**/*.md",
+        "**/*.yml",
+        "**/*.yaml",
+        "**/*.json",
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*.js",
+        "**/*.jsx",
+        "**/*.mjs",
+        "**/*.cjs",
+        "**/*.css",
+        "**/*.html"
+      ],
       "exclude": [
         "node_modules/",
         "**/node_modules/",
