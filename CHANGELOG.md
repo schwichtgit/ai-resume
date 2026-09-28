@@ -57,6 +57,27 @@ agent stop hook -- with the cpf alpha.14 checks runtime.
   failing anything; the scope now includes them, and CI checks 197 files
   where the scaffold would have checked 98.
 
+- **The legacy hook system is retired** (#585). `.githooks/`,
+  `scripts/hooks/`, `scripts/install-hooks.sh` and `scripts/doctor.sh` are
+  gone, along with the project's own stop hook, which duplicated cpf's and
+  raced it on `npm ci`. `task setup:hooks` had been reverting the new hooks
+  on every run -- its up-to-date check compared the hooks path with
+  `.githooks`, which never matched, so it re-ran the legacy installer; it
+  now installs the cpf hooks and only when they have drifted. `.githooks/`
+  had never been the active hook path, so removing it loses no enforcement;
+  the few rules it defined that cpf lacks went to cpf as change requests.
+
+### Fixed
+
+- **memvid tasks no longer fail in the agent stop hook** (#585). rustup
+  puts `cargo` in `~/.cargo/bin`, which that hook's shell does not have on
+  `PATH`, so every memvid task exited 127. The memvid Taskfile now resolves
+  `cargo` itself.
+
+- **`scripts/verify-docs.sh` passes again** (#585). It had failed on `main`
+  since the move to Tailwind v4, expecting a `tailwind.config.ts` that the
+  project deliberately does not have.
+
 ### Dependencies
 
 - **`markdownlint-cli2` 0.23.3, pinned in `frontend`** (#585). It had been
