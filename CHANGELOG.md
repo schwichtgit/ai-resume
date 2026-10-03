@@ -7,6 +7,194 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-10-03
+
+A patch release of security fixes, dependency currency and development
+tooling. All 21 open Dependabot alerts are closed, one of them CRITICAL, and
+the two runtime fixes -- `pyjwt` and `urllib3` -- ship in the api-service
+image. Nothing in the application changed: outside `CHANGELOG.md`, this
+release moves lockfiles, manifests, base-image, toolchain and workflow pins,
+adjusts one test for a typing change, and replaces the project's quality
+checks -- the git hooks, the CI base workflow and the agent stop hook -- with
+the cpf alpha.14 checks runtime.
+
+### Security
+
+- **`pyjwt` 2.13.0 -> 2.15.1 in `api-service`** (#590). Thirteen advisories,
+  one CRITICAL (CVE-2026-102268) and five HIGH. `pyjwt` is a runtime
+  dependency -- `mcp[crypto]`, through `fastmcp` -- so it ships in the
+  api-service image. It goes to 2.15.x rather than the 2.14.0 most of the
+  alerts name, because GHSA-42vr-xj54-vc7v is fixed only in 2.15.0.
+
+- **`urllib3` 2.7.0 -> 2.8.0 in `api-service`** (#590). Two HIGH and one
+  MEDIUM. Also runtime: `requests`, used by the OTLP HTTP trace exporter.
+
+- **Development-only fixes** (#590): `virtualenv` 20.36.1 -> 21.14.5 (three
+  HIGH, one MEDIUM; it pulls `filelock` 3.20.3 -> 4.0.9) and `dulwich` 1.2.6
+  -> 1.2.15, both reached only through `poetry`, and `brace-expansion` 5.0.12
+  in `frontend`. The four `dulwich` advisories appeared in no Dependabot
+  alert: `pip-audit`, run by `task audit` before merge, reported them first.
+
+- **`braces` <= 3.0.3 is accepted, not fixed** (#601). GHSA-vfj7-8cjw-p6xm
+  (CVE-2026-93687, HIGH): a stack overflow on deeply nested brace patterns.
+  No fixed release exists -- the fix, micromatch/braces#72, is unmerged, and
+  the maintainer has been inactive since 2025-01. `braces` is reached only
+  through the development dependency `markdownlint-cli2` and only ever sees
+  the glob patterns that select files to lint, which live in this
+  repository, never Markdown content. Triggering it takes commit access; the
+  worst case is a crashed lint run. The acceptance is dated: it lapses on
+  2027-01-04 (below).
+
+### Changed
+
+- **Quality checks moved to the cpf alpha.14 checks runtime** (#585). The
+  scaffold was upgraded from alpha.10, and the git hooks, the CI base
+  workflow and the agent stop hook now all call the same
+  `.cpf/runtime/verify.sh`, so a check that passes locally passes in CI. The
+  upgrade was prompted by the plugin's stop hook failing on every session:
+  with no `.cpf/policy.json` it fell back to running mypy from the
+  repository root, where each service's own mypy config does not load, so it
+  reported missing type stubs for `grpc`, `protobuf` and `memvid_sdk` that
+  both services handle. Nothing was wrong with the code -- mypy was clean in
+  both services run as CI runs it.
+
+  `.cpf/policy.json` was seeded by inference from the existing lint configs
+  rather than from the plugin's defaults, which reproduces the 41
+  `.prettierignore` entries exactly; the defaults carry six, and would have
+  put lockfiles, `node_modules`, the virtual environments and the `.mv2` data
+  under prettier. The stop hook now hands off to the Taskfile.
+
+- **The new commit-msg hook is stricter where it should be** (#585). Compared
+  case by case against the hook it replaces, it now rejects the
+  generated-with emoji trailer the old hook let through, and no longer
+  falsely rejects a message that names the project instructions file.
+  Everything else behaves the same.
+
+- **CI adopted the alpha.14 base workflow, adapted** (#585). Its static
+  checks run through the runtime instead of separate prettier,
+  markdownlint, shellcheck and plugin-validation jobs. As scaffolded it
+  would have regressed two things, both fixed before adopting it: it pinned
+  `actions/checkout` and `setup-node` at v6 and Node 22 against the v7 and
+  Node 26 the rest of CI uses; and, with no root `package.json` here, it
+  would have fallen back to an unpinned `npm install prettier@3`, so CI
+  would format-check with a different prettier than local runs. Node
+  tooling now installs from `frontend/package-lock.json`.
+
+  The policy's prettier scope listed only Markdown, YAML and JSON. The job
+  it replaced ran `prettier --check .`, which also covered 99 TypeScript,
+  HTML, CSS and JavaScript files that no other CI job format-checks. Adopted
+  unchanged, CI would have stopped checking TypeScript formatting without
+  failing anything; the scope now includes them, and CI checks 197 files
+  where the scaffold would have checked 98.
+
+- **The legacy hook system is retired** (#585). `.githooks/`,
+  `scripts/hooks/`, `scripts/install-hooks.sh` and `scripts/doctor.sh` are
+  gone, along with the project's own stop hook, which duplicated cpf's and
+  raced it on `npm ci`. `task setup:hooks` had been reverting the new hooks
+  on every run -- its up-to-date check compared the hooks path with
+  `.githooks`, which never matched, so it re-ran the legacy installer; it
+  now installs the cpf hooks and only when they have drifted. `.githooks/`
+  had never been the active hook path, so removing it loses no enforcement;
+  the few rules it defined that cpf lacks went to cpf as change requests.
+
+- **`npm audit` gained a dated allowlist** (#601). `npm audit` cannot accept
+  a single advisory, so one unfixable finding failed every `task audit` run,
+  including the weekly Security Scan. `scripts/npm-audit.sh` runs the audit,
+  drops advisories listed in `frontend/.npm-audit-ignore`, and fails on
+  anything left at any severity, as before. The file follows the
+  `.trivyignore` convention and reuses its expiry check: every entry needs a
+  reason and a revisit date, and the run fails once the date passes -- or
+  once npm stops reporting the advisory, so a suppression cannot outlive its
+  finding.
+
+- **shellcheck is pinned at 0.11.0** (#601), in `.tool-versions`, which the
+  checks runtime reads to download and checksum-verify that release. With
+  no pin it used whatever shellcheck was on `PATH`: 0.11.0 locally, the CI
+  runner's preinstalled build in CI, which flagged a warning local runs did
+  not. The runtime still falls back to an unpinned shellcheck when the pinned
+  one cannot be downloaded; that is reported to cpf as a change request.
+
+### Fixed
+
+- **memvid tasks no longer fail in the agent stop hook** (#585). rustup
+  puts `cargo` in `~/.cargo/bin`, which that hook's shell does not have on
+  `PATH`, so every memvid task exited 127. The memvid Taskfile now resolves
+  `cargo` itself.
+
+- **`scripts/verify-docs.sh` passes again** (#585). It had failed on `main`
+  since the move to Tailwind v4, expecting a `tailwind.config.ts` that the
+  project deliberately does not have.
+
+### Dependencies
+
+- **OpenTelemetry for Python 1.44.0 -> 1.45.0 (0.65b0 -> 0.66b0 for the
+  instrumentation packages)** in `api-service` (#600). Dependabot filed the
+  API, SDK, exporter and FastAPI instrumentation as four pull requests;
+  they moved together, with the eight transitive `opentelemetry-*` packages,
+  so the family stays at one version. 1.45 declares its attribute value type
+  as a chained recursive alias that mypy cannot resolve, which broke type
+  narrowing in one test; the test now types span attributes as
+  `dict[str, object]`. No application code uses that type.
+
+- **Rust 1.98.0 -> 1.98.1** for `memvid-service` (#600): the builder image
+  and `rust-toolchain.toml` together. Dependabot moved only the image, which
+  would have built the container with a different compiler than local and CI
+  builds.
+
+- **Also** (#600): `fastapi` 0.142.2; `thiserror` 2.0.21 and `hyper-util`
+  0.1.21 in `memvid-service`; the frontend group -- `@tanstack/react-query`
+  5.104.0, `lucide-react` 1.49.0, `react-day-picker` 10.0.2,
+  `react-hook-form` 7.89.0, `typescript-eslint` 8.71.0, `vite` 8.3.1,
+  `@types/node` 26.6.3, and `vitest` with `@vitest/coverage-v8` 5.0.3 as a
+  pair; and `taiki-e/install-action` 2.87.22 and `sonarqube-scan-action`
+  8.3.0.
+
+- **`markdownlint-cli2` 0.23.3, pinned in `frontend`** (#585). It had been
+  pinned nowhere: CI used the markdownlint action's bundled copy and local
+  runs fetched one through `npx`. Pinned at 0.23.3 rather than the 0.23.2
+  the action bundles, because 0.23.2 pulls `smol-toml` 1.7.0 --
+  GHSA-7w5x-hrqm-74c2, a high-severity denial of service via malformed TOML.
+  The CI markdownlint step had been running that version.
+
+- **memvid OpenTelemetry moved as a matched set** (#583). `opentelemetry`,
+  `opentelemetry_sdk` and `opentelemetry-otlp` 0.32 -> 0.33,
+  `tracing-opentelemetry` 0.33 -> 0.34. Dependabot filed these as four separate
+  pull requests, and each was red on its own: `tracing-opentelemetry` 0.34
+  requires `opentelemetry` 0.33, so any single bump left two incompatible
+  copies in the tree and memvid failed to compile. Together they compile with
+  no source change and no duplicated `tonic`, `prost` or `hyper` versions.
+
+  Compiling was not the realistic risk for a pre-1.0 minor of the tracing
+  pipeline -- spans silently not reaching Tempo was, and the unit tests only
+  assert that the tracing layer is constructed. Export was verified end to end
+  against a local OTLP collector: real `Search` and `GetState` RPCs produced
+  four spans, each with its own trace ID, carrying
+  `service.name: ai-resume-memvid`.
+
+- **`jlumbroso/free-disk-space` v1.3.1 -> v2.0.0** (#583), the action that
+  keeps the amd64 ingest build from running out of disk. v2 renames
+  `tool-cache` to `preinstalled-runtimes` and flips the `swap-storage` default
+  to `false`. An unrecognised input in Actions is only a warning, so a missed
+  rename would silently stop reclaiming space; the input is renamed here --
+  Dependabot's pull request left the deprecated name -- and `swap-storage`
+  was already set explicitly. The first run under v2 emitted no warnings and
+  reclaimed 32 GiB, the renamed input accounting for 4.9 GiB of it.
+
+- **`protobuf` 7.36.1 -> 7.36.2** (#583). Runtime only: the stub generator
+  stays at `grpcio-tools` 1.84.0 and the committed stubs are unchanged, so,
+  unlike the 1.84.0 generator bump in 0.2.2, this needed no separate change.
+
+- **Also** (#583): `starlette` 1.7.0, `cachetools` 7.2.0 and `poetry` 2.5.1
+  in `api-service`; `sentence-transformers` 6.1.0 in `ingest`, verified with
+  the unfiltered test suite because CI deselects the embedding path; the
+  frontend group -- `react-resizable-panels` 4.13.2, `eslint` 10.11.0, `jsdom`
+  30.1.1, `prettier` 3.9.9, `typescript-eslint` 8.70.1 -- where `jsdom` pulls
+  four transitive majors, all its own development-only dependencies; the
+  `node` 26.10.0 builder and `alpine` 3.24.2 runtime base images; and
+  `taiki-e/install-action` 2.87.19 and `sonarqube-scan-action` 8.2.2. Every new
+  image digest and action SHA was checked against its registry rather than
+  copied from the pull request.
+
 ## [0.2.2] - 2026-09-24
 
 A patch release of security fixes and dependency currency. Three advisories
@@ -1419,7 +1607,8 @@ documentation overhaul. No new product features since alpha.23.
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/schwichtgit/ai-resume/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/schwichtgit/ai-resume/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/schwichtgit/ai-resume/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/schwichtgit/ai-resume/compare/v0.1.3...v0.2.0
