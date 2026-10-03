@@ -7,7 +7,7 @@ requires-python = ">=3.14"
 readme = "README.md"
 license = {text = "MIT"}
 dependencies = [
-    "fastapi>=0.141.1",
+    "fastapi>=0.142.2",
     "starlette>=1.7.0",
     "setuptools>=84.0.0",
     "uvicorn[standard]>=0.52.4",
