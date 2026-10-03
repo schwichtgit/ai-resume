@@ -7,13 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.3] - 2026-09-28
+## [0.2.3] - 2026-10-03
 
-A patch release of dependency currency and development tooling. No advisories
-are open; nothing in the application changed. Outside `CHANGELOG.md`, this
-release moves lockfiles, manifests, base-image and workflow pins, and replaces
-the project's quality checks -- the git hooks, the CI base workflow and the
-agent stop hook -- with the cpf alpha.14 checks runtime.
+A patch release of security fixes, dependency currency and development
+tooling. All 21 open Dependabot alerts are closed, one of them CRITICAL, and
+the two runtime fixes -- `pyjwt` and `urllib3` -- ship in the api-service
+image. Nothing in the application changed: outside `CHANGELOG.md`, this
+release moves lockfiles, manifests, base-image, toolchain and workflow pins,
+adjusts one test for a typing change, and replaces the project's quality
+checks -- the git hooks, the CI base workflow and the agent stop hook -- with
+the cpf alpha.14 checks runtime.
+
+### Security
+
+- **`pyjwt` 2.13.0 -> 2.15.1 in `api-service`** (#590). Thirteen advisories,
+  one CRITICAL (CVE-2026-102268) and five HIGH. `pyjwt` is a runtime
+  dependency -- `mcp[crypto]`, through `fastmcp` -- so it ships in the
+  api-service image. It goes to 2.15.x rather than the 2.14.0 most of the
+  alerts name, because GHSA-42vr-xj54-vc7v is fixed only in 2.15.0.
+
+- **`urllib3` 2.7.0 -> 2.8.0 in `api-service`** (#590). Two HIGH and one
+  MEDIUM. Also runtime: `requests`, used by the OTLP HTTP trace exporter.
+
+- **Development-only fixes** (#590): `virtualenv` 20.36.1 -> 21.14.5 (three
+  HIGH, one MEDIUM; it pulls `filelock` 3.20.3 -> 4.0.9) and `dulwich` 1.2.6
+  -> 1.2.15, both reached only through `poetry`, and `brace-expansion` 5.0.12
+  in `frontend`. The four `dulwich` advisories appeared in no Dependabot
+  alert: `pip-audit`, run by `task audit` before merge, reported them first.
+
+- **`braces` <= 3.0.3 is accepted, not fixed** (#601). GHSA-vfj7-8cjw-p6xm
+  (CVE-2026-93687, HIGH): a stack overflow on deeply nested brace patterns.
+  No fixed release exists -- the fix, micromatch/braces#72, is unmerged, and
+  the maintainer has been inactive since 2025-01. `braces` is reached only
+  through the development dependency `markdownlint-cli2` and only ever sees
+  the glob patterns that select files to lint, which live in this
+  repository, never Markdown content. Triggering it takes commit access; the
+  worst case is a crashed lint run. The acceptance is dated: it lapses on
+  2027-01-04 (below).
 
 ### Changed
 
@@ -67,6 +97,23 @@ agent stop hook -- with the cpf alpha.14 checks runtime.
   had never been the active hook path, so removing it loses no enforcement;
   the few rules it defined that cpf lacks went to cpf as change requests.
 
+- **`npm audit` gained a dated allowlist** (#601). `npm audit` cannot accept
+  a single advisory, so one unfixable finding failed every `task audit` run,
+  including the weekly Security Scan. `scripts/npm-audit.sh` runs the audit,
+  drops advisories listed in `frontend/.npm-audit-ignore`, and fails on
+  anything left at any severity, as before. The file follows the
+  `.trivyignore` convention and reuses its expiry check: every entry needs a
+  reason and a revisit date, and the run fails once the date passes -- or
+  once npm stops reporting the advisory, so a suppression cannot outlive its
+  finding.
+
+- **shellcheck is pinned at 0.11.0** (#601), in `.tool-versions`, which the
+  checks runtime reads to download and checksum-verify that release. With
+  no pin it used whatever shellcheck was on `PATH`: 0.11.0 locally, the CI
+  runner's preinstalled build in CI, which flagged a warning local runs did
+  not. The runtime still falls back to an unpinned shellcheck when the pinned
+  one cannot be downloaded; that is reported to cpf as a change request.
+
 ### Fixed
 
 - **memvid tasks no longer fail in the agent stop hook** (#585). rustup
@@ -79,6 +126,28 @@ agent stop hook -- with the cpf alpha.14 checks runtime.
   project deliberately does not have.
 
 ### Dependencies
+
+- **OpenTelemetry for Python 1.44.0 -> 1.45.0 (0.65b0 -> 0.66b0 for the
+  instrumentation packages)** in `api-service` (#600). Dependabot filed the
+  API, SDK, exporter and FastAPI instrumentation as four pull requests;
+  they moved together, with the eight transitive `opentelemetry-*` packages,
+  so the family stays at one version. 1.45 declares its attribute value type
+  as a chained recursive alias that mypy cannot resolve, which broke type
+  narrowing in one test; the test now types span attributes as
+  `dict[str, object]`. No application code uses that type.
+
+- **Rust 1.98.0 -> 1.98.1** for `memvid-service` (#600): the builder image
+  and `rust-toolchain.toml` together. Dependabot moved only the image, which
+  would have built the container with a different compiler than local and CI
+  builds.
+
+- **Also** (#600): `fastapi` 0.142.2; `thiserror` 2.0.21 and `hyper-util`
+  0.1.21 in `memvid-service`; the frontend group -- `@tanstack/react-query`
+  5.104.0, `lucide-react` 1.49.0, `react-day-picker` 10.0.2,
+  `react-hook-form` 7.89.0, `typescript-eslint` 8.71.0, `vite` 8.3.1,
+  `@types/node` 26.6.3, and `vitest` with `@vitest/coverage-v8` 5.0.3 as a
+  pair; and `taiki-e/install-action` 2.87.22 and `sonarqube-scan-action`
+  8.3.0.
 
 - **`markdownlint-cli2` 0.23.3, pinned in `frontend`** (#585). It had been
   pinned nowhere: CI used the markdownlint action's bundled copy and local
