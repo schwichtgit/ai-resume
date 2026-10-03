@@ -39,10 +39,11 @@ tasks:
 
   audit:
     desc: Scan npm dependencies for known vulnerabilities (lockfile)
-    # Reads package-lock.json directly; no node_modules required. Exits
-    # non-zero on any advisory at or above the level.
+    # Reads package-lock.json directly; no node_modules required. Fails on any
+    # advisory at any severity, except those accepted in .npm-audit-ignore
+    # (dated, and enforced by scripts/npm-audit.sh -- see that file).
     cmds:
-      - npm audit --audit-level=low
+      - ../scripts/npm-audit.sh .
 
   test:
     desc: Run Vitest

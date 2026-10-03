@@ -66,7 +66,8 @@ jobs:
   # advisories against already-pinned deps -- the case Dependabot misses
   # (it only fires on dep *changes*), e.g. the msgpack/undici advisories that
   # surfaced against unchanged lockfiles. Fails the run on any unsuppressed
-  # finding; suppressions live in per-service .pip-audit-ignore / .trivyignore.
+  # finding; suppressions live in per-service .pip-audit-ignore / .trivyignore
+  # and frontend/.npm-audit-ignore.
   dependency-audit:
     name: Dependency vulnerability audit
     runs-on: ubuntu-latest
