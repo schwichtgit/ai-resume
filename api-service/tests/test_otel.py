@@ -271,7 +271,10 @@ class TestChatEndpointSpans:
 
         spans = otel_exporter.get_finished_spans()
         for span in spans:
-            attrs = dict(span.attributes) if span.attributes else {}
+            # object, not AnyValue: opentelemetry 1.45 declares AnyValue as a
+            # chained recursive alias that mypy leaves unresolved, which
+            # defeats the isinstance narrowing below.
+            attrs: dict[str, object] = dict(span.attributes) if span.attributes else {}
             for key, value in attrs.items():
                 if isinstance(value, str):
                     # Message content must not appear in span attributes
