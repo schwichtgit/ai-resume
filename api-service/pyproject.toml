@@ -23,7 +23,7 @@ dependencies = [
     # scripts/check-proto-drift.sh keeps it honest.
     "protobuf>=7.36.2",
     "opentelemetry-api>=1.44.0",
-    "opentelemetry-sdk>=1.44.0",
+    "opentelemetry-sdk>=1.45.0",
     "opentelemetry-instrumentation-fastapi>=0.65b0",
     "prometheus-client>=0.26.0",
     "prometheus-fastapi-instrumentator>=8.1.0",
