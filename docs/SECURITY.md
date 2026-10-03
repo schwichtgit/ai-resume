@@ -449,7 +449,11 @@ Scanning is automated by the **Security Scan** workflow
   `CRITICAL,HIGH` gate (`TRIVY_IGNORE_UNFIXED=true`, honoring `.trivyignore`).
 - **`dependency-audit`** -- runs `task audit`, a whole-SBOM dependency sweep
   across npm (`npm audit`), Python (`pip-audit`), and Rust (`cargo audit`).
-  Suppressions live in per-service `.pip-audit-ignore` / `.trivyignore`.
+  Suppressions live in per-service `.pip-audit-ignore` / `.trivyignore`, and
+  for npm in `frontend/.npm-audit-ignore`. `npm audit` cannot accept a single
+  advisory, so `scripts/npm-audit.sh` applies that file: each entry needs a
+  reason and a `Revisit YYYY-MM-DD` date, and the run fails once the date
+  passes or once npm stops reporting the advisory (a stale entry).
 
 Live results are in the repository's **Security -> Code scanning** dashboard;
 that and the ignore files are the source of truth for current alert state.
