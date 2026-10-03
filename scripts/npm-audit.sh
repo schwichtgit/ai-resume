@@ -28,7 +28,7 @@ else
 fi
 
 # npm audit exits non-zero whenever it finds anything; the JSON is the result.
-REPORT=$(cd "$FRONTEND_DIR" && npm audit --json 2>/dev/null || true)
+REPORT=$(npm --prefix "$FRONTEND_DIR" audit --json 2>/dev/null) || true
 
 if ! echo "$REPORT" | jq -e '.vulnerabilities' >/dev/null 2>&1; then
     echo "npm audit did not produce a report:" >&2
