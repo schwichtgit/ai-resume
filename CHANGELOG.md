@@ -7,6 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-10-11
+
+A patch release of dependency currency and four advisory fixes. All four
+advisories were published on 2026-10-05 and found by `task audit` before
+any of them was a Dependabot alert. No application code changed: outside
+`CHANGELOG.md`, this release moves lockfiles, manifests and one workflow
+pin, adds two npm overrides, and removes one unused development dependency.
+The frontend bundle, api-service and memvid images do carry the dependency
+updates below; the ingest image carries the `fsspec` fix.
+
+### Security
+
+- **`fsspec` 2026.1.0 -> 2026.9.0 in `ingest`** (#610). CVE-2026-104851.
+  `fsspec` comes in through `huggingface-hub`, which `sentence-transformers`
+  uses to fetch the embedding model, so it runs on the embedding path. CI
+  deselects that path; the change was verified with the unfiltered ingest
+  suite (90 passed).
+
+- **`postcss-selector-parser` removed from the tree** (#610).
+  GHSA-rj75-hqrm-r3gf (moderate): quadratic-time selector parsing. Its only
+  consumer was `@tailwindcss/typography` (below), which pins 6.0.10 exactly
+  against a fix in 7.1.6. Removing the unused plugin removes the package.
+
+- **`smol-toml` 1.8.0 -> 1.9.1** (#610). GHSA-r4xh-jqrq-34v2 (moderate):
+  quadratic-time parsing. `markdownlint-cli2` pins 1.8.0 exactly, so the fix
+  is an npm override under it -- a semver-minor step. markdownlint-cli2 only
+  loads it for `.toml` configuration, and this repository's are YAML.
+
+- **`katex` 0.16.47 -> 0.18.2** (#612; Dependabot alert #131).
+  GHSA-238p-pmpm-9mq7 (low). The only consumer, `micromark-extension-math`
+  inside markdownlint, declares `^0.16.0`, which cannot reach the fix, so
+  #610 first accepted it in `.npm-audit-ignore`. An npm override reaches it
+  instead: markdownlint uses only the extension's parser, and katex sits
+  behind the HTML renderer it never calls, though it is still loaded at
+  import. Verified that markdownlint loads, lints every repository file with
+  an unchanged result, and still reports real violations in a file with
+  inline and block math. The allowlist entry was then removed -- the audit
+  script flagged it stale once the advisory was gone, as designed -- so
+  `braces` is again the only accepted advisory.
+
+### Removed
+
+- **`@tailwindcss/typography`** (#610), a development dependency left over
+  from the Tailwind v3 configuration. Tailwind v4's CSS-first configuration
+  loads a plugin only through an `@plugin` directive; there is none, and no
+  `prose` class anywhere. The production build is byte-identical with and
+  without it.
+
+### Dependencies
+
+- **OpenTelemetry for Python 1.45.0 -> 1.45.1 (0.66b0 -> 0.66b1 for the
+  instrumentation packages)** in `api-service` (#610), all 15 packages of
+  the family together, as in 0.2.3. The floors in `pyproject.toml` were
+  raised to match, including `opentelemetry-instrumentation-fastapi`, which
+  Dependabot had left at 0.65b0.
+
+- **`ruff` 0.16.8 -> 0.17.0 in `api-service` and `ingest`** (#610), floors
+  raised in both so the two services keep the same linter. Dependabot
+  proposed 0.16.10; 0.17.0 shipped after it opened the pull request, and it
+  lints and formats both services with no change.
+
+- **`@playwright/test` 1.63.0 -> 1.64.0** (#611). The configuration loads
+  and lists all eleven tests locally; the tests themselves run only against
+  the deployed site, in the 6-hourly production smoke workflow.
+
+- **Also** (#610): the frontend group of 40 minor and patch updates --
+  among them the OpenTelemetry web packages (`sdk-trace-web` 2.12.0,
+  `exporter-trace-otlp-http` 0.223.0), 27 `@radix-ui` components,
+  `lucide-react` 1.52.0, `vite` 8.3.3, `eslint` 10.12.0 and `jsdom` 30.1.2;
+  `tokio` 1.53.2 and `hyper` 1.12.0 in `memvid-service`; `cachetools` 7.2.1
+  in `api-service`; and `taiki-e/install-action` 2.87.26.
+
 ## [0.2.3] - 2026-10-03
 
 A patch release of security fixes, dependency currency and development
@@ -1607,7 +1679,8 @@ documentation overhaul. No new product features since alpha.23.
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/schwichtgit/ai-resume/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/schwichtgit/ai-resume/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/schwichtgit/ai-resume/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/schwichtgit/ai-resume/compare/v0.2.0...v0.2.1
