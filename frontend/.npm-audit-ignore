@@ -23,13 +23,3 @@
 # A braces 3.0.4 reaches us through micromatch's ^3.0.3 with a lockfile
 # refresh alone; drop this entry then.
 GHSA-vfj7-8cjw-p6xm  # accepted: unfixed upstream, dev-only, repo-controlled input. Revisit 2027-01-04.
-
-# katex 0.16.47, prototype pollution can bypass `trust` restrictions (low).
-# Fixed in 0.18.2, but the only consumer, micromark-extension-math 3.1.0
-# (inside markdownlint 0.41.1, inside markdownlint-cli2), declares ^0.16.0,
-# and on a 0.x line 0.18 is a breaking release; no newer markdownlint pins a
-# fixed range yet. katex only renders math to HTML, and markdownlint only
-# parses Markdown -- it never calls the HTML compiler -- so katex code never
-# runs here. Development dependency only. Accepted 2026-10-11; drop when a
-# markdownlint-cli2 release moves to katex >= 0.18.2.
-GHSA-238p-pmpm-9mq7  # accepted: unreachable (parse-only), dev-only, fix out of range. Revisit 2027-01-04.
