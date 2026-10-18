@@ -7,13 +7,13 @@ requires-python = ">=3.14"
 readme = "README.md"
 license = {text = "MIT"}
 dependencies = [
-    "fastapi>=0.141.1",
-    "starlette>=1.7.0",
+    "fastapi>=0.143.0",
+    "starlette>=1.8.0",
     "setuptools>=84.0.0",
     "uvicorn[standard]>=0.52.4",
     "python-multipart>=0.0.32",
     "httpx>=0.28.1",
-    "pydantic>=2.13.5",
+    "pydantic>=2.14.1",
     "pydantic-settings>=2.15.0",
     "grpcio>=1.84.0",
     "grpcio-tools>=1.84.0",
@@ -45,7 +45,7 @@ test = [
 ]
 lint = [
     "ruff>=0.16.10",
-    "mypy>=2.3.1",
+    "mypy>=2.4.0",
     "types-cachetools>=7.0.0.20260713",
 ]
 sbom = [

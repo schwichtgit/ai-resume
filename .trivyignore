@@ -15,9 +15,17 @@
 #
 # Reference: https://aquasecurity.github.io/trivy/latest/docs/configuration/filtering/#by-finding-ids
 
-# No active suppressions.
-#
-# The seven libc6/Trixie entries that lived here were all inherited from the
+# lopdf 0.38.0 / 0.39.0 in the memvid binary: stack overflow via deeply nested
+# PDF objects. GitHub published this on 2026-10-16 as GHSA-6fj4-rcr3-r7rr; it
+# is the same advisory as RUSTSEC-2026-0187, already accepted for `cargo audit`
+# in memvid-service/.cargo/audit.toml, and the reasoning is the same:
+# memvid-core 2.0.140 (still the latest release) caps lopdf ^0.39, the fix is
+# 0.42.0 (memvid/memvid#242), and this service opens a pre-built .mv2 read-only
+# -- it never parses a PDF at serving time. Trivy now lists a fixed version, so
+# --ignore-unfixed no longer skips it. No GitHub code-scanning alert yet.
+GHSA-6fj4-rcr3-r7rr  # accepted: lopdf via memvid-core cap, PDF parser unreachable at serving time. Revisit 2027-01-18.
+
+# History: the seven libc6/Trixie entries that lived here were all inherited from the
 # memvid runtime when it was based on distroless/cc-debian13. That base was
 # replaced with distroless/static in #496, which removed libc entirely, so the
 # findings no longer exist to suppress. Verified against every current runtime
