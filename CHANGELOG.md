@@ -7,6 +7,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-10-18
+
+A patch release of security fixes and dependency currency. One fix is in a
+public endpoint: `mcp`, under the `/mcp` server. No application code
+changed: outside `CHANGELOG.md`, this release moves lockfiles, manifests,
+base-image, toolchain and workflow pins, and adds three cargo-audit and one
+Trivy suppression, each for an advisory that cannot be fixed downstream and
+whose vulnerable code is not reached. The api-service, memvid and frontend
+images all carry the updates below.
+
+### Security
+
+- **`mcp` 1.28.1 -> 1.30.0 in `api-service`** (#624). GHSA-84m7-p3x7-pcfv
+  (medium): unbounded session accumulation in the StreamableHTTP transport
+  allows resource exhaustion. `mcp` comes in through `fastmcp`, which serves
+  the public `/mcp` endpoint on that transport, so anyone could open
+  sessions until the service ran out of memory. 1.30.0 resolves within
+  `fastmcp` 3.4.7's range; the MCP tests pass on it.
+
+- **`rustls` 0.23.45 -> 0.23.46 in `memvid-service`** (#624).
+  RUSTSEC-2026-0346 to -0349: `Debug` output that exposes TLS secrets,
+  buffered data sent to the outer server after an ECH rejection, a brotli
+  certificate decompression that can allocate 1 GiB before authentication,
+  and a ServerHello downgrade. `rustls` comes from
+  `metrics-exporter-prometheus`, this project's own dependency, so the fix
+  is a targeted lockfile update.
+
+- **`zip` advisories accepted for `memvid-service`** (#624).
+  RUSTSEC-2026-0367 to -0369 concern only `extract()` writing an archive to
+  the filesystem -- SUID/SGID bits, symlink targets, Unix permissions. Both
+  copies, 0.6.6 through `calamine` and 7.4.0 directly, come from
+  `memvid-core` 2.0.140, still the latest release; the fix needs zip 9.
+  Neither crate calls `extract()` -- both read archive entries in memory --
+  and the service never uses memvid-core's document readers, so the
+  advisories are suppressed in `memvid-service/.cargo/audit.toml` next to
+  the existing lopdf and quick-xml entries (memvid/memvid#242).
+
+- **`lopdf` accepted for the Trivy image gate** (#624). GitHub published
+  the lopdf stack-overflow advisory on 2026-10-16 as GHSA-6fj4-rcr3-r7rr, the
+  same advisory as RUSTSEC-2026-0187, already accepted for `cargo audit`.
+  It now lists a fixed version, so `--ignore-unfixed` stopped skipping it
+  and every memvid image build failed the CRITICAL/HIGH gate, `main`
+  included. It is accepted in `.trivyignore` until 2027-01-18 for the same
+  reason: memvid-core caps lopdf at ^0.39, and the service never parses a
+  PDF at serving time.
+
+### Dependencies
+
+- **Rust 1.98.1 -> 1.99.0** for `memvid-service` (#624): the builder image
+  and `rust-toolchain.toml` together, as in 0.2.3. `clippy -D warnings`
+  passes on 1.99 with no source change.
+
+- **`fastapi` 0.146.0, `starlette` 1.9.0 and `pydantic` 2.14.1** in
+  `api-service` (#624). The first two are newer than the 0.143.0 and 1.8.0
+  Dependabot proposed -- the latest that resolve together -- and `pydantic`
+  moved with `pydantic-core` 2.50.1 as a pair. Floors in `pyproject.toml`
+  raised to match.
+
+- **memvid OpenTelemetry crates 0.33.0 -> 0.33.1** (#624), `opentelemetry`,
+  `opentelemetry_sdk` and `opentelemetry-otlp` moved as one set, with
+  `tokio` 1.53.3 and `serde_json` 1.0.154.
+
+- **`react` and `react-dom` 19.3.1** (#625), as a pair, with `jsdom` 30.1.3.
+
+- **`node` 26.10.0 -> 26.12.0** frontend builder image (#624 to 26.11.1,
+  then #614). Both digests were checked against the registry index.
+
+- **Also** (#624): `mypy` 2.4.0 in both Python services, floors raised in
+  both; `numpy` 2.5.4 in `ingest`; the frontend group of 38 minor and patch
+  updates -- 27 `@radix-ui` components, `lucide-react` 1.57.0,
+  `react-hook-form` 7.90.0, `zod` 4.6.7, `prettier` 3.9.10, and `vitest` with
+  `@vitest/coverage-v8` 5.0.4 as a pair; and `taiki-e/install-action`
+  2.87.28.
+
 ## [0.2.4] - 2026-10-11
 
 A patch release of dependency currency and four advisory fixes. All four
@@ -1679,7 +1753,8 @@ documentation overhaul. No new product features since alpha.23.
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.2.5...HEAD
+[0.2.5]: https://github.com/schwichtgit/ai-resume/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/schwichtgit/ai-resume/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/schwichtgit/ai-resume/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/schwichtgit/ai-resume/compare/v0.2.1...v0.2.2
