@@ -12,7 +12,16 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+    {/* next-themes renders an inline script to set the theme before first
+        paint. In a client-only app React never executes it, and React 19
+        warns about it; index.html sets the theme instead. Typing the script
+        as data tells React it is not meant to run. */}
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="dark"
+      enableSystem={false}
+      scriptProps={{ type: 'application/json' }}
+    >
       <ProfileProvider>
         <TooltipProvider>
           <Toaster />
