@@ -33,7 +33,9 @@ import {
   getTracer,
   getTraceparent,
   isOtelInitialized,
+  withActiveSpan,
 } from '../otel';
+import { getProfile } from '../api-client';
 
 describe('otel wiring (real SDK)', () => {
   it('makes an active span visible to getTraceparent', () => {
@@ -58,5 +60,47 @@ describe('otel wiring (real SDK)', () => {
 
   it('reports no traceparent outside an active span', () => {
     expect(getTraceparent()).toBeNull();
+  });
+
+  it('withActiveSpan makes a startSpan() span the active one', () => {
+    const span = getTracer().startSpan('not-active-by-itself');
+    expect(getTraceparent()).toBeNull();
+
+    const inside = withActiveSpan(span, () => getTraceparent());
+    span.end();
+
+    const { traceId, spanId } = span.spanContext();
+    expect(inside).toBe(`00-${traceId}-${spanId}-01`);
+    expect(getTraceparent()).toBeNull();
+  });
+
+  it('withActiveSpan with no span just runs the function', () => {
+    expect(withActiveSpan(null, () => 42)).toBe(42);
+  });
+
+  // The bug this guards: hooks call startSpan() and then the API client,
+  // so requests went out with no traceparent and browser and backend traces
+  // were never linked.
+  it('an API call inside withActiveSpan sends the span traceparent', async () => {
+    const sent: Array<string | null> = [];
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      sent.push(new Headers(init?.headers).get('traceparent'));
+      return new Response(JSON.stringify({ name: 'Test' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const span = getTracer().startSpan('profile.fetch');
+    await withActiveSpan(span, () => getProfile());
+    await getProfile();
+    span.end();
+    vi.unstubAllGlobals();
+
+    const { traceId, spanId } = span.spanContext();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(sent[0]).toBe(`00-${traceId}-${spanId}-01`);
+    expect(sent[1]).toBeNull();
   });
 });
