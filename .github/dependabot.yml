@@ -106,6 +106,12 @@ updates:
   # digest bump twice (#501/#502). 'group-by: dependency-name' collapses a
   # shared base image into one PR spanning every directory that uses it;
   # images unique to one service (node, rust) still get their own PR.
+  #
+  # No 'update-types' filter here. ubi-micro is pinned by digest alone, and a
+  # digest-only update has no semver type: with 'update-types: [minor,
+  # patch]' Dependabot logged "semver rules reject grouping", marked the
+  # update handled, and opened no PR at all. That froze the runtime base from
+  # 2026-08-30 (Red Hat build of 2026-08-25) until 2026-10-24.
   - package-ecosystem: 'docker'
     directories:
       - '/frontend'
@@ -119,8 +125,7 @@ updates:
       prefix: 'build'
       include: 'scope'
     groups:
-      minor-and-patch:
+      base-images:
         group-by: 'dependency-name'
-        update-types:
-          - 'minor'
-          - 'patch'
+        patterns:
+          - '*'
