@@ -22,7 +22,9 @@ IGNORE_FILE="$FRONTEND_DIR/.npm-audit-ignore"
 
 if [[ -f "$IGNORE_FILE" ]]; then
     "$SCRIPT_DIR/check-trivyignore-expiry.sh" "$IGNORE_FILE"
-    IGNORED=$(grep -vhE '^[[:space:]]*#|^[[:space:]]*$' "$IGNORE_FILE" | awk '{print $1}' | sort -u)
+    # `|| true`: an allowlist with no active entries is valid, and grep exits 1
+    # when it selects nothing, which pipefail would turn into a silent abort.
+    IGNORED=$({ grep -vhE '^[[:space:]]*#|^[[:space:]]*$' "$IGNORE_FILE" || true; } | awk '{print $1}' | sort -u)
 else
     IGNORED=""
 fi

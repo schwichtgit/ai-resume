@@ -12,14 +12,8 @@
 # Format:
 #   GHSA-xxxx-xxxx-xxxx  # accepted: <reason>. Revisit YYYY-MM-DD.
 
-# braces <= 3.0.3, CVE-2026-93687 (high): stack overflow on deeply nested
-# brace patterns. No fixed release exists; the fix is micromatch/braces#72,
-# unmerged, maintainer inactive since 2025-01. Reached only through the dev
-# dependency markdownlint-cli2 (directly via micromatch, and via globby ->
-# fast-glob -> micromatch). braces only ever sees the glob patterns that
-# select files to lint -- the CLI argument and the ignore lists in this
-# repo -- never Markdown content, so triggering it needs commit access and
-# the worst case is a crashed lint run. Risk accepted 2026-10-03.
-# A braces 3.0.4 reaches us through micromatch's ^3.0.3 with a lockfile
-# refresh alone; drop this entry then.
-GHSA-vfj7-8cjw-p6xm  # accepted: unfixed upstream, dev-only, repo-controlled input. Revisit 2027-01-04.
+# No active suppressions.
+#
+# braces (GHSA-vfj7-8cjw-p6xm), accepted here on 2026-10-03, was withdrawn by
+# GitHub on 2026-10-23; npm-audit.sh flagged its entry STALE and it was
+# removed. katex (GHSA-238p-pmpm-9mq7) was accepted, then fixed by override.
