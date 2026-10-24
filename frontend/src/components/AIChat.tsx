@@ -17,7 +17,7 @@ import {
   submitFeedback,
 } from '@/lib/api-client';
 import { useProfileContext } from '@/hooks/useProfileContext';
-import { getTracer } from '@/lib/otel';
+import { getTracer, withActiveSpan } from '@/lib/otel';
 import { SpanStatusCode } from '@opentelemetry/api';
 
 interface AIChatProps {
@@ -107,7 +107,7 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
     // Load suggested questions
     const sqSpan = getTracer().startSpan('suggested_questions.fetch');
     const sqStart = performance.now();
-    getSuggestedQuestions()
+    withActiveSpan(sqSpan, () => getSuggestedQuestions())
       .then((questions) => {
         if (questions.length > 0) {
           setSuggestedQuestions(questions);

@@ -10,7 +10,7 @@ import {
   ApiError,
   RateLimitError,
 } from '@/lib/api-client';
-import { getTracer, isOtelInitialized } from '@/lib/otel';
+import { getTracer, isOtelInitialized, withActiveSpan } from '@/lib/otel';
 import { SpanStatusCode, type Span } from '@opentelemetry/api';
 
 export interface Message {
@@ -155,42 +155,44 @@ export function useStreamingChat(
       try {
         let fullContent = '';
 
-        await streamChat(
-          {
-            message,
-            session_id: sessionId || undefined,
-          },
-          // onToken
-          (token) => {
-            if (!isStreaming) {
-              setIsLoading(false);
-              setIsStreaming(true);
-              onStreamStart?.();
-              if (firstTokenTime === null) {
-                firstTokenTime = performance.now();
-                span?.setAttribute(
-                  'chat.time_to_first_token_ms',
-                  Math.round(firstTokenTime - fetchResolvedAt),
-                );
+        await withActiveSpan(span, () =>
+          streamChat(
+            {
+              message,
+              session_id: sessionId || undefined,
+            },
+            // onToken
+            (token) => {
+              if (!isStreaming) {
+                setIsLoading(false);
+                setIsStreaming(true);
+                onStreamStart?.();
+                if (firstTokenTime === null) {
+                  firstTokenTime = performance.now();
+                  span?.setAttribute(
+                    'chat.time_to_first_token_ms',
+                    Math.round(firstTokenTime - fetchResolvedAt),
+                  );
+                }
               }
-            }
-            fullContent += token;
-            setStreamingContent(fullContent);
-          },
-          // onStats
-          (newStats) => {
-            setStats(newStats);
-            if (newStats.tokens_used != null) {
-              span?.setAttribute('chat.total_tokens', newStats.tokens_used);
-            }
-          },
-          // onError
-          (errorMessage) => {
-            const err = new Error(errorMessage);
-            setError(err);
-            onError?.(err);
-          },
-          abortControllerRef.current.signal,
+              fullContent += token;
+              setStreamingContent(fullContent);
+            },
+            // onStats
+            (newStats) => {
+              setStats(newStats);
+              if (newStats.tokens_used != null) {
+                span?.setAttribute('chat.total_tokens', newStats.tokens_used);
+              }
+            },
+            // onError
+            (errorMessage) => {
+              const err = new Error(errorMessage);
+              setError(err);
+              onError?.(err);
+            },
+            abortControllerRef.current.signal,
+          ),
         );
 
         // Stream complete - add assistant message

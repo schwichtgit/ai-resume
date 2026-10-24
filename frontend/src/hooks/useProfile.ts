@@ -8,7 +8,7 @@ import {
   type UIConfig,
 } from '@/lib/api-client';
 import { registerWebMcpTools } from '@/lib/webmcp';
-import { getTracer } from '@/lib/otel';
+import { getTracer, withActiveSpan } from '@/lib/otel';
 import { SpanStatusCode } from '@opentelemetry/api';
 
 export interface Profile {
@@ -68,7 +68,7 @@ export function useProfile(): UseProfileResult {
 
       try {
         setIsLoading(true);
-        const data = await getProfile();
+        const data = await withActiveSpan(span, () => getProfile());
 
         if (!mounted) return;
 

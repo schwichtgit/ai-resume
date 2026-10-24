@@ -9,7 +9,7 @@
 import { TracerProvider, SimpleSpanProcessor } from '@opentelemetry/sdk-trace';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { resourceFromAttributes } from '@opentelemetry/resources';
-import { context, trace } from '@opentelemetry/api';
+import { context, trace, type Span } from '@opentelemetry/api';
 import { ZoneContextManager } from '@opentelemetry/context-zone';
 
 declare global {
@@ -60,6 +60,24 @@ export function initOtel(): void {
  */
 export function getTracer(name = 'ai-resume-frontend') {
   return trace.getTracer(name);
+}
+
+/**
+ * Run `fn` with `span` as the active span, so the API requests it starts carry
+ * the span's traceparent and the backend's spans join the browser's trace.
+ *
+ * startSpan() does not activate a span: a fetch made outside its context
+ * sees no active span, getTraceparent() returns null, and the request goes
+ * out without a traceparent. The api-client functions read the header
+ * synchronously when called, so the context is in place when it matters.
+ * A null span (tracing off) just runs `fn`.
+ */
+export function withActiveSpan<T>(
+  span: Span | null | undefined,
+  fn: () => T,
+): T {
+  if (!span) return fn();
+  return context.with(trace.setSpan(context.active(), span), fn);
 }
 
 /**

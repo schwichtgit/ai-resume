@@ -9,7 +9,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useProfile } from '@/hooks/useProfile';
 import { assessFit, type AssessFitResponse } from '@/lib/api-client';
-import { getTracer } from '@/lib/otel';
+import { getTracer, withActiveSpan } from '@/lib/otel';
 import { SpanStatusCode } from '@opentelemetry/api';
 
 type TabType = 'example1' | 'example2' | 'custom';
@@ -45,7 +45,7 @@ const FitAssessment = () => {
     const start = performance.now();
 
     try {
-      const result = await assessFit(customJD);
+      const result = await withActiveSpan(span, () => assessFit(customJD));
       setCustomResult(result);
       span.setAttribute(
         'response_time_ms',
