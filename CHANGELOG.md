@@ -10,7 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.6] - 2026-10-24
 
 A patch release that fixes the cause of both October production outages,
-migrates browser tracing to OpenTelemetry 3.0, and carries dependency
+migrates browser tracing to OpenTelemetry 3.0 and has it send its trace
+context to the backend,
+removes a light-theme flash on every page load, and carries dependency
 currency and six advisory fixes. No public surface changed: the REST/SSE
 endpoints, the MCP server and the `.mv2` format are untouched. The
 api-service, memvid and frontend images all carry the updates below.
@@ -37,6 +39,25 @@ api-service, memvid and frontend images all carry the updates below.
 - **`npm-audit.sh` no longer fails on an empty allowlist** (#636). With no
   active entries, `grep` selected nothing and the script aborted without a
   message. The allowlist has been empty since this release (below).
+
+- **Browser requests now carry their trace context** (#638). No API request ever
+  carried a `traceparent`: every traced call -- profile, suggested
+  questions, fit assessment, chat -- started its span without activating
+  it and called the API outside it, so the header was always empty and the
+  browser's traces never joined the backend's. This predates the 3.0
+  migration. `withActiveSpan` in `src/lib/otel.ts` now runs each call with
+  its span active. In a real browser against a local stack, the profile,
+  suggested-questions and chat requests carry a `traceparent` whose trace
+  id matches a span the browser exported; before, none of 11 requests did.
+
+- **No more light-theme flash on load, and no React console error** (#639).
+  The default theme is dark, but the page painted the light theme until
+  React mounted: `next-themes`' inline script, meant to set the theme
+  before first paint, never runs in a client-only app -- and React 19
+  logged "Encountered a script tag while rendering React component" for it
+  on every load. `index.html` now sets the theme in `<head>`, before first
+  paint, and the provider marks its script as data so React no longer
+  warns.
 
 ### Changed
 
