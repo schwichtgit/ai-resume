@@ -3,6 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Apply the stored theme before first paint, so a dark-mode page does not
+      flash the light theme while the app loads. Same storage key and default
+      as the ThemeProvider in src/App.tsx; next-themes' own script for this
+      never runs in a client-only app.
+    -->
+    <script data-theme-init>
+      (function () {
+        var theme = 'dark';
+        try {
+          var stored = localStorage.getItem('theme');
+          if (stored === 'light' || stored === 'dark') theme = stored;
+        } catch (e) {
+          // Storage blocked: keep the default.
+        }
+        var root = document.documentElement;
+        root.classList.add(theme);
+        root.style.colorScheme = theme;
+      })();
+    </script>
     <title>AI Resume — Loading</title>
     <meta
       name="description"
