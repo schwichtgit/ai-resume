@@ -755,6 +755,36 @@ jobs:
           ignore-unfixed: true
           trivyignores: '.trivyignore'
 
+      # Trivy has no usable RHEL 10 advisory data: it reports zero OS findings
+      # for any ubi10 image, including a 2025 ubi-micro and the build of
+      # 2026-08-25 that Red Hat lists as affected by two important pcre2 CVEs
+      # (checked 2026-10-24 with Trivy 0.70.0 and 0.76.1; an old ubi9-micro
+      # gives 116). Grype does read Red Hat's RHEL 10 data, so the UBI-based
+      # images get an OS-package gate here: fixable CRITICAL/HIGH in the
+      # runtime base, as the Trivy gate does for everything else.
+      #
+      # It scans the pinned base, not the built image: the build adds no
+      # packages to the runtime's RPM database, only copies files in, and
+      # Grype matches the libraries copied from the Rocky stage without their
+      # RPM epoch, which turns every epoch-1 advisory into a false positive.
+      - name: Resolve the UBI 10 runtime base
+        id: ubi
+        if: matrix.image == 'api' || matrix.image == 'ingest'
+        run: |
+          BASE=$(awk '$1 == "FROM" && $2 ~ /^registry\.access\.redhat\.com\/ubi10\/ubi-micro@sha256:/ {print $2}' "${{ steps.ctx.outputs.dir }}/Dockerfile")
+          test -n "$BASE" || { echo "::error::no ubi10/ubi-micro@sha256 base in ${{ steps.ctx.outputs.dir }}/Dockerfile"; exit 1; }
+          echo "image=${BASE}" >> "$GITHUB_OUTPUT"
+
+      - name: Grype gate on the UBI 10 base (CRITICAL/HIGH, fixable)
+        if: matrix.image == 'api' || matrix.image == 'ingest'
+        uses: anchore/scan-action@v7.4.2
+        with:
+          image: ${{ steps.ubi.outputs.image }}
+          fail-build: true
+          severity-cutoff: high
+          only-fixed: true
+          output-format: table
+
       - name: Container smoke tests
         run: |
           echo "--- Smoke testing ${IMAGE_NAME} on ${{ matrix.platform }} ---"
