@@ -6,11 +6,10 @@
  * the endpoint is absent.
  */
 
-import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
+import { TracerProvider, SimpleSpanProcessor } from '@opentelemetry/sdk-trace';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { resourceFromAttributes } from '@opentelemetry/resources';
-import { trace } from '@opentelemetry/api';
+import { context, trace } from '@opentelemetry/api';
 import { ZoneContextManager } from '@opentelemetry/context-zone';
 
 declare global {
@@ -39,13 +38,19 @@ export function initOtel(): void {
     url: `${endpoint}/v1/traces`,
   });
 
-  const provider = new WebTracerProvider({
+  const provider = new TracerProvider({
     resource,
-    spanProcessors: [new SimpleSpanProcessor(exporter)],
+    spanProcessors: [new SimpleSpanProcessor({ exporter })],
   });
-  provider.register({
-    contextManager: new ZoneContextManager(),
-  });
+
+  // SDK 3.0 dropped WebTracerProvider and its register(), which set the
+  // global provider and enabled the context manager in one call; both are
+  // done explicitly now. register() also installed the W3C propagator, which
+  // nothing here needs: getTraceparent() builds the header by hand.
+  const contextManager = new ZoneContextManager();
+  contextManager.enable();
+  context.setGlobalContextManager(contextManager);
+  trace.setGlobalTracerProvider(provider);
 
   initialized = true;
 }

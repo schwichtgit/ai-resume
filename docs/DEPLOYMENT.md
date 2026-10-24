@@ -172,6 +172,30 @@ podman compose up -d
 podman compose ps
 ```
 
+### Surviving a Host Reboot
+
+Podman has no daemon, so a container's restart policy only acts while
+podman is running it. After a reboot, nothing comes back unless the host
+starts it: on systemd hosts that is `podman-restart.service`, which runs
+`podman start --all --filter restart-policy=always`. Containers with
+`unless-stopped` are left stopped.
+
+The services in `deployment/compose.yaml` therefore use `restart: always`.
+Production ran with `unless-stopped` until 0.2.6, and both outages in
+October 2026 were router reboots that brought back every other container on
+the host but none of these.
+
+On a host without systemd (the production router runs OpenWrt), make sure
+the boot sequence starts `always` containers, then check after a reboot:
+
+```bash
+podman ps -a --format '{{.Names}} {{.Status}}'
+podman inspect ai-resume-api --format '{{.HostConfig.RestartPolicy.Name}}'   # expect: always
+```
+
+An existing container keeps the policy it was created with; recreate it
+(`podman compose up -d --force-recreate`) to pick up a changed policy.
+
 ### Security Hardening
 
 The compose configuration includes several hardening measures already applied:

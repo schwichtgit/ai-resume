@@ -7,14 +7,14 @@ requires-python = ">=3.14"
 readme = "README.md"
 license = {text = "MIT"}
 dependencies = [
-    "fastapi>=0.143.0",
+    "fastapi>=0.156.8",
     "starlette>=1.8.0",
-    "setuptools>=84.0.0",
+    "setuptools>=84.2.1",
     "uvicorn[standard]>=0.52.4",
     "python-multipart>=0.0.32",
     "httpx>=0.28.1",
     "pydantic>=2.14.1",
-    "pydantic-settings>=2.15.0",
+    "pydantic-settings>=2.16.1",
     "grpcio>=1.84.0",
     "grpcio-tools>=1.84.0",
     # Not transitive-by-accident: the committed stubs under
@@ -28,9 +28,9 @@ dependencies = [
     "prometheus-client>=0.26.0",
     "prometheus-fastapi-instrumentator>=8.1.0",
     "structlog>=26.1.0",
-    "cachetools>=7.2.1",
+    "cachetools>=7.2.4",
     "slowapi>=0.1.10",
-    "fastmcp>=3.4.6",
+    "fastmcp>=3.4.10,<4",
     "opentelemetry-exporter-otlp>=1.45.1",
     # Transitive pin (via uvicorn/typer) to remediate PYSEC-2026-2132; drop once
     # an upstream requirer floors click >= 8.3.3.
@@ -44,7 +44,7 @@ test = [
     "pytest-cov>=7.1.0",
 ]
 lint = [
-    "ruff>=0.16.10",
+    "ruff>=0.17.1",
     "mypy>=2.4.0",
     "types-cachetools>=7.0.0.20260713",
 ]

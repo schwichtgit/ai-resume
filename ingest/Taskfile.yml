@@ -16,7 +16,7 @@ tasks:
       - pyproject.toml
       - uv.lock
     cmds:
-      - uv venv {{.VENV}}
+      - uv venv --allow-existing {{.VENV}}
       - uv sync --extra test --extra lint
 
   lock:check:
