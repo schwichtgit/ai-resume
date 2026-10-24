@@ -7,6 +7,122 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-10-24
+
+A patch release that fixes the cause of both October production outages,
+migrates browser tracing to OpenTelemetry 3.0 and has it send its trace
+context to the backend,
+removes a light-theme flash on every page load, and carries dependency
+currency and six advisory fixes. No public surface changed: the REST/SSE
+endpoints, the MCP server and the `.mv2` format are untouched. The
+api-service, memvid and frontend images all carry the updates below.
+
+### Fixed
+
+- **The stack now comes back after a host reboot** (#636). Both outages in
+  October -- 2026-10-18, and 2026-10-19 to 10-24 -- were reboots of the
+  router that runs production. The router's own containers came back; none
+  of ours did, and the sites answered `502` until restarted by hand. Podman
+  has no daemon: after a reboot only the containers the host starts come
+  back, and its boot start covers `restart-policy=always`. Ours were
+  `unless-stopped`; `deployment/compose.yaml` now uses `always`, and
+  `docs/DEPLOYMENT.md` documents the behaviour under "Surviving a Host
+  Reboot". An existing container keeps the policy it was created with, so
+  the deploy has to recreate the containers for this to take effect.
+
+- **`task lint` and `task test` work again with uv 0.13** (#636). uv 0.13
+  refuses to create a virtual environment over an existing one, and the
+  service setup tasks re-run after every dependency bump, so both failed
+  locally -- and with them the agent stop hook. CI was unaffected. The
+  tasks now pass `--allow-existing`.
+
+- **`npm-audit.sh` no longer fails on an empty allowlist** (#636). With no
+  active entries, `grep` selected nothing and the script aborted without a
+  message. The allowlist has been empty since this release (below).
+
+- **Browser requests now carry their trace context** (#638). No API request ever
+  carried a `traceparent`: every traced call -- profile, suggested
+  questions, fit assessment, chat -- started its span without activating
+  it and called the API outside it, so the header was always empty and the
+  browser's traces never joined the backend's. This predates the 3.0
+  migration. `withActiveSpan` in `src/lib/otel.ts` now runs each call with
+  its span active. In a real browser against a local stack, the profile,
+  suggested-questions and chat requests carry a `traceparent` whose trace
+  id matches a span the browser exported; before, none of 11 requests did.
+
+- **No more light-theme flash on load, and no React console error** (#639).
+  The default theme is dark, but the page painted the light theme until
+  React mounted: `next-themes`' inline script, meant to set the theme
+  before first paint, never runs in a client-only app -- and React 19
+  logged "Encountered a script tag while rendering React component" for it
+  on every load. `index.html` now sets the theme in `<head>`, before first
+  paint, and the provider marks its script as data so React no longer
+  warns.
+
+### Changed
+
+- **Browser tracing moved to OpenTelemetry 3.0** (#636). SDK 3.0 merges
+  `sdk-trace-base` and `sdk-trace-web` into `sdk-trace` and drops
+  `WebTracerProvider` and its `register()`, so `src/lib/otel.ts` now sets
+  the global tracer provider and an enabled `ZoneContextManager` itself.
+  `SimpleSpanProcessor` takes `{ exporter }` in 3.0; passed positionally,
+  it silently has no exporter, which the type check caught. A new test runs
+  the real SDK with only the exporter mocked -- an active span must be what
+  `getTraceparent()` puts on API requests, and an ended span must reach the
+  exporter -- and it fails if the provider is not registered, the context
+  manager not enabled, or the exporter passed positionally.
+
+### Removed
+
+- **`@hookform/resolvers` and `@opentelemetry/instrumentation-fetch`**
+  (#636), neither imported anywhere since the initial commit. The resolvers
+  6.0 bump could not even install: its optional peer range conflicts with
+  the `effect` 3.x already in the tree.
+
+### Security
+
+- **`fastmcp` 3.4.7 -> 3.4.11 in `api-service`** (#636).
+  GHSA-7xgj-8392-5q4r (medium): component authorization is skipped on
+  direct calls. `fastmcp` serves the public `/mcp` endpoint. The floor is
+  now `>=3.4.10,<4`: without the cap, the upgrade resolved to `fastmcp` 4
+  and `mcp` 2, a major move left for its own change.
+
+- **`certifi` 2026.1.4 -> 2026.10.23 in both Python services** (#636).
+  PYSEC-2026-4320. In `api-service` it is the CA bundle for the TLS
+  connection to OpenRouter.
+
+- **`rustls-webpki` 0.103.15 -> 0.103.16 in `memvid-service`** (#636).
+  RUSTSEC-2026-0382: certificate verification may accept distrusted
+  intermediates.
+
+- **`markdown-it` 15.0.1 -> 15.0.3** (#636; Dependabot alerts #133-#135),
+  through `markdownlint-cli2` 0.24.0, which pins it. Development only.
+  The same release pins `smol-toml` 1.9.1, so that override is gone; the
+  `katex` override stays.
+
+- **No npm advisory is accepted any more** (#636). GitHub withdrew the
+  `braces` advisory (GHSA-vfj7-8cjw-p6xm) on 2026-10-23; the audit script
+  flagged its allowlist entry stale, as designed, and it was removed.
+
+- **Also** (#636): `filelock` 4.2.4 and `virtualenv` 21.14.13 in
+  `api-service` (development only, through `poetry`), and `setuptools`
+  84.2.1 in `ingest`. All of these were found by `task audit`; none was a
+  Dependabot alert.
+
+### Dependencies
+
+- **`fastapi` 0.146.0 -> 0.162.0 and `starlette` 1.9.0 -> 1.10.0** in
+  `api-service` (#636), newer than the 0.156.8 Dependabot proposed; with
+  `pydantic-settings` 2.16.1, `cachetools` 7.2.4 and `setuptools` 84.2.1.
+
+- **Frontend** (#636): `react-router` 8.5.0, `lucide-react` 1.61.0,
+  `@tanstack/react-query` 5.104.5, `react-resizable-panels` 4.14.8, `vite`
+  8.3.5, `eslint` 10.13.0, `typescript-eslint` 8.72.0 and
+  `markdownlint-cli2` 0.24.0.
+
+- **Also** (#636): `ruff` 0.17.2 in both Python services, floors raised in
+  both; `taiki-e/install-action` 2.87.30.
+
 ## [0.2.5] - 2026-10-18
 
 A patch release of security fixes and dependency currency. One fix is in a
@@ -1753,7 +1869,8 @@ documentation overhaul. No new product features since alpha.23.
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.2.5...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.2.6...HEAD
+[0.2.6]: https://github.com/schwichtgit/ai-resume/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/schwichtgit/ai-resume/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/schwichtgit/ai-resume/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/schwichtgit/ai-resume/compare/v0.2.2...v0.2.3
