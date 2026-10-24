@@ -6,15 +6,13 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Use vi.hoisted to define mock variables that are available to vi.mock factories.
 const mocks = vi.hoisted(() => {
-  const addSpanProcessor = vi.fn();
-  const register = vi.fn();
+  const enable = vi.fn();
   return {
     // Use regular function so it can be invoked with `new`
-    WebTracerProvider: vi.fn(function () {
-      return { addSpanProcessor, register };
+    TracerProvider: vi.fn(function () {
+      return { getTracer: vi.fn() };
     }),
-    addSpanProcessor,
-    register,
+    enable,
     OTLPTraceExporter: vi.fn(function () {
       return {};
     }),
@@ -23,21 +21,18 @@ const mocks = vi.hoisted(() => {
     }),
     resourceFromAttributes: vi.fn().mockReturnValue({}),
     ZoneContextManager: vi.fn(function () {
-      return {};
+      return { enable };
     }),
   };
 });
 
-vi.mock('@opentelemetry/sdk-trace-web', () => ({
-  WebTracerProvider: mocks.WebTracerProvider,
+vi.mock('@opentelemetry/sdk-trace', () => ({
+  TracerProvider: mocks.TracerProvider,
+  SimpleSpanProcessor: mocks.SimpleSpanProcessor,
 }));
 
 vi.mock('@opentelemetry/exporter-trace-otlp-http', () => ({
   OTLPTraceExporter: mocks.OTLPTraceExporter,
-}));
-
-vi.mock('@opentelemetry/sdk-trace-base', () => ({
-  SimpleSpanProcessor: mocks.SimpleSpanProcessor,
 }));
 
 vi.mock('@opentelemetry/resources', () => ({
@@ -48,17 +43,28 @@ vi.mock('@opentelemetry/context-zone', () => ({
   ZoneContextManager: mocks.ZoneContextManager,
 }));
 
+import { context, trace } from '@opentelemetry/api';
 import { initOtel, getTraceparent, getTracer, _resetForTesting } from '../otel';
+
+// Observe the two global registrations SDK 2.x's register() used to do, on
+// the real API objects, without letting them install the mocked provider.
+const setGlobalTracerProvider = vi
+  .spyOn(trace, 'setGlobalTracerProvider')
+  .mockReturnValue(true);
+const setGlobalContextManager = vi
+  .spyOn(context, 'setGlobalContextManager')
+  .mockReturnValue(true);
 
 describe('otel', () => {
   beforeEach(() => {
     _resetForTesting();
     delete window.__OTEL_ENDPOINT__;
-    mocks.WebTracerProvider.mockClear();
+    mocks.TracerProvider.mockClear();
     mocks.OTLPTraceExporter.mockClear();
     mocks.SimpleSpanProcessor.mockClear();
-    mocks.addSpanProcessor.mockClear();
-    mocks.register.mockClear();
+    mocks.enable.mockClear();
+    setGlobalTracerProvider.mockClear();
+    setGlobalContextManager.mockClear();
     mocks.resourceFromAttributes.mockClear();
     mocks.ZoneContextManager.mockClear();
   });
@@ -67,7 +73,8 @@ describe('otel', () => {
     it('should be a no-op when __OTEL_ENDPOINT__ is not set', () => {
       initOtel();
 
-      expect(mocks.WebTracerProvider).not.toHaveBeenCalled();
+      expect(mocks.TracerProvider).not.toHaveBeenCalled();
+      expect(setGlobalTracerProvider).not.toHaveBeenCalled();
     });
 
     it('should initialize provider when __OTEL_ENDPOINT__ is set', () => {
@@ -75,8 +82,8 @@ describe('otel', () => {
 
       initOtel();
 
-      expect(mocks.WebTracerProvider).toHaveBeenCalledTimes(1);
-      expect(mocks.register).toHaveBeenCalledTimes(1);
+      expect(mocks.TracerProvider).toHaveBeenCalledTimes(1);
+      expect(setGlobalTracerProvider).toHaveBeenCalledTimes(1);
     });
 
     it('should not reinitialize on second call', () => {
@@ -85,7 +92,7 @@ describe('otel', () => {
       initOtel();
       initOtel();
 
-      expect(mocks.WebTracerProvider).toHaveBeenCalledTimes(1);
+      expect(mocks.TracerProvider).toHaveBeenCalledTimes(1);
     });
 
     it('should configure exporter with correct URL', () => {
@@ -104,12 +111,19 @@ describe('otel', () => {
       initOtel();
 
       expect(mocks.SimpleSpanProcessor).toHaveBeenCalledTimes(1);
-      expect(mocks.WebTracerProvider).toHaveBeenCalledWith(
+      expect(mocks.SimpleSpanProcessor).toHaveBeenCalledWith({
+        exporter: expect.any(Object),
+      });
+      expect(mocks.TracerProvider).toHaveBeenCalledWith(
         expect.objectContaining({
           spanProcessors: expect.arrayContaining([expect.any(Object)]),
         }),
       );
       expect(mocks.ZoneContextManager).toHaveBeenCalledTimes(1);
+      // register() used to enable the context manager; without it, active
+      // spans would not propagate.
+      expect(mocks.enable).toHaveBeenCalledTimes(1);
+      expect(setGlobalContextManager).toHaveBeenCalledTimes(1);
     });
 
     it('should set service.name resource attribute', () => {
