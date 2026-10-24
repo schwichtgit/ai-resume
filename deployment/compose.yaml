@@ -45,7 +45,7 @@ services:
       resources:
         limits:
           memory: 200M
-    restart: unless-stopped
+    restart: always
     healthcheck:
       test: ['CMD', '/usr/local/bin/memvid-service', '--health']
       interval: 45s
@@ -89,7 +89,7 @@ services:
       resources:
         limits:
           memory: 200M
-    restart: unless-stopped
+    restart: always
     healthcheck:
       test: ['CMD', '/healthcheck']
       interval: 30s
@@ -126,7 +126,7 @@ services:
       resources:
         limits:
           memory: 200M
-    restart: unless-stopped
+    restart: always
     healthcheck:
       test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8080/health']
       interval: 30s
@@ -181,7 +181,7 @@ services:
       resources:
         limits:
           memory: 128M
-    restart: unless-stopped
+    restart: always
 
 volumes:
   # Fallback volume for Fluent Bit when PODMAN_LOG_ROOT is not set.
