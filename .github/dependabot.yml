@@ -55,9 +55,18 @@ updates:
       # ValidateProtobufRuntimeVersion -- that raises RuntimeError, not a
       # warning, when the installed runtime is older than the generator. One
       # PR for the whole family keeps generator and runtime moving together.
+      #
+      # 'grpcio-tools' is named literally. With only the 'grpcio-*' glob,
+      # Dependabot never put grpcio-tools in this group: both bumps since the
+      # group was added split the pair -- #561/#562 (1.84.0, 2026-09-19) and
+      # #657/#658 (1.84.1, 2026-10-25) -- with grpcio-tools landing alone,
+      # its commit trailer reading 'dependency-group: uv'. A split pair fails
+      # check-proto-drift.sh on the tools half. If a future bump still
+      # arrives split, the glob was not the cause; roll the pair up by hand.
       grpc:
         patterns:
           - 'grpcio'
+          - 'grpcio-tools'
           - 'grpcio-*'
           - 'protobuf'
         update-types:
