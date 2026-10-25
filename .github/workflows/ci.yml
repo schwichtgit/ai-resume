@@ -39,24 +39,19 @@ jobs:
         with:
           filters: |
             frontend:
-              - '.github/**'
               - 'frontend/**'
               - 'package.json'
               - 'package-lock.json'
             api-service:
-              - '.github/**'
               - 'api-service/**'
               - 'proto/**'
             ingest:
-              - '.github/**'
               - 'ingest/**'
               - 'data/**'
             memvid-service:
-              - '.github/**'
               - 'memvid-service/**'
               - 'proto/**'
             containers:
-              - '.github/**'
               - '**/Dockerfile'
               - 'frontend/**'
               - 'api-service/**'
