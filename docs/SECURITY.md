@@ -449,7 +449,8 @@ advisory is accepted in `.trivyignore` (Trivy image gate) and in
 
 ### Scanning
 
-Regular vulnerability scans with Grype:
+Regular vulnerability scans with Grype (the CI version is pinned in
+`.github/scanners/grype/Dockerfile`):
 
 ```bash
 # Scan production container
@@ -472,8 +473,9 @@ Scanning is automated by the **Security Scan** workflow
 `workflow_dispatch`:
 
 - **`container-scan`** -- builds each of the four images and runs Trivy
-  (pinned `v0.71.2`): a SARIF scan uploaded to GitHub code scanning, plus a
-  `CRITICAL,HIGH` gate (`TRIVY_IGNORE_UNFIXED=true`, honoring `.trivyignore`).
+  (the pinned image described below): a SARIF scan uploaded to GitHub code
+  scanning, plus a `CRITICAL,HIGH` gate (`TRIVY_IGNORE_UNFIXED=true`, honoring
+  `.trivyignore`).
 - **`dependency-audit`** -- runs `task audit`, a whole-SBOM dependency sweep
   across npm (`npm audit`), Python (`pip-audit`), and Rust (`cargo audit`).
   Suppressions live in per-service `.pip-audit-ignore` / `.trivyignore`, and
@@ -505,6 +507,35 @@ everything that ships:
   without their RPM epoch, so every epoch-1 advisory would be a false
   positive). In the stage they are installed RPMs with exact versions. The
   gate covers only the packages that own files under `/python-runtime`.
+
+Both scanners run from their official images with `podman run` (`docker
+run` in `security.yml`), not from GitHub Actions. Each is pinned by tag and
+multi-arch index digest in a one-line Dockerfile that is never built:
+
+- `.github/scanners/trivy/Dockerfile` -- `ghcr.io/aquasecurity/trivy`
+- `.github/scanners/grype/Dockerfile` -- `ghcr.io/anchore/grype`
+
+The workflows read the image reference from the `FROM` line, and Dependabot's
+docker ecosystem bumps tag and digest together in the weekly `base-images`
+group. This replaced `aquasecurity/trivy-action` and `anchore/scan-action`,
+which bundle a scanner version and lagged the scanner releases by months
+(trivy-action's tags were also hijacked in March 2026), and a hand-pinned
+Trivy version that Dependabot could not see. Dependabot cannot bump a
+`uses: docker://` reference (dependabot/dependabot-core#8362), hence the
+Dockerfiles. Built images are handed to the scanners as `podman save`
+archives under `runner.temp`, never `/tmp`, which is a small RAM tmpfs on
+Ubuntu 26.04 runners. The Trivy DB is cached across runs with
+`actions/cache`; the Grype DB (~3 GB unpacked) is downloaded each run.
+
+To scan locally with the same versions:
+
+```bash
+TRIVY=$(awk '$1 == "FROM" {print $2}' .github/scanners/trivy/Dockerfile)
+podman save -o "$HOME/.cache/image.tar" localhost/ai-resume-frontend:latest
+podman run --rm -v "$HOME/.cache:/work" -v "$PWD:/src" "$TRIVY" image \
+  --input /work/image.tar --ignorefile /src/.trivyignore \
+  --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1
+```
 
 CI builds without a layer cache, so the stage always installs current Rocky
 packages. Local builds (`scripts/build-*.sh`) pass a daily `PKG_REFRESH`

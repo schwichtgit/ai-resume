@@ -60,6 +60,9 @@ jobs:
               - 'proto/**'
               - 'deployment/**'
               - 'scripts/publish-ci.sh'
+              - '.github/workflows/ci.yml'
+              - '.github/scanners/**'
+              - '.trivyignore'
 
   # Frontend: TypeScript/React
   frontend:
@@ -734,37 +737,98 @@ jobs:
             -f "${{ steps.ctx.outputs.dir }}/Dockerfile" \
             "${{ steps.ctx.outputs.dir }}/"
 
-      - name: Start podman API for scanners
+      # syft (Generate SBOM, on main and tag pushes) reads images through this
+      # socket. The scanners below read saved image archives instead.
+      - name: Start podman API for syft
         run: |
           podman system service --time=0 "unix:///tmp/podman.sock" &
           timeout 10 bash -c 'until [ -S /tmp/podman.sock ]; do sleep 0.5; done'
           echo "DOCKER_HOST=unix:///tmp/podman.sock" >> "$GITHUB_ENV"
 
-      # Ubuntu 26.04 mounts /tmp as a ~7.8G RAM tmpfs with a per-user quota;
-      # Trivy's cached-file copies of the ingest image's CUDA libs exceed it
-      # (actions/runner-images#14777). Point both scans at runner.temp, which
-      # is on the root disk.
-      - name: Trivy scan (SARIF for summary)
-        uses: aquasecurity/trivy-action@v0.36.0
-        env:
-          TMPDIR: ${{ runner.temp }}
+      # Trivy and Grype run from their official images, pinned by tag and
+      # index digest in .github/scanners/*/Dockerfile. Those files are never
+      # built: they exist so Dependabot's docker ecosystem bumps the pins,
+      # which it cannot do for a `uses: docker://` reference
+      # (dependabot/dependabot-core#8362) or for a version passed to a
+      # scanner action.
+      - name: Resolve the pinned scanner images
+        id: scanners
+        run: |
+          for SCANNER in trivy grype; do
+            REF=$(awk '$1 == "FROM" {print $2}' ".github/scanners/${SCANNER}/Dockerfile")
+            test -n "$REF" || { echo "::error::no FROM line in .github/scanners/${SCANNER}/Dockerfile"; exit 1; }
+            echo "${SCANNER}=${REF}" >> "$GITHUB_OUTPUT"
+          done
+          echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      # Ubuntu 26.04 mounts /tmp as a ~7.8G RAM tmpfs with a per-user quota
+      # (actions/runner-images#14777), and the ingest image alone exceeds it.
+      # Everything large stays under runner.temp, on the root disk: the saved
+      # image archive (trivy-action exported the same archive to TMPDIR, so
+      # this costs no extra disk), the scanners' TMPDIR, and their databases.
+      #
+      # Only the Trivy DB is cached across runs, as trivy-action did: it is
+      # pulled from ghcr.io, which rate-limits shared runner IPs. The Grype
+      # DB is not: it is ~3 GB unpacked, comes from Anchore's CDN, and
+      # scan-action did not cache it either.
+      - name: Prepare scanner directories
+        run: mkdir -p "${RUNNER_TEMP}/scan/tmp" "${RUNNER_TEMP}/trivy-cache/db" "${RUNNER_TEMP}/trivy-cache/java-db" "${RUNNER_TEMP}/grype-cache"
+
+      - name: Restore the Trivy DB
+        uses: actions/cache@v6
         with:
-          image-ref: 'localhost/${{ env.IMAGE_NAME }}:${{ env.VERSION }}'
-          format: 'sarif'
-          output: 'trivy-${{ matrix.image }}-${{ matrix.platform }}.sarif'
-          trivyignores: '.trivyignore'
+          path: |
+            ${{ runner.temp }}/trivy-cache/db
+            ${{ runner.temp }}/trivy-cache/java-db
+          key: trivy-db-${{ steps.scanners.outputs.date }}
+          restore-keys: trivy-db-
+
+      - name: Save the built image for Trivy
+        run: podman save --format docker-archive -o "${RUNNER_TEMP}/scan/image.tar" "localhost/${IMAGE_NAME}:${VERSION}"
+
+      # Two runs over one archive. The SARIF run reports every severity, fixed
+      # or not, for the build summary; the gate fails on fixable
+      # CRITICAL/HIGH. Both honor .trivyignore.
+      - name: Trivy scan (SARIF for summary)
+        env:
+          TRIVY_IMAGE: ${{ steps.scanners.outputs.trivy }}
+          SARIF: trivy-${{ matrix.image }}-${{ matrix.platform }}.sarif
+        run: |
+          podman run --rm "$TRIVY_IMAGE" --version
+          podman run --rm \
+            -v "${RUNNER_TEMP}/scan:/scan" \
+            -v "${RUNNER_TEMP}/trivy-cache:/cache" \
+            -v "${PWD}:/src" \
+            -e TMPDIR=/scan/tmp \
+            -e TRIVY_CACHE_DIR=/cache \
+            "$TRIVY_IMAGE" image \
+            --input /scan/image.tar \
+            --ignorefile /src/.trivyignore \
+            --format sarif \
+            --output "/src/${SARIF}"
+          test -s "$SARIF" || { echo "::error::Trivy wrote no SARIF"; exit 1; }
 
       - name: Trivy severity gate (CRITICAL/HIGH)
-        uses: aquasecurity/trivy-action@v0.36.0
         env:
-          TMPDIR: ${{ runner.temp }}
-        with:
-          image-ref: 'localhost/${{ env.IMAGE_NAME }}:${{ env.VERSION }}'
-          format: 'table'
-          exit-code: '1'
-          severity: 'CRITICAL,HIGH'
-          ignore-unfixed: true
-          trivyignores: '.trivyignore'
+          TRIVY_IMAGE: ${{ steps.scanners.outputs.trivy }}
+        run: |
+          podman run --rm \
+            -v "${RUNNER_TEMP}/scan:/scan" \
+            -v "${RUNNER_TEMP}/trivy-cache:/cache" \
+            -v "${PWD}:/src" \
+            -e TMPDIR=/scan/tmp \
+            -e TRIVY_CACHE_DIR=/cache \
+            "$TRIVY_IMAGE" image \
+            --input /scan/image.tar \
+            --ignorefile /src/.trivyignore \
+            --format table \
+            --severity CRITICAL,HIGH \
+            --ignore-unfixed \
+            --exit-code 1
+
+      - name: Remove the saved image
+        if: always()
+        run: rm -f "${RUNNER_TEMP}/scan/image.tar"
 
       # Trivy has no usable RHEL 10 advisory data: it reports zero OS findings
       # for any ubi10 image, including a 2025 ubi-micro and the build of
@@ -786,15 +850,25 @@ jobs:
           test -n "$BASE" || { echo "::error::no ubi10/ubi-micro@sha256 base in ${{ steps.ctx.outputs.dir }}/Dockerfile"; exit 1; }
           echo "image=${BASE}" >> "$GITHUB_OUTPUT"
 
+      # Read from the registry by digest; Grype picks the platform that
+      # matches the runner.
       - name: Grype gate on the UBI 10 base (CRITICAL/HIGH, fixable)
         if: matrix.image == 'api' || matrix.image == 'ingest'
-        uses: anchore/scan-action@v7.4.2
-        with:
-          image: ${{ steps.ubi.outputs.image }}
-          fail-build: true
-          severity-cutoff: high
-          only-fixed: true
-          output-format: table
+        env:
+          GRYPE_IMAGE: ${{ steps.scanners.outputs.grype }}
+          TARGET: ${{ steps.ubi.outputs.image }}
+        run: |
+          podman run --rm "$GRYPE_IMAGE" version
+          podman run --rm \
+            -v "${RUNNER_TEMP}/scan:/scan" \
+            -v "${RUNNER_TEMP}/grype-cache:/cache" \
+            -e TMPDIR=/scan/tmp \
+            -e GRYPE_DB_CACHE_DIR=/cache \
+            -e GRYPE_CHECK_FOR_APP_UPDATE=false \
+            "$GRYPE_IMAGE" "registry:${TARGET}" \
+            --fail-on high \
+            --only-fixed \
+            -o table
 
       # The Python runtime -- interpreter, stdlib, openssl, libffi, zlib, xz,
       # sqlite and the rest -- is copied into ubi-micro from the Rocky
@@ -821,21 +895,32 @@ jobs:
           echo "Packages copied into the runtime:"; cat staged-rpms.txt
           echo "image=${STAGE}" >> "$GITHUB_OUTPUT"
 
+      # Report only, no --fail-on: the next step is the gate, restricted to
+      # the packages whose files are copied out.
       - name: Grype scan of the python-deps stage
-        id: pydeps-scan
         if: matrix.image == 'api' || matrix.image == 'ingest'
-        uses: anchore/scan-action@v7.4.2
-        with:
-          image: ${{ steps.pydeps.outputs.image }}
-          fail-build: false
-          only-fixed: true
-          output-format: json
+        env:
+          GRYPE_IMAGE: ${{ steps.scanners.outputs.grype }}
+          STAGE: ${{ steps.pydeps.outputs.image }}
+        run: |
+          podman save --format docker-archive -o "${RUNNER_TEMP}/scan/pydeps.tar" "$STAGE"
+          podman run --rm \
+            -v "${RUNNER_TEMP}/scan:/scan" \
+            -v "${RUNNER_TEMP}/grype-cache:/cache" \
+            -e TMPDIR=/scan/tmp \
+            -e GRYPE_DB_CACHE_DIR=/cache \
+            -e GRYPE_CHECK_FOR_APP_UPDATE=false \
+            "$GRYPE_IMAGE" docker-archive:/scan/pydeps.tar \
+            --only-fixed \
+            -o json \
+            --file /scan/pydeps-grype.json
+          rm -f "${RUNNER_TEMP}/scan/pydeps.tar"
+          test -s "${RUNNER_TEMP}/scan/pydeps-grype.json" || { echo "::error::Grype wrote no report"; exit 1; }
 
       - name: Gate the copied runtime packages (CRITICAL/HIGH, fixable)
         if: matrix.image == 'api' || matrix.image == 'ingest'
-        env:
-          REPORT: ${{ steps.pydeps-scan.outputs.json }}
         run: |
+          REPORT="${RUNNER_TEMP}/scan/pydeps-grype.json"
           STAGED=$(jq -R . staged-rpms.txt | jq -s -c .)
           FOUND=$(jq --argjson staged "$STAGED" '[.matches[]
             | select(.artifact.name as $n | $staged | index($n))
