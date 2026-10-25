@@ -125,7 +125,9 @@ services:
     read_only: true
     tmpfs:
       - /var/cache/nginx:size=128M,mode=0777
-      - /var/run/nginx:size=64M,mode=0777
+      # /run/nginx, not /var/run/nginx: Alpine symlinks /var/run -> /run, so podman
+      # records the tmpfs at /run/nginx and inspect warns on the symlinked path
+      - /run/nginx:size=64M,mode=0777
       - /tmp:size=64M,mode=1777
     security_opt:
       - no-new-privileges:true
