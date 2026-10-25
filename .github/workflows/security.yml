@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   container-scan:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     strategy:
       matrix:
         include:
@@ -70,7 +70,7 @@ jobs:
   # and frontend/.npm-audit-ignore.
   dependency-audit:
     name: Dependency vulnerability audit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
 
@@ -120,7 +120,7 @@ jobs:
     # models are retired routinely, so this runs on the weekly schedule to
     # catch it before a user does. The catalogue and endpoint APIs need no
     # API key and perform no inference, so this costs nothing.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     defaults:
       run:
         working-directory: api-service

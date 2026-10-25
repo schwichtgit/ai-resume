@@ -25,7 +25,7 @@ jobs:
 
   # Detect which services changed
   changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       frontend: ${{ steps.filter.outputs.frontend }}
       api-service: ${{ steps.filter.outputs.api-service }}
@@ -42,15 +42,19 @@ jobs:
               - 'frontend/**'
               - 'package.json'
               - 'package-lock.json'
+              - '.github/**'
             api-service:
               - 'api-service/**'
               - 'proto/**'
+              - '.github/**'
             ingest:
               - 'ingest/**'
               - 'data/**'
+              - '.github/**'
             memvid-service:
               - 'memvid-service/**'
               - 'proto/**'
+              - '.github/**'
             containers:
               - '**/Dockerfile'
               - 'frontend/**'
@@ -60,12 +64,13 @@ jobs:
               - 'proto/**'
               - 'deployment/**'
               - 'scripts/publish-ci.sh'
+              - '.github/**'
 
   # Frontend: TypeScript/React
   frontend:
     needs: changes
     if: ${{ needs.changes.outputs.frontend == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     defaults:
       run:
         working-directory: frontend
@@ -122,7 +127,7 @@ jobs:
   api-service:
     needs: changes
     if: ${{ needs.changes.outputs.api-service == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     defaults:
       run:
         working-directory: api-service
@@ -185,7 +190,7 @@ jobs:
   ingest:
     needs: changes
     if: ${{ needs.changes.outputs.ingest == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     defaults:
       run:
         working-directory: ingest
@@ -248,7 +253,7 @@ jobs:
   memvid-service:
     needs: changes
     if: ${{ needs.changes.outputs.memvid-service == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     defaults:
       run:
         working-directory: memvid-service
@@ -309,7 +314,7 @@ jobs:
       needs.changes.result == 'success' &&
       (needs.changes.outputs.memvid-service == 'true' || needs.changes.outputs.ingest == 'true') &&
       needs.memvid-service.result != 'failure'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     continue-on-error: true
     steps:
       - uses: actions/checkout@v7
@@ -382,7 +387,7 @@ jobs:
       (needs.changes.outputs.api-service == 'true' || needs.changes.outputs.memvid-service == 'true') &&
       needs.api-service.result != 'failure' &&
       needs.memvid-service.result != 'failure'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
 
@@ -428,7 +433,7 @@ jobs:
       needs.api-service.result != 'failure' &&
       needs.memvid-service.result != 'failure' &&
       needs.ingest.result != 'failure'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     continue-on-error: true
     steps:
       - uses: actions/checkout@v7
@@ -482,7 +487,7 @@ jobs:
   # Commit message standards (PRs only)
   commit-standards:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
         with:
@@ -586,7 +591,7 @@ jobs:
   release-gate:
     needs: [changes, frontend, api-service, memvid-service, cross-service]
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
 
@@ -648,7 +653,7 @@ jobs:
   container-build:
     needs: changes
     if: ${{ needs.changes.outputs.containers == 'true' || startsWith(github.ref, 'refs/tags/v') }}
-    runs-on: ${{ matrix.platform == 'amd64' && 'ubuntu-latest' || 'ubuntu-24.04-arm' }}
+    runs-on: ${{ matrix.platform == 'amd64' && 'ubuntu-26.04' || 'ubuntu-26.04-arm' }}
     strategy:
       fail-fast: false
       matrix:
@@ -664,7 +669,7 @@ jobs:
 
       # The ingest container drags in the full torch/nvidia CUDA wheel stack via
       # sentence-transformers (~5-6 GB unpacked), which exhausts the ~14 GB of
-      # free disk on the ubuntu-latest amd64 runner while podman stores the
+      # free disk on the ubuntu-26.04 amd64 runner while podman stores the
       # `.venv` layer blob under /var/tmp. Reclaim as much as possible by purging
       # preinstalled toolchains, large apt packages, and the swapfile -- none are
       # needed for a container build. Arm runner has more headroom and skips this
@@ -998,7 +1003,7 @@ jobs:
         release-gate,
       ]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Check results
         run: |

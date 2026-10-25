@@ -23,7 +23,7 @@ jobs:
   # Static checks: prettier, markdownlint, shellcheck (policy-scoped)
   # ---------------------------------------------------------------------------
   checks:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -49,7 +49,7 @@ jobs:
   # becomes the squash-merge subject
   # ---------------------------------------------------------------------------
   commit-standards:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
         with:
@@ -83,7 +83,7 @@ jobs:
   summary:
     if: always()
     needs: [checks, commit-standards]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Check results
         run: |
