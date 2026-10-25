@@ -69,6 +69,16 @@ build_one_container() {
 
     local manifest="${registry}/ai-resume-${SERVICE}:${version}"
 
+    # api and ingest copy their Python runtime out of a Rocky python-deps
+    # stage. Without a changing build arg its microdnf layer stays cached and
+    # a local build ships whatever Rocky packages it fetched weeks ago (seen:
+    # Python 3.14.7 and OpenSSL 3.5.5 with fixes released). Today's date
+    # refreshes it at most once a day. Other services do not declare it.
+    local -a refresh_arg=()
+    case "${SERVICE}" in
+        api | ingest) refresh_arg=(--build-arg "PKG_REFRESH=$(date -u +%Y-%m-%d)") ;;
+    esac
+
     log_info "Building ${manifest}"
     log_info "  platforms: ${platforms}"
     log_info "  dockerfile: ${DOCKERFILE}"
@@ -85,6 +95,7 @@ build_one_container() {
         --manifest "${manifest}" \
         --build-arg "BUILD_VERSION=${version}" \
         --build-arg "BUILD_COMMIT=${git_revision}" \
+        ${refresh_arg[@]+"${refresh_arg[@]}"} \
         --annotation "org.opencontainers.image.title=ai-resume-${SERVICE}" \
         --annotation "org.opencontainers.image.description=${DESCRIPTION}" \
         --annotation "org.opencontainers.image.url=https://github.com/schwichtgit/ai-resume/pkgs/container/ai-resume-${SERVICE}" \

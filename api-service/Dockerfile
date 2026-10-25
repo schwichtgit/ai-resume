@@ -36,7 +36,12 @@ RUN printf '{"version":"%s","commit":"%s"}\n' "${BUILD_VERSION}" "${BUILD_COMMIT
 # stage everything into /python-runtime/ for a single COPY into ubi-micro.
 FROM rockylinux/rockylinux:10-minimal@sha256:bc5c1e7a2ec7f4bcef1e51c7f0ebb2d43f05409e0108cdd34f693921d0604360 AS python-deps
 
-RUN microdnf install -y --nodocs \
+# Changing PKG_REFRESH invalidates this layer, so a local rebuild fetches
+# current Rocky packages instead of reusing a cached python runtime: the
+# build helper passes today's date. CI builds without a cache anyway.
+ARG PKG_REFRESH=unset
+RUN echo "python-deps package refresh: ${PKG_REFRESH}" \
+    && microdnf install -y --nodocs \
     python3.14 \
     libstdc++ \
     libffi \
