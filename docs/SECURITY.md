@@ -418,6 +418,33 @@ The `memvid-service` runtime is a distroless `cc-debian13:nonroot` image: only l
 **Reviewed:** 2026-05-01
 **Revisit:** 2026-08-01
 
+### Dismissed Dependabot Alerts
+
+#### Alert #132: lopdf stack overflow (Tolerable Risk)
+
+**Alert:** <https://github.com/schwichtgit/ai-resume/security/dependabot/132>
+**Advisory:** `GHSA-6fj4-rcr3-r7rr` (same advisory as `RUSTSEC-2026-0187`)
+**Package:** `lopdf` 0.38.0 / 0.39.0 (Rust, transitive via `memvid-core` in `memvid-service`)
+**Issue:** stack overflow via deeply nested PDF objects; fixed in lopdf 0.42.0
+
+**Disposition:** Dismissed as `tolerable_risk` on 2026-10-25. The same
+advisory is accepted in `.trivyignore` (Trivy image gate) and in
+`memvid-service/.cargo/audit.toml` (`cargo audit`).
+
+**Rationale:**
+
+- Not fixable downstream: `memvid-core` 2.0.140 (latest release, 2026-05-27)
+  caps lopdf at `^0.39`. The fix needs an upstream release that floors lopdf
+  at 0.42.0, tracked in
+  [memvid/memvid#242](https://github.com/memvid/memvid/issues/242) (open).
+- Not reachable at serving time: `memvid-service` opens a pre-built `.mv2`
+  read-only and serves search over it. It never parses a PDF on the gRPC
+  request path; document parsing happens offline in the `ingest` pipeline.
+
+**Status:** Dismissed (`tolerable_risk`)
+**Reviewed:** 2026-10-25
+**Revisit:** 2026-11-24
+
 ## Dependency Security
 
 ### Scanning
