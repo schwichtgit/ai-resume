@@ -762,6 +762,7 @@ jobs:
       # Everything large stays under runner.temp, on the root disk: the saved
       # image archive (trivy-action exported the same archive to TMPDIR, so
       # this costs no extra disk), the scanners' TMPDIR, and their databases.
+      # The same applies to syft's TMPDIR in "Generate SBOM".
       #
       # Only the Trivy DB is cached across runs, as trivy-action did: it is
       # pulled from ghcr.io, which rate-limits shared runner IPs. The Grype
@@ -1010,8 +1011,12 @@ jobs:
           path: /tmp/digest-metadata.json
           retention-days: 1
 
+      # syft (stereoscope) unpacks the image layers into $TMPDIR; keep them
+      # off the /tmp tmpfs quota (see "Prepare scanner directories").
       - name: Generate SBOM
         if: steps.push.outputs.digest != ''
+        env:
+          TMPDIR: ${{ runner.temp }}
         run: |
           syft "${REGISTRY}/${IMAGE_NAME}@${{ steps.push.outputs.digest }}" \
             -o cyclonedx-json=/tmp/sbom-${{ matrix.image }}-${{ matrix.platform }}.json
