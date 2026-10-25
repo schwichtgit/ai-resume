@@ -57,10 +57,10 @@ RUN apk upgrade --no-cache && \
     curl -fsSL -o /usr/lib/nginx/lualib/resty/http_headers.lua \
       https://raw.githubusercontent.com/ledgetech/lua-resty-http/v0.17.2/lib/resty/http_headers.lua && \
     apk del curl && \
-    mkdir -p /etc/nginx/conf.d /etc/nginx/lua /etc/nginx/html /var/log/nginx /var/run/nginx /usr/share/nginx/html && \
+    mkdir -p /etc/nginx/conf.d /etc/nginx/lua /etc/nginx/html /var/log/nginx /run/nginx /usr/share/nginx/html && \
     ln -sf /dev/stdout /var/log/nginx/access.log && \
     ln -sf /dev/stderr /var/log/nginx/error.log && \
-    chown -R nginx:nginx /etc/nginx/lua /etc/nginx/html /var/run/nginx /usr/share/nginx/html && \
+    chown -R nginx:nginx /etc/nginx/lua /etc/nginx/html /run/nginx /usr/share/nginx/html && \
     find /usr/share/nginx -type d -exec chmod 750 {} + && \
     find /usr/share/nginx -type f -exec chmod 640 {} + && \
     chgrp -R nginx /usr/share/nginx && \
