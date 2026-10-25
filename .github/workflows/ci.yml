@@ -744,6 +744,8 @@ jobs:
 
       - name: Trivy scan (SARIF for summary)
         uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          TMPDIR: ${{ runner.temp }}
         with:
           image-ref: 'localhost/${{ env.IMAGE_NAME }}:${{ env.VERSION }}'
           format: 'sarif'
@@ -752,6 +754,8 @@ jobs:
 
       - name: Trivy severity gate (CRITICAL/HIGH)
         uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          TMPDIR: ${{ runner.temp }}
         with:
           image-ref: 'localhost/${{ env.IMAGE_NAME }}:${{ env.VERSION }}'
           format: 'table'
