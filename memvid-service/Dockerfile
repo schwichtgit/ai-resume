@@ -93,7 +93,7 @@ ARG BUILD_COMMIT
 RUN printf '{"version":"%s","commit":"%s"}\n' "${BUILD_VERSION}" "${BUILD_COMMIT}" > /app/VERSION
 
 # Stage 2: Distroless static runtime (no libc, no OpenSSL, no zlib; UID 65532)
-FROM gcr.io/distroless/static-debian13:nonroot@sha256:1c2c046bc09ed40fad370b599a0b1ae7987f55b01e247cf27a7c27cd97e5bbc7
+FROM gcr.io/distroless/static-debian13:nonroot@sha256:18f4cc26c9ffa7f20a359298be7deadac5c607c8e03a02b8119f1a5fc2f82c99
 
 # Copy binary from builder
 COPY --from=builder /memvid-service /usr/local/bin/memvid-service
