@@ -172,6 +172,25 @@ podman compose up -d
 podman compose ps
 ```
 
+### Production Compose Files Are Hand-Managed
+
+`deployment/compose.yaml` is the reference and template. Production does not
+run it, and does not deploy through `scripts/deploy.sh`, which copies the repo
+compose file to a single-stack host and starts it there. Each production site
+runs from its own hand-maintained compose file and `.env` on the host, with
+static addresses on an external network and no published ports.
+
+A change to the repo compose file (restart policy, tmpfs mounts, environment)
+therefore does not reach production on its own. Mirror it by hand into each
+site's compose file, then recreate that site's containers:
+
+```bash
+podman-compose down && podman-compose up -d
+```
+
+A container keeps the settings it was created with; editing the file or
+restarting the container does not apply the change.
+
 ### Surviving a Host Reboot
 
 Podman has no daemon, so a container's restart policy only acts while
