@@ -7,6 +7,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.7] - 2026-10-25
+
+A patch release of runtime base-image security and the scanning that should
+have caught it. The `ubi-micro` runtime base of api-service and ingest had not
+moved since August and shipped two important pcre2 vulnerabilities. Two
+things let that through: Dependabot had stopped proposing digest-only base
+image updates, and Trivy cannot see RHEL 10. Both are fixed, and CI now
+checks every layer the api-service and ingest images ship. No application
+code changed; the api-service, ingest, memvid and frontend images all carry
+the updates below.
+
+### Security
+
+- **`ubi10/ubi-micro` runtime base refreshed** (#640) for api-service and
+  ingest: Red Hat's build of 2026-08-25 to that of 2026-10-20. Per Red Hat's
+  security data this fixes `pcre2` CVE-2026-103111 and CVE-2026-86145
+  (**important**), CVE-2026-89161 and three more, and `coreutils`
+  CVE-2026-56391 and CVE-2026-56392 (moderate); `glibc` moves 2.39-128 to
+  2.39-145. Red Hat Dependency Analytics also flagged `ncurses-base` and
+  `libgcc`: `ncurses-base` already carries the fix for CVE-2025-69720, and
+  Red Hat has no RHEL 10 fix for the `libgcc` findings yet. On the new base,
+  Grype reports no fixable finding of any severity.
+
+- **`distroless/static-debian13` runtime base refreshed** (#645) for
+  memvid: Debian 13.6 to 13.7, with `ca-certificates` 20250419+deb13u1 and
+  `tzdata` 2026e. Trivy: one finding to none.
+
+### Fixed
+
+- **Dependabot proposes digest-only base-image updates again** (#640).
+  `ubi-micro` and `distroless` are pinned by digest alone, and the docker
+  group added on 2026-08-30 to merge duplicate pull requests filtered on
+  minor and patch updates. A digest-only update has neither, so Dependabot
+  logged "semver rules reject grouping", marked it handled, and opened no
+  pull request -- every week. Both runtime bases were frozen from late
+  August; only images with version tags (`node`, `rust`) kept moving. The
+  group no longer filters by update type, and Dependabot's next run reported
+  `ubi-micro` up to date instead of rejecting it.
+
+- **Local container builds no longer ship a stale Python runtime** (#646).
+  The Rocky `python-deps` stage's package layer stayed cached indefinitely,
+  so a local build kept the packages it first fetched -- seen: Python 3.14.7
+  and OpenSSL 3.5.5 with fixes released. A `PKG_REFRESH` build argument,
+  passed as today's date by the build helper, refreshes that layer at most
+  daily. CI builds without a cache and was not affected: v0.2.6 runs Python
+  3.14.8 and OpenSSL 3.5.8.
+
+### Changed
+
+- **CI now gates every layer of the api-service and ingest images**
+  (#640, #646). Trivy reports no OS findings for any RHEL 10 image -- with
+  0.70.0 and the latest 0.76.1 alike, while an old UBI 9 image gives 116 --
+  so the base that carried the pcre2 vulnerabilities passed every build. Two
+  Grype gates join the Trivy gate, failing on fixable CRITICAL or HIGH
+  findings:
+  - on the pinned `ubi-micro` base (#640);
+  - on the Rocky `python-deps` stage (#646), limited to the packages whose
+    files are copied into the image -- the Python interpreter and stdlib,
+    `openssl-libs`, `libffi`, `zlib`, `xz`, `sqlite` and the rest -- which no
+    scanner saw before: in the final image they are plain files, not
+    installed packages.
+
+  `docs/SECURITY.md` describes the three gates and why each exists.
+
+### Dependencies
+
+- **Also** (#645): `node` 26.12.1 for the frontend builder; `tokio` 1.54.1 in
+  memvid-service; and `sentence-transformers` 6.2.0 in ingest, verified with
+  ingest's unfiltered suite, since CI deselects the embedding path.
+
 ## [0.2.6] - 2026-10-24
 
 A patch release that fixes the cause of both October production outages,
@@ -1869,7 +1939,8 @@ documentation overhaul. No new product features since alpha.23.
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.2.6...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.2.7...HEAD
+[0.2.7]: https://github.com/schwichtgit/ai-resume/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/schwichtgit/ai-resume/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/schwichtgit/ai-resume/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/schwichtgit/ai-resume/compare/v0.2.3...v0.2.4
