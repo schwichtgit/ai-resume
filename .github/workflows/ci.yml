@@ -737,8 +737,14 @@ jobs:
           timeout 10 bash -c 'until [ -S /tmp/podman.sock ]; do sleep 0.5; done'
           echo "DOCKER_HOST=unix:///tmp/podman.sock" >> "$GITHUB_ENV"
 
+      # Ubuntu 26.04 mounts /tmp as a ~7.8G RAM tmpfs with a per-user quota;
+      # Trivy's cached-file copies of the ingest image's CUDA libs exceed it
+      # (actions/runner-images#14777). Point both scans at runner.temp, which
+      # is on the root disk.
       - name: Trivy scan (SARIF for summary)
         uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          TMPDIR: ${{ runner.temp }}
         with:
           image-ref: 'localhost/${{ env.IMAGE_NAME }}:${{ env.VERSION }}'
           format: 'sarif'
@@ -747,6 +753,8 @@ jobs:
 
       - name: Trivy severity gate (CRITICAL/HIGH)
         uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          TMPDIR: ${{ runner.temp }}
         with:
           image-ref: 'localhost/${{ env.IMAGE_NAME }}:${{ env.VERSION }}'
           format: 'table'
