@@ -490,7 +490,7 @@ jobs:
           WARNINGS=""
           COMMIT_COUNT=0
 
-          VALID_TYPES="feat|fix|chore|docs|style|refactor|perf|test|ci|build"
+          VALID_TYPES="feat|fix|chore|docs|style|refactor|perf|test|ci|build|revert"
           CONVENTIONAL_RE="^(${VALID_TYPES})(\(.+\))?: .+"
 
           # Emoji pattern: common Unicode emoji ranges
