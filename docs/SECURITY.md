@@ -457,3 +457,28 @@ Scanning is automated by the **Security Scan** workflow
 
 Live results are in the repository's **Security -> Code scanning** dashboard;
 that and the ignore files are the source of truth for current alert state.
+
+### Container gates on every build
+
+`container-build` in `.github/workflows/ci.yml` gates each image on fixable
+`CRITICAL`/`HIGH` findings, with three scanners because no single one sees
+everything that ships:
+
+- **Trivy, on every built image** (honoring `.trivyignore`). It reads the
+  image's RPM/dpkg database and its language packages. It has **no usable
+  RHEL 10 data**: it reports zero OS findings for any `ubi10` image, including
+  a build Red Hat lists as affected by two important pcre2 CVEs.
+- **Grype, on the pinned `ubi10/ubi-micro` base** of api-service and ingest.
+  Grype reads Red Hat's RHEL 10 data. The base is scanned rather than the
+  built image because the build adds nothing to the runtime's RPM database.
+- **Grype, on the Rocky `python-deps` stage** of api-service and ingest. The
+  Python runtime -- interpreter, stdlib, openssl, libffi, zlib, xz, sqlite and
+  the rest -- is copied from that stage into `ubi-micro` as plain files, which
+  neither scanner above sees in the final image (and Grype identifies them
+  without their RPM epoch, so every epoch-1 advisory would be a false
+  positive). In the stage they are installed RPMs with exact versions. The
+  gate covers only the packages that own files under `/python-runtime`.
+
+CI builds without a layer cache, so the stage always installs current Rocky
+packages. Local builds (`scripts/build-*.sh`) pass a daily `PKG_REFRESH`
+build argument so a cached stage cannot ship a weeks-old runtime.

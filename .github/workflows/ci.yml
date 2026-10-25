@@ -785,6 +785,59 @@ jobs:
           only-fixed: true
           output-format: table
 
+      # The Python runtime -- interpreter, stdlib, openssl, libffi, zlib, xz,
+      # sqlite and the rest -- is copied into ubi-micro from the Rocky
+      # python-deps stage as plain files. In the final image no scanner sees
+      # it: Trivy reads only the RPM database, the gate above scans only the
+      # UBI base, and Grype identifies the copied libraries without their RPM
+      # epoch (every epoch-1 advisory becomes a false positive). In the stage
+      # itself they are installed RPMs with exact versions and epochs, so it
+      # is scanned there, gated on the packages whose files are copied out.
+      - name: Build the python-deps stage
+        id: pydeps
+        if: matrix.image == 'api' || matrix.image == 'ingest'
+        run: |
+          STAGE="localhost/${IMAGE_NAME}-pydeps:${VERSION}"
+          # Same build as above, so the stage layers come from the cache: this
+          # is exactly the runtime that went into the image.
+          podman build --target python-deps --tag "$STAGE" \
+            -f "${{ steps.ctx.outputs.dir }}/Dockerfile" "${{ steps.ctx.outputs.dir }}/"
+          # The RPMs that own the files staged under /python-runtime.
+          podman run --rm --entrypoint sh "$STAGE" -c \
+            'cd /python-runtime && find . -type f | sed "s|^\.||" | xargs rpm -qf --qf "%{NAME}\n" | grep -v "not owned" | sort -u' \
+            > staged-rpms.txt
+          test -s staged-rpms.txt || { echo "::error::no RPM owns the staged runtime files"; exit 1; }
+          echo "Packages copied into the runtime:"; cat staged-rpms.txt
+          echo "image=${STAGE}" >> "$GITHUB_OUTPUT"
+
+      - name: Grype scan of the python-deps stage
+        id: pydeps-scan
+        if: matrix.image == 'api' || matrix.image == 'ingest'
+        uses: anchore/scan-action@v7.4.2
+        with:
+          image: ${{ steps.pydeps.outputs.image }}
+          fail-build: false
+          only-fixed: true
+          output-format: json
+
+      - name: Gate the copied runtime packages (CRITICAL/HIGH, fixable)
+        if: matrix.image == 'api' || matrix.image == 'ingest'
+        env:
+          REPORT: ${{ steps.pydeps-scan.outputs.json }}
+        run: |
+          STAGED=$(jq -R . staged-rpms.txt | jq -s -c .)
+          FOUND=$(jq --argjson staged "$STAGED" '[.matches[]
+            | select(.artifact.name as $n | $staged | index($n))
+            | select(.vulnerability.fix.state == "fixed")
+            | select(.vulnerability.severity == "High" or .vulnerability.severity == "Critical")]' "$REPORT")
+          COUNT=$(echo "$FOUND" | jq length)
+          echo "$FOUND" | jq -r '.[] | "\(.vulnerability.severity)\t\(.artifact.name) \(.artifact.version)\t\(.vulnerability.id)\tfixed in \(.vulnerability.fix.versions | join(","))"' | sort -u
+          if [ "$COUNT" -gt 0 ]; then
+            echo "::error::${COUNT} fixable CRITICAL/HIGH finding(s) in the Python runtime copied from the Rocky stage"
+            exit 1
+          fi
+          echo "No fixable CRITICAL/HIGH findings in the $(wc -l < staged-rpms.txt) copied runtime packages."
+
       - name: Container smoke tests
         run: |
           echo "--- Smoke testing ${IMAGE_NAME} on ${{ matrix.platform }} ---"
