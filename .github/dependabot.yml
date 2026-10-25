@@ -99,7 +99,7 @@ updates:
           - 'minor'
           - 'patch'
 
-  # Docker (all services)
+  # Docker (all services, plus the Trivy and Grype images the CI scans run)
   #
   # Same reasoning as the uv entry above: api-service and ingest share the
   # ubi10/ubi-micro runtime base, and split entries opened the identical
@@ -118,6 +118,10 @@ updates:
       - '/api-service'
       - '/ingest'
       - '/memvid-service'
+      # Scanner version pins, read by ci.yml and security.yml. See the header
+      # in each Dockerfile.
+      - '/.github/scanners/trivy'
+      - '/.github/scanners/grype'
     schedule:
       interval: 'weekly'
       day: 'saturday'

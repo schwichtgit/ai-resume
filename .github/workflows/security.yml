@@ -33,14 +33,55 @@ jobs:
       - name: Build image
         run: docker build -t ${{ matrix.image }}:scan ${{ matrix.context }}
 
-      - name: Run Trivy vulnerability scanner (SARIF)
-        uses: aquasecurity/trivy-action@v0.36.0
+      # Trivy runs from its official image, pinned by tag and index digest in
+      # .github/scanners/trivy/Dockerfile, which Dependabot bumps. The same
+      # pin and the same invocation as container-build in ci.yml.
+      - name: Resolve the pinned Trivy image
+        id: trivy
+        run: |
+          REF=$(awk '$1 == "FROM" {print $2}' .github/scanners/trivy/Dockerfile)
+          test -n "$REF" || { echo "::error::no FROM line in .github/scanners/trivy/Dockerfile"; exit 1; }
+          echo "image=${REF}" >> "$GITHUB_OUTPUT"
+          echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      # ubuntu-latest mounts /tmp as a ~7.8G RAM tmpfs with a per-user quota
+      # (actions/runner-images#14777), and the ingest image alone exceeds it.
+      # The image archive, Trivy's TMPDIR and its DB live under runner.temp,
+      # on the root disk.
+      - name: Prepare scanner directories
+        run: mkdir -p "${RUNNER_TEMP}/scan/tmp" "${RUNNER_TEMP}/trivy-cache/db" "${RUNNER_TEMP}/trivy-cache/java-db"
+
+      - name: Restore the Trivy DB
+        uses: actions/cache@v6
         with:
-          version: 'v0.71.2'
-          image-ref: '${{ matrix.image }}:scan'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          trivyignores: '.trivyignore'
+          path: |
+            ${{ runner.temp }}/trivy-cache/db
+            ${{ runner.temp }}/trivy-cache/java-db
+          key: trivy-db-${{ steps.trivy.outputs.date }}
+          restore-keys: trivy-db-
+
+      - name: Save the image for Trivy
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: docker save -o "${RUNNER_TEMP}/scan/image.tar" "${IMAGE}:scan"
+
+      # --user keeps the SARIF and the cache owned by the runner, not root.
+      - name: Run Trivy vulnerability scanner (SARIF)
+        env:
+          TRIVY_IMAGE: ${{ steps.trivy.outputs.image }}
+        run: |
+          docker run --rm "$TRIVY_IMAGE" --version
+          docker run --rm --user "$(id -u):$(id -g)" \
+            -v "${RUNNER_TEMP}/scan:/scan" \
+            -v "${RUNNER_TEMP}/trivy-cache:/cache" \
+            -v "${PWD}:/src" \
+            -e TMPDIR=/scan/tmp \
+            -e TRIVY_CACHE_DIR=/cache \
+            "$TRIVY_IMAGE" image \
+            --input /scan/image.tar \
+            --ignorefile /src/.trivyignore \
+            --format sarif \
+            --output /src/trivy-results.sarif
 
       - name: Upload Trivy scan results
         uses: github/codeql-action/upload-sarif@v4
@@ -50,16 +91,22 @@ jobs:
           category: 'trivy-${{ matrix.image }}'
 
       - name: Trivy severity gate (CRITICAL/HIGH)
-        uses: aquasecurity/trivy-action@v0.36.0
         env:
-          TRIVY_SEVERITY: CRITICAL,HIGH
-          TRIVY_IGNORE_UNFIXED: 'true'
-        with:
-          version: 'v0.71.2'
-          image-ref: '${{ matrix.image }}:scan'
-          format: 'table'
-          exit-code: '1'
-          trivyignores: '.trivyignore'
+          TRIVY_IMAGE: ${{ steps.trivy.outputs.image }}
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" \
+            -v "${RUNNER_TEMP}/scan:/scan" \
+            -v "${RUNNER_TEMP}/trivy-cache:/cache" \
+            -v "${PWD}:/src" \
+            -e TMPDIR=/scan/tmp \
+            -e TRIVY_CACHE_DIR=/cache \
+            -e TRIVY_SEVERITY=CRITICAL,HIGH \
+            -e TRIVY_IGNORE_UNFIXED=true \
+            "$TRIVY_IMAGE" image \
+            --input /scan/image.tar \
+            --ignorefile /src/.trivyignore \
+            --format table \
+            --exit-code 1
 
   # Whole-SBOM dependency audit across all ecosystems (npm, pip, cargo) via
   # `task audit`. Complements container-scan: this catches newly-disclosed
