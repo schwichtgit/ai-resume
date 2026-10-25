@@ -92,10 +92,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
+      # `task audit` runs `cargo audit` in memvid-service/, where
+      # rust-toolchain.toml selects the toolchain; rustup ships on the runner.
       - name: Setup Rust (provides cargo for `cargo audit`)
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
+        working-directory: memvid-service
+        run: rustup toolchain install && rustup show
 
       - name: Install cargo-audit
         uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31

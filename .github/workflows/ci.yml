@@ -255,11 +255,10 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: '1.96.0'
-          components: clippy, rustfmt
+      # rustup ships on the runner image; with no argument it installs the
+      # channel and components pinned in memvid-service/rust-toolchain.toml.
+      - name: Setup Rust (from rust-toolchain.toml)
+        run: rustup toolchain install && rustup show
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
@@ -319,10 +318,9 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: '1.96.0'
+      - name: Setup Rust (from rust-toolchain.toml)
+        working-directory: memvid-service
+        run: rustup toolchain install && rustup show
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
@@ -391,10 +389,9 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: '1.96.0'
+      - name: Setup Rust (from rust-toolchain.toml)
+        working-directory: memvid-service
+        run: rustup toolchain install && rustup show
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
@@ -438,10 +435,9 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: '1.96.0'
+      - name: Setup Rust (from rust-toolchain.toml)
+        working-directory: memvid-service
+        run: rustup toolchain install && rustup show
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
