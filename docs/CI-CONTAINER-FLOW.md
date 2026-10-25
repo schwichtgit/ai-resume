@@ -32,7 +32,8 @@ CI Workflow (ci.yml):
   changes ──> container-build (matrix: 4 images x 2 platforms = 8 cells)
                  |
                  ├── build image (podman)
-                 ├── Trivy SARIF scan + severity gate
+                 ├── Trivy SARIF scan + severity gate (all images)
+                 ├── Grype gates (api, ingest: UBI base + python-deps stage)
                  ├── smoke tests (run, non-root, health, OCI annotations)
                  ├── push arch image (publish-ci.sh push-arch)
                  ├── generate CycloneDX SBOM (syft against pushed digest)
@@ -64,13 +65,19 @@ Release Workflow (release.yml):
 ## Container Build Job
 
 Each matrix cell (image x platform) runs on a native runner (`ubuntu-latest`
-for amd64, `ubuntu-24.04-arm` for arm64) and executes these steps in order:
+for amd64, `ubuntu-26.04-arm` for arm64) and executes these steps in order:
 
 1. **Build** -- `podman build` with OCI annotations (title, source, version,
    created, revision, licenses, vendor).
-2. **Trivy SARIF scan** -- Uploads results to GitHub Code Scanning.
-3. **Trivy severity gate** -- Fails the job on unfixed CRITICAL or HIGH
-   vulnerabilities.
+2. **Trivy SARIF scan** -- All severities, written to
+   `trivy-<image>-<platform>.sarif` for the job summary.
+3. **Trivy severity gate** -- Fails the job on fixable CRITICAL or HIGH
+   vulnerabilities (`--ignore-unfixed`, honoring `.trivyignore`). For api and
+   ingest, Grype then gates the UBI 10 base and the Rocky `python-deps` stage
+   (see [SECURITY.md](./SECURITY.md#container-gates-on-every-build)).
+   Trivy and Grype run from their official images via `podman run`, pinned
+   by tag and digest in `.github/scanners/{trivy,grype}/Dockerfile` and bumped
+   by Dependabot.
 4. **Smoke tests** -- Container starts, runs as non-root, health endpoint
    responds, OCI version annotation present.
 5. **Push** -- `publish-ci.sh push-arch` pushes to
@@ -245,10 +252,11 @@ scripts/publish-ci.sh verify ghcr.io/schwichtgit ai-resume-frontend v1.0.0
 This doc covers the build -> sign -> publish pipeline. Two adjacent scans run
 outside it:
 
-- **In-CI Trivy** -- the `container-build` job scans each image and gates on
-  unfixed CRITICAL/HIGH (steps above), uploading SARIF to GitHub code scanning.
-- **Weekly Security Scan** (`.github/workflows/security.yml`) -- re-scans the
-  published images with Trivy and runs `task audit` (npm/pip/cargo) on a
+- **In-CI Trivy and Grype** -- the `container-build` job scans each image and
+  gates on fixable CRITICAL/HIGH (steps above).
+- **Weekly Security Scan** (`.github/workflows/security.yml`) -- rebuilds the
+  images, scans them with the same pinned Trivy image, uploads the SARIF to
+  GitHub code scanning, and runs `task audit` (npm/pip/cargo) on a
   schedule. See [SECURITY.md](./SECURITY.md).
 
 ## Related

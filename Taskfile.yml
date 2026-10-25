@@ -171,8 +171,8 @@ tasks:
     desc: Whole-SBOM vulnerability sweep across all ecosystems (npm, pip, cargo)
     # Native per-ecosystem scanners against each lockfile / synced venv:
     # frontend npm audit, api+ingest pip-audit (env mode), memvid cargo audit.
-    # Fails if any ecosystem reports a known vulnerability. Trivy container
-    # scanning is handled separately by the security.yml workflow.
+    # Fails if any ecosystem reports a known vulnerability. Container image
+    # scanning (Trivy, Grype) runs in the ci.yml and security.yml workflows.
     deps: [frontend:audit, api:audit, ingest:audit, memvid:audit]
 
   check:
