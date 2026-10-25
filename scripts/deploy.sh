@@ -1,6 +1,13 @@
 #!/bin/bash
-# AI Resume - Production Deployment Script
+# AI Resume - Single-Stack Deployment Script
 # Builds multi-arch containers and deploys to edge server
+#
+# Copies the repo's deployment/compose.yaml to /opt/ai-resume/deployment on
+# the target and runs `podman-compose up -d` there. That suits a host running
+# one stack from the reference compose file. The production host is not
+# deployed this way: each site runs from its own hand-maintained compose file
+# and .env. See "Production Compose Files Are Hand-Managed" in
+# docs/DEPLOYMENT.md.
 #
 # Usage:
 #   ./scripts/deploy.sh <server_user@host> [version]
