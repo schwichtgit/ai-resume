@@ -14,7 +14,7 @@ dependencies = [
     "python-multipart>=0.0.32",
     "httpx>=0.28.1",
     "pydantic>=2.14.1",
-    "pydantic-settings>=2.16.1",
+    "pydantic-settings>=2.16.2",
     "grpcio>=1.84.1",
     "grpcio-tools>=1.84.1",
     # Not transitive-by-accident: the committed stubs under
@@ -28,7 +28,7 @@ dependencies = [
     "prometheus-client>=0.26.0",
     "prometheus-fastapi-instrumentator>=8.1.0",
     "structlog>=26.1.0",
-    "cachetools>=7.2.4",
+    "cachetools>=7.2.6",
     "slowapi>=0.1.10",
     "fastmcp>=3.4.10,<4",
     "opentelemetry-exporter-otlp>=1.45.1",
@@ -39,8 +39,8 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
-    "pytest>=9.1.1",
-    "pytest-asyncio>=1.4.0",
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.4.1",
     "pytest-cov>=7.1.0",
 ]
 lint = [
