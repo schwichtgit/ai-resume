@@ -17,9 +17,24 @@
 # symlink targets, Unix permissions). memvid-core and calamine open archives
 # with ZipArchive::new and read entries in memory; neither calls extract(), so
 # the vulnerable code is not reachable even on the offline parsing path.
+# That holds only for the three RUSTSEC entries below. Later zip advisories
+# (GHSA-m665-v7pm-7grj and others, accepted in the root .trivyignore) are not
+# extract-only: they sit on the archive read/parse path. Their acceptance rests
+# on the service never opening an archive at serving time, not on extract().
+#
+# zstd 0.13.3 / zstd-safe 7.2.4 are pinned by memvid-core 2.0.140 (zstd ^0.13);
+# the fixes are zstd >=0.14.3 / zstd-safe >=8.2.0, which memvid-core does not
+# allow. Upstream tracked at:
+#   https://github.com/memvid/memvid/issues/260
+# memvid-core uses zstd to decompress frames of the .mv2 file. memvid-service
+# only ever opens the one .mv2 it was deployed with, built offline by the
+# ingest pipeline from the owner's resume; it never decompresses untrusted or
+# client-supplied input. src/ has zero references to zstd. The ten zstd-safe
+# `unsound` warnings (in RUSTSEC-2026-0395..0406) are informational and do not
+# fail `cargo audit` (no `[output] deny` configured), so they are not listed.
 #
 # Remove each ignore once memvid-core cuts a release that floors the patched
-# parser versions (see issue #242).
+# versions (issue #242 for the parsers, #260 for zstd).
 
 [advisories]
 ignore = [
@@ -29,4 +44,7 @@ ignore = [
     "RUSTSEC-2026-0367", # zip <9.0.0 preserves SUID/SGID bits in extract(); extract() never called
     "RUSTSEC-2026-0368", # zip <9.0.0 extract() writes attacker-controlled symlinks; extract() never called
     "RUSTSEC-2026-0369", # zip <9.0.0 extract() applies Unix permissions unsafely; extract() never called
+    "RUSTSEC-2026-0391", # zstd 0.13.3 reused context leaks data from an abandoned stream; only trusted, self-built .mv2 decompressed. Revisit 2026-11-30.
+    "RUSTSEC-2026-0398", # zstd-safe 7.2.4 Seekable::decompress sets Vec length past capacity; only trusted, self-built .mv2 decompressed. Revisit 2026-11-30.
+    "RUSTSEC-2026-0403", # zstd-safe 7.2.4 uninitialized memory on failed legacy-frame streaming decompression; only trusted, self-built .mv2 decompressed. Revisit 2026-11-30.
 ]

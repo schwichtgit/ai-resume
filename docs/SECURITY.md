@@ -484,6 +484,44 @@ separately in `memvid-service/.cargo/audit.toml`.
 **Reviewed:** 2026-10-31
 **Revisit:** 2026-11-30
 
+### Accepted cargo audit Findings
+
+#### zstd decompression advisories in memvid-service (Accepted Risk)
+
+**Alert:** none (no Dependabot or code-scanning alert open at time of review)
+**Package:** `zstd` 0.13.3 and `zstd-safe` 7.2.4, transitive via
+`memvid-core` 2.0.140 in `memvid-service`
+
+| RUSTSEC ID          | Crate       | Issue                                                                  | Fixed in |
+| ------------------- | ----------- | ---------------------------------------------------------------------- | -------- |
+| `RUSTSEC-2026-0391` | `zstd`      | data from an abandoned stream leaks into the next stream on reused ctx | 0.14.3   |
+| `RUSTSEC-2026-0398` | `zstd-safe` | `Seekable::decompress` sets `Vec` length beyond capacity               | 8.2.0    |
+| `RUSTSEC-2026-0403` | `zstd-safe` | uninitialized memory exposed when legacy-frame streaming decode fails  | 8.2.0    |
+
+**Disposition:** Accepted in `memvid-service/.cargo/audit.toml`
+(`cargo audit`, run by `task audit` and the weekly security workflow) on
+2026-10-31. The ten `unsound` warnings on `zstd-safe` 7.2.4 (in the
+RUSTSEC-2026-0395 to -0406 range) are informational: `cargo audit` is not
+configured to fail on warnings, so they are not suppressed.
+`RUSTSEC-2026-0410` (`zstd-sys`) is fixable downstream (`zstd-sys` 2.1.2)
+and is not accepted.
+
+**Rationale:**
+
+- Not fixable downstream: `memvid-core` 2.0.140 (latest release) requires
+  `zstd ^0.13`, which caps `zstd-safe` at 7.x. The fix needs an upstream
+  release, tracked in
+  [memvid/memvid#260](https://github.com/memvid/memvid/issues/260) (open).
+- Not reachable with untrusted input: `memvid-core` uses zstd to decompress
+  frames of the `.mv2` file. `memvid-service` only opens the one `.mv2` it is
+  deployed with, built offline by the `ingest` pipeline from the owner's
+  resume; it never decompresses client-supplied data. `memvid-service/src`
+  has zero references to `zstd`.
+
+**Status:** Accepted (suppressed in `memvid-service/.cargo/audit.toml`)
+**Reviewed:** 2026-10-31
+**Revisit:** 2026-11-30
+
 ## Dependency Security
 
 ### Scanning
