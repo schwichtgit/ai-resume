@@ -445,6 +445,45 @@ advisory is accepted in `.trivyignore` (Trivy image gate) and in
 **Reviewed:** 2026-10-25
 **Revisit:** 2026-11-24
 
+### Accepted Trivy Findings
+
+#### zip archive advisories in memvid-service (Accepted Risk)
+
+**Alert:** none (no Dependabot or code-scanning alert open at time of review)
+**Package:** `zip` 0.6.6 (via `calamine` 0.22.1) and `zip` 7.4.0 (direct),
+both transitive via `memvid-core` 2.0.140 in `memvid-service`
+
+| Trivy ID          | GHSA                  | Severity | Issue                                                     | Fixed in |
+| ----------------- | --------------------- | -------- | --------------------------------------------------------- | -------- |
+| `CVE-2026-115905` | `GHSA-m665-v7pm-7grj` | CRITICAL | local/central header parser differential ("zip cloaking") | 9.0.5    |
+| `CVE-2026-115906` | `GHSA-8hxf-qr8p-62x4` | MEDIUM   | AES HMAC check bypassed on premature EOF                  | 9.0.0    |
+| `CVE-2026-115907` | `GHSA-9hj8-73fh-9963` | HIGH     | DoS in legacy Shrink/Reduce/Implode decoder               | 9.0.0    |
+| `CVE-2026-115908` | `GHSA-hjqx-j4rw-g7xv` | HIGH     | `extract()` symlink path escape                           | 9.0.0    |
+| `CVE-2026-115909` | `GHSA-q7v9-x93c-xqv3` | HIGH     | unbounded symlink target during extraction                | 9.0.0    |
+
+**Disposition:** Accepted in `.trivyignore` (Trivy image gate) on 2026-10-31.
+The extract()-only RUSTSEC advisories for the same crate are accepted
+separately in `memvid-service/.cargo/audit.toml`.
+
+**Rationale:**
+
+- Not fixable downstream: `memvid-core` 2.0.140 (latest release) pins zip 7.x
+  directly and zip 0.6 through calamine 0.22. The fix needs an upstream
+  release, tracked in
+  [memvid/memvid#242](https://github.com/memvid/memvid/issues/242) (open).
+- Not all five are extract-only. `CVE-2026-115905`, `-115906` and `-115907`
+  sit on the archive read/parse path, so "extract() is never called" does
+  not cover them.
+- Not reachable at serving time: `memvid-service` opens a pre-built `.mv2`
+  read-only and serves search over it. It never opens a ZIP, XLSX or DOCX on
+  the gRPC request path; `memvid-service/src` has zero references to `zip` or
+  `calamine`. The crate is linked only because `memvid-core` bundles its
+  document parsers; document parsing happens offline in the `ingest` pipeline.
+
+**Status:** Accepted (suppressed in `.trivyignore`)
+**Reviewed:** 2026-10-31
+**Revisit:** 2026-11-30
+
 ## Dependency Security
 
 ### Scanning

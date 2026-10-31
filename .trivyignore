@@ -26,6 +26,30 @@
 # #132 was dismissed as tolerable_risk on 2026-10-25 (see docs/SECURITY.md).
 GHSA-6fj4-rcr3-r7rr  # accepted: lopdf via memvid-core cap, PDF parser unreachable at serving time. Revisit 2026-11-24.
 
+# zip 0.6.6 (via calamine 0.22.1) and zip 7.4.0 (direct) in the memvid binary.
+# Both are pinned by memvid-core 2.0.140, still the latest release; the fixes
+# are zip 9.0.0 / 9.0.5, which memvid-core does not allow (memvid/memvid#242,
+# same cap as the lopdf entry above). Trivy reports the CVE IDs; the GHSA
+# aliases are noted per line. The RUSTSEC extract() advisories for the same
+# crate are accepted separately in memvid-service/.cargo/audit.toml.
+#
+# Not all five are extract-only. CVE-2026-115905 (CRITICAL, "zip cloaking") is
+# a parser differential between the local and central directory headers, so it
+# sits on the read path, not just extract(); -115906 (AES HMAC check skipped on
+# premature EOF) and -115907 (legacy Shrink/Reduce/Implode decoder DoS) are on
+# the read path too. The acceptance does not rest on extract() being unused. It
+# rests on the service never opening an archive: memvid-service opens one
+# pre-built .mv2 read-only and serves search over it, and no ZIP/XLSX/DOCX is
+# parsed at serving time. src/ has zero references to zip or calamine. The zip
+# code is linked in only because memvid-core bundles its document parsers;
+# documents are parsed offline by the ingest pipeline. No code-scanning alert
+# number at time of writing.
+CVE-2026-115905  # accepted: zip header parser differential (GHSA-m665-v7pm-7grj); no archive opened at serving time. Revisit 2026-11-30.
+CVE-2026-115906  # accepted: zip AES HMAC bypass on premature EOF (GHSA-8hxf-qr8p-62x4); no archive opened at serving time. Revisit 2026-11-30.
+CVE-2026-115907  # accepted: zip legacy decoder DoS (GHSA-9hj8-73fh-9963); no archive opened at serving time. Revisit 2026-11-30.
+CVE-2026-115908  # accepted: zip extract() symlink path escape (GHSA-hjqx-j4rw-g7xv); extract() never called. Revisit 2026-11-30.
+CVE-2026-115909  # accepted: zip extract() unbounded symlink target (GHSA-q7v9-x93c-xqv3); extract() never called. Revisit 2026-11-30.
+
 # History: the seven libc6/Trixie entries that lived here were all inherited from the
 # memvid runtime when it was based on distroless/cc-debian13. That base was
 # replaced with distroless/static in #496, which removed libc entirely, so the
