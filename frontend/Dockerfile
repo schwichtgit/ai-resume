@@ -7,7 +7,7 @@ ARG BUILD_COMMIT=unknown
 # =============================================================================
 # Stage 1: Build React application
 # =============================================================================
-FROM node:26.12.1-trixie-slim@sha256:36793bcbb160a6a16cede1e62b93f84e26b78a972a8a4c0b879c1c12f22761ec AS builder
+FROM node:26.12.1-trixie-slim@sha256:94816674c62774da0d099a947bf4613b9e1972a2733abd0d0cd80e795f8411d0 AS builder
 
 WORKDIR /app
 
@@ -37,7 +37,7 @@ RUN printf '{"version":"%s","commit":"%s"}\n' "${BUILD_VERSION}" "${BUILD_COMMIT
 # =============================================================================
 # Stage 2: Production OpenResty server (Alpine package)
 # =============================================================================
-FROM alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
+FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
 
 # Install OpenResty and lua-resty-http, then create directories
 # Note: openresty package creates 'nginx' user and group automatically
