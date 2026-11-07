@@ -90,7 +90,7 @@ RUN mkdir -p /python-runtime/usr/bin \
 
 # --- Stage 3: Runtime ---
 # ubi-micro has no shell, no package manager -- only what we explicitly copy.
-FROM registry.access.redhat.com/ubi10/ubi-micro@sha256:1c105e547de5d9e0bc20d06ebabee73b20bc6bba994c50ae3e207684fd8bef2b
+FROM registry.access.redhat.com/ubi10/ubi-micro@sha256:8488f5ec082768a01d1ce4e0ef3878f782a40ff6d233afa74bc23d4e740620a4
 
 # Python runtime from Stage 2
 COPY --from=python-deps /python-runtime/ /
