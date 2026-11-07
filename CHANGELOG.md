@@ -7,6 +7,117 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-11-07
+
+A maintenance release of security fixes and dependency currency. It closes a
+CRITICAL `authlib` advisory in api-service, moves every service to current
+dependencies and base images, and hardens the CI supply chain. Application
+behaviour is unchanged apart from one frontend container fix (#652); the
+api-service, ingest, memvid and frontend images all carry the updates below.
+
+### Upgrade notes
+
+- **Hand-managed compose files:** the frontend now writes its nginx pid under
+  `/run/nginx` (#652). Change the frontend `tmpfs` mount from
+  `/var/run/nginx` to `/run/nginx` in any compose file not taken from this
+  repository. The old path still resolves through Alpine's `/var/run`
+  symlink, but `podman inspect` warns on every call until it is changed.
+
+### Security
+
+- **`authlib` 1.6.12 -> 1.9.1 in `api-service`** (#671). CVE-2026-96760
+  (**critical**, signature verification bypass) and three high
+  authentication and authorization bypasses (CVE-2026-114615,
+  CVE-2026-114616, CVE-2026-116672). `authlib` comes in through `fastmcp`,
+  which serves the public `/mcp` endpoint.
+
+- **`joserfc` 1.7.0 -> 1.7.7 and `dnspython` 2.8.0 -> 2.9.1 in
+  `api-service`** (#671): CVE-2026-119283 and CVE-2026-114605 (high, both
+  denial of service), also through `fastmcp`.
+
+- **`filelock` 3.20.3 -> 4.2.6 in `ingest`** (#674): CVE-2026-112909 and
+  CVE-2026-112910 (Windows lock-file permissions), through `huggingface-hub`
+  and `torch`. `msgpack` 1.2.1 -> 1.2.4 in `api-service` (#671,
+  CVE-2026-114613) is development only, through the `sbom` extra.
+
+- **`zstd-sys` 2.0.16 -> 2.1.2 and `pulldown-cmark` 0.13.0 -> 0.13.6 in
+  `memvid-service`** (#672): RUSTSEC-2026-0410, and RUSTSEC-2026-0414
+  (build time only, through `prost-build`).
+
+- **Frontend tooling** (#673): `re2js` 2.8.7 (GHSA-gg6h-894w-4m9c, high)
+  and `minimatch` 11.0.3 (GHSA-g3hv-75wg-m249, moderate) by `overrides`.
+  Development only. `npm audit` is clean with no accepted advisories.
+
+- **Accepted, with a revisit date of 2026-11-30** (#671, #673): five `zip`
+  advisories (CVE-2026-115905, critical, to CVE-2026-115909) in
+  `.trivyignore`, and three `zstd` / `zstd-safe` advisories
+  (RUSTSEC-2026-0391, -0398, -0403) in `memvid-service/.cargo/audit.toml`.
+  All come from `memvid-core` 2.0.140, the latest release, which pins
+  `zip` 7.x, `calamine` 0.22 (and through it `zip` 0.6) and `zstd` 0.13.
+  `memvid-service` only opens pre-built `.mv2` files and never parses a ZIP,
+  Office or untrusted zstd stream at serving time. Reported upstream as
+  memvid/memvid#260, with fixes proposed in memvid/memvid#261 (`zstd` 0.14)
+  and memvid/memvid#262 (`zip` 9). Rationale in `docs/SECURITY.md`.
+
+- **Known, not yet accepted:** `cargo audit` in `memvid-service` also
+  reports RUSTSEC-2026-0429 (`zip` 0.6.6 and 7.4.0; the same issue as
+  CVE-2026-115909 above) and RUSTSEC-2026-0436 (`calamine` 0.22.1, panic and
+  unbounded allocation in the legacy Excel parser; fixed in 0.38.0), both
+  through `memvid-core` 2.0.140. Neither code path runs at serving time.
+
+### Fixed
+
+- **The frontend nginx run directory is declared at `/run/nginx`** (#652).
+  Alpine links `/var/run` to `/run`, so podman recorded the tmpfs under
+  its resolved path and `podman inspect` could not match the declared
+  destination, warning on every call.
+
+### Changed
+
+- **Container scanners run from Dependabot-pinned images** (#655): Trivy
+  0.76.1 and Grype v0.121.0, defined in `.github/scanners/*/Dockerfile`,
+  so scanner updates arrive as reviewable pull requests.
+
+- **Every GitHub Action is pinned to a release commit SHA** with a version
+  comment (#654, #656), including the Trivy DB cache steps; no action is
+  referenced by tag any more.
+
+- **The arm64 container build runs on `ubuntu-26.04-arm`** (#649). Trivy
+  and syft use `runner.temp` as `TMPDIR` (#653, #656): Ubuntu 26.04 mounts
+  `/tmp` as a 7.8 GB RAM tmpfs, which the ingest image scan exhausted.
+
+- **Docs:** production compose files are hand-managed on the host, not
+  deployed by `scripts/deploy.sh` (#650); the `lopdf` acceptance is
+  revisited on 2026-11-24 (#651).
+
+### Dependencies
+
+- **`api-service`** (#659, #672, #684): `grpcio` and `grpcio-tools` 1.85.1
+  with regenerated stubs; the OpenTelemetry family 1.45.2 / 0.66b2, moved
+  together; `pydantic` 2.14.3 with `pydantic-core` 2.50.4;
+  `pydantic-settings` 2.16.2, `python-multipart` 0.0.33 and `cachetools`
+  7.2.8.
+
+- **`memvid-service`** (#672): `tonic`, `tonic-health`, `tonic-prost` and
+  `tonic-prost-build` 0.14.9; Rust 1.99.1 (builder image and
+  `rust-toolchain.toml`).
+
+- **Base images** (#672, #684): `ubi10/ubi-micro` and
+  `distroless/static-debian13` refreshed by digest; `node` by digest and
+  `alpine` 3.24.3 for the frontend.
+
+- **Frontend** (#672, #684): `@tanstack/react-query` 5.107.1,
+  `lucide-react` 1.70.0, `react-hook-form` 7.91.0,
+  `react-resizable-panels` 4.19.1, `react-router` 8.5.1, `tailwindcss` and
+  `@tailwindcss/vite` 4.3.5, `vitest` and `@vitest/coverage-v8` 5.1.0,
+  `eslint` 10.14.0, `typescript-eslint` 8.72.1, `@vitejs/plugin-react`
+  6.2.1.
+
+- **Also:** `pytest` 9.2.0 and `pytest-asyncio` 1.4.1 in both Python
+  services (#672); `cosign-installer` 4.1.3 (cosign 3.1.4),
+  `codeql-action` 4.39.3, `setup-uv` 10.3.3, `install-action` 2.90.1 and
+  `sonarqube-scan-action` 8.4.1 (#672, #684).
+
 ## [0.2.7] - 2026-10-25
 
 A patch release of runtime base-image security and the scanning that should
@@ -1939,7 +2050,8 @@ documentation overhaul. No new product features since alpha.23.
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.2.7...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.2.8...HEAD
+[0.2.8]: https://github.com/schwichtgit/ai-resume/compare/v0.2.7...v0.2.8
 [0.2.7]: https://github.com/schwichtgit/ai-resume/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/schwichtgit/ai-resume/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/schwichtgit/ai-resume/compare/v0.2.4...v0.2.5
