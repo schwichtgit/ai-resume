@@ -12,15 +12,29 @@
 # in the `ingest` pipeline, not on the gRPC request path with untrusted input.
 # src/ has zero references to lopdf/quick-xml/calamine/pdf-extract/zip.
 #
-# The zip advisories (2026-10) concern only ZipArchive::extract /
+# The zip advisories accepted here concern only ZipArchive::extract /
 # ZipStreamReader::extract writing an archive to the filesystem (SUID/SGID bits,
-# symlink targets, Unix permissions). memvid-core and calamine open archives
-# with ZipArchive::new and read entries in memory; neither calls extract(), so
-# the vulnerable code is not reachable even on the offline parsing path.
-# That holds only for the three RUSTSEC entries below. Later zip advisories
-# (GHSA-m665-v7pm-7grj and others, accepted in the root .trivyignore) are not
-# extract-only: they sit on the archive read/parse path. Their acceptance rests
-# on the service never opening an archive at serving time, not on extract().
+# symlink targets, Unix permissions, and -- RUSTSEC-2026-0429, 2026-11 -- a
+# process abort on a symlink entry with a large declared size). memvid-core and
+# calamine open archives with ZipArchive::new and read entries in memory;
+# neither calls ZipArchive::extract(), so the vulnerable code is not reachable
+# even on the offline parsing path. That holds only for the four zip RUSTSEC
+# entries below. Other zip advisories (GHSA-m665-v7pm-7grj and others, accepted
+# in the root .trivyignore) are not extract-only: they sit on the archive
+# read/parse path. Their acceptance rests on the service never opening an
+# archive at serving time, not on extract(). RUSTSEC-2026-0429 is fixed in
+# zip >=9.0.0; memvid-core pins zip ^7.1 directly and calamine 0.22 pulls
+# zip 0.6. Upstream: https://github.com/memvid/memvid/issues/260 and
+# https://github.com/memvid/memvid/pull/262 (zip 9.2).
+#
+# calamine 0.22.1 (RUSTSEC-2026-0436, 2026-11) panics and allocates without
+# bound in its CFB/OLE2 parser (legacy .xls) on malformed input; fixed in
+# calamine >=0.38.0, but memvid-core caps calamine ^0.22. Upstream PR
+# https://github.com/memvid/memvid/pull/263 only reaches calamine 0.36, so a
+# further bump to >=0.38 is still needed upstream. The parser runs only when
+# memvid-core ingests a spreadsheet; memvid-service never does -- it opens the
+# one pre-built .mv2 and parses no documents, so a malformed .xls cannot reach
+# it.
 #
 # zstd 0.13.3 / zstd-safe 7.2.4 are pinned by memvid-core 2.0.140 (zstd ^0.13);
 # the fixes are zstd >=0.14.3 / zstd-safe >=8.2.0, which memvid-core does not
@@ -34,7 +48,7 @@
 # fail `cargo audit` (no `[output] deny` configured), so they are not listed.
 #
 # Remove each ignore once memvid-core cuts a release that floors the patched
-# versions (issue #242 for the parsers, #260 for zstd).
+# versions (issue #242 for the parsers, #260 for zip and zstd).
 
 [advisories]
 ignore = [
@@ -44,6 +58,8 @@ ignore = [
     "RUSTSEC-2026-0367", # zip <9.0.0 preserves SUID/SGID bits in extract(); extract() never called
     "RUSTSEC-2026-0368", # zip <9.0.0 extract() writes attacker-controlled symlinks; extract() never called
     "RUSTSEC-2026-0369", # zip <9.0.0 extract() applies Unix permissions unsafely; extract() never called
+    "RUSTSEC-2026-0429", # zip <9.0.0 extract() aborts on symlink entry with large declared size (0.6.6 via calamine, 7.4.0 direct); extract() never called. Revisit 2026-11-30.
+    "RUSTSEC-2026-0436", # calamine <0.38.0 CFB/OLE2 (.xls) parser panic + unbounded allocation on malformed input; no spreadsheet parsed at serving time. Revisit 2026-11-30.
     "RUSTSEC-2026-0391", # zstd 0.13.3 reused context leaks data from an abandoned stream; only trusted, self-built .mv2 decompressed. Revisit 2026-11-30.
     "RUSTSEC-2026-0398", # zstd-safe 7.2.4 Seekable::decompress sets Vec length past capacity; only trusted, self-built .mv2 decompressed. Revisit 2026-11-30.
     "RUSTSEC-2026-0403", # zstd-safe 7.2.4 uninitialized memory on failed legacy-frame streaming decompression; only trusted, self-built .mv2 decompressed. Revisit 2026-11-30.
