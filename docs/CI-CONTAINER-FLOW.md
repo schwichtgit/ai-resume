@@ -64,7 +64,7 @@ Release Workflow (release.yml):
 
 ## Container Build Job
 
-Each matrix cell (image x platform) runs on a native runner (`ubuntu-latest`
+Each matrix cell (image x platform) runs on a native runner (`ubuntu-26.04`
 for amd64, `ubuntu-26.04-arm` for arm64) and executes these steps in order:
 
 1. **Build** -- `podman build` with OCI annotations (title, source, version,
