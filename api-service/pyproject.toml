@@ -11,9 +11,9 @@ dependencies = [
     "starlette>=1.8.0",
     "setuptools>=84.2.1",
     "uvicorn[standard]>=0.52.4",
-    "python-multipart>=0.0.32",
+    "python-multipart>=0.0.33",
     "httpx>=0.28.1",
-    "pydantic>=2.14.1",
+    "pydantic>=2.14.2",
     "pydantic-settings>=2.16.2",
     "grpcio>=1.85.1",
     "grpcio-tools>=1.85.1",
@@ -22,16 +22,16 @@ dependencies = [
     # import, so this floor is a hard runtime requirement of this package.
     # scripts/check-proto-drift.sh keeps it honest.
     "protobuf>=7.36.2",
-    "opentelemetry-api>=1.45.1",
-    "opentelemetry-sdk>=1.45.1",
-    "opentelemetry-instrumentation-fastapi>=0.66b1",
+    "opentelemetry-api>=1.45.2",
+    "opentelemetry-sdk>=1.45.2",
+    "opentelemetry-instrumentation-fastapi>=0.66b2",
     "prometheus-client>=0.26.0",
     "prometheus-fastapi-instrumentator>=8.1.0",
     "structlog>=26.1.0",
-    "cachetools>=7.2.6",
+    "cachetools>=7.2.8",
     "slowapi>=0.1.10",
     "fastmcp>=3.4.10,<4",
-    "opentelemetry-exporter-otlp>=1.45.1",
+    "opentelemetry-exporter-otlp>=1.45.2",
     # Transitive pin (via uvicorn/typer) to remediate PYSEC-2026-2132; drop once
     # an upstream requirer floors click >= 8.3.3.
     "click>=8.5.0",
