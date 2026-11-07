@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   container-scan:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     strategy:
       matrix:
         include:
@@ -44,7 +44,7 @@ jobs:
           echo "image=${REF}" >> "$GITHUB_OUTPUT"
           echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
 
-      # ubuntu-latest mounts /tmp as a ~7.8G RAM tmpfs with a per-user quota
+      # ubuntu-26.04 mounts /tmp as a ~7.8G RAM tmpfs with a per-user quota
       # (actions/runner-images#14777), and the ingest image alone exceeds it.
       # The image archive, Trivy's TMPDIR and its DB live under runner.temp,
       # on the root disk.
@@ -117,7 +117,7 @@ jobs:
   # and frontend/.npm-audit-ignore.
   dependency-audit:
     name: Dependency vulnerability audit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -168,7 +168,7 @@ jobs:
     # models are retired routinely, so this runs on the weekly schedule to
     # catch it before a user does. The catalogue and endpoint APIs need no
     # API key and perform no inference, so this costs nothing.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     defaults:
       run:
         working-directory: api-service

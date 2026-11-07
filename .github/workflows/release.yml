@@ -20,7 +20,7 @@ env:
 jobs:
   # Gate: verify CI passed and changelog has an entry for this version
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       ci_run_id: ${{ steps.ci.outputs.run_id }}
     env:
@@ -142,7 +142,7 @@ jobs:
   # Merge arch-specific images (built in CI) into multi-arch manifests
   merge-manifests:
     needs: validate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     strategy:
       matrix:
         image:
@@ -248,7 +248,7 @@ jobs:
   # Verify all signatures before tag promotion
   verify-signatures:
     needs: merge-manifests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     strategy:
       matrix:
         image:
@@ -293,7 +293,7 @@ jobs:
   # Apply semver tag family (major, major.minor, latest) to all images
   publish-tags:
     needs: verify-signatures
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -318,7 +318,7 @@ jobs:
   # Create GitHub Release with auto-generated notes
   create-release:
     needs: publish-tags
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
