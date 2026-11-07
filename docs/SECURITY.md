@@ -522,6 +522,48 @@ and is not accepted.
 **Reviewed:** 2026-10-31
 **Revisit:** 2026-11-30
 
+#### zip and calamine advisories in memvid-service (Accepted Risk)
+
+**Alert:** none (no Dependabot or code-scanning alert open at time of review)
+**Package:** `zip` 0.6.6 (via `calamine` 0.22.1), `zip` 7.4.0 (direct) and
+`calamine` 0.22.1, all transitive via `memvid-core` 2.0.140 in
+`memvid-service`
+
+| RUSTSEC ID          | Crate      | Issue                                                                    | Fixed in |
+| ------------------- | ---------- | ------------------------------------------------------------------------ | -------- |
+| `RUSTSEC-2026-0429` | `zip`      | `ZipArchive::extract` aborts on a symlink entry with large declared size | 9.0.0    |
+| `RUSTSEC-2026-0436` | `calamine` | panic and unbounded allocation in the CFB/OLE2 (`.xls`) parser           | 0.38.0   |
+
+`RUSTSEC-2026-0429` is the same issue as `CVE-2026-115909` /
+`GHSA-q7v9-x93c-xqv3`, already accepted for the Trivy image gate under
+[zip archive advisories in memvid-service](#zip-archive-advisories-in-memvid-service-accepted-risk).
+
+**Disposition:** Accepted in `memvid-service/.cargo/audit.toml`
+(`cargo audit`, run by `task audit` and the weekly security workflow) on
+2026-11-07. The `unmaintained` warning on `pin-utils` 0.1.0
+(`RUSTSEC-2026-0441`) is informational and not suppressed.
+
+**Rationale:**
+
+- Not fixable downstream: `memvid-core` 2.0.140 (latest release) requires
+  `zip ^7.1` and `calamine ^0.22` (which in turn pulls `zip` 0.6). The zip fix
+  is proposed upstream in
+  [memvid/memvid#262](https://github.com/memvid/memvid/pull/262) (zip 9.2,
+  for [memvid/memvid#260](https://github.com/memvid/memvid/issues/260)). The
+  open calamine bump,
+  [memvid/memvid#263](https://github.com/memvid/memvid/pull/263), stops at
+  0.36; a further upstream bump to calamine >= 0.38 is still needed.
+- Not reachable: `memvid-core` and `calamine` open archives with
+  `ZipArchive::new` and read entries in memory; neither calls
+  `ZipArchive::extract`. The calamine CFB/OLE2 parser runs only when
+  `memvid-core` ingests a legacy `.xls` file. `memvid-service` opens the one
+  pre-built `.mv2` it is deployed with, read-only, and parses no documents;
+  `memvid-service/src` has zero references to `zip`, `calamine` or `xls`.
+
+**Status:** Accepted (suppressed in `memvid-service/.cargo/audit.toml`)
+**Reviewed:** 2026-11-07
+**Revisit:** 2026-11-30
+
 ## Dependency Security
 
 ### Scanning
