@@ -37,7 +37,7 @@ RUN printf '{"version":"%s","commit":"%s"}\n' "${BUILD_VERSION}" "${BUILD_COMMIT
 # =============================================================================
 # Stage 2: Production OpenResty server (Alpine package)
 # =============================================================================
-FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+FROM alpine:3.24.4@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
 
 # Install OpenResty and lua-resty-http, then create directories
 # Note: openresty package creates 'nginx' user and group automatically
