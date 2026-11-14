@@ -34,7 +34,7 @@ dependencies = [
     "opentelemetry-exporter-otlp>=1.45.2",
     # Transitive pin (via uvicorn/typer) to remediate PYSEC-2026-2132; drop once
     # an upstream requirer floors click >= 8.3.3.
-    "click>=8.5.0",
+    "click>=8.5.1",
 ]
 
 [project.optional-dependencies]
