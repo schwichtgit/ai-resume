@@ -19,8 +19,8 @@ test = [
     "numpy>=2.5.2",
 ]
 lint = [
-    "ruff>=0.17.1",
-    "mypy>=2.4.0",
+    "ruff>=0.17.4",
+    "mypy>=2.4.1",
 ]
 
 [dependency-groups]
