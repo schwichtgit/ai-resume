@@ -58,7 +58,7 @@
     "react-day-picker": "^10.0.2",
     "react-dom": "^19.3.1",
     "react-hook-form": "^7.92.0",
-    "react-resizable-panels": "^4.21.0",
+    "react-resizable-panels": "^4.22.0",
     "react-router": "^8.5.1",
     "recharts": "^3.10.1",
     "sonner": "^2.0.8",
@@ -84,8 +84,8 @@
     "eslint-plugin-react-refresh": "^0.5.7",
     "globals": "^17.14.0",
     "jsdom": "^31.0.0",
-    "markdownlint-cli2": "0.24.0",
-    "prettier": "3.10.0",
+    "markdownlint-cli2": "0.24.1",
+    "prettier": "3.10.1",
     "tailwindcss": "^4.3.4",
     "typescript": "^6.0.3",
     "typescript-7": "npm:typescript@^7.0.2",
@@ -101,8 +101,7 @@
       "typescript": "$typescript"
     },
     "markdownlint-cli2": {
-      "katex": "0.18.2",
-      "re2js": "2.8.7"
+      "katex": "0.18.2"
     },
     "minimatch": "^11.0.3"
   }
