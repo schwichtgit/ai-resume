@@ -36,19 +36,8 @@
 # one pre-built .mv2 and parses no documents, so a malformed .xls cannot reach
 # it.
 #
-# zstd 0.13.3 / zstd-safe 7.2.4 are pinned by memvid-core 2.0.140 (zstd ^0.13);
-# the fixes are zstd >=0.14.3 / zstd-safe >=8.2.0, which memvid-core does not
-# allow. Upstream tracked at:
-#   https://github.com/memvid/memvid/issues/260
-# memvid-core uses zstd to decompress frames of the .mv2 file. memvid-service
-# only ever opens the one .mv2 it was deployed with, built offline by the
-# ingest pipeline from the owner's resume; it never decompresses untrusted or
-# client-supplied input. src/ has zero references to zstd. The ten zstd-safe
-# `unsound` warnings (in RUSTSEC-2026-0395..0406) are informational and do not
-# fail `cargo audit` (no `[output] deny` configured), so they are not listed.
-#
 # Remove each ignore once memvid-core cuts a release that floors the patched
-# versions (issue #242 for the parsers, #260 for zip and zstd).
+# versions (issue #242 for the parsers, #260 for zip).
 
 [advisories]
 ignore = [
@@ -60,7 +49,4 @@ ignore = [
     "RUSTSEC-2026-0369", # zip <9.0.0 extract() applies Unix permissions unsafely; extract() never called
     "RUSTSEC-2026-0429", # zip <9.0.0 extract() aborts on symlink entry with large declared size (0.6.6 via calamine, 7.4.0 direct); extract() never called. Revisit 2026-11-30.
     "RUSTSEC-2026-0436", # calamine <0.38.0 CFB/OLE2 (.xls) parser panic + unbounded allocation on malformed input; no spreadsheet parsed at serving time. Revisit 2026-11-30.
-    "RUSTSEC-2026-0391", # zstd 0.13.3 reused context leaks data from an abandoned stream; only trusted, self-built .mv2 decompressed. Revisit 2026-11-30.
-    "RUSTSEC-2026-0398", # zstd-safe 7.2.4 Seekable::decompress sets Vec length past capacity; only trusted, self-built .mv2 decompressed. Revisit 2026-11-30.
-    "RUSTSEC-2026-0403", # zstd-safe 7.2.4 uninitialized memory on failed legacy-frame streaming decompression; only trusted, self-built .mv2 decompressed. Revisit 2026-11-30.
 ]
