@@ -7,6 +7,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.9] - 2026-11-16
+
+A maintenance release of security fixes and dependency currency. It closes a
+high `dnspython` advisory in api-service, replaces three accepted `zstd`
+advisories with real fixes, and moves CI to an explicit Ubuntu 26.04 runner.
+No application code changed; the api-service, ingest, memvid and frontend
+images all carry the updates below.
+
+### Security
+
+- **`dnspython` 2.9.1 -> 2.9.2 in `api-service`** (#701). CVE-2026-128089
+  (high): excessive memory and CPU use. It comes in through `fastmcp`, which
+  serves the public `/mcp` endpoint, and failed the Trivy gate on every
+  api-service image build until fixed.
+
+- **`zstd` 0.13.5 and `zstd-safe` 7.4.1 in `memvid-service`** (#701). The
+  fixes were backported into versions `memvid-core` 2.0.140 already allows,
+  so RUSTSEC-2026-0391, -0398 and -0403 are now fixed rather than accepted,
+  along with ten `zstd-safe` soundness warnings. Their `audit.toml` entries
+  and the accepted-risk section in `docs/SECURITY.md` are gone.
+
+- **`rustix` 1.1.6 in `memvid-service`** (#701): RUSTSEC-2026-0486
+  (unsound), found by `task audit`.
+
+- **Accepted, with a revisit date of 2026-11-30** (#687): RUSTSEC-2026-0429
+  (`zip` 0.6.6 and 7.4.0; the same issue as CVE-2026-115909, already
+  accepted in `.trivyignore`) and RUSTSEC-2026-0436 (`calamine` 0.22.1,
+  panic and unbounded allocation in the legacy Excel parser; fixed in
+  0.38.0). Both come from `memvid-core` 2.0.140, which pins `zip` 7.x and
+  `calamine` 0.22, and neither code path runs at serving time:
+  `memvid-service` only opens pre-built `.mv2` files. The weekly Security
+  Scan had been red on them since 2026-11-02. Upstream: memvid/memvid#260
+  and #262 (`zip` 9); `calamine` >= 0.38 still needs an upstream change.
+
+- **The `re2js` override is gone** (#704): `markdownlint-cli2` 0.24.1 now
+  brings `re2js` 2.9.1, past the 2.8.7 fix, and the override would have
+  pinned it back. The `katex` and `minimatch` overrides stay. `npm audit`
+  is clean with no accepted advisories.
+
+### Changed
+
+- **Every CI job runs on an explicit `ubuntu-26.04` runner** (#686), not
+  `ubuntu-latest`, which GitHub moves to Ubuntu 26.04 by 2026-11-19. amd64
+  and arm64 now run the same OS, and the change was reviewed instead of
+  arriving silently. Trivy, syft and setup-uv already keep their temporary
+  files off 26.04's RAM-backed `/tmp`.
+
+### Dependencies
+
+- **`api-service`** (#701, #704): `fastapi` 0.162.5 and `click` 8.5.1.
+
+- **`memvid-service`** (#701): `prost` and `prost-derive` 0.14.6.
+
+- **Base images** (#701, #704): `ubi10/ubi-micro` and
+  `distroless/static-debian13` refreshed by digest; `node` 26.13.1 and
+  `alpine` 3.24.4 for the frontend.
+
+- **Frontend** (#701, #704): the OpenTelemetry web packages 3.1.1
+  (exporter 0.301.2), `lucide-react` 1.72.0, `react-hook-form` 7.92.0,
+  `react-resizable-panels` 4.22.0, `@vitejs/plugin-react` 6.3.0, `vite`
+  8.3.8; development: `@playwright/test` 1.65.1, `jsdom` 31.0.1 (major),
+  `prettier` 3.10.1, `markdownlint-cli2` 0.24.1 and `typescript-eslint`
+  8.72.2.
+
+- **Also:** `ruff` 0.17.5 and `mypy` 2.4.1 in both Python services (#701);
+  `taiki-e/install-action` 2.90.3 and `sonarqube-scan-action` 8.5.0 (#701,
+  #704).
+
 ## [0.2.8] - 2026-11-07
 
 A maintenance release of security fixes and dependency currency. It closes a
@@ -2050,7 +2118,8 @@ documentation overhaul. No new product features since alpha.23.
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.2.8...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.2.9...HEAD
+[0.2.9]: https://github.com/schwichtgit/ai-resume/compare/v0.2.8...v0.2.9
 [0.2.8]: https://github.com/schwichtgit/ai-resume/compare/v0.2.7...v0.2.8
 [0.2.7]: https://github.com/schwichtgit/ai-resume/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/schwichtgit/ai-resume/compare/v0.2.5...v0.2.6
