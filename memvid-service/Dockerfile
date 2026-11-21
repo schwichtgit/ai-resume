@@ -14,7 +14,7 @@ ARG BUILD_COMMIT=unknown
 # Keep this tag in step with rust-toolchain.toml: when they diverge, rustup
 # downloads the pinned toolchain on every build and the image's bundled one is
 # never used.
-FROM rust:1.99.1-slim-trixie@sha256:b8e062b1c3a80183df83d9ba187cadd2b5ab84bc78d453dbfeb2fccd5f982247 AS builder
+FROM rust:1.100.0-slim-trixie@sha256:6f14b2b4b278ec0d50aa1d69541c304ce0f95e0f6268487aa9924af1c2e9aebe AS builder
 
 ARG TARGETARCH
 ARG PROTOC_VERSION=28.3
