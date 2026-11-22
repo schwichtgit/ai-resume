@@ -3,7 +3,7 @@ ARG BUILD_COMMIT=unknown
 
 # --- Stage 1: Builder ---
 # Rocky 10 minimal (microdnf) with compilers and uv for building the production venv
-FROM rockylinux/rockylinux:10-minimal@sha256:bc5c1e7a2ec7f4bcef1e51c7f0ebb2d43f05409e0108cdd34f693921d0604360 AS builder
+FROM rockylinux/rockylinux:10-minimal@sha256:f819149e93579b96a7e2fb7286dae4756173de68aafcc78e7e659650c6867b7b AS builder
 
 # Install Python 3.14 + build toolchain for native extensions
 RUN microdnf install -y --nodocs \
@@ -41,7 +41,7 @@ RUN printf '{"version":"%s","commit":"%s"}\n' "${BUILD_VERSION}" "${BUILD_COMMIT
 # --- Stage 2: Python runtime staging ---
 # Rocky 10 minimal has microdnf to install Python + shared libraries, then we
 # stage everything into /python-runtime/ for a single COPY into ubi-micro.
-FROM rockylinux/rockylinux:10-minimal@sha256:bc5c1e7a2ec7f4bcef1e51c7f0ebb2d43f05409e0108cdd34f693921d0604360 AS python-deps
+FROM rockylinux/rockylinux:10-minimal@sha256:f819149e93579b96a7e2fb7286dae4756173de68aafcc78e7e659650c6867b7b AS python-deps
 
 # Changing PKG_REFRESH invalidates this layer, so a local rebuild fetches
 # current Rocky packages instead of reusing a cached python runtime: the
