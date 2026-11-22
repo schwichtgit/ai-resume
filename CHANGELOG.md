@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.10] - 2026-11-22
+
+A maintenance release of dependency currency, with one Rust security fix.
+It moves memvid-service to Rust 1.100 and api-service to FastAPI 0.165.
+Application behaviour is unchanged; the api-service, ingest, memvid and
+frontend images all carry the updates below.
+
+### Security
+
+- **`url` 2.5.8 -> 2.5.9 in `memvid-service`** (#715): RUSTSEC-2026-0592,
+  found by `task audit`; `form_urlencoded` 1.2.3 moves with it.
+
+- **Known, not yet accepted:** `cargo audit` in `memvid-service` reports
+  four new `zip` advisories through `memvid-core` 2.0.140, which pins
+  `zip` 7.x and, through `calamine` 0.22, `zip` 0.6:
+  RUSTSEC-2026-0545 (AES authentication check skipped) and -0547
+  (decoders preallocate the declared size), both on the read path;
+  RUSTSEC-2026-0546 (symlink escape in `extract()`) and -0548 (local
+  header name mismatch on extraction). `memvid-service` opens only
+  pre-built `.mv2` files and never reads or extracts a ZIP, DOCX or XLSX
+  at serving time. All four are fixed in `zip` 9; upstream:
+  memvid/memvid#260 and #262.
+
+### Changed
+
+- **FastAPI 0.165 adds optional request body and form size limits**
+  (#718). They are off by default and do not apply to this API, which has
+  no form or file parameters; the limits that bind remain the field caps
+  on each request model (15,000 characters for an assess-fit job
+  description, 2,000 for a chat message) and nginx's default 1 MiB body
+  limit.
+  A new test, `test_request_body_limits.py`, pins this down: maximum-size
+  English and Chinese job descriptions are accepted, and an oversized body
+  is rejected with 422, not 413.
+
+### Dependencies
+
+- **`api-service`** (#715, #718): `fastapi` 0.165.0, `grpcio` and
+  `grpcio-tools` 1.85.3 with regenerated stubs, `python-multipart` 0.0.34
+  and `pydantic-settings` 2.16.3; `pytest-asyncio` 1.5.0 in both Python
+  services.
+
+- **`memvid-service`** (#715): Rust 1.100.0 (builder image and
+  `rust-toolchain.toml`); no code or clippy changes were needed.
+
+- **Base images** (#715): the `rockylinux/rockylinux` 10-minimal build
+  stages of api-service and ingest refreshed by digest.
+
+- **Frontend** (#715, #718): `@tanstack/react-query` 5.108.2,
+  `lucide-react` 1.77.0, `react-resizable-panels` 4.24.1, `react-router`
+  8.5.2 and `recharts` 3.11.0; development: `vitest` and
+  `@vitest/coverage-v8` 5.1.1, `eslint` 10.15.0,
+  `eslint-plugin-react-refresh` 0.5.8 and `typescript-eslint` 8.73.0.
+
+- **Also:** `setup-uv` 10.4.0 and `install-action` 2.90.6 (#715, #718).
+
 ## [0.2.9] - 2026-11-16
 
 A maintenance release of security fixes and dependency currency. It closes a
@@ -2118,7 +2174,8 @@ documentation overhaul. No new product features since alpha.23.
 - Container images hardened with distroless runtime and SBOM
 - Base image upgrades to address known CVEs
 
-[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.2.9...HEAD
+[Unreleased]: https://github.com/schwichtgit/ai-resume/compare/v0.2.10...HEAD
+[0.2.10]: https://github.com/schwichtgit/ai-resume/compare/v0.2.9...v0.2.10
 [0.2.9]: https://github.com/schwichtgit/ai-resume/compare/v0.2.8...v0.2.9
 [0.2.8]: https://github.com/schwichtgit/ai-resume/compare/v0.2.7...v0.2.8
 [0.2.7]: https://github.com/schwichtgit/ai-resume/compare/v0.2.6...v0.2.7
