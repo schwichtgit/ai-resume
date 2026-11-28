@@ -124,7 +124,7 @@ requires-dist = [
     { name = "opentelemetry-exporter-otlp", specifier = ">=1.45.2" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = ">=0.66b2" },
     { name = "opentelemetry-sdk", specifier = ">=1.45.2" },
-    { name = "poetry", marker = "extra == 'sbom'", specifier = ">=2.5.1" },
+    { name = "poetry", marker = "extra == 'sbom'", specifier = ">=2.5.2" },
     { name = "prometheus-client", specifier = ">=0.26.0" },
     { name = "prometheus-fastapi-instrumentator", specifier = ">=8.1.0" },
     { name = "protobuf", specifier = ">=7.36.2" },
@@ -1566,7 +1566,7 @@ wheels = [
 
 [[package]]
 name = "poetry"
-version = "2.5.1"
+version = "2.5.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "build" },
@@ -1591,9 +1591,9 @@ dependencies = [
     { name = "virtualenv" },
     { name = "xattr", marker = "sys_platform == 'darwin'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/43/86/204ef622b09005c0290b4cb23cc8178b0fdd52d8d6b36ad6d78dab447035/poetry-2.5.1.tar.gz", hash = "sha256:19fbd566efced512be58989a756aa1333cdc9b6aabb4fc84fd1ec9d29ee74874", size = 3322124, upload-time = "2026-09-20T07:18:34.868Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9b/42/8da80ea396ffc83f2d1d3f05ce71e5eb79847c15314267aba59c0391054b/poetry-2.5.2.tar.gz", hash = "sha256:131d6a565f809436918a5aafed34e7013038fc73b4f7b64640dc278f14adc4ea", size = 3324724, upload-time = "2026-11-21T09:37:35.116Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d6/7a/6b4fafb693200fc24fad8453ed200b902ab3fe56743cdcc756a6fae23ddf/poetry-2.5.1-py3-none-any.whl", hash = "sha256:3f7910abc667ce0c33a67e306baf017acdec1c8eeec4aa64d176e530d8338a61", size = 307610, upload-time = "2026-09-20T07:18:33.336Z" },
+    { url = "https://files.pythonhosted.org/packages/f0/e7/acb48974459ae5614ba35d7a6145ab7c8ccb273dbbf3bc9109722b1842bb/poetry-2.5.2-py3-none-any.whl", hash = "sha256:fa8f10da214f180c11a55e0a468d4ca9d05d984c14de4d5c53e404fe4eec8215", size = 307823, upload-time = "2026-11-21T09:37:33.299Z" },
 ]
 
 [[package]]
